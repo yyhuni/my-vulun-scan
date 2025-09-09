@@ -2,30 +2,75 @@ package models
 
 import (
 	"time"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // MainDomain 主域名模型
 type MainDomain struct {
-	ID             string    `json:"id" db:"id"`
-	MainDomainName string    `json:"main_domain_name" db:"main_domain_name"`
-	CreatedAt      time.Time `json:"created_at" db:"created_at"`
+	ID             string    `json:"id" gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	MainDomainName string    `json:"main_domain_name" gorm:"uniqueIndex;not null;size:255"`
+	CreatedAt      time.Time `json:"created_at" gorm:"not null"`
+
+	// 关联关系
+	Organizations []Organization `json:"organizations,omitempty" gorm:"many2many:organization_main_domains;constraint:OnDelete:CASCADE"`
+	SubDomains    []SubDomain    `json:"sub_domains,omitempty" gorm:"foreignKey:MainDomainID;constraint:OnDelete:CASCADE"`
+	ScanTasks     []ScanTask     `json:"scan_tasks,omitempty" gorm:"foreignKey:MainDomainID;constraint:OnDelete:CASCADE"`
+}
+
+// BeforeCreate GORM钩子：创建前生成UUID
+func (m *MainDomain) BeforeCreate(tx *gorm.DB) error {
+	if m.ID == "" {
+		m.ID = uuid.New().String()
+	}
+	return nil
+}
+
+// TableName 指定表名
+func (MainDomain) TableName() string {
+	return "main_domains"
 }
 
 // SubDomain 子域名模型
 type SubDomain struct {
-	ID            string      `json:"id" db:"id"`
-	SubDomainName string      `json:"sub_domain_name" db:"sub_domain_name"`
-	MainDomainID  string      `json:"main_domain_id" db:"main_domain_id"`
-	Status        string      `json:"status" db:"status"`
-	CreatedAt     time.Time   `json:"created_at" db:"created_at"`
-	UpdatedAt     time.Time   `json:"updated_at" db:"updated_at"`
-	MainDomain    *MainDomain `json:"main_domain,omitempty"`
+	ID            string    `json:"id" gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	SubDomainName string    `json:"sub_domain_name" gorm:"not null;size:255"`
+	MainDomainID  string    `json:"main_domain_id" gorm:"type:uuid;not null;index"`
+	Status        string    `json:"status" gorm:"size:50;not null;default:'unknown'"`
+	CreatedAt     time.Time `json:"created_at" gorm:"not null"`
+	UpdatedAt     time.Time `json:"updated_at" gorm:"not null"`
+
+	// 关联关系
+	MainDomain *MainDomain `json:"main_domain,omitempty" gorm:"foreignKey:MainDomainID;constraint:OnDelete:CASCADE"`
 }
 
-// OrganizationMainDomain 组织主域名关联模型
+// BeforeCreate GORM钩子：创建前生成UUID
+func (s *SubDomain) BeforeCreate(tx *gorm.DB) error {
+	if s.ID == "" {
+		s.ID = uuid.New().String()
+	}
+	return nil
+}
+
+// TableName 指定表名
+func (SubDomain) TableName() string {
+	return "sub_domains"
+}
+
+// OrganizationMainDomain 组织主域名关联模型（多对多中间表）
 type OrganizationMainDomain struct {
-	OrganizationID string `json:"organization_id" db:"organization_id"`
-	MainDomainID   string `json:"main_domain_id" db:"main_domain_id"`
+	OrganizationID string `json:"organization_id" gorm:"type:uuid;primaryKey"`
+	MainDomainID   string `json:"main_domain_id" gorm:"type:uuid;primaryKey"`
+
+	// 关联关系
+	Organization *Organization `json:"organization,omitempty" gorm:"foreignKey:OrganizationID;constraint:OnDelete:CASCADE"`
+	MainDomain   *MainDomain   `json:"main_domain,omitempty" gorm:"foreignKey:MainDomainID;constraint:OnDelete:CASCADE"`
+}
+
+// TableName 指定表名
+func (OrganizationMainDomain) TableName() string {
+	return "organization_main_domains"
 }
 
 // CreateMainDomainsRequest 创建主域名请求

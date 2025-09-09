@@ -1,19 +1,18 @@
 package services
 
 import (
-	"database/sql"
 	"fmt"
 
 	"vulun-scan-backend/internal/models"
 	"vulun-scan-backend/pkg/database"
 
-	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 )
 
 // ScanService 扫描服务
 type ScanService struct {
-	db *sql.DB
+	db *gorm.DB
 }
 
 // NewScanService 创建扫描服务实例
@@ -37,31 +36,28 @@ func (s *ScanService) StartOrganizationScan(organizationID string) (*models.Star
 		return nil, fmt.Errorf("organization has no main domains to scan")
 	}
 
-	// 为每个主域名创建扫描任务
-	tx, err := s.db.Begin()
-	if err != nil {
-		logrus.WithError(err).Error("Failed to begin transaction")
-		return nil, err
-	}
-	defer tx.Rollback()
-
 	var taskIDs []string
-	for _, mainDomain := range mainDomains {
-		taskID := uuid.New().String()
-		insertQuery := `
-			INSERT INTO scan_tasks (id, organization_id, main_domain_id, status, created_at, updated_at)
-			VALUES ($1, $2, $3, $4, NOW(), NOW())
-		`
-		_, err = tx.Exec(insertQuery, taskID, organizationID, mainDomain.ID, "pending")
-		if err != nil {
-			logrus.WithError(err).Error("Failed to create scan task")
-			return nil, err
-		}
-		taskIDs = append(taskIDs, taskID)
-	}
 
-	if err := tx.Commit(); err != nil {
-		logrus.WithError(err).Error("Failed to commit transaction")
+	// 使用事务创建扫描任务
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		for _, mainDomain := range mainDomains {
+			scanTask := models.ScanTask{
+				OrganizationID: organizationID,
+				MainDomainID:   mainDomain.ID,
+				Status:         "pending",
+			}
+
+			if err := tx.Create(&scanTask).Error; err != nil {
+				logrus.WithError(err).Error("Failed to create scan task")
+				return err
+			}
+
+			taskIDs = append(taskIDs, scanTask.ID)
+		}
+		return nil
+	})
+
+	if err != nil {
 		return nil, err
 	}
 
@@ -84,38 +80,192 @@ func (s *ScanService) StartOrganizationScan(organizationID string) (*models.Star
 
 // GetOrganizationScanHistory 获取组织扫描历史
 func (s *ScanService) GetOrganizationScanHistory(organizationID string) ([]models.ScanTask, error) {
-	query := `
-		SELECT id, organization_id, main_domain_id, status, created_at, updated_at
-		FROM scan_tasks
-		WHERE organization_id = $1
-		ORDER BY created_at DESC
-	`
-
-	rows, err := s.db.Query(query, organizationID)
-	if err != nil {
-		logrus.WithError(err).Error("Failed to query organization scan history")
-		return nil, err
-	}
-	defer rows.Close()
-
 	var scanTasks []models.ScanTask
-	for rows.Next() {
-		var task models.ScanTask
-		err := rows.Scan(
-			&task.ID, &task.OrganizationID, &task.MainDomainID, &task.Status,
-			&task.CreatedAt, &task.UpdatedAt,
-		)
-		if err != nil {
-			logrus.WithError(err).Error("Failed to scan scan task")
-			return nil, err
-		}
-		scanTasks = append(scanTasks, task)
+
+	result := s.db.
+		Preload("Organization").
+		Preload("MainDomain").
+		Preload("ScanResults").
+		Where("organization_id = ?", organizationID).
+		Order("created_at DESC").
+		Find(&scanTasks)
+
+	if result.Error != nil {
+		logrus.WithError(result.Error).Error("Failed to query organization scan history")
+		return nil, result.Error
 	}
 
-	if err = rows.Err(); err != nil {
-		logrus.WithError(err).Error("Error iterating scan tasks")
-		return nil, err
-	}
+	logrus.WithFields(logrus.Fields{
+		"organization_id": organizationID,
+		"task_count":      len(scanTasks),
+	}).Info("Organization scan history retrieved successfully")
 
 	return scanTasks, nil
+}
+
+// GetScanTaskByID 根据ID获取扫描任务
+func (s *ScanService) GetScanTaskByID(taskID string) (*models.ScanTask, error) {
+	var scanTask models.ScanTask
+
+	result := s.db.
+		Preload("Organization").
+		Preload("MainDomain").
+		Preload("ScanResults").
+		First(&scanTask, "id = ?", taskID)
+
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("scan task not found")
+		}
+		logrus.WithError(result.Error).Error("Failed to query scan task")
+		return nil, result.Error
+	}
+
+	logrus.WithField("task_id", taskID).Info("Scan task retrieved successfully")
+	return &scanTask, nil
+}
+
+// UpdateScanTaskStatus 更新扫描任务状态
+func (s *ScanService) UpdateScanTaskStatus(taskID, status string) error {
+	result := s.db.Model(&models.ScanTask{}).Where("id = ?", taskID).Update("status", status)
+
+	if result.Error != nil {
+		logrus.WithError(result.Error).Error("Failed to update scan task status")
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("scan task not found")
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"task_id": taskID,
+		"status":  status,
+	}).Info("Scan task status updated successfully")
+
+	return nil
+}
+
+// CreateScanResult 创建扫描结果
+func (s *ScanService) CreateScanResult(taskID, resultSummary string) (*models.ScanResult, error) {
+	scanResult := models.ScanResult{
+		ScanTaskID:    taskID,
+		ResultSummary: resultSummary,
+	}
+
+	result := s.db.Create(&scanResult)
+	if result.Error != nil {
+		logrus.WithError(result.Error).Error("Failed to create scan result")
+		return nil, result.Error
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"task_id":   taskID,
+		"result_id": scanResult.ID,
+	}).Info("Scan result created successfully")
+
+	return &scanResult, nil
+}
+
+// GetScanResultsByTaskID 根据任务ID获取扫描结果
+func (s *ScanService) GetScanResultsByTaskID(taskID string) ([]models.ScanResult, error) {
+	var scanResults []models.ScanResult
+
+	result := s.db.Where("scan_task_id = ?", taskID).Order("created_at DESC").Find(&scanResults)
+	if result.Error != nil {
+		logrus.WithError(result.Error).Error("Failed to query scan results")
+		return nil, result.Error
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"task_id":      taskID,
+		"result_count": len(scanResults),
+	}).Info("Scan results retrieved successfully")
+
+	return scanResults, nil
+}
+
+// GetActiveScanTasks 获取活跃的扫描任务
+func (s *ScanService) GetActiveScanTasks() ([]models.ScanTask, error) {
+	var scanTasks []models.ScanTask
+
+	result := s.db.
+		Preload("Organization").
+		Preload("MainDomain").
+		Where("status IN ?", []string{"pending", "running"}).
+		Order("created_at DESC").
+		Find(&scanTasks)
+
+	if result.Error != nil {
+		logrus.WithError(result.Error).Error("Failed to query active scan tasks")
+		return nil, result.Error
+	}
+
+	logrus.WithField("active_task_count", len(scanTasks)).Info("Active scan tasks retrieved successfully")
+	return scanTasks, nil
+}
+
+// DeleteScanTask 删除扫描任务（级联删除扫描结果）
+func (s *ScanService) DeleteScanTask(taskID string) error {
+	// 检查任务是否存在
+	var scanTask models.ScanTask
+	result := s.db.First(&scanTask, "id = ?", taskID)
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+			return fmt.Errorf("scan task not found")
+		}
+		logrus.WithError(result.Error).Error("Failed to query scan task for deletion")
+		return result.Error
+	}
+
+	// 删除扫描任务（GORM会自动处理级联删除）
+	result = s.db.Delete(&scanTask)
+	if result.Error != nil {
+		logrus.WithError(result.Error).Error("Failed to delete scan task")
+		return result.Error
+	}
+
+	logrus.WithField("task_id", taskID).Info("Scan task deleted successfully")
+	return nil
+}
+
+// GetScanStatistics 获取扫描统计信息
+func (s *ScanService) GetScanStatistics() (map[string]interface{}, error) {
+	stats := make(map[string]interface{})
+
+	// 总任务数
+	var totalTasks int64
+	if err := s.db.Model(&models.ScanTask{}).Count(&totalTasks).Error; err != nil {
+		return nil, err
+	}
+	stats["total_tasks"] = totalTasks
+
+	// 按状态分组统计
+	var statusStats []struct {
+		Status string
+		Count  int64
+	}
+	err := s.db.Model(&models.ScanTask{}).
+		Select("status, count(*) as count").
+		Group("status").
+		Scan(&statusStats).Error
+	if err != nil {
+		return nil, err
+	}
+
+	statusMap := make(map[string]int64)
+	for _, stat := range statusStats {
+		statusMap[stat.Status] = stat.Count
+	}
+	stats["status_breakdown"] = statusMap
+
+	// 总结果数
+	var totalResults int64
+	if err := s.db.Model(&models.ScanResult{}).Count(&totalResults).Error; err != nil {
+		return nil, err
+	}
+	stats["total_results"] = totalResults
+
+	logrus.Info("Scan statistics retrieved successfully")
+	return stats, nil
 }

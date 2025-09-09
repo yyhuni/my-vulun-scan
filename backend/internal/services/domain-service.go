@@ -1,20 +1,19 @@
 package services
 
 import (
-	"database/sql"
 	"fmt"
 	"strings"
 
 	"vulun-scan-backend/internal/models"
 	"vulun-scan-backend/pkg/database"
 
-	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 )
 
 // DomainService 域名服务
 type DomainService struct {
-	db *sql.DB
+	db *gorm.DB
 }
 
 // NewDomainService 创建域名服务实例
@@ -26,112 +25,83 @@ func NewDomainService() *DomainService {
 
 // GetOrganizationMainDomains 获取组织的主域名
 func (s *DomainService) GetOrganizationMainDomains(organizationID string) ([]models.MainDomain, error) {
-	query := `
-		SELECT md.id, md.main_domain_name, md.created_at
-		FROM main_domains md
-		INNER JOIN organization_main_domains omd ON md.id = omd.main_domain_id
-		WHERE omd.organization_id = $1
-		ORDER BY md.created_at DESC
-	`
-
-	rows, err := s.db.Query(query, organizationID)
-	if err != nil {
-		logrus.WithError(err).Error("Failed to query organization main domains")
-		return nil, err
-	}
-	defer rows.Close()
-
 	var mainDomains []models.MainDomain
-	for rows.Next() {
-		var domain models.MainDomain
-		err := rows.Scan(&domain.ID, &domain.MainDomainName, &domain.CreatedAt)
-		if err != nil {
-			logrus.WithError(err).Error("Failed to scan main domain")
-			return nil, err
-		}
-		mainDomains = append(mainDomains, domain)
+
+	result := s.db.
+		Joins("JOIN organization_main_domains ON main_domains.id = organization_main_domains.main_domain_id").
+		Where("organization_main_domains.organization_id = ?", organizationID).
+		Order("main_domains.created_at DESC").
+		Find(&mainDomains)
+
+	if result.Error != nil {
+		logrus.WithError(result.Error).Error("Failed to query organization main domains")
+		return nil, result.Error
 	}
 
-	if err = rows.Err(); err != nil {
-		logrus.WithError(err).Error("Error iterating main domains")
-		return nil, err
-	}
+	logrus.WithFields(logrus.Fields{
+		"organization_id": organizationID,
+		"count":           len(mainDomains),
+	}).Info("Organization main domains retrieved successfully")
 
 	return mainDomains, nil
 }
 
 // CreateMainDomains 创建主域名并关联到组织
 func (s *DomainService) CreateMainDomains(req models.CreateMainDomainsRequest) (*models.APIResponse, error) {
-	tx, err := s.db.Begin()
-	if err != nil {
-		logrus.WithError(err).Error("Failed to begin transaction")
-		return nil, err
-	}
-	defer tx.Rollback()
-
 	var createdCount int
 	var existingDomains []string
 
-	for _, domainName := range req.MainDomains {
-		// 检查主域名是否已存在
-		var existingID string
-		checkQuery := `SELECT id FROM main_domains WHERE main_domain_name = $1`
-		err := tx.QueryRow(checkQuery, domainName).Scan(&existingID)
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		for _, domainName := range req.MainDomains {
+			// 检查主域名是否已存在
+			var existingDomain models.MainDomain
+			result := tx.Where("main_domain_name = ?", domainName).First(&existingDomain)
 
-		var domainID string
-		if err == sql.ErrNoRows {
-			// 主域名不存在，创建新的
-			domainID = uuid.New().String()
-			insertQuery := `
-				INSERT INTO main_domains (id, main_domain_name, created_at)
-				VALUES ($1, $2, NOW())
-			`
-			_, err = tx.Exec(insertQuery, domainID, domainName)
-			if err != nil {
-				logrus.WithError(err).Error("Failed to create main domain")
-				return nil, err
+			var domainID string
+			if result.Error == gorm.ErrRecordNotFound {
+				// 主域名不存在，创建新的
+				newDomain := models.MainDomain{
+					MainDomainName: domainName,
+				}
+				if err := tx.Create(&newDomain).Error; err != nil {
+					logrus.WithError(err).Error("Failed to create main domain")
+					return err
+				}
+				domainID = newDomain.ID
+			} else if result.Error != nil {
+				logrus.WithError(result.Error).Error("Failed to check existing main domain")
+				return result.Error
+			} else {
+				// 主域名已存在
+				domainID = existingDomain.ID
 			}
-		} else if err != nil {
-			logrus.WithError(err).Error("Failed to check existing main domain")
-			return nil, err
-		} else {
-			// 主域名已存在
-			domainID = existingID
-		}
 
-		// 检查组织是否已关联此主域名
-		var associationExists bool
-		associationQuery := `
-			SELECT EXISTS(
-				SELECT 1 FROM organization_main_domains 
-				WHERE organization_id = $1 AND main_domain_id = $2
-			)
-		`
-		err = tx.QueryRow(associationQuery, req.OrganizationID, domainID).Scan(&associationExists)
-		if err != nil {
-			logrus.WithError(err).Error("Failed to check domain association")
-			return nil, err
-		}
+			// 检查组织是否已关联此主域名
+			var association models.OrganizationMainDomain
+			result = tx.Where("organization_id = ? AND main_domain_id = ?", req.OrganizationID, domainID).First(&association)
 
-		if !associationExists {
-			// 创建组织和主域名的关联
-			associateQuery := `
-				INSERT INTO organization_main_domains (organization_id, main_domain_id)
-				VALUES ($1, $2)
-			`
-			_, err = tx.Exec(associateQuery, req.OrganizationID, domainID)
-			if err != nil {
-				logrus.WithError(err).Error("Failed to associate main domain with organization")
-				return nil, err
+			if result.Error == gorm.ErrRecordNotFound {
+				// 创建组织和主域名的关联
+				newAssociation := models.OrganizationMainDomain{
+					OrganizationID: req.OrganizationID,
+					MainDomainID:   domainID,
+				}
+				if err := tx.Create(&newAssociation).Error; err != nil {
+					logrus.WithError(err).Error("Failed to associate main domain with organization")
+					return err
+				}
+				createdCount++
+			} else if result.Error != nil {
+				logrus.WithError(result.Error).Error("Failed to check domain association")
+				return result.Error
+			} else {
+				existingDomains = append(existingDomains, domainName)
 			}
-			createdCount++
-		} else {
-			existingDomains = append(existingDomains, domainName)
 		}
-	}
+		return nil
+	})
 
-	if err := tx.Commit(); err != nil {
-		logrus.WithError(err).Error("Failed to commit transaction")
+	if err != nil {
 		return nil, err
 	}
 
@@ -161,24 +131,15 @@ func (s *DomainService) CreateMainDomains(req models.CreateMainDomainsRequest) (
 
 // RemoveOrganizationMainDomain 移除组织和主域名的关联
 func (s *DomainService) RemoveOrganizationMainDomain(req models.RemoveOrganizationMainDomainRequest) error {
-	query := `
-		DELETE FROM organization_main_domains 
-		WHERE organization_id = $1 AND main_domain_id = $2
-	`
+	result := s.db.Where("organization_id = ? AND main_domain_id = ?", req.OrganizationID, req.MainDomainID).
+		Delete(&models.OrganizationMainDomain{})
 
-	result, err := s.db.Exec(query, req.OrganizationID, req.MainDomainID)
-	if err != nil {
-		logrus.WithError(err).Error("Failed to remove organization main domain association")
-		return err
+	if result.Error != nil {
+		logrus.WithError(result.Error).Error("Failed to remove organization main domain association")
+		return result.Error
 	}
 
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		logrus.WithError(err).Error("Failed to get rows affected")
-		return err
-	}
-
-	if rowsAffected == 0 {
+	if result.RowsAffected == 0 {
 		return fmt.Errorf("association not found")
 	}
 
@@ -196,71 +157,48 @@ func (s *DomainService) GetOrganizationSubDomains(organizationID string, page, p
 	offset := (page - 1) * pageSize
 
 	// 获取总数
-	countQuery := `
-		SELECT COUNT(DISTINCT sd.id)
-		FROM sub_domains sd
-		INNER JOIN main_domains md ON sd.main_domain_id = md.id
-		INNER JOIN organization_main_domains omd ON md.id = omd.main_domain_id
-		WHERE omd.organization_id = $1
-	`
+	var total int64
+	err := s.db.Table("sub_domains sd").
+		Joins("JOIN main_domains md ON sd.main_domain_id = md.id").
+		Joins("JOIN organization_main_domains omd ON md.id = omd.main_domain_id").
+		Where("omd.organization_id = ?", organizationID).
+		Count(&total).Error
 
-	var total int
-	err := s.db.QueryRow(countQuery, organizationID).Scan(&total)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to count organization sub domains")
 		return nil, err
 	}
 
 	// 获取分页数据
-	query := `
-		SELECT sd.id, sd.sub_domain_name, sd.main_domain_id, sd.status, 
-		       sd.created_at, sd.updated_at,
-		       md.id as main_domain_id, md.main_domain_name, md.created_at as main_domain_created_at
-		FROM sub_domains sd
-		INNER JOIN main_domains md ON sd.main_domain_id = md.id
-		INNER JOIN organization_main_domains omd ON md.id = omd.main_domain_id
-		WHERE omd.organization_id = $1
-		ORDER BY sd.created_at DESC
-		LIMIT $2 OFFSET $3
-	`
-
-	rows, err := s.db.Query(query, organizationID, pageSize, offset)
-	if err != nil {
-		logrus.WithError(err).Error("Failed to query organization sub domains")
-		return nil, err
-	}
-	defer rows.Close()
-
 	var subDomains []models.SubDomain
-	for rows.Next() {
-		var subDomain models.SubDomain
-		var mainDomain models.MainDomain
+	result := s.db.
+		Preload("MainDomain").
+		Joins("JOIN main_domains md ON sub_domains.main_domain_id = md.id").
+		Joins("JOIN organization_main_domains omd ON md.id = omd.main_domain_id").
+		Where("omd.organization_id = ?", organizationID).
+		Order("sub_domains.created_at DESC").
+		Limit(pageSize).
+		Offset(offset).
+		Find(&subDomains)
 
-		err := rows.Scan(
-			&subDomain.ID, &subDomain.SubDomainName, &subDomain.MainDomainID, &subDomain.Status,
-			&subDomain.CreatedAt, &subDomain.UpdatedAt,
-			&mainDomain.ID, &mainDomain.MainDomainName, &mainDomain.CreatedAt,
-		)
-		if err != nil {
-			logrus.WithError(err).Error("Failed to scan sub domain")
-			return nil, err
-		}
-
-		subDomain.MainDomain = &mainDomain
-		subDomains = append(subDomains, subDomain)
-	}
-
-	if err = rows.Err(); err != nil {
-		logrus.WithError(err).Error("Error iterating sub domains")
-		return nil, err
+	if result.Error != nil {
+		logrus.WithError(result.Error).Error("Failed to query organization sub domains")
+		return nil, result.Error
 	}
 
 	response := &models.GetOrganizationSubDomainsResponse{
 		SubDomains: subDomains,
-		Total:      total,
+		Total:      int(total),
 		Page:       page,
 		PageSize:   pageSize,
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"organization_id": organizationID,
+		"total":           total,
+		"page":            page,
+		"page_size":       pageSize,
+	}).Info("Organization sub domains retrieved successfully")
 
 	return response, nil
 }
@@ -271,49 +209,39 @@ func (s *DomainService) CreateSubDomains(req models.CreateSubDomainsRequest) (*m
 		req.Status = "unknown"
 	}
 
-	tx, err := s.db.Begin()
-	if err != nil {
-		logrus.WithError(err).Error("Failed to begin transaction")
-		return nil, err
-	}
-	defer tx.Rollback()
-
 	var createdCount int
 	var existingDomains []string
 
-	for _, subDomainName := range req.SubDomains {
-		// 检查子域名是否已存在于该主域名下
-		var existingID string
-		checkQuery := `
-			SELECT id FROM sub_domains 
-			WHERE sub_domain_name = $1 AND main_domain_id = $2
-		`
-		err := tx.QueryRow(checkQuery, subDomainName, req.MainDomainID).Scan(&existingID)
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		for _, subDomainName := range req.SubDomains {
+			// 检查子域名是否已存在于该主域名下
+			var existingSubDomain models.SubDomain
+			result := tx.Where("sub_domain_name = ? AND main_domain_id = ?", subDomainName, req.MainDomainID).First(&existingSubDomain)
 
-		if err == sql.ErrNoRows {
-			// 子域名不存在，创建新的
-			subDomainID := uuid.New().String()
-			insertQuery := `
-				INSERT INTO sub_domains (id, sub_domain_name, main_domain_id, status, created_at, updated_at)
-				VALUES ($1, $2, $3, $4, NOW(), NOW())
-			`
-			_, err = tx.Exec(insertQuery, subDomainID, subDomainName, req.MainDomainID, req.Status)
-			if err != nil {
-				logrus.WithError(err).Error("Failed to create sub domain")
-				return nil, err
+			if result.Error == gorm.ErrRecordNotFound {
+				// 子域名不存在，创建新的
+				newSubDomain := models.SubDomain{
+					SubDomainName: subDomainName,
+					MainDomainID:  req.MainDomainID,
+					Status:        req.Status,
+				}
+				if err := tx.Create(&newSubDomain).Error; err != nil {
+					logrus.WithError(err).Error("Failed to create sub domain")
+					return err
+				}
+				createdCount++
+			} else if result.Error != nil {
+				logrus.WithError(result.Error).Error("Failed to check existing sub domain")
+				return result.Error
+			} else {
+				// 子域名已存在
+				existingDomains = append(existingDomains, subDomainName)
 			}
-			createdCount++
-		} else if err != nil {
-			logrus.WithError(err).Error("Failed to check existing sub domain")
-			return nil, err
-		} else {
-			// 子域名已存在
-			existingDomains = append(existingDomains, subDomainName)
 		}
-	}
+		return nil
+	})
 
-	if err := tx.Commit(); err != nil {
-		logrus.WithError(err).Error("Failed to commit transaction")
+	if err != nil {
 		return nil, err
 	}
 
@@ -339,4 +267,79 @@ func (s *DomainService) CreateSubDomains(req models.CreateSubDomainsRequest) (*m
 	}).Info("Sub domains created successfully")
 
 	return response, nil
+}
+
+// GetMainDomainByID 根据ID获取主域名
+func (s *DomainService) GetMainDomainByID(id string) (*models.MainDomain, error) {
+	var mainDomain models.MainDomain
+
+	result := s.db.Preload("SubDomains").First(&mainDomain, "id = ?", id)
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("main domain not found")
+		}
+		logrus.WithError(result.Error).Error("Failed to query main domain")
+		return nil, result.Error
+	}
+
+	logrus.WithField("id", id).Info("Main domain retrieved successfully")
+	return &mainDomain, nil
+}
+
+// GetSubDomainsByMainDomain 根据主域名ID获取所有子域名
+func (s *DomainService) GetSubDomainsByMainDomain(mainDomainID string) ([]models.SubDomain, error) {
+	var subDomains []models.SubDomain
+
+	result := s.db.Where("main_domain_id = ?", mainDomainID).Order("created_at DESC").Find(&subDomains)
+	if result.Error != nil {
+		logrus.WithError(result.Error).Error("Failed to query sub domains by main domain")
+		return nil, result.Error
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"main_domain_id": mainDomainID,
+		"count":          len(subDomains),
+	}).Info("Sub domains by main domain retrieved successfully")
+
+	return subDomains, nil
+}
+
+// DeleteMainDomain 删除主域名（级联删除子域名和关联）
+func (s *DomainService) DeleteMainDomain(mainDomainID string) error {
+	// 检查主域名是否存在
+	var mainDomain models.MainDomain
+	result := s.db.First(&mainDomain, "id = ?", mainDomainID)
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+			return fmt.Errorf("main domain not found")
+		}
+		logrus.WithError(result.Error).Error("Failed to query main domain for deletion")
+		return result.Error
+	}
+
+	// 删除主域名（GORM会自动处理级联删除）
+	result = s.db.Delete(&mainDomain)
+	if result.Error != nil {
+		logrus.WithError(result.Error).Error("Failed to delete main domain")
+		return result.Error
+	}
+
+	logrus.WithField("main_domain_id", mainDomainID).Info("Main domain deleted successfully")
+	return nil
+}
+
+// DeleteSubDomain 删除子域名
+func (s *DomainService) DeleteSubDomain(subDomainID string) error {
+	result := s.db.Delete(&models.SubDomain{}, "id = ?", subDomainID)
+	if result.Error != nil {
+		logrus.WithError(result.Error).Error("Failed to delete sub domain")
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("sub domain not found")
+	}
+
+	logrus.WithField("sub_domain_id", subDomainID).Info("Sub domain deleted successfully")
+	return nil
 }

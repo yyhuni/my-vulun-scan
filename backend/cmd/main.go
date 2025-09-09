@@ -7,6 +7,7 @@ import (
 
 	"vulun-scan-backend/config"
 	"vulun-scan-backend/internal/middleware"
+	"vulun-scan-backend/internal/models"
 	"vulun-scan-backend/pkg/database"
 	"vulun-scan-backend/routes"
 
@@ -23,6 +24,9 @@ func main() {
 
 	// 初始化数据库
 	database.InitDB()
+
+	// 运行数据库迁移
+	runMigrations()
 
 	// 创建 Gin 引擎
 	r := setupRouter()
@@ -85,6 +89,18 @@ func setupRouter() *gin.Engine {
 	})
 
 	return r
+}
+
+// runMigrations 运行数据库迁移
+func runMigrations() {
+	logrus.Info("Running database migrations...")
+
+	err := database.AutoMigrate(models.GetAllModels()...)
+	if err != nil {
+		logrus.WithError(err).Fatal("Failed to run database migrations")
+	}
+
+	logrus.Info("Database migrations completed successfully")
 }
 
 func startServer(r *gin.Engine, cfg *config.Config) {
