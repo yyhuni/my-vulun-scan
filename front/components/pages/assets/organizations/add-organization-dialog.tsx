@@ -24,7 +24,8 @@ import { Textarea } from "@/components/ui/textarea"
 
 // 自定义 Hooks 和 API 客户端
 import { useToast } from "@/hooks/use-toast"
-import { api, getErrorMessage } from "@/lib/api-client"
+import { getErrorMessage } from "@/lib/api-client"
+import { OrganizationService } from "@/services/organization.service"
 
 // 类型定义
 interface Organization {
@@ -59,15 +60,15 @@ export default function AddOrganizationDialog({ onAdd }: AddOrganizationDialogPr
     }
 
     try {
-      // 使用新的统一 POST API
-      const response = await api.post("/assets/organizations/create", {
+      // 使用组织服务
+      const response = await OrganizationService.createOrganization({
         name: formData.name,
         description: formData.description,
       })
       console.log('Backend response:', response)
 
-      if (response.data.code === "SUCCESS" && response.data.data) {
-        onAdd(response.data.data) // 使用后端返回的完整组织数据
+      if (response.code === "SUCCESS" && response.data) {
+        onAdd(response.data) // 使用后端返回的完整组织数据
         toast({
           title: "添加成功",
           description: `组织 "${formData.name}" 已成功添加`,
@@ -75,7 +76,7 @@ export default function AddOrganizationDialog({ onAdd }: AddOrganizationDialogPr
       } else {
         toast({
           title: "错误",
-          description: response.data.message || "创建组织失败，请重试。",
+          description: response.message || "创建组织失败，请重试。",
           variant: "destructive",
         })
       }

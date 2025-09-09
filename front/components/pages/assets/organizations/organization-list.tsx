@@ -8,7 +8,8 @@ import { useState, useEffect } from "react"
 import { useNavigation } from "@/hooks/use-navigation"
 
 // 第三方库和 API 客户端
-import { api, getErrorMessage } from "@/lib/api-client"
+import { getErrorMessage } from "@/lib/api-client"
+import { OrganizationService } from "@/services/organization.service"
 
 // UI 图标库
 import { Search, Trash2, Eye, MoreHorizontal } from "lucide-react"
@@ -54,11 +55,6 @@ interface Organization {
   status: string      // 添加状态字段
 }
 
-interface OrganizationsApiResponse {
-  code: string
-  message: string
-  data: Organization[]
-}
 
 type ViewState = "loading" | "data" | "empty" | "error"
 
@@ -103,14 +99,14 @@ export default function OrganizationList() {
       setViewState("loading");
       setError(null);
 
-      // 使用新的 API 客户端，自动转换 snake_case 为 camelCase
-      const response = await api.get<OrganizationsApiResponse>('/assets/organizations');
+      // 使用组织服务
+      const response = await OrganizationService.getOrganizations();
 
       // 检查响应码并获取数据
-      if (response.data.code === "SUCCESS" && Array.isArray(response.data.data)) {
+      if (response.code === "SUCCESS" && Array.isArray(response.data)) {
         // 数据已经自动转换为 camelCase，无需手动转换
-        setOrganizations(response.data.data);
-        setViewState(response.data.data.length > 0 ? "data" : "empty");
+        setOrganizations(response.data);
+        setViewState(response.data.length > 0 ? "data" : "empty");
       } else {
         throw new Error("API 返回了无效的数据格式");
       }
@@ -142,9 +138,7 @@ export default function OrganizationList() {
     if (!organizationToDelete) return
 
     try {
-      await api.post('/assets/organizations/delete', {
-        organizationId: organizationToDelete.id
-      });
+      await OrganizationService.deleteOrganization(organizationToDelete.id);
       setOrganizations((prev) => prev.filter((org) => org.id !== organizationToDelete.id))
       toast({
         title: "删除成功",

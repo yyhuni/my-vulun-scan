@@ -5,7 +5,8 @@ import { useState, useEffect } from "react"
 
 // 第三方库和 API 客户端
 import { toast } from "sonner"
-import { api, getErrorMessage } from "@/lib/api-client"
+import { getErrorMessage } from "@/lib/api-client"
+import { OrganizationService } from "@/services/organization.service"
 
 // UI 图标库
 import { Globe, Loader2, Search, CheckCircle, XCircle, Clock, AlertCircle, Eye, Plus } from "lucide-react"
@@ -115,11 +116,11 @@ export default function OrganizationSubDomains({ organizationId }: OrganizationS
     if (!organizationId) return
 
     try {
-      // 使用新的 API 客户端，自动转换 snake_case 为 camelCase
-      const response = await api.get(`/assets/organizations/${organizationId}`)
+      // 使用组织服务
+      const response = await OrganizationService.getOrganization(organizationId)
 
-      if (response.data.code === "SUCCESS" && response.data.data) {
-        setOrganizationName(response.data.data.name || "")
+      if (response.code === "SUCCESS" && response.data) {
+        setOrganizationName(response.data.name || "")
       }
     } catch (error: any) {
       console.error("获取组织信息出错:", error)
@@ -131,12 +132,12 @@ export default function OrganizationSubDomains({ organizationId }: OrganizationS
     if (!organizationId) return
 
     try {
-      // 使用新的 API 客户端，自动转换 snake_case 为 camelCase
-      const response = await api.get(`/assets/organizations/${organizationId}/main-domains`)
+      // 使用组织服务
+      const response = await OrganizationService.getOrganizationMainDomains(organizationId)
 
-      if (response.data.code === "SUCCESS" && response.data.data) {
+      if (response.code === "SUCCESS" && response.data) {
         // 数据已经自动转换为 camelCase，无需手动转换
-        const domains = response.data.data.mainDomains || []
+        const domains = response.data.mainDomains || []
         setMainDomains(domains)
         // 主域名获取成功
       } else {
@@ -162,19 +163,19 @@ export default function OrganizationSubDomains({ organizationId }: OrganizationS
       setViewState("loading")
       setError(null)
 
-      // 使用新的 API 客户端，自动转换 snake_case 为 camelCase
-      const response = await api.get(`/assets/organizations/${organizationId}/sub-domains`, {
-        params: { page, pageSize }
+      // 使用组织服务
+      const response = await OrganizationService.getOrganizationSubDomains(organizationId, {
+        page, pageSize
       })
 
-      if (response.data.code === "SUCCESS" && response.data.data) {
-        const data = response.data.data
+      if (response.code === "SUCCESS" && response.data) {
+        const data = response.data
         // 数据已经自动转换为 camelCase，无需手动转换
         const subDomains = data.subDomains || []
         setSubDomains(subDomains)
         setViewState(subDomains.length > 0 ? "data" : "empty")
       } else {
-        throw new Error(response.data.message || "获取子域名失败")
+        throw new Error(response.message || "获取子域名失败")
       }
     } catch (error: any) {
       console.error("获取组织子域名出错:", error)
@@ -210,15 +211,15 @@ export default function OrganizationSubDomains({ organizationId }: OrganizationS
 
       // 为每个主域名批量创建子域名
       for (const [mainDomainId, subDomainNames] of Object.entries(groupedByMainDomain)) {
-        // 使用新的统一 POST API
-        const response = await api.post(`/assets/sub-domains/create`, {
+        // 使用组织服务
+        const response = await OrganizationService.createSubDomains({
           subDomains: subDomainNames,    // 前端使用 camelCase，会自动转换为 sub_domains
           mainDomainId: mainDomainId,    // 前端使用 camelCase，会自动转换为 main_domain_id
           status: "unknown" // 默认状态
         })
 
-        if (response.data.code !== "SUCCESS") {
-          throw new Error(response.data.message || "添加子域名失败")
+        if (response.code !== "SUCCESS") {
+          throw new Error(response.message || "添加子域名失败")
         }
       }
 

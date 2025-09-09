@@ -4,7 +4,8 @@
 import { useState, useEffect } from "react"
 
 // 第三方库和 API 客户端
-import { api, getErrorMessage } from "@/lib/api-client"
+import { getErrorMessage } from "@/lib/api-client"
+import { OrganizationService } from "@/services/organization.service"
 
 // UI 图标库
 import { Building2, RefreshCw } from "lucide-react"
@@ -69,13 +70,13 @@ export default function OrganizationDetail({ organizationId }: OrganizationDetai
       setViewState("loading")
       setError(null)
 
-      // 使用新的 API 客户端，自动转换 snake_case 为 camelCase
-      const response = await api.get(`/assets/organizations/${id}`)
+      // 使用组织服务
+      const response = await OrganizationService.getOrganization(id)
 
       // 检查响应码并获取数据
-      if (response.data.code === "SUCCESS" && response.data.data) {
+      if (response.code === "SUCCESS" && response.data) {
         // 数据已经自动转换为 camelCase，无需手动转换
-        setOrganization(response.data.data)
+        setOrganization(response.data)
         setViewState("data")
       } else {
         throw new Error("API 返回了无效的数据格式")

@@ -5,7 +5,8 @@ import { useState, useEffect } from "react"
 
 // 第三方库和 API 客户端
 import { toast } from "sonner"
-import { api, getErrorMessage } from "@/lib/api-client"
+import { getErrorMessage } from "@/lib/api-client"
+import { OrganizationService } from "@/services/organization.service"
 
 // UI 图标库
 import { Building2, Loader2, X } from "lucide-react"
@@ -80,14 +81,14 @@ export default function OrganizationOverview({ organization: initialOrganization
     try {
       setLoadingMainDomains(true)
 
-      // 使用新的 API 客户端，自动转换 snake_case 为 camelCase
-      const response = await api.get(`/assets/organizations/${organization.id}/main-domains`)
+      // 使用组织服务
+      const response = await OrganizationService.getOrganizationMainDomains(organization.id)
 
-      if (response.data.code === "SUCCESS" && response.data.data && Array.isArray(response.data.data.mainDomains)) {
+      if (response.code === "SUCCESS" && response.data && Array.isArray(response.data.mainDomains)) {
         // 数据已经自动转换为 camelCase，无需手动转换
-        setMainDomains(response.data.data.mainDomains)
+        setMainDomains(response.data.mainDomains)
       } else {
-        console.error("获取主域名失败:", response.data.message)
+        console.error("获取主域名失败:", response.message)
         setMainDomains([])
       }
     } catch (error) {
@@ -104,19 +105,19 @@ export default function OrganizationOverview({ organization: initialOrganization
     if (!domains.length) return
 
     try {
-      // 使用新的统一 POST API
-      const response = await api.post(`/assets/main-domains/create`, {
+      // 使用组织服务
+      const response = await OrganizationService.createMainDomains({
         mainDomains: domains,        // 前端使用 camelCase，会自动转换为 main_domains
         organizationId: organization.id,  // 前端使用 camelCase，会自动转换为 organization_id
       })
 
-      if (response.data.code === "SUCCESS") {
-        const successCount = response.data.data.successCount || domains.length
+      if (response.code === "SUCCESS") {
+        const successCount = response.data?.successCount || domains.length
         toast.success(`成功添加 ${successCount} 个主域名`)
         // 重新获取主域名列表
         fetchMainDomains()
       } else {
-        throw new Error(response.data.message || "添加主域名失败")
+        throw new Error(response.message || "添加主域名失败")
       }
     } catch (error: any) {
       console.error("添加主域名失败:", error)
@@ -137,18 +138,18 @@ export default function OrganizationOverview({ organization: initialOrganization
     if (!domainToDelete) return
 
     try {
-      // 使用新的统一 POST API
-      const response = await api.post('/assets/organizations/remove-main-domain', {
+      // 使用组织服务
+      const response = await OrganizationService.removeMainDomainFromOrganization({
         organizationId: organization.id,
         mainDomainId: domainToDelete.id
       })
 
-      if (response.data.code === "SUCCESS") {
+      if (response.code === "SUCCESS") {
         // 从本地状态中移除该域名
         setMainDomains(prev => prev.filter(domain => domain.id !== domainToDelete.id))
         toast.success(`已解除组织与主域名 "${domainToDelete.name || domainToDelete.mainDomainName}" 的关联`)
       } else {
-        throw new Error(response.data.message || "解除关联失败")
+        throw new Error(response.message || "解除关联失败")
       }
     } catch (error: any) {
       console.error("解除主域名关联失败:", error)

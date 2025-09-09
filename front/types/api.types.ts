@@ -1,6 +1,7 @@
 // 通用API响应类型
 export interface ApiResponse<T = any> {
-  success: boolean;
+  success?: boolean;
+  code?: string;
   message: string;
   data?: T;
   error?: string;
