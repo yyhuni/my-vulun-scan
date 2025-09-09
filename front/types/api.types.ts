@@ -110,6 +110,27 @@ export interface SecurityAlert {
   resolvedAt?: string
 }
 
+// 漏洞类型
+export interface Vulnerability {
+  id: string
+  title: string
+  severity: "高危" | "中危" | "低危"
+  cvss: number
+  cve: string
+  domain: string
+  port: number
+  service: string
+  description: string
+  discoveredDate: string
+  status: "待修复" | "处理中" | "已修复" | "已忽略"
+  organization: string
+  affectedUrl: string
+  riskScore: number
+  poc: string
+  solution: string
+  organizationId: string
+}
+
 // 错误类型
 export interface ApiError {
   code: string

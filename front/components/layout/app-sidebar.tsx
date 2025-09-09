@@ -35,16 +35,6 @@ import {
 export const navigationItems = [
   { name: '仪表盘', href: '/', icon: LayoutDashboard },
   {
-    name: '工作流',
-    href: '/workflow',
-    icon: Workflow,
-    subItems: [
-      { name: '工作流概览', href: '/workflow/overview' },
-      { name: '工作流列表', href: '/workflow/management' },
-      { name: '组件库管理', href: '/workflow/components' },
-    ],
-  },
-  {
     name: "资产管理",
     href: "/assets",
     icon: BarChart3,
