@@ -1,0 +1,19 @@
+server:
+  host: "localhost"
+  port: 8888
+  mode: "release"
+  read_timeout: 15
+  write_timeout: 15
+
+database:
+  host: "localhost"
+  port: 5432
+  user: "postgres"
+  password: "123.com"
+  dbname: "vulun_scan"
+  sslmode: "disable"
+  max_conns: 10
+
+security:
+  jwt_secret: "your-super-secret-jwt-key-change-this-in-production"
+  jwt_expiry_hour: 24

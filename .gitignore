@@ -1,0 +1,81 @@
+# ============================
+# 操作系统相关文件
+# ============================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ============================
+# 前端 (Next.js/Node.js) 相关
+# ============================
+# 依赖目录
+front/node_modules/
+front/.pnpm-store/
+
+# Next.js 构建产物
+front/.next/
+front/out/
+front/dist/
+
+# 环境变量文件
+front/.env
+front/.env.local
+front/.env.development.local
+front/.env.test.local
+front/.env.production.local
+
+# 运行时和缓存
+front/.turbo/
+front/.swc/
+front/.eslintcache
+front/.tsbuildinfo
+
+# ============================
+# 后端 (Go) 相关
+# ============================
+# 编译产物
+backend/bin/
+backend/dist/
+backend/*.exe
+backend/*.exe~
+backend/*.dll
+backend/*.so
+backend/*.dylib
+
+# 测试相关
+backend/*.test
+backend/*.out
+backend/*.prof
+
+# Go workspace 文件
+backend/go.work
+backend/go.work.sum
+
+# Go 依赖管理
+backend/vendor/
+
+# ============================
+# IDE 和编辑器相关
+# ============================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ============================
+# 日志文件
+# ============================
+*.log
+
+# ============================
+# 临时文件
+# ============================
+tmp/
+temp/
+.cache/
+
