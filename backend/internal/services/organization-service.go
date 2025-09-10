@@ -6,7 +6,7 @@ import (
 	"vulun-scan-backend/internal/models"
 	"vulun-scan-backend/pkg/database"
 
-	"github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
 
@@ -28,11 +28,11 @@ func (s *OrganizationService) GetOrganizations() ([]models.Organization, error) 
 
 	result := s.db.Order("created_at DESC").Find(&organizations)
 	if result.Error != nil {
-		logrus.WithError(result.Error).Error("Failed to query organizations")
+		log.Error().Err(result.Error).Msg("Failed to query organizations")
 		return nil, result.Error
 	}
 
-	logrus.WithField("count", len(organizations)).Info("Organizations retrieved successfully")
+	log.Info().Int("count", len(organizations)).Msg("Organizations retrieved successfully")
 	return organizations, nil
 }
 
@@ -45,11 +45,11 @@ func (s *OrganizationService) GetOrganizationByID(id string) (*models.Organizati
 		if result.Error == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("organization not found")
 		}
-		logrus.WithError(result.Error).Error("Failed to query organization")
+		log.Error().Err(result.Error).Msg("Failed to query organization")
 		return nil, result.Error
 	}
 
-	logrus.WithField("id", id).Info("Organization retrieved successfully")
+	log.Info().Str("id", id).Msg("Organization retrieved successfully")
 	return &org, nil
 }
 
@@ -62,11 +62,11 @@ func (s *OrganizationService) GetOrganizationWithRelations(id string) (*models.O
 		if result.Error == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("organization not found")
 		}
-		logrus.WithError(result.Error).Error("Failed to query organization with relations")
+		log.Error().Err(result.Error).Msg("Failed to query organization with relations")
 		return nil, result.Error
 	}
 
-	logrus.WithField("id", id).Info("Organization with relations retrieved successfully")
+	log.Info().Str("id", id).Msg("Organization with relations retrieved successfully")
 	return &org, nil
 }
 
@@ -79,14 +79,14 @@ func (s *OrganizationService) CreateOrganization(req models.CreateOrganizationRe
 
 	result := s.db.Create(&org)
 	if result.Error != nil {
-		logrus.WithError(result.Error).Error("Failed to create organization")
+		log.Error().Err(result.Error).Msg("Failed to create organization")
 		return nil, result.Error
 	}
 
-	logrus.WithFields(logrus.Fields{
-		"id":   org.ID,
-		"name": org.Name,
-	}).Info("Organization created successfully")
+	log.Info().
+		Str("id", org.ID).
+		Str("name", org.Name).
+		Msg("Organization created successfully")
 
 	return &org, nil
 }
@@ -101,7 +101,7 @@ func (s *OrganizationService) UpdateOrganization(req models.UpdateOrganizationRe
 		if result.Error == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("organization not found")
 		}
-		logrus.WithError(result.Error).Error("Failed to query organization for update")
+		log.Error().Err(result.Error).Msg("Failed to query organization for update")
 		return nil, result.Error
 	}
 
@@ -116,14 +116,14 @@ func (s *OrganizationService) UpdateOrganization(req models.UpdateOrganizationRe
 
 	result = s.db.Model(&org).Updates(updates)
 	if result.Error != nil {
-		logrus.WithError(result.Error).Error("Failed to update organization")
+		log.Error().Err(result.Error).Msg("Failed to update organization")
 		return nil, result.Error
 	}
 
-	logrus.WithFields(logrus.Fields{
-		"id":   org.ID,
-		"name": org.Name,
-	}).Info("Organization updated successfully")
+	log.Info().
+		Str("id", org.ID).
+		Str("name", org.Name).
+		Msg("Organization updated successfully")
 
 	return &org, nil
 }
@@ -137,14 +137,14 @@ func (s *OrganizationService) DeleteOrganization(organizationID string) error {
 		if result.Error == gorm.ErrRecordNotFound {
 			return fmt.Errorf("organization not found")
 		}
-		logrus.WithError(result.Error).Error("Failed to query organization for deletion")
+		log.Error().Err(result.Error).Msg("Failed to query organization for deletion")
 		return result.Error
 	}
 
 	// 删除组织（GORM会自动处理级联删除）
 	result = s.db.Delete(&org)
 	if result.Error != nil {
-		logrus.WithError(result.Error).Error("Failed to delete organization")
+		log.Error().Err(result.Error).Msg("Failed to delete organization")
 		return result.Error
 	}
 
@@ -152,7 +152,7 @@ func (s *OrganizationService) DeleteOrganization(organizationID string) error {
 		return fmt.Errorf("no rows affected during deletion")
 	}
 
-	logrus.WithField("id", organizationID).Info("Organization deleted successfully")
+	log.Info().Str("id", organizationID).Msg("Organization deleted successfully")
 	return nil
 }
 
@@ -164,7 +164,7 @@ func (s *OrganizationService) GetOrganizationStats(organizationID string) (map[s
 	var mainDomainCount int64
 	err := s.db.Model(&models.OrganizationMainDomain{}).Where("organization_id = ?", organizationID).Count(&mainDomainCount).Error
 	if err != nil {
-		logrus.WithError(err).Error("Failed to count main domains")
+		log.Error().Err(err).Msg("Failed to count main domains")
 		return nil, err
 	}
 	stats["main_domain_count"] = mainDomainCount
@@ -177,7 +177,7 @@ func (s *OrganizationService) GetOrganizationStats(organizationID string) (map[s
 		Where("omd.organization_id = ?", organizationID).
 		Count(&subDomainCount).Error
 	if err != nil {
-		logrus.WithError(err).Error("Failed to count sub domains")
+		log.Error().Err(err).Msg("Failed to count sub domains")
 		return nil, err
 	}
 	stats["sub_domain_count"] = subDomainCount
@@ -186,7 +186,7 @@ func (s *OrganizationService) GetOrganizationStats(organizationID string) (map[s
 	var scanTaskCount int64
 	err = s.db.Model(&models.ScanTask{}).Where("organization_id = ?", organizationID).Count(&scanTaskCount).Error
 	if err != nil {
-		logrus.WithError(err).Error("Failed to count scan tasks")
+		log.Error().Err(err).Msg("Failed to count scan tasks")
 		return nil, err
 	}
 	stats["scan_task_count"] = scanTaskCount
@@ -195,12 +195,12 @@ func (s *OrganizationService) GetOrganizationStats(organizationID string) (map[s
 	var vulnerabilityCount int64
 	err = s.db.Model(&models.Vulnerability{}).Where("organization_id = ?", organizationID).Count(&vulnerabilityCount).Error
 	if err != nil {
-		logrus.WithError(err).Error("Failed to count vulnerabilities")
+		log.Error().Err(err).Msg("Failed to count vulnerabilities")
 		return nil, err
 	}
 	stats["vulnerability_count"] = vulnerabilityCount
 
-	logrus.WithField("organization_id", organizationID).Info("Organization stats retrieved successfully")
+	log.Info().Str("organization_id", organizationID).Msg("Organization stats retrieved successfully")
 	return stats, nil
 }
 
@@ -215,14 +215,14 @@ func (s *OrganizationService) SearchOrganizations(keyword string) ([]models.Orga
 
 	result := query.Find(&organizations)
 	if result.Error != nil {
-		logrus.WithError(result.Error).Error("Failed to search organizations")
+		log.Error().Err(result.Error).Msg("Failed to search organizations")
 		return nil, result.Error
 	}
 
-	logrus.WithFields(logrus.Fields{
-		"keyword": keyword,
-		"count":   len(organizations),
-	}).Info("Organizations searched successfully")
+	log.Info().
+		Str("keyword", keyword).
+		Int("count", len(organizations)).
+		Msg("Organizations searched successfully")
 
 	return organizations, nil
 }

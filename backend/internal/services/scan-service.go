@@ -6,7 +6,7 @@ import (
 	"vulun-scan-backend/internal/models"
 	"vulun-scan-backend/pkg/database"
 
-	"github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
 
@@ -28,7 +28,7 @@ func (s *ScanService) StartOrganizationScan(organizationID string) (*models.Star
 	domainService := NewDomainService()
 	mainDomains, err := domainService.GetOrganizationMainDomains(organizationID)
 	if err != nil {
-		logrus.WithError(err).Error("Failed to get organization main domains")
+		log.Error().Err(err).Msg("Failed to get organization main domains")
 		return nil, err
 	}
 
@@ -48,7 +48,7 @@ func (s *ScanService) StartOrganizationScan(organizationID string) (*models.Star
 			}
 
 			if err := tx.Create(&scanTask).Error; err != nil {
-				logrus.WithError(err).Error("Failed to create scan task")
+				log.Error().Err(err).Msg("Failed to create scan task")
 				return err
 			}
 
@@ -69,11 +69,11 @@ func (s *ScanService) StartOrganizationScan(organizationID string) (*models.Star
 		Message: fmt.Sprintf("成功创建 %d 个扫描任务", len(taskIDs)),
 	}
 
-	logrus.WithFields(logrus.Fields{
-		"organization_id": organizationID,
-		"task_count":      len(taskIDs),
-		"task_ids":        taskIDs,
-	}).Info("Organization scan tasks created successfully")
+	log.Info().
+		Str("organization_id", organizationID).
+		Int("task_count", len(taskIDs)).
+		Strs("task_ids", taskIDs).
+		Msg("Organization scan tasks created successfully")
 
 	return response, nil
 }
@@ -91,14 +91,14 @@ func (s *ScanService) GetOrganizationScanHistory(organizationID string) ([]model
 		Find(&scanTasks)
 
 	if result.Error != nil {
-		logrus.WithError(result.Error).Error("Failed to query organization scan history")
+		log.Error().Err(result.Error).Msg("Failed to query organization scan history")
 		return nil, result.Error
 	}
 
-	logrus.WithFields(logrus.Fields{
-		"organization_id": organizationID,
-		"task_count":      len(scanTasks),
-	}).Info("Organization scan history retrieved successfully")
+	log.Info().
+		Str("organization_id", organizationID).
+		Int("task_count", len(scanTasks)).
+		Msg("Organization scan history retrieved successfully")
 
 	return scanTasks, nil
 }
@@ -117,11 +117,11 @@ func (s *ScanService) GetScanTaskByID(taskID string) (*models.ScanTask, error) {
 		if result.Error == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("scan task not found")
 		}
-		logrus.WithError(result.Error).Error("Failed to query scan task")
+		log.Error().Err(result.Error).Msg("Failed to query scan task")
 		return nil, result.Error
 	}
 
-	logrus.WithField("task_id", taskID).Info("Scan task retrieved successfully")
+	log.Info().Str("task_id", taskID).Msg("Scan task retrieved successfully")
 	return &scanTask, nil
 }
 
@@ -130,7 +130,7 @@ func (s *ScanService) UpdateScanTaskStatus(taskID, status string) error {
 	result := s.db.Model(&models.ScanTask{}).Where("id = ?", taskID).Update("status", status)
 
 	if result.Error != nil {
-		logrus.WithError(result.Error).Error("Failed to update scan task status")
+		log.Error().Err(result.Error).Msg("Failed to update scan task status")
 		return result.Error
 	}
 
@@ -138,10 +138,10 @@ func (s *ScanService) UpdateScanTaskStatus(taskID, status string) error {
 		return fmt.Errorf("scan task not found")
 	}
 
-	logrus.WithFields(logrus.Fields{
-		"task_id": taskID,
-		"status":  status,
-	}).Info("Scan task status updated successfully")
+	log.Info().
+		Str("task_id", taskID).
+		Str("status", status).
+		Msg("Scan task status updated successfully")
 
 	return nil
 }
@@ -155,14 +155,14 @@ func (s *ScanService) CreateScanResult(taskID, resultSummary string) (*models.Sc
 
 	result := s.db.Create(&scanResult)
 	if result.Error != nil {
-		logrus.WithError(result.Error).Error("Failed to create scan result")
+		log.Error().Err(result.Error).Msg("Failed to create scan result")
 		return nil, result.Error
 	}
 
-	logrus.WithFields(logrus.Fields{
-		"task_id":   taskID,
-		"result_id": scanResult.ID,
-	}).Info("Scan result created successfully")
+	log.Info().
+		Str("task_id", taskID).
+		Str("result_id", scanResult.ID).
+		Msg("Scan result created successfully")
 
 	return &scanResult, nil
 }
@@ -173,14 +173,14 @@ func (s *ScanService) GetScanResultsByTaskID(taskID string) ([]models.ScanResult
 
 	result := s.db.Where("scan_task_id = ?", taskID).Order("created_at DESC").Find(&scanResults)
 	if result.Error != nil {
-		logrus.WithError(result.Error).Error("Failed to query scan results")
+		log.Error().Err(result.Error).Msg("Failed to query scan results")
 		return nil, result.Error
 	}
 
-	logrus.WithFields(logrus.Fields{
-		"task_id":      taskID,
-		"result_count": len(scanResults),
-	}).Info("Scan results retrieved successfully")
+	log.Info().
+		Str("task_id", taskID).
+		Int("result_count", len(scanResults)).
+		Msg("Scan results retrieved successfully")
 
 	return scanResults, nil
 }
@@ -197,11 +197,11 @@ func (s *ScanService) GetActiveScanTasks() ([]models.ScanTask, error) {
 		Find(&scanTasks)
 
 	if result.Error != nil {
-		logrus.WithError(result.Error).Error("Failed to query active scan tasks")
+		log.Error().Err(result.Error).Msg("Failed to query active scan tasks")
 		return nil, result.Error
 	}
 
-	logrus.WithField("active_task_count", len(scanTasks)).Info("Active scan tasks retrieved successfully")
+	log.Info().Int("active_task_count", len(scanTasks)).Msg("Active scan tasks retrieved successfully")
 	return scanTasks, nil
 }
 
@@ -214,18 +214,18 @@ func (s *ScanService) DeleteScanTask(taskID string) error {
 		if result.Error == gorm.ErrRecordNotFound {
 			return fmt.Errorf("scan task not found")
 		}
-		logrus.WithError(result.Error).Error("Failed to query scan task for deletion")
+		log.Error().Err(result.Error).Msg("Failed to query scan task for deletion")
 		return result.Error
 	}
 
 	// 删除扫描任务（GORM会自动处理级联删除）
 	result = s.db.Delete(&scanTask)
 	if result.Error != nil {
-		logrus.WithError(result.Error).Error("Failed to delete scan task")
+		log.Error().Err(result.Error).Msg("Failed to delete scan task")
 		return result.Error
 	}
 
-	logrus.WithField("task_id", taskID).Info("Scan task deleted successfully")
+	log.Info().Str("task_id", taskID).Msg("Scan task deleted successfully")
 	return nil
 }
 
@@ -266,6 +266,6 @@ func (s *ScanService) GetScanStatistics() (map[string]interface{}, error) {
 	}
 	stats["total_results"] = totalResults
 
-	logrus.Info("Scan statistics retrieved successfully")
+	log.Info().Msg("Scan statistics retrieved successfully")
 	return stats, nil
 }

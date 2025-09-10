@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -12,7 +13,8 @@ import (
 	"vulun-scan-backend/routes"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 func main() {
@@ -36,11 +38,14 @@ func main() {
 }
 
 func setupLogger() {
-	logrus.SetFormatter(&logrus.JSONFormatter{
-		TimestampFormat: time.RFC3339,
-	})
-	logrus.SetLevel(logrus.InfoLevel)
-	logrus.Info("Starting Vulun Scan Backend Server...")
+	// 设置zerolog全局配置
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+
+	// 默认使用控制台格式，方便开发调试
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+
+	log.Info().Msg("Starting Vulun Scan Backend Server...")
 }
 
 func setupRouter() *gin.Engine {
@@ -93,23 +98,23 @@ func setupRouter() *gin.Engine {
 
 // runMigrations 运行数据库迁移
 func runMigrations() {
-	logrus.Info("Running database migrations...")
+	log.Info().Msg("Running database migrations...")
 
 	err := database.AutoMigrate(models.GetAllModels()...)
 	if err != nil {
-		logrus.WithError(err).Fatal("Failed to run database migrations")
+		log.Fatal().Err(err).Msg("Failed to run database migrations")
 	}
 
-	logrus.Info("Database migrations completed successfully")
+	log.Info().Msg("Database migrations completed successfully")
 }
 
 func startServer(r *gin.Engine, cfg *config.Config) {
 	port := strconv.Itoa(cfg.Server.Port)
-	logrus.WithFields(logrus.Fields{
-		"host": cfg.Server.Host,
-		"port": port,
-		"mode": cfg.Server.Mode,
-	}).Info("Server starting...")
+	log.Info().
+		Str("host", cfg.Server.Host).
+		Str("port", port).
+		Str("mode", cfg.Server.Mode).
+		Msg("Server starting...")
 
 	srv := &http.Server{
 		Addr:         ":" + port,
@@ -120,6 +125,6 @@ func startServer(r *gin.Engine, cfg *config.Config) {
 	}
 
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		logrus.WithError(err).Fatal("Failed to start server")
+		log.Fatal().Err(err).Msg("Failed to start server")
 	}
 }

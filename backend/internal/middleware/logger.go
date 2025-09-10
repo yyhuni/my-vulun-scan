@@ -1,24 +1,22 @@
 package middleware
 
 import (
-	"time"
-
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 )
 
 // Logger 自定义日志中间件
 func Logger() gin.HandlerFunc {
 	return gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
-		logrus.WithFields(logrus.Fields{
-			"method":     param.Method,
-			"path":       param.Path,
-			"status":     param.StatusCode,
-			"latency":    param.Latency,
-			"ip":         param.ClientIP,
-			"user_agent": param.Request.UserAgent(),
-			"timestamp":  param.TimeStamp.Format(time.RFC3339),
-		}).Info("API Request")
+		log.Info().
+			Str("method", param.Method).
+			Str("path", param.Path).
+			Int("status", param.StatusCode).
+			Dur("latency", param.Latency).
+			Str("ip", param.ClientIP).
+			Str("user_agent", param.Request.UserAgent()).
+			Time("timestamp", param.TimeStamp).
+			Msg("API Request")
 
 		return ""
 	})

@@ -6,7 +6,7 @@ import (
 
 	"vulun-scan-backend/config"
 
-	"github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -36,13 +36,13 @@ func InitDB() {
 	var err error
 	DB, err = gorm.Open(postgres.Open(dsn), config)
 	if err != nil {
-		logrus.WithError(err).Fatal("Failed to connect database")
+		log.Fatal().Err(err).Msg("Failed to connect database")
 	}
 
 	// 获取底层sql.DB进行连接池配置
 	sqlDB, err := DB.DB()
 	if err != nil {
-		logrus.WithError(err).Fatal("Failed to get underlying sql.DB")
+		log.Fatal().Err(err).Msg("Failed to get underlying sql.DB")
 	}
 
 	// 配置连接池
@@ -52,10 +52,10 @@ func InitDB() {
 
 	// 测试连接
 	if err = sqlDB.Ping(); err != nil {
-		logrus.WithError(err).Fatal("Failed to ping database")
+		log.Fatal().Err(err).Msg("Failed to ping database")
 	}
 
-	logrus.Info("Database connection established successfully with GORM")
+	log.Info().Msg("Database connection established successfully with GORM")
 }
 
 // GetDB 获取GORM数据库连接实例
@@ -68,14 +68,14 @@ func CloseDB() {
 	if DB != nil {
 		sqlDB, err := DB.DB()
 		if err != nil {
-			logrus.WithError(err).Error("Failed to get underlying sql.DB for closing")
+			log.Error().Err(err).Msg("Failed to get underlying sql.DB for closing")
 			return
 		}
 
 		if err := sqlDB.Close(); err != nil {
-			logrus.WithError(err).Error("Failed to close database connection")
+			log.Error().Err(err).Msg("Failed to close database connection")
 		} else {
-			logrus.Info("Database connection closed")
+			log.Info().Msg("Database connection closed")
 		}
 	}
 }
@@ -100,14 +100,14 @@ func AutoMigrate(models ...interface{}) error {
 		return fmt.Errorf("database connection is nil")
 	}
 
-	logrus.Info("Starting database auto migration...")
+	log.Info().Msg("Starting database auto migration...")
 	err := DB.AutoMigrate(models...)
 	if err != nil {
-		logrus.WithError(err).Error("Failed to auto migrate database")
+		log.Error().Err(err).Msg("Failed to auto migrate database")
 		return err
 	}
 
-	logrus.Info("Database auto migration completed successfully")
+	log.Info().Msg("Database auto migration completed successfully")
 	return nil
 }
 

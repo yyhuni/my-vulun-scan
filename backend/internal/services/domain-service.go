@@ -7,7 +7,7 @@ import (
 	"vulun-scan-backend/internal/models"
 	"vulun-scan-backend/pkg/database"
 
-	"github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
 
@@ -34,14 +34,14 @@ func (s *DomainService) GetOrganizationMainDomains(organizationID string) ([]mod
 		Find(&mainDomains)
 
 	if result.Error != nil {
-		logrus.WithError(result.Error).Error("Failed to query organization main domains")
+		log.Error().Err(result.Error).Msg("Failed to query organization main domains")
 		return nil, result.Error
 	}
 
-	logrus.WithFields(logrus.Fields{
-		"organization_id": organizationID,
-		"count":           len(mainDomains),
-	}).Info("Organization main domains retrieved successfully")
+	log.Info().
+		Str("organization_id", organizationID).
+		Int("count", len(mainDomains)).
+		Msg("Organization main domains retrieved successfully")
 
 	return mainDomains, nil
 }
@@ -64,12 +64,12 @@ func (s *DomainService) CreateMainDomains(req models.CreateMainDomainsRequest) (
 					MainDomainName: domainName,
 				}
 				if err := tx.Create(&newDomain).Error; err != nil {
-					logrus.WithError(err).Error("Failed to create main domain")
+					log.Error().Err(err).Msg("Failed to create main domain")
 					return err
 				}
 				domainID = newDomain.ID
 			} else if result.Error != nil {
-				logrus.WithError(result.Error).Error("Failed to check existing main domain")
+				log.Error().Err(result.Error).Msg("Failed to check existing main domain")
 				return result.Error
 			} else {
 				// 主域名已存在
@@ -87,12 +87,12 @@ func (s *DomainService) CreateMainDomains(req models.CreateMainDomainsRequest) (
 					MainDomainID:   domainID,
 				}
 				if err := tx.Create(&newAssociation).Error; err != nil {
-					logrus.WithError(err).Error("Failed to associate main domain with organization")
+					log.Error().Err(err).Msg("Failed to associate main domain with organization")
 					return err
 				}
 				createdCount++
 			} else if result.Error != nil {
-				logrus.WithError(result.Error).Error("Failed to check domain association")
+				log.Error().Err(result.Error).Msg("Failed to check domain association")
 				return result.Error
 			} else {
 				existingDomains = append(existingDomains, domainName)
@@ -120,11 +120,11 @@ func (s *DomainService) CreateMainDomains(req models.CreateMainDomainsRequest) (
 		},
 	}
 
-	logrus.WithFields(logrus.Fields{
-		"organization_id": req.OrganizationID,
-		"success_count":   createdCount,
-		"total_domains":   len(req.MainDomains),
-	}).Info("Main domains created and associated successfully")
+	log.Info().
+		Str("organization_id", req.OrganizationID).
+		Int("success_count", createdCount).
+		Int("total_domains", len(req.MainDomains)).
+		Msg("Main domains created and associated successfully")
 
 	return response, nil
 }
@@ -135,7 +135,7 @@ func (s *DomainService) RemoveOrganizationMainDomain(req models.RemoveOrganizati
 		Delete(&models.OrganizationMainDomain{})
 
 	if result.Error != nil {
-		logrus.WithError(result.Error).Error("Failed to remove organization main domain association")
+		log.Error().Err(result.Error).Msg("Failed to remove organization main domain association")
 		return result.Error
 	}
 
@@ -143,10 +143,10 @@ func (s *DomainService) RemoveOrganizationMainDomain(req models.RemoveOrganizati
 		return fmt.Errorf("association not found")
 	}
 
-	logrus.WithFields(logrus.Fields{
-		"organization_id": req.OrganizationID,
-		"main_domain_id":  req.MainDomainID,
-	}).Info("Organization main domain association removed successfully")
+	log.Info().
+		Str("organization_id", req.OrganizationID).
+		Str("main_domain_id", req.MainDomainID).
+		Msg("Organization main domain association removed successfully")
 
 	return nil
 }
@@ -165,7 +165,7 @@ func (s *DomainService) GetOrganizationSubDomains(organizationID string, page, p
 		Count(&total).Error
 
 	if err != nil {
-		logrus.WithError(err).Error("Failed to count organization sub domains")
+		log.Error().Err(err).Msg("Failed to count organization sub domains")
 		return nil, err
 	}
 
@@ -182,7 +182,7 @@ func (s *DomainService) GetOrganizationSubDomains(organizationID string, page, p
 		Find(&subDomains)
 
 	if result.Error != nil {
-		logrus.WithError(result.Error).Error("Failed to query organization sub domains")
+		log.Error().Err(result.Error).Msg("Failed to query organization sub domains")
 		return nil, result.Error
 	}
 
@@ -193,12 +193,12 @@ func (s *DomainService) GetOrganizationSubDomains(organizationID string, page, p
 		PageSize:   pageSize,
 	}
 
-	logrus.WithFields(logrus.Fields{
-		"organization_id": organizationID,
-		"total":           total,
-		"page":            page,
-		"page_size":       pageSize,
-	}).Info("Organization sub domains retrieved successfully")
+	log.Info().
+		Str("organization_id", organizationID).
+		Int64("total", total).
+		Int("page", page).
+		Int("page_size", pageSize).
+		Msg("Organization sub domains retrieved successfully")
 
 	return response, nil
 }
@@ -226,12 +226,12 @@ func (s *DomainService) CreateSubDomains(req models.CreateSubDomainsRequest) (*m
 					Status:        req.Status,
 				}
 				if err := tx.Create(&newSubDomain).Error; err != nil {
-					logrus.WithError(err).Error("Failed to create sub domain")
+					log.Error().Err(err).Msg("Failed to create sub domain")
 					return err
 				}
 				createdCount++
 			} else if result.Error != nil {
-				logrus.WithError(result.Error).Error("Failed to check existing sub domain")
+				log.Error().Err(result.Error).Msg("Failed to check existing sub domain")
 				return result.Error
 			} else {
 				// 子域名已存在
@@ -260,11 +260,11 @@ func (s *DomainService) CreateSubDomains(req models.CreateSubDomainsRequest) (*m
 		},
 	}
 
-	logrus.WithFields(logrus.Fields{
-		"main_domain_id": req.MainDomainID,
-		"success_count":  createdCount,
-		"total_domains":  len(req.SubDomains),
-	}).Info("Sub domains created successfully")
+	log.Info().
+		Str("main_domain_id", req.MainDomainID).
+		Int("success_count", createdCount).
+		Int("total_domains", len(req.SubDomains)).
+		Msg("Sub domains created successfully")
 
 	return response, nil
 }
@@ -278,11 +278,11 @@ func (s *DomainService) GetMainDomainByID(id string) (*models.MainDomain, error)
 		if result.Error == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("main domain not found")
 		}
-		logrus.WithError(result.Error).Error("Failed to query main domain")
+		log.Error().Err(result.Error).Msg("Failed to query main domain")
 		return nil, result.Error
 	}
 
-	logrus.WithField("id", id).Info("Main domain retrieved successfully")
+	log.Info().Str("id", id).Msg("Main domain retrieved successfully")
 	return &mainDomain, nil
 }
 
@@ -292,14 +292,14 @@ func (s *DomainService) GetSubDomainsByMainDomain(mainDomainID string) ([]models
 
 	result := s.db.Where("main_domain_id = ?", mainDomainID).Order("created_at DESC").Find(&subDomains)
 	if result.Error != nil {
-		logrus.WithError(result.Error).Error("Failed to query sub domains by main domain")
+		log.Error().Err(result.Error).Msg("Failed to query sub domains by main domain")
 		return nil, result.Error
 	}
 
-	logrus.WithFields(logrus.Fields{
-		"main_domain_id": mainDomainID,
-		"count":          len(subDomains),
-	}).Info("Sub domains by main domain retrieved successfully")
+	log.Info().
+		Str("main_domain_id", mainDomainID).
+		Int("count", len(subDomains)).
+		Msg("Sub domains by main domain retrieved successfully")
 
 	return subDomains, nil
 }
@@ -313,18 +313,18 @@ func (s *DomainService) DeleteMainDomain(mainDomainID string) error {
 		if result.Error == gorm.ErrRecordNotFound {
 			return fmt.Errorf("main domain not found")
 		}
-		logrus.WithError(result.Error).Error("Failed to query main domain for deletion")
+		log.Error().Err(result.Error).Msg("Failed to query main domain for deletion")
 		return result.Error
 	}
 
 	// 删除主域名（GORM会自动处理级联删除）
 	result = s.db.Delete(&mainDomain)
 	if result.Error != nil {
-		logrus.WithError(result.Error).Error("Failed to delete main domain")
+		log.Error().Err(result.Error).Msg("Failed to delete main domain")
 		return result.Error
 	}
 
-	logrus.WithField("main_domain_id", mainDomainID).Info("Main domain deleted successfully")
+	log.Info().Str("main_domain_id", mainDomainID).Msg("Main domain deleted successfully")
 	return nil
 }
 
@@ -332,7 +332,7 @@ func (s *DomainService) DeleteMainDomain(mainDomainID string) error {
 func (s *DomainService) DeleteSubDomain(subDomainID string) error {
 	result := s.db.Delete(&models.SubDomain{}, "id = ?", subDomainID)
 	if result.Error != nil {
-		logrus.WithError(result.Error).Error("Failed to delete sub domain")
+		log.Error().Err(result.Error).Msg("Failed to delete sub domain")
 		return result.Error
 	}
 
@@ -340,6 +340,6 @@ func (s *DomainService) DeleteSubDomain(subDomainID string) error {
 		return fmt.Errorf("sub domain not found")
 	}
 
-	logrus.WithField("sub_domain_id", subDomainID).Info("Sub domain deleted successfully")
+	log.Info().Str("sub_domain_id", subDomainID).Msg("Sub domain deleted successfully")
 	return nil
 }
