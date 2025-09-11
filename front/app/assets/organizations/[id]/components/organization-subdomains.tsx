@@ -1,7 +1,8 @@
 "use client"
 
 // React 核心库
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
+import { ColumnDef } from "@tanstack/react-table"
 
 // 第三方库和 API 客户端
 import { toast } from "sonner"
@@ -9,18 +10,17 @@ import { getErrorMessage } from "@/lib/api-client"
 import { OrganizationService } from "@/services/organization.service"
 
 // UI 图标库
-import { Globe, Loader2, Search, CheckCircle, XCircle, Clock, AlertCircle, Eye, Plus } from "lucide-react"
+import { Globe, Loader2, CheckCircle, XCircle, Clock, AlertCircle, Eye, Plus, Trash2 } from "lucide-react"
 
 // UI 组件库
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
+import { DataTable } from "@/components/custom-ui/data-table/data-table"
+import { DataTableColumnHeader } from "@/components/custom-ui/data-table/data-table-column-header"
 
 // 业务组件
-import { TablePagination } from "@/components/common/table-pagination"
 import { AddSubDomainDialog } from "./add-subdomain-dialog"
 
 // 类型定义
@@ -62,10 +62,6 @@ export default function OrganizationSubDomains({ organizationId }: OrganizationS
   const [subDomains, setSubDomains] = useState<SubDomain[]>([])
   const [mainDomains, setMainDomains] = useState<MainDomain[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
   const [viewState, setViewState] = useState<ViewState>("loading")
   const [isAddSubDomainDialogOpen, setIsAddSubDomainDialogOpen] = useState(false)
   const [organizationName, setOrganizationName] = useState("")
@@ -95,21 +91,119 @@ export default function OrganizationSubDomains({ organizationId }: OrganizationS
     }
   }
 
-  // 筛选后的子域名数据
-  const filteredSubDomains = subDomains.filter((subdomain) => {
-    const matchesSearch =
-      (subdomain.name || subdomain.subDomainName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (subdomain.mainDomain?.name || subdomain.mainDomain?.mainDomainName || "").toLowerCase().includes(searchTerm.toLowerCase())
+  // 列定义
+  const columns = useMemo<ColumnDef<SubDomain>[]>(() => [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && "indeterminate")
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+          className="translate-y-[2px]"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+          className="translate-y-[2px]"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {
+      accessorKey: "subDomainName",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="子域名" />
+      ),
+      cell: ({ row }) => (
+        <div className="font-medium max-w-[200px] truncate">
+          {row.original.name || row.original.subDomainName}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "mainDomain",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="所属主域名" />
+      ),
+      cell: ({ row }) => {
+        const mainDomain = row.original.mainDomain
+        return mainDomain ? (
+          <div className="font-medium">{mainDomain.name || mainDomain.mainDomainName}</div>
+        ) : (
+          <span className="text-muted-foreground">未知</span>
+        )
+      },
+    },
+    {
+      accessorKey: "status",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="状态" />
+      ),
+      cell: ({ row }) => getStatusBadge(row.getValue("status")),
+    },
+    {
+      accessorKey: "createdAt",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="创建时间" />
+      ),
+      cell: ({ row }) => (
+        <span className="text-sm text-muted-foreground">
+          {formatDate(row.getValue("createdAt"))}
+        </span>
+      ),
+      meta: {
+        className: "hidden sm:table-cell",
+      },
+    },
+    {
+      accessorKey: "updatedAt",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="更新时间" />
+      ),
+      cell: ({ row }) => {
+        const updatedAt = row.getValue("updatedAt") as string
+        return (
+          <span className="text-sm text-muted-foreground">
+            {updatedAt && updatedAt !== '0001-01-01T00:00:00Z'
+              ? formatDate(updatedAt)
+              : '-'
+            }
+          </span>
+        )
+      },
+      meta: {
+        className: "hidden lg:table-cell",
+      },
+    },
+    {
+      id: "actions",
+      header: () => <div className="text-right">操作</div>,
+      cell: ({ row }) => (
+        <Button variant="ghost" size="sm">
+          <Eye className="h-4 w-4" />
+        </Button>
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+  ], [])
 
-    const matchesStatus = statusFilter === "all" || subdomain.status === statusFilter
+  // 过滤后的子域名数据（基本过滤，详细搜索由 DataTable 处理）
+  const filteredSubDomains = subDomains
 
-    return matchesSearch && matchesStatus
-  })
-
-  const paginatedSubDomains = filteredSubDomains.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  )
+  // 批量操作处理函数
+  const handleBulkDelete = () => {
+    // 这里可以实现批量删除子域名逻辑
+    console.log("批量删除子域名")
+  }
 
   // 获取组织信息
   const fetchOrganizationInfo = async () => {
@@ -187,15 +281,6 @@ export default function OrganizationSubDomains({ organizationId }: OrganizationS
     }
   }
 
-  // 处理分页变化
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page)
-  }
-
-  const handlePageSizeChange = (pageSize: number) => {
-    setItemsPerPage(pageSize)
-    setCurrentPage(1)
-  }
 
   // 处理添加子域名
   const handleAddSubDomain = async (subdomains: { name: string; mainDomainId: string }[]) => {
@@ -281,57 +366,6 @@ export default function OrganizationSubDomains({ organizationId }: OrganizationS
     </div>
   )
 
-  const DataTable = () => (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="h-8 px-4 py-1 text-sm font-medium">子域名</TableHead>
-            <TableHead className="h-8 px-4 py-1 text-sm font-medium">所属主域名</TableHead>
-            <TableHead className="h-8 px-4 py-1 text-sm font-medium">状态</TableHead>
-            <TableHead className="hidden sm:table-cell h-8 px-4 py-1 text-sm font-medium">创建时间</TableHead>
-            <TableHead className="hidden lg:table-cell h-8 px-4 py-1 text-sm font-medium">更新时间</TableHead>
-            <TableHead className="text-right h-8 px-4 py-1 text-sm font-medium">操作</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {paginatedSubDomains.map((subDomain) => (
-            <TableRow key={subDomain.id}>
-              <TableCell className="font-medium max-w-[200px] truncate px-3 py-2">
-                {subDomain.name || subDomain.subDomainName}
-              </TableCell>
-              <TableCell className="px-3 py-2">
-                {subDomain.mainDomain ? (
-                  <div className="font-medium">{subDomain.mainDomain.name || subDomain.mainDomain.mainDomainName}</div>
-                ) : (
-                  <span className="text-muted-foreground">未知</span>
-                )}
-              </TableCell>
-              <TableCell className="px-3 py-2">{getStatusBadge(subDomain.status)}</TableCell>
-              <TableCell className="hidden sm:table-cell px-3 py-2">
-                <span className="text-sm text-muted-foreground">
-                  {formatDate(subDomain.createdAt)}
-                </span>
-              </TableCell>
-              <TableCell className="hidden lg:table-cell px-3 py-2">
-                <span className="text-sm text-muted-foreground">
-                  {subDomain.updatedAt && subDomain.updatedAt !== '0001-01-01T00:00:00Z'
-                    ? formatDate(subDomain.updatedAt)
-                    : '-'
-                  }
-                </span>
-              </TableCell>
-              <TableCell className="text-right px-3 py-2">
-                <Button variant="ghost" size="sm">
-                  <Eye className="h-4 w-4" />
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  )
 
   return (
     <div className="space-y-6 pb-8">
@@ -396,60 +430,59 @@ export default function OrganizationSubDomains({ organizationId }: OrganizationS
       </div>
 
       {/* 操作栏 */}
-      <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="搜索子域名或主域名..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <div className="flex gap-2">
-          <Select value={statusFilter} onValueChange={(value: StatusFilter) => setStatusFilter(value)}>
-            <SelectTrigger className="w-[120px]">
-              <SelectValue placeholder="状态" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">全部状态</SelectItem>
-              <SelectItem value="active">活跃</SelectItem>
-              <SelectItem value="inactive">非活跃</SelectItem>
-              <SelectItem value="unknown">未知</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button
-            onClick={() => setIsAddSubDomainDialogOpen(true)}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            添加子域名
-          </Button>
-        </div>
+      <div className="flex justify-end">
+        <Button
+          onClick={() => setIsAddSubDomainDialogOpen(true)}
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          添加子域名
+        </Button>
       </div>
 
-      {/* 主要内容 */}
-      <Card>
-        <CardContent className="p-0">
-          {viewState === "loading" && <LoadingState />}
-          {viewState === "empty" && <EmptyState />}
-          {viewState === "error" && <ErrorState />}
-          {viewState === "data" && <>{filteredSubDomains.length === 0 ? <EmptyState /> : <DataTable />}</>}
-        </CardContent>
-      </Card>
-
-      {/* 分页控件 */}
-      {viewState === "data" && filteredSubDomains.length > 0 && (
-        <Card>
-          <CardContent className="py-4">
-            <TablePagination
-              currentPage={currentPage}
-              totalItems={filteredSubDomains.length}
-              itemsPerPage={itemsPerPage}
-              onPageChange={handlePageChange}
-              onItemsPerPageChange={handlePageSizeChange}
-            />
-          </CardContent>
-        </Card>
+      {/* 主要内容 - 使用 DataTable */}
+      {viewState === "loading" ? (
+        <LoadingState />
+      ) : viewState === "empty" ? (
+        <EmptyState />
+      ) : viewState === "error" ? (
+        <ErrorState />
+      ) : (
+        <DataTable
+          columns={columns}
+          data={filteredSubDomains}
+          searchableColumns={['subDomainName']}
+          filterableColumns={[
+            {
+              key: 'status',
+              title: '状态',
+              options: [
+                { label: '活跃', value: 'active' },
+                { label: '非活跃', value: 'inactive' },
+                { label: '未知', value: 'unknown' },
+              ]
+            }
+          ]}
+          renderBulkActions={(selectedRows, table) => (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBulkDelete}
+                className="text-destructive hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                批量删除
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => table.toggleAllPageRowsSelected(false)}
+              >
+                取消选择
+              </Button>
+            </>
+          )}
+        />
       )}
 
       {/* 添加子域名对话框 */}

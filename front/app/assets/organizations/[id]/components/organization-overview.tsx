@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/alert-dialog"
 
 // 业务组件
-import { AddMainDomainDialog } from "@/components/pages/assets/organizations/detail/add-main-domain-dialog"
+import { AddMainDomainDialog } from "@/app/assets/organizations/[id]/components/add-main-domain-dialog"
 
 // 类型定义
 interface MainDomain {

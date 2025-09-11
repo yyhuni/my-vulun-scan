@@ -7,7 +7,7 @@ import Loading from "../../../components/common/loading"
 
 // 懒加载组织列表组件
 const OrganizationList = dynamic(
-  () => import("../../../components/pages/assets/organizations/organization-list"),
+  () => import("./components/organization-list"),
   { ssr: false }
 );
 

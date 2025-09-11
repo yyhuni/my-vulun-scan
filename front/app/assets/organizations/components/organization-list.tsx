@@ -1,0 +1,218 @@
+// 组织列表组件
+"use client"
+
+import React, { useState, useEffect, useMemo } from "react"
+import { Trash2, Plus } from "lucide-react"
+
+// 导航 Hook
+import { useNavigation } from "@/hooks/use-navigation"
+
+// 第三方库和 API 客户端
+import { getErrorMessage } from "@/lib/api-client"
+import { OrganizationService } from "@/services/organization.service"
+
+// UI 组件库
+import { Button } from "@/components/ui/button"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+
+// 自定义 Hooks
+import { useToast } from "@/hooks/use-toast"
+
+// 数据表格组件
+import { DataTable } from "@/components/custom-ui/data-table/data-table"
+import { createOrganizationColumns, Organization } from "./organization-columns"
+
+// 业务组件
+import AddOrganizationDialog from "./add-organization-dialog"
+
+
+type ViewState = "loading" | "data" | "empty" | "error"
+
+export default function OrganizationList() {
+  // 状态管理
+  const [viewState, setViewState] = useState<ViewState>("loading")
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [organizationToDelete, setOrganizationToDelete] = useState<Organization | null>(null)
+  const [organizations, setOrganizations] = useState<Organization[]>([])
+  const [error, setError] = useState<string | null>(null)
+
+  const { toast } = useToast()
+  const { navigate } = useNavigation()
+
+  // 辅助函数
+  const formatDate = (dateString: string): string => {
+    return new Date(dateString).toLocaleString("zh-CN", {
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    })
+  }
+
+  const handleDelete = (org: Organization) => {
+    setOrganizationToDelete(org)
+    setDeleteDialogOpen(true)
+  }
+
+  // 创建列定义
+  const columns = useMemo(() =>
+    createOrganizationColumns({ formatDate, navigate, handleDelete }),
+    [navigate]
+  )
+
+  // 初始化时加载组织数据
+  useEffect(() => {
+    fetchOrganizations()
+  }, [])
+
+  const fetchOrganizations = async () => {
+    try {
+      setViewState("loading")
+      setError(null)
+
+      // 使用组织服务
+      const response = await OrganizationService.getOrganizations()
+
+      // 检查响应码并获取数据
+      if (response.code === "SUCCESS" && Array.isArray(response.data)) {
+        // 数据已经自动转换为 camelCase，无需手动转换
+        setOrganizations(response.data)
+        setViewState(response.data.length > 0 ? "data" : "empty")
+      } else {
+        throw new Error("API 返回了无效的数据格式")
+      }
+    } catch (err: any) {
+      console.error('Error fetching organizations:', err)
+      setError(getErrorMessage(err))
+      setViewState("error")
+    }
+  }
+
+  // 删除组织
+  const confirmDelete = async () => {
+    if (!organizationToDelete) return
+
+    try {
+      await OrganizationService.deleteOrganization(organizationToDelete.id)
+      setOrganizations((prev) => prev.filter((org) => org.id !== organizationToDelete.id))
+      toast({
+        title: "Success",
+        description: `Organization "${organizationToDelete.name}" has been deleted`,
+      })
+      setDeleteDialogOpen(false)
+      setOrganizationToDelete(null)
+    } catch (err: any) {
+      console.error('Error deleting organization:', err)
+      toast({
+        title: "Error",
+        description: "Failed to delete organization",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // 添加组织
+  const handleOrganizationAdded = () => {
+    fetchOrganizations()
+  }
+
+  // 根据状态渲染内容
+  const renderContent = () => {
+    if (viewState === "loading") {
+      return (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+          <span className="ml-2 text-muted-foreground">Loading organizations...</span>
+        </div>
+      )
+    }
+
+    if (viewState === "error") {
+      return (
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="rounded-full bg-destructive/10 p-3 mb-4">
+            <Trash2 className="h-6 w-6 text-destructive" />
+          </div>
+          <h3 className="text-lg font-semibold mb-2">Error</h3>
+          <p className="text-muted-foreground text-center mb-4">
+            {error || "There was an error loading organizations. Please try again."}
+          </p>
+          <Button variant="outline" onClick={fetchOrganizations}>
+            Try again
+          </Button>
+        </div>
+      )
+    }
+
+    if (viewState === "empty") {
+      return (
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="rounded-full bg-muted p-3 mb-4">
+            <Plus className="h-6 w-6 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-semibold mb-2">No organizations</h3>
+          <p className="text-muted-foreground text-center mb-4">
+            Get started by creating your first organization.
+          </p>
+          <AddOrganizationDialog onAdd={handleOrganizationAdded} />
+        </div>
+      )
+    }
+
+    return (
+      <DataTable 
+        columns={columns} 
+        data={organizations}
+        searchableColumns={['name', 'description']}
+      />
+    )
+  }
+
+  return (
+    <div className="hidden h-full flex-1 flex-col space-y-8 p-8 md:flex">
+      {/* 页面头部 */}
+      <div className="flex items-center justify-between space-y-2">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Organizations</h2>
+          <p className="text-muted-foreground">
+            Manage and view all organizations in the system
+          </p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <AddOrganizationDialog onAdd={handleOrganizationAdded} />
+        </div>
+      </div>
+
+      {/* 主要内容 */}
+      {renderContent()}
+
+      {/* 删除确认对话框 */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the organization "{organizationToDelete?.name}".
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  )
+}

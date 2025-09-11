@@ -22,10 +22,10 @@ import { useToast } from "@/hooks/use-toast"
 import DataStateWrapper from "@/components/common/data-state-wrapper"
 
 // 业务组件
-import OrganizationOverview from "./detail/organization-overview"
-import OrganizationSubdomains from "./detail/organization-subdomains"
-import OrganizationVulnerabilities from "./detail/organization-vulnerabilities"
-import OrganizationScanHistory from "./detail/organization-scan-history"
+import OrganizationOverview from "./organization-overview"
+import OrganizationSubdomains from "./organization-subdomains"
+import OrganizationVulnerabilities from "./organization-vulnerabilities"
+import OrganizationScanHistory from "./organization-scan-history"
 
 
 // 类型定义

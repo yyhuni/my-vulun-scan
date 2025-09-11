@@ -1,5 +1,5 @@
 import AppLayout from "../../../../components/layout/app-layout"
-import OrganizationDetail from "../../../../components/pages/assets/organizations/organization-detail"
+import OrganizationDetail from "./components/organization-detail"
 
 interface OrganizationDetailPageProps {
   params: Promise<{

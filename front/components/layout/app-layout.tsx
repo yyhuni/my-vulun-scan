@@ -7,10 +7,11 @@ import { AppSidebar, navigationItems } from "./app-sidebar"
 import { SidebarProvider, SidebarInset, SidebarTrigger, useSidebar } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbSeparator, BreadcrumbPage } from "@/components/ui/breadcrumb"
-import { Button } from "@/components/ui"
+import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { UserIcon } from "lucide-react"
 import React from "react"
+import Link from "next/link"
 
 
 interface BreadcrumbItemType {
@@ -100,10 +101,8 @@ function AppLayoutContent({ children, breadcrumbItems, noPadding }: {
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink asChild>
-                  <Button variant="ghost" size="sm" href="/" className="h-auto p-0 font-normal">
-                    首页
-                  </Button>
+                <BreadcrumbLink href="/" className="font-normal">
+                  首页
                 </BreadcrumbLink>
               </BreadcrumbItem>
               {breadcrumbItems.map((item, index) => (
@@ -113,10 +112,8 @@ function AppLayoutContent({ children, breadcrumbItems, noPadding }: {
                     {item.current ? (
                       <BreadcrumbPage>{item.name}</BreadcrumbPage>
                     ) : (
-                      <BreadcrumbLink asChild>
-                        <Button variant="ghost" size="sm" href={item.href || '#'} className="h-auto p-0 font-normal">
-                          {item.name}
-                        </Button>
+                      <BreadcrumbLink href={item.href || '#'} className="font-normal">
+                        {item.name}
                       </BreadcrumbLink>
                     )}
                   </BreadcrumbItem>

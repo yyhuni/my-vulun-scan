@@ -1,14 +1,16 @@
 "use client"
 
-import { useState } from "react"
-import { Search, Calendar, Clock, CheckCircle, XCircle, AlertCircle, Loader2, Download, Eye } from "lucide-react"
+import { useState, useMemo } from "react"
+import { ColumnDef } from "@tanstack/react-table"
+import { Search, Calendar, Clock, CheckCircle, XCircle, AlertCircle, Loader2, Download, Eye, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { TablePagination } from "@/components/common/table-pagination"
+import { Checkbox } from "@/components/ui/checkbox"
+import { DataTable } from "@/components/custom-ui/data-table/data-table"
+import { DataTableColumnHeader } from "@/components/custom-ui/data-table/data-table-column-header"
 
 // 模拟扫描历史数据 - 参考 mocks/handlers/scan-history-handlers.ts
 const sampleScanHistory = [
@@ -219,6 +221,43 @@ const sampleScanHistory = [
   }
 ]
 
+interface ScanHistory {
+  id: string
+  type: string
+  startTime: string
+  endTime: string | null
+  duration: string | null
+  status: string
+  organization: string
+  organizationId: string
+  domainsScanned: number
+  vulnerabilitiesFound: number
+  highRisk: number
+  mediumRisk: number
+  lowRisk: number
+  scanBy: string
+  scanByName: string
+  reportUrl: string | null
+  error?: string
+  scanConfig: {
+    targets: string[]
+    scanType: string
+    includeSubdomains: boolean
+    portRange: string
+    customRules?: string[]
+    enableBruteForce?: boolean
+    enableDirectoryEnumeration?: boolean
+    complianceStandards?: string[]
+    schedule?: string
+  }
+  progress: number
+}
+
+// 类型断言函数
+function asScanHistory(data: any): ScanHistory {
+  return data as ScanHistory
+}
+
 interface OrganizationScanHistoryProps {
   organizationId: string
 }
@@ -228,31 +267,12 @@ type StatusFilter = "all" | "已完成" | "进行中" | "失败" | "已取消"
 type TypeFilter = "all" | "全面扫描" | "快速扫描" | "漏洞验证" | "自定义扫描"
 
 export default function OrganizationScanHistory({ organizationId }: OrganizationScanHistoryProps) {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
   const [viewState, setViewState] = useState<ViewState>("data")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all")
-  const [scanHistory] = useState(sampleScanHistory)
+  const [scanHistory] = useState<ScanHistory[]>(sampleScanHistory.map(asScanHistory))
 
-  const filteredHistory = scanHistory.filter((scan) => {
-    const matchesSearch = 
-      scan.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      scan.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      scan.scanBy.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    const matchesStatus = statusFilter === "all" || scan.status === statusFilter
-    const matchesType = typeFilter === "all" || scan.type === typeFilter
-    
-    return matchesSearch && matchesStatus && matchesType
-  })
-
-  const paginatedHistory = filteredHistory.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  )
-
+  // 工具函数
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "已完成":
@@ -308,6 +328,192 @@ export default function OrganizationScanHistory({ organizationId }: Organization
     return diffHours > 0 ? `${diffHours}小时${diffMins}分钟` : `${diffMins}分钟`
   }
 
+  // 列定义
+  const columns = useMemo<ColumnDef<ScanHistory>[]>(() => [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && "indeterminate")
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+          className="translate-y-[2px]"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+          className="translate-y-[2px]"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {
+      accessorKey: "id",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="扫描ID" />
+      ),
+      cell: ({ row }) => (
+        <div className="flex items-center space-x-2">
+          {getStatusIcon(row.original.status)}
+          <code className="text-sm">{row.getValue("id")}</code>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "type",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="扫描类型" />
+      ),
+      cell: ({ row }) => (
+        <Badge variant="secondary" className={getTypeColor(row.getValue("type"))}>
+          {row.getValue("type")}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: "status",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="状态" />
+      ),
+      cell: ({ row }) => getStatusBadge(row.getValue("status")),
+    },
+    {
+      accessorKey: "startTime",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="开始时间" />
+      ),
+      cell: ({ row }) => {
+        const startTime = row.getValue("startTime") as string
+        return (
+          <div>
+            <div className="font-medium">
+              {new Date(startTime).toLocaleDateString("zh-CN")}
+            </div>
+            <div className="text-sm text-muted-foreground">
+              {new Date(startTime).toLocaleTimeString("zh-CN", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </div>
+          </div>
+        )
+      },
+    },
+    {
+      accessorKey: "duration",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="持续时间" />
+      ),
+      cell: ({ row }) => {
+        const scan = row.original
+        return scan.duration || formatDuration(scan.startTime, scan.endTime) || "-"
+      },
+      meta: {
+        className: "hidden md:table-cell",
+      },
+    },
+    {
+      accessorKey: "domainsScanned",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="域名数量" />
+      ),
+      cell: ({ row }) => (
+        <span className="font-medium">{row.getValue("domainsScanned")}</span>
+      ),
+      meta: {
+        className: "hidden lg:table-cell",
+      },
+    },
+    {
+      accessorKey: "vulnerabilitiesFound",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="发现漏洞" />
+      ),
+      cell: ({ row }) => {
+        const scan = row.original
+        if (scan.status === "已完成") {
+          return (
+            <div className="flex items-center space-x-2">
+              <span className="font-medium">{scan.vulnerabilitiesFound}</span>
+              <div className="flex space-x-1">
+                {scan.highRisk > 0 && (
+                  <Badge variant="destructive" className="text-xs px-1">
+                    {scan.highRisk}高
+                  </Badge>
+                )}
+                {scan.mediumRisk > 0 && (
+                  <Badge variant="secondary" className="text-xs px-1 bg-orange-100 text-orange-800">
+                    {scan.mediumRisk}中
+                  </Badge>
+                )}
+                {scan.lowRisk > 0 && (
+                  <Badge variant="secondary" className="text-xs px-1 bg-yellow-100 text-yellow-800">
+                    {scan.lowRisk}低
+                  </Badge>
+                )}
+              </div>
+            </div>
+          )
+        }
+        return <span className="text-muted-foreground">-</span>
+      },
+      meta: {
+        className: "hidden lg:table-cell",
+      },
+    },
+    {
+      accessorKey: "scanByName",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="执行者" />
+      ),
+      cell: ({ row }) => (
+        <span className="text-sm">{row.getValue("scanByName") || row.original.scanBy}</span>
+      ),
+      meta: {
+        className: "hidden sm:table-cell",
+      },
+    },
+    {
+      id: "actions",
+      header: () => <div className="text-right">操作</div>,
+      cell: ({ row }) => (
+        <div className="flex items-center justify-end space-x-2">
+          <Button variant="ghost" size="sm">
+            <Eye className="h-4 w-4" />
+          </Button>
+          {row.original.reportUrl && (
+            <Button variant="ghost" size="sm">
+              <Download className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+  ], [])
+
+  // 过滤数据
+  const filteredHistory = scanHistory.filter((scan) => {
+    const matchesStatus = statusFilter === "all" || scan.status === statusFilter
+    const matchesType = typeFilter === "all" || scan.type === typeFilter
+
+    return matchesStatus && matchesType
+  })
+
+  // 批量操作处理函数
+  const handleBulkDelete = () => {
+    // 这里可以实现批量删除逻辑
+    console.log("批量删除扫描历史")
+  }
+
   const LoadingState = () => (
     <div className="flex items-center justify-center py-12">
       <div className="flex items-center space-x-2">
@@ -324,7 +530,7 @@ export default function OrganizationScanHistory({ organizationId }: Organization
       </div>
       <h3 className="text-lg font-semibold mb-2">暂无扫描历史</h3>
       <p className="text-muted-foreground text-center mb-4">
-        {searchTerm ? "请尝试调整搜索条件" : "该组织暂无扫描历史记录"}
+        该组织暂无扫描历史记录
       </p>
       <Button>
         开始新扫描
@@ -345,103 +551,6 @@ export default function OrganizationScanHistory({ organizationId }: Organization
     </div>
   )
 
-  const DataTable = () => (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="h-8 px-4 py-1 text-sm font-medium">扫描ID</TableHead>
-            <TableHead className="h-8 px-4 py-1 text-sm font-medium">扫描类型</TableHead>
-            <TableHead className="h-8 px-4 py-1 text-sm font-medium">状态</TableHead>
-            <TableHead className="h-8 px-4 py-1 text-sm font-medium">开始时间</TableHead>
-            <TableHead className="hidden md:table-cell h-8 px-4 py-1 text-sm font-medium">持续时间</TableHead>
-            <TableHead className="hidden lg:table-cell h-8 px-4 py-1 text-sm font-medium">域名数量</TableHead>
-            <TableHead className="hidden lg:table-cell h-8 px-4 py-1 text-sm font-medium">发现漏洞</TableHead>
-            <TableHead className="hidden sm:table-cell h-8 px-4 py-1 text-sm font-medium">执行者</TableHead>
-            <TableHead className="text-right h-8 px-4 py-1 text-sm font-medium">操作</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {paginatedHistory.map((scan) => (
-            <TableRow key={scan.id}>
-              <TableCell className="px-3 py-2">
-                <div className="flex items-center space-x-2">
-                  {getStatusIcon(scan.status)}
-                  <code className="text-sm">{scan.id}</code>
-                </div>
-              </TableCell>
-              <TableCell className="px-3 py-2">
-                <Badge variant="secondary" className={getTypeColor(scan.type)}>
-                  {scan.type}
-                </Badge>
-              </TableCell>
-              <TableCell className="px-3 py-2">{getStatusBadge(scan.status)}</TableCell>
-              <TableCell className="px-3 py-2">
-                <div>
-                  <div className="font-medium">
-                    {new Date(scan.startTime).toLocaleDateString("zh-CN")}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {new Date(scan.startTime).toLocaleTimeString("zh-CN", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </div>
-                </div>
-              </TableCell>
-              <TableCell className="hidden md:table-cell px-3 py-2">
-                {scan.duration || formatDuration(scan.startTime, scan.endTime) || "-"}
-              </TableCell>
-              <TableCell className="hidden lg:table-cell px-3 py-2">
-                <span className="font-medium">{scan.domainsScanned}</span>
-              </TableCell>
-              <TableCell className="hidden lg:table-cell px-3 py-2">
-                {scan.status === "已完成" ? (
-                  <div className="flex items-center space-x-2">
-                    <span className="font-medium">{scan.vulnerabilitiesFound}</span>
-                    <div className="flex space-x-1">
-                      {scan.highRisk > 0 && (
-                        <Badge variant="destructive" className="text-xs px-1">
-                          {scan.highRisk}高
-                        </Badge>
-                      )}
-                      {scan.mediumRisk > 0 && (
-                        <Badge variant="secondary" className="text-xs px-1 bg-orange-100 text-orange-800">
-                          {scan.mediumRisk}中
-                        </Badge>
-                      )}
-                      {scan.lowRisk > 0 && (
-                        <Badge variant="secondary" className="text-xs px-1 bg-yellow-100 text-yellow-800">
-                          {scan.lowRisk}低
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <span className="text-muted-foreground">-</span>
-                )}
-              </TableCell>
-              <TableCell className="hidden sm:table-cell px-3 py-2">
-                <span className="text-sm">{scan.scanByName || scan.scanBy}</span>
-              </TableCell>
-              <TableCell className="text-right px-3 py-2">
-                <div className="flex items-center justify-end space-x-2">
-                  <Button variant="ghost" size="sm">
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                  {scan.reportUrl && (
-                    <Button variant="ghost" size="sm">
-                      <Download className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  )
 
   return (
     <div className="space-y-6 pb-8">
@@ -502,71 +611,61 @@ export default function OrganizationScanHistory({ organizationId }: Organization
         </Card>
       </div>
 
-      {/* 操作栏 */}
-      <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="搜索扫描ID或执行者..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <div className="flex gap-2">
-          <Select value={typeFilter} onValueChange={(value: TypeFilter) => setTypeFilter(value)}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="扫描类型" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">全部类型</SelectItem>
-              <SelectItem value="全面扫描">全面扫描</SelectItem>
-              <SelectItem value="快速扫描">快速扫描</SelectItem>
-              <SelectItem value="漏洞验证">漏洞验证</SelectItem>
-              <SelectItem value="自定义扫描">自定义扫描</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={statusFilter} onValueChange={(value: StatusFilter) => setStatusFilter(value)}>
-            <SelectTrigger className="w-[120px]">
-              <SelectValue placeholder="状态" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">全部状态</SelectItem>
-              <SelectItem value="已完成">已完成</SelectItem>
-              <SelectItem value="进行中">进行中</SelectItem>
-              <SelectItem value="失败">失败</SelectItem>
-              <SelectItem value="已取消">已取消</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button>
-            开始新扫描
-          </Button>
-        </div>
-      </div>
-
-      {/* 主要内容 */}
-      <Card>
-        <CardContent className="p-0">
-          {viewState === "loading" && <LoadingState />}
-          {viewState === "empty" && <EmptyState />}
-          {viewState === "error" && <ErrorState />}
-          {viewState === "data" && <>{filteredHistory.length === 0 ? <EmptyState /> : <DataTable />}</>}
-        </CardContent>
-      </Card>
-
-      {/* 分页控件 */}
-      {viewState === "data" && filteredHistory.length > 0 && (
-        <Card>
-          <CardContent className="py-4">
-            <TablePagination
-              currentPage={currentPage}
-              totalItems={filteredHistory.length}
-              itemsPerPage={itemsPerPage}
-              onPageChange={setCurrentPage}
-              onItemsPerPageChange={setItemsPerPage}
-            />
-          </CardContent>
-        </Card>
+      {/* 主要内容 - 使用 DataTable */}
+      {viewState === "loading" ? (
+        <LoadingState />
+      ) : viewState === "empty" ? (
+        <EmptyState />
+      ) : viewState === "error" ? (
+        <ErrorState />
+      ) : (
+        <DataTable
+          columns={columns}
+          data={filteredHistory}
+          searchableColumns={['id', 'type', 'scanByName']}
+          filterableColumns={[
+            {
+              key: 'status',
+              title: '状态',
+              options: [
+                { label: '已完成', value: '已完成' },
+                { label: '进行中', value: '进行中' },
+                { label: '失败', value: '失败' },
+                { label: '已取消', value: '已取消' },
+              ]
+            },
+            {
+              key: 'type',
+              title: '扫描类型',
+              options: [
+                { label: '全面扫描', value: '全面扫描' },
+                { label: '快速扫描', value: '快速扫描' },
+                { label: '漏洞验证', value: '漏洞验证' },
+                { label: '自定义扫描', value: '自定义扫描' },
+              ]
+            }
+          ]}
+          renderBulkActions={(selectedRows, table) => (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBulkDelete}
+                className="text-destructive hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                批量删除
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => table.toggleAllPageRowsSelected(false)}
+              >
+                取消选择
+              </Button>
+            </>
+          )}
+        />
       )}
     </div>
   )
