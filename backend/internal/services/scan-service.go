@@ -25,7 +25,7 @@ func NewScanService() *ScanService {
 // StartOrganizationScan 开始组织扫描
 func (s *ScanService) StartOrganizationScan(organizationID string) (*models.StartOrganizationScanResponse, error) {
 	// 获取组织的主域名
-	domainService := NewDomainService()
+	domainService := NewMainDomainService()
 	mainDomains, err := domainService.GetOrganizationMainDomains(organizationID)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get organization main domains")

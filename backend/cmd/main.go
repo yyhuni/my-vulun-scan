@@ -76,15 +76,12 @@ func setupRouter() *gin.Engine {
 		})
 	})
 
-	// API 路由组
-	api := r.Group("/api/v1")
-	{
-		routes.SetupOrganizationRoutes(api)
-		routes.SetupScanRoutes(api)
-		routes.SetupWorkflowRoutes(api)
-		routes.SetupAssetsRoutes(api)
-		routes.SetupDashboardRoutes(api)
-	}
+	// 设置路由
+	routes.SetupOrganizationRoutes(r)
+	routes.SetupScanRoutes(r)
+	routes.SetupWorkflowRoutes(r)
+	routes.SetupAssetsRoutes(r)
+	routes.SetupDashboardRoutes(r)
 
 	// 默认路由
 	r.NoRoute(func(c *gin.Context) {

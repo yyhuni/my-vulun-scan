@@ -100,7 +100,7 @@ export const createOrganizationColumns = ({
 
       return (
         <div className="text-sm text-muted-foreground">
-          {updatedAt && !isZeroTime ? formatDate(updatedAt) : 'N/A'}
+          {updatedAt && !isZeroTime ? formatDate(updatedAt) : '-'}
         </div>
       )
     },
