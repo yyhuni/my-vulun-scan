@@ -65,6 +65,7 @@ export default function OrganizationSubDomains({ organizationId }: OrganizationS
   const [viewState, setViewState] = useState<ViewState>("loading")
   const [isAddSubDomainDialogOpen, setIsAddSubDomainDialogOpen] = useState(false)
   const [organizationName, setOrganizationName] = useState("")
+  const [selectedCount, setSelectedCount] = useState(0)
 
   // 辅助函数
   const formatDate = (dateString: string): string => {
@@ -201,8 +202,14 @@ export default function OrganizationSubDomains({ organizationId }: OrganizationS
 
   // 批量操作处理函数
   const handleBulkDelete = () => {
-    // 这里可以实现批量删除子域名逻辑
-    console.log("批量删除子域名")
+    if (selectedCount === 0) {
+      // 这里可以显示提示信息，比如使用 toast
+      console.log("请先选择要删除的子域名")
+      return
+    }
+
+    // 这里可以实现批量删除逻辑
+    console.log(`批量删除 ${selectedCount} 个子域名`)
   }
 
   // 获取组织信息
@@ -348,7 +355,7 @@ export default function OrganizationSubDomains({ organizationId }: OrganizationS
       </div>
       <h3 className="text-lg font-semibold mb-2">未找到子域名</h3>
       <p className="text-muted-foreground text-center mb-4">
-        {searchTerm ? "请尝试调整搜索条件" : "该组织暂无子域名数据"}
+        该组织暂无子域名数据
       </p>
     </div>
   )
@@ -429,15 +436,6 @@ export default function OrganizationSubDomains({ organizationId }: OrganizationS
         </Card>
       </div>
 
-      {/* 操作栏 */}
-      <div className="flex justify-end">
-        <Button
-          onClick={() => setIsAddSubDomainDialogOpen(true)}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          添加子域名
-        </Button>
-      </div>
 
       {/* 主要内容 - 使用 DataTable */}
       {viewState === "loading" ? (
@@ -462,26 +460,28 @@ export default function OrganizationSubDomains({ organizationId }: OrganizationS
               ]
             }
           ]}
-          renderBulkActions={(selectedRows, table) => (
-            <>
+          extraButtons={
+            <div className="flex items-center space-x-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleBulkDelete}
-                className="text-destructive hover:text-destructive"
+                disabled={selectedCount === 0}
+                className={selectedCount === 0 ? "text-muted-foreground" : "text-destructive hover:text-destructive"}
               >
-                <Trash2 className="h-4 w-4 mr-2" />
+                <Trash2 />
                 批量删除
               </Button>
               <Button
-                variant="outline"
                 size="sm"
-                onClick={() => table.toggleAllPageRowsSelected(false)}
+                onClick={() => setIsAddSubDomainDialogOpen(true)}
               >
-                取消选择
+                <Plus />
+                添加子域名
               </Button>
-            </>
-          )}
+            </div>
+          }
+          onSelectionChange={(count) => setSelectedCount(count)}
         />
       )}
 

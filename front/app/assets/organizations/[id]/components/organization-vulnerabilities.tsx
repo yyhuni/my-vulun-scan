@@ -25,6 +25,7 @@ type StatusFilter = "all" | "待修复" | "处理中" | "已修复" | "已忽略
 export default function OrganizationVulnerabilities({ organizationId }: OrganizationVulnerabilitiesProps) {
   const [viewState, setViewState] = useState<ViewState>("loading")
   const [vulnerabilities, setVulnerabilities] = useState<Vulnerability[]>([])
+  const [selectedCount, setSelectedCount] = useState(0)
   const { toast } = useToast()
 
   // 工具函数
@@ -179,8 +180,14 @@ export default function OrganizationVulnerabilities({ organizationId }: Organiza
 
   // 批量操作处理函数
   const handleBulkDelete = () => {
-    // 这里可以实现批量删除漏洞逻辑
-    console.log("批量删除漏洞")
+    if (selectedCount === 0) {
+      // 这里可以显示提示信息，比如使用 toast
+      console.log("请先选择要删除的漏洞")
+      return
+    }
+
+    // 这里可以实现批量删除逻辑
+    console.log(`批量删除 ${selectedCount} 个漏洞`)
   }
 
   const LoadingState = () => (
@@ -313,26 +320,19 @@ export default function OrganizationVulnerabilities({ organizationId }: Organiza
               ]
             }
           ]}
-          renderBulkActions={(selectedRows, table) => (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleBulkDelete}
-                className="text-destructive hover:text-destructive"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                批量删除
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.toggleAllPageRowsSelected(false)}
-              >
-                取消选择
-              </Button>
-            </>
-          )}
+          extraButtons={
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBulkDelete}
+              disabled={selectedCount === 0}
+              className={selectedCount === 0 ? "text-muted-foreground" : "text-destructive hover:text-destructive"}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              批量删除
+            </Button>
+          }
+          onSelectionChange={(count) => setSelectedCount(count)}
         />
       )}
     </div>

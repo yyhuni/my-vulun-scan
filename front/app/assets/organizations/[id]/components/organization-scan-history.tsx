@@ -271,6 +271,7 @@ export default function OrganizationScanHistory({ organizationId }: Organization
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all")
   const [scanHistory] = useState<ScanHistory[]>(sampleScanHistory.map(asScanHistory))
+  const [selectedCount, setSelectedCount] = useState(0)
 
   // 工具函数
   const getStatusBadge = (status: string) => {
@@ -510,8 +511,14 @@ export default function OrganizationScanHistory({ organizationId }: Organization
 
   // 批量操作处理函数
   const handleBulkDelete = () => {
+    if (selectedCount === 0) {
+      // 这里可以显示提示信息，比如使用 toast
+      console.log("请先选择要删除的扫描历史")
+      return
+    }
+
     // 这里可以实现批量删除逻辑
-    console.log("批量删除扫描历史")
+    console.log(`批量删除 ${selectedCount} 条扫描历史`)
   }
 
   const LoadingState = () => (
@@ -645,26 +652,19 @@ export default function OrganizationScanHistory({ organizationId }: Organization
               ]
             }
           ]}
-          renderBulkActions={(selectedRows, table) => (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleBulkDelete}
-                className="text-destructive hover:text-destructive"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                批量删除
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.toggleAllPageRowsSelected(false)}
-              >
-                取消选择
-              </Button>
-            </>
-          )}
+          extraButtons={
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBulkDelete}
+              disabled={selectedCount === 0}
+              className={selectedCount === 0 ? "text-muted-foreground" : "text-destructive hover:text-destructive"}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              批量删除
+            </Button>
+          }
+          onSelectionChange={(count) => setSelectedCount(count)}
         />
       )}
     </div>

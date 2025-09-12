@@ -1,7 +1,7 @@
 // 组织列表组件
 "use client"
 
-import React, { useState, useEffect, useMemo } from "react"
+import React, { useState, useEffect, useMemo, useRef } from "react"
 import { Trash2, Plus } from "lucide-react"
 
 // 导航 Hook
@@ -44,6 +44,8 @@ export default function OrganizationList() {
   const [organizationToDelete, setOrganizationToDelete] = useState<Organization | null>(null)
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [selectedCount, setSelectedCount] = useState(0)
+  const tableRef = useRef<any>(null)
 
   const { toast } = useToast()
   const { navigate } = useNavigation()
@@ -128,6 +130,25 @@ export default function OrganizationList() {
     fetchOrganizations()
   }
 
+  // 批量删除处理函数
+  const handleBulkDelete = () => {
+    if (selectedCount === 0) {
+      toast({
+        title: "提示",
+        description: "请先选择要删除的组织",
+        variant: "default",
+      })
+      return
+    }
+
+    // 这里可以实现批量删除逻辑
+    toast({
+      title: "批量删除",
+      description: `已选择 ${selectedCount} 个组织准备删除`,
+      variant: "destructive",
+    })
+  }
+
   // 根据状态渲染内容
   const renderContent = () => {
     if (viewState === "loading") {
@@ -177,8 +198,21 @@ export default function OrganizationList() {
         data={organizations}
         searchableColumns={['name', 'description']}
         extraButtons={
-          <AddOrganizationDialog onAdd={handleOrganizationAdded} />
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBulkDelete}
+              disabled={selectedCount === 0}
+              className={selectedCount === 0 ? "text-muted-foreground" : "text-destructive hover:text-destructive"}
+            >
+              <Trash2  />
+              批量删除
+            </Button>
+            <AddOrganizationDialog onAdd={handleOrganizationAdded} />
+          </div>
         }
+        onSelectionChange={(count) => setSelectedCount(count)}
       />
     )
   }

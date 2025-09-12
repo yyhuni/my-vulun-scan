@@ -37,8 +37,8 @@ interface DataTableProps<TData, TValue> {
     title: string
     options: { label: string; value: string; icon?: React.ComponentType<{ className?: string }> }[]
   }[]
-  renderBulkActions?: (selectedRows: TData[], table: any) => React.ReactNode
   extraButtons?: React.ReactNode
+  onSelectionChange?: (count: number) => void
 }
 
 export function DataTable<TData, TValue>({
@@ -46,8 +46,8 @@ export function DataTable<TData, TValue>({
   data,
   searchableColumns = [],
   filterableColumns = [],
-  renderBulkActions,
   extraButtons,
+  onSelectionChange,
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
@@ -79,22 +79,16 @@ export function DataTable<TData, TValue>({
     getFacetedUniqueValues: getFacetedUniqueValues(),
   })
 
-  const selectedRows = table.getFilteredSelectedRowModel().rows.map(row => row.original)
+  // 监听选中状态变化
+  React.useEffect(() => {
+    if (onSelectionChange) {
+      const selectedCount = table.getFilteredSelectedRowModel().rows.length
+      onSelectionChange(selectedCount)
+    }
+  }, [table.getFilteredSelectedRowModel().rows.length, onSelectionChange])
 
   return (
     <div className="space-y-4">
-      {/* 批量操作工具栏 */}
-      {selectedRows.length > 0 && renderBulkActions && (
-        <div className="flex items-center space-x-2 p-4 bg-muted/50 rounded-lg border">
-          <span className="text-sm font-medium">
-            已选择 {selectedRows.length} 项
-          </span>
-          <div className="flex items-center space-x-2">
-            {renderBulkActions(selectedRows, table)}
-          </div>
-        </div>
-      )}
-
       <DataTableToolbar
         table={table}
         searchableColumns={searchableColumns}
