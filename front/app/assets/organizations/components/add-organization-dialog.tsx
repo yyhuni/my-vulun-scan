@@ -106,7 +106,7 @@ export default function AddOrganizationDialog({ onAdd }: AddOrganizationDialogPr
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm">
-          <Plus className="h-4 w-4 mr-2" />
+          <Plus />
           添加组织
         </Button>
       </DialogTrigger>

@@ -172,16 +172,19 @@ export default function OrganizationList() {
     }
 
     return (
-      <DataTable 
-        columns={columns} 
+      <DataTable
+        columns={columns}
         data={organizations}
         searchableColumns={['name', 'description']}
+        extraButtons={
+          <AddOrganizationDialog onAdd={handleOrganizationAdded} />
+        }
       />
     )
   }
 
   return (
-    <div className="hidden h-full flex-1 flex-col space-y-8 p-8 md:flex">
+    <div className="hidden h-full flex-1 flex-col space-y-8 md:flex">
       {/* 页面头部 */}
       <div className="flex items-center justify-between space-y-2">
         <div>
@@ -189,9 +192,6 @@ export default function OrganizationList() {
           <p className="text-muted-foreground">
             Manage and view all organizations in the system
           </p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <AddOrganizationDialog onAdd={handleOrganizationAdded} />
         </div>
       </div>
 

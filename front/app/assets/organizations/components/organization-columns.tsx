@@ -10,6 +10,7 @@ export interface Organization {
   name: string
   description: string
   createdAt: string
+  updatedAt?: string // 添加 updatedAt 字段
   domainCount?: number
   status?: string
 }
@@ -83,6 +84,26 @@ export const createOrganizationColumns = ({
         {formatDate(row.getValue("createdAt"))}
       </div>
     ),
+  },
+  {
+    accessorKey: "updatedAt", // 新增更新时间列
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Updated" />
+    ),
+    cell: ({ row }) => {
+      const updatedAt = row.getValue("updatedAt") as string | undefined
+      // 检查是否为零值时间（Go 的 time.Time 零值）
+      const isZeroTime = updatedAt && (
+        updatedAt === "0001-01-01T00:00:00Z" ||
+        updatedAt.startsWith("0001-01-01")
+      )
+
+      return (
+        <div className="text-sm text-muted-foreground">
+          {updatedAt && !isZeroTime ? formatDate(updatedAt) : 'N/A'}
+        </div>
+      )
+    },
   },
   {
     id: "actions",

@@ -16,12 +16,14 @@ interface DataTableToolbarProps<TData> {
     title: string
     options: { label: string; value: string; icon?: React.ComponentType<{ className?: string }> }[]
   }[]
+  extraButtons?: React.ReactNode
 }
 
 export function DataTableToolbar<TData>({
   table,
   searchableColumns = [],
   filterableColumns = [],
+  extraButtons,
 }: DataTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0
   const searchColumn = searchableColumns[0] // 使用第一个可搜索列作为主要搜索
@@ -63,7 +65,7 @@ export function DataTableToolbar<TData>({
           </Button>
         )}
       </div>
-      <DataTableViewOptions table={table} />
+      <DataTableViewOptions table={table} extraButtons={extraButtons} />
     </div>
   )
 }

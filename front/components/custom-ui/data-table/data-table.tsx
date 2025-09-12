@@ -38,6 +38,7 @@ interface DataTableProps<TData, TValue> {
     options: { label: string; value: string; icon?: React.ComponentType<{ className?: string }> }[]
   }[]
   renderBulkActions?: (selectedRows: TData[], table: any) => React.ReactNode
+  extraButtons?: React.ReactNode
 }
 
 export function DataTable<TData, TValue>({
@@ -46,6 +47,7 @@ export function DataTable<TData, TValue>({
   searchableColumns = [],
   filterableColumns = [],
   renderBulkActions,
+  extraButtons,
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
@@ -97,6 +99,7 @@ export function DataTable<TData, TValue>({
         table={table}
         searchableColumns={searchableColumns}
         filterableColumns={filterableColumns}
+        extraButtons={extraButtons}
       />
       <div className="overflow-hidden rounded-md border">
         <Table>

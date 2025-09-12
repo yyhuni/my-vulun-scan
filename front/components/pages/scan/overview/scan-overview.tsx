@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { BarChart3, Clock, CheckCircle, XCircle, Search, Plus, Filter, Eye, Trash2, Download, PlayCircle, RotateCcw, MoreHorizontal } from "lucide-react";
-import { Button } from "@/components/ui";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
