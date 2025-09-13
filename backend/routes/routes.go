@@ -7,8 +7,8 @@ import (
 )
 
 // SetupOrganizationRoutes 设置组织相关路由
-func SetupOrganizationRoutes(r *gin.Engine) {
-	orgGroup := r.Group("/organizations")
+func SetupOrganizationRoutes(api *gin.RouterGroup) {
+	orgGroup := api.Group("/organizations")
 	{
 		// 基础组织操作
 		orgGroup.GET("", handlers.GetOrganizations)
@@ -32,8 +32,8 @@ func SetupOrganizationRoutes(r *gin.Engine) {
 }
 
 // SetupScanRoutes 设置扫描相关路由
-func SetupScanRoutes(r *gin.Engine) {
-	scanGroup := r.Group("/scan")
+func SetupScanRoutes(api *gin.RouterGroup) {
+	scanGroup := api.Group("/scan")
 	{
 		// 组织扫描相关操作
 		scanGroup.POST("/organizations/:id/start", handlers.StartOrganizationScan)
@@ -42,8 +42,8 @@ func SetupScanRoutes(r *gin.Engine) {
 }
 
 // SetupAssetsRoutes 设置资产相关路由
-func SetupAssetsRoutes(r *gin.Engine) {
-	assetsGroup := r.Group("/assets")
+func SetupAssetsRoutes(api *gin.RouterGroup) {
+	assetsGroup := api.Group("/assets")
 	{
 		// 主域名相关操作
 		assetsGroup.POST("/main-domains/create", handlers.CreateMainDomains)
@@ -54,11 +54,11 @@ func SetupAssetsRoutes(r *gin.Engine) {
 }
 
 // SetupWorkflowRoutes 设置工作流相关路由（占位符）
-func SetupWorkflowRoutes(r *gin.Engine) {
+func SetupWorkflowRoutes(api *gin.RouterGroup) {
 	// 暂时保留空实现，后续可扩展
 }
 
 // SetupDashboardRoutes 设置仪表盘相关路由（占位符）
-func SetupDashboardRoutes(r *gin.Engine) {
+func SetupDashboardRoutes(api *gin.RouterGroup) {
 	// 暂时保留空实现，后续可扩展
 }
