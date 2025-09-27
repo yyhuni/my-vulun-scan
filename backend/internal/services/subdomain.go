@@ -88,14 +88,13 @@ func (s *SubDomainService) CreateSubDomains(req models.CreateSubDomainsRequest) 
 		for _, subDomainName := range req.SubDomains {
 			// 检查子域名是否已存在于该主域名下
 			var existingSubDomain models.SubDomain
-			result := tx.Where("sub_domain_name = ? AND main_domain_id = ?", subDomainName, req.MainDomainID).First(&existingSubDomain)
+			result := tx.Where("name = ? AND domain_id = ?", subDomainName, req.DomainID).First(&existingSubDomain)
 
 			if result.Error == gorm.ErrRecordNotFound {
 				// 子域名不存在，创建新的
 				newSubDomain := models.SubDomain{
-					SubDomainName: subDomainName,
-					MainDomainID:  req.MainDomainID,
-					Status:        req.Status,
+					Name:     subDomainName,
+					DomainID: req.DomainID,
 				}
 				if err := tx.Create(&newSubDomain).Error; err != nil {
 					log.Error().Err(err).Msg("Failed to create sub domain")
@@ -133,7 +132,7 @@ func (s *SubDomainService) CreateSubDomains(req models.CreateSubDomainsRequest) 
 	}
 
 	log.Info().
-		Str("main_domain_id", req.MainDomainID).
+		Uint("domain_id", req.DomainID).
 		Int("success_count", createdCount).
 		Int("total_domains", len(req.SubDomains)).
 		Msg("Sub domains created successfully")
@@ -141,20 +140,20 @@ func (s *SubDomainService) CreateSubDomains(req models.CreateSubDomainsRequest) 
 	return response, nil
 }
 
-// GetSubDomainsByMainDomain 根据主域名ID获取所有子域名
-func (s *SubDomainService) GetSubDomainsByMainDomain(mainDomainID string) ([]models.SubDomain, error) {
+// GetSubDomainsByDomain 根据域名ID获取所有子域名
+func (s *SubDomainService) GetSubDomainsByDomain(domainID uint) ([]models.SubDomain, error) {
 	var subDomains []models.SubDomain
 
-	result := s.db.Where("main_domain_id = ?", mainDomainID).Order("created_at DESC").Find(&subDomains)
+	result := s.db.Where("domain_id = ?", domainID).Order("created_at DESC").Find(&subDomains)
 	if result.Error != nil {
 		log.Error().Err(result.Error).Msg("Failed to query sub domains by main domain")
 		return nil, result.Error
 	}
 
 	log.Info().
-		Str("main_domain_id", mainDomainID).
+		Uint("domain_id", domainID).
 		Int("count", len(subDomains)).
-		Msg("Sub domains by main domain retrieved successfully")
+		Msg("Sub domains by domain retrieved successfully")
 
 	return subDomains, nil
 }

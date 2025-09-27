@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"strconv"
 
 	"vulun-scan-backend/internal/models"
 	"vulun-scan-backend/pkg/database"
@@ -24,26 +25,32 @@ func NewScanService() *ScanService {
 
 // StartOrganizationScan 开始组织扫描
 func (s *ScanService) StartOrganizationScan(organizationID string) (*models.StartOrganizationScanResponse, error) {
-	// 获取组织的主域名
-	domainService := NewMainDomainService()
-	mainDomains, err := domainService.GetOrganizationMainDomains(organizationID)
+	// 转换组织ID为uint
+	orgID, err := strconv.ParseUint(organizationID, 10, 32)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to get organization main domains")
+		return nil, fmt.Errorf("invalid organization ID: %w", err)
+	}
+
+	// 获取组织的域名
+	domainService := NewDomainService()
+	domains, err := domainService.GetOrganizationDomains(uint(orgID))
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get organization domains")
 		return nil, err
 	}
 
-	if len(mainDomains) == 0 {
-		return nil, fmt.Errorf("organization has no main domains to scan")
+	if len(domains) == 0 {
+		return nil, fmt.Errorf("organization has no domains to scan")
 	}
 
 	var taskIDs []string
 
 	// 使用事务创建扫描任务
 	err = s.db.Transaction(func(tx *gorm.DB) error {
-		for _, mainDomain := range mainDomains {
+		for _, domain := range domains {
 			scanTask := models.ScanTask{
-				OrganizationID: organizationID,
-				MainDomainID:   mainDomain.ID,
+				OrganizationID: uint(orgID),
+				DomainID:       domain.ID,
 				Status:         "pending",
 			}
 
@@ -52,7 +59,7 @@ func (s *ScanService) StartOrganizationScan(organizationID string) (*models.Star
 				return err
 			}
 
-			taskIDs = append(taskIDs, scanTask.ID)
+			taskIDs = append(taskIDs, strconv.FormatUint(uint64(scanTask.ID), 10))
 		}
 		return nil
 	})
@@ -147,7 +154,7 @@ func (s *ScanService) UpdateScanTaskStatus(taskID, status string) error {
 }
 
 // CreateScanResult 创建扫描结果
-func (s *ScanService) CreateScanResult(taskID, resultSummary string) (*models.ScanResult, error) {
+func (s *ScanService) CreateScanResult(taskID uint, resultSummary string) (*models.ScanResult, error) {
 	scanResult := models.ScanResult{
 		ScanTaskID:    taskID,
 		ResultSummary: resultSummary,
@@ -160,8 +167,8 @@ func (s *ScanService) CreateScanResult(taskID, resultSummary string) (*models.Sc
 	}
 
 	log.Info().
-		Str("task_id", taskID).
-		Str("result_id", scanResult.ID).
+		Uint("task_id", taskID).
+		Uint("result_id", scanResult.ID).
 		Msg("Scan result created successfully")
 
 	return &scanResult, nil

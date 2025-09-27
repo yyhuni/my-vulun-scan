@@ -84,7 +84,7 @@ func (s *OrganizationService) CreateOrganization(req models.CreateOrganizationRe
 	}
 
 	log.Info().
-		Str("id", org.ID).
+		Uint("id", org.ID).
 		Str("name", org.Name).
 		Msg("Organization created successfully")
 
@@ -121,7 +121,7 @@ func (s *OrganizationService) UpdateOrganization(req models.UpdateOrganizationRe
 	}
 
 	log.Info().
-		Str("id", org.ID).
+		Uint("id", org.ID).
 		Str("name", org.Name).
 		Msg("Organization updated successfully")
 
@@ -160,21 +160,21 @@ func (s *OrganizationService) DeleteOrganization(organizationID string) error {
 func (s *OrganizationService) GetOrganizationStats(organizationID string) (map[string]interface{}, error) {
 	stats := make(map[string]interface{})
 
-	// 获取主域名数量
-	var mainDomainCount int64
-	err := s.db.Model(&models.OrganizationMainDomain{}).Where("organization_id = ?", organizationID).Count(&mainDomainCount).Error
+	// 获取域名数量
+	var domainCount int64
+	err := s.db.Model(&models.OrganizationDomain{}).Where("organization_id = ?", organizationID).Count(&domainCount).Error
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to count main domains")
 		return nil, err
 	}
-	stats["main_domain_count"] = mainDomainCount
+	stats["domain_count"] = domainCount
 
 	// 获取子域名数量
 	var subDomainCount int64
 	err = s.db.Table("sub_domains sd").
-		Joins("JOIN main_domains md ON sd.main_domain_id = md.id").
-		Joins("JOIN organization_main_domains omd ON md.id = omd.main_domain_id").
-		Where("omd.organization_id = ?", organizationID).
+		Joins("JOIN domains d ON sd.domain_id = d.id").
+		Joins("JOIN organization_domains od ON d.id = od.domain_id").
+		Where("od.organization_id = ?", organizationID).
 		Count(&subDomainCount).Error
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to count sub domains")

@@ -18,7 +18,45 @@ var DB *gorm.DB
 func InitDB() {
 	cfg := config.GetConfig()
 
-	// 构建连接字符串
+	// 先连接到 postgres 系统数据库来创建目标数据库
+	systemDSN := fmt.Sprintf("host=%s user=%s password=%s dbname=postgres port=%d sslmode=%s TimeZone=Asia/Shanghai",
+		cfg.Database.Host,
+		cfg.Database.User,
+		cfg.Database.Password,
+		cfg.Database.Port,
+		cfg.Database.SSLMode,
+	)
+
+	// 临时连接到系统数据库
+	systemDB, err := gorm.Open(postgres.Open(systemDSN), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent), // 静默模式，避免过多日志
+	})
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to connect to system database")
+	}
+
+	// 检查数据库是否存在
+	var count int64
+	checkQuery := fmt.Sprintf("SELECT COUNT(*) FROM pg_database WHERE datname = '%s'", cfg.Database.DBName)
+	systemDB.Raw(checkQuery).Row().Scan(&count)
+
+	// 如果数据库不存在，创建它
+	if count == 0 {
+		log.Info().Str("database", cfg.Database.DBName).Msg("Database does not exist, creating...")
+		createQuery := fmt.Sprintf("CREATE DATABASE %s", cfg.Database.DBName)
+		if err := systemDB.Exec(createQuery).Error; err != nil {
+			log.Fatal().Err(err).Str("database", cfg.Database.DBName).Msg("Failed to create database")
+		}
+		log.Info().Str("database", cfg.Database.DBName).Msg("Database created successfully")
+	} else {
+		log.Info().Str("database", cfg.Database.DBName).Msg("Database already exists")
+	}
+
+	// 关闭系统数据库连接
+	sqlDB, _ := systemDB.DB()
+	sqlDB.Close()
+
+	// 构建目标数据库连接字符串
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=Asia/Shanghai",
 		cfg.Database.Host,
 		cfg.Database.User,
@@ -29,18 +67,18 @@ func InitDB() {
 	)
 
 	// 配置GORM
-	config := &gorm.Config{
+	gormConfig := &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info), // 开启SQL日志
 	}
 
-	var err error
-	DB, err = gorm.Open(postgres.Open(dsn), config)
+	// 连接到目标数据库
+	DB, err = gorm.Open(postgres.Open(dsn), gormConfig)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to connect database")
+		log.Fatal().Err(err).Msg("Failed to connect to target database")
 	}
 
 	// 获取底层sql.DB进行连接池配置
-	sqlDB, err := DB.DB()
+	sqlDB, err = DB.DB()
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to get underlying sql.DB")
 	}

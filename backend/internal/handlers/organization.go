@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"strconv"
+
 	"vulun-scan-backend/internal/models"
 	"vulun-scan-backend/internal/services"
 	"vulun-scan-backend/internal/utils"
@@ -63,14 +65,20 @@ func GetOrganizationByID(c *gin.Context) {
 
 // UpdateOrganization 更新组织信息
 func UpdateOrganization(c *gin.Context) {
-	id := c.Param("id")
-	if id == "" {
+	idStr := c.Param("id")
+	if idStr == "" {
 		utils.BadRequestResponse(c, "组织ID不能为空")
 		return
 	}
 
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		utils.BadRequestResponse(c, "无效的组织ID")
+		return
+	}
+
 	var req models.UpdateOrganizationRequest
-	req.ID = id
+	req.ID = uint(id)
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
@@ -100,7 +108,7 @@ func DeleteOrganization(c *gin.Context) {
 	}
 
 	service := services.NewOrganizationService()
-	err := service.DeleteOrganization(req.OrganizationID)
+	err := service.DeleteOrganization(strconv.FormatUint(uint64(req.OrganizationID), 10))
 	if err != nil {
 		if err.Error() == "organization not found" {
 			utils.NotFoundResponse(c, "组织不存在")

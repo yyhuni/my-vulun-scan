@@ -4,11 +4,19 @@ package models
 func GetAllModels() []interface{} {
 	return []interface{}{
 		&Organization{},
-		&MainDomain{},
-		&OrganizationMainDomain{},
+		&Domain{},
+		&DomainInfo{},
+		&OrganizationDomain{},
 		&SubDomain{},
 		&ScanTask{},
 		&ScanResult{},
 		&Vulnerability{},
+		&DomainStatus{},
+		&NameServer{},
+		&DNSRecord{},
+		&RelatedDomain{},
+		&RelatedTLD{},
+		&SimilarDomain{},
+		&HistoricalIP{},
 	}
 }

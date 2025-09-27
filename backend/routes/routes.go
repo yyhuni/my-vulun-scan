@@ -19,9 +19,9 @@ func SetupOrganizationRoutes(api *gin.RouterGroup) {
 		orgGroup.POST("/batch-delete", handlers.BatchDeleteOrganizations)
 		orgGroup.GET("/search", handlers.SearchOrganizations)
 
-		// 组织主域名相关操作
-		orgGroup.GET("/:id/main-domains", handlers.GetOrganizationMainDomains)
-		orgGroup.POST("/remove-main-domain", handlers.RemoveOrganizationMainDomain)
+		// 组织域名相关操作
+		orgGroup.GET("/:id/domains", handlers.GetOrganizationDomains)
+		orgGroup.POST("/remove-domain", handlers.RemoveOrganizationDomain)
 
 		// 组织子域名相关操作
 		orgGroup.GET("/:id/sub-domains", handlers.GetOrganizationSubDomains)
@@ -45,8 +45,8 @@ func SetupScanRoutes(api *gin.RouterGroup) {
 func SetupAssetsRoutes(api *gin.RouterGroup) {
 	assetsGroup := api.Group("/assets")
 	{
-		// 主域名相关操作
-		assetsGroup.POST("/main-domains/create", handlers.CreateMainDomains)
+		// 域名相关操作
+		assetsGroup.POST("/domains/create", handlers.CreateDomains)
 
 		// 子域名相关操作
 		assetsGroup.POST("/sub-domains/create", handlers.CreateSubDomains)
