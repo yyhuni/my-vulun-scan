@@ -63,30 +63,30 @@ func inferInputType(name string) string {
 	return "domain"
 }
 
-// CreateDomains 创建域名并关联到组织（优化版本：批量查询替代N+1查询）
-// 支持批量创建域名并关联到组织
+// CreateDomains 创建domain并关联到organization
+// 支持批量创建domain并关联到organization
 func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) (*models.APIResponse, error) {
 	var createdCount int
 	var existingDomains []string
 	var associatedCount int
 
-	// 1. 预处理：批量查询所有域名是否存在
-	domainNames := make([]string, len(req.Domains))
+	// 1. 预处理：批量查询所有domain是否存在
+	reqDomainNames := make([]string, len(req.Domains))
 	for i, detail := range req.Domains {
-		domainNames[i] = detail.Name
+		reqDomainNames[i] = detail.Name
 	}
 
-	// 批量查询存在的域名
+	// 批量查询存在的domain
 	var existingDomainList []models.Domain
-	s.db.Where("name IN ?", domainNames).Find(&existingDomainList)
+	s.db.Where("name IN ?", reqDomainNames).Find(&existingDomainList)
 
-	// 创建域名名称到ID的映射
+	// 创建domainName到domainID的映射，用于检查domain是否已存在
 	domainNameToID := make(map[string]uint)
 	for _, domain := range existingDomainList {
 		domainNameToID[domain.Name] = domain.ID
 	}
 
-	// 2. 预处理：批量查询现有组织-域名关联
+	// 2. 预处理：批量查询现有organization-domain关联，用于检查是否已关联
 	var existingAssociations []models.OrganizationDomain
 	if len(existingDomainList) > 0 {
 		existingDomainIDs := make([]uint, len(existingDomainList))
@@ -97,23 +97,23 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) (*models.
 			Find(&existingAssociations)
 	}
 
-	// 创建已关联域名ID的映射
-	associatedDomainIDs := make(map[uint]bool)
+	// 创建已关联domainID的映射，用于检查是否已关联
+	linkedDomainIDs := make(map[uint]bool)
 	for _, assoc := range existingAssociations {
-		associatedDomainIDs[assoc.DomainID] = true
+		linkedDomainIDs[assoc.DomainID] = true
 	}
 
-	// 3. 在事务中处理创建和关联
+	// 3. 在事务中处理创建和关联domain，使用批量查询替代N+1查询
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		for _, detail := range req.Domains {
 			var domainID uint
 
-			// 检查域名是否存在（使用内存映射）
+			// 检查domain是否存在（使用内存映射，提高查询性能）
 			if id, exists := domainNameToID[detail.Name]; exists {
 				domainID = id
 				existingDomains = append(existingDomains, detail.Name)
 			} else {
-				// 域名不存在，创建新的
+				// domain不存在，创建新的
 				inputType := inferInputType(detail.Name)
 				newDomain := models.Domain{
 					Name:         detail.Name,
@@ -123,7 +123,7 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) (*models.
 					InputType:    inputType,
 				}
 
-				// 如果是 CIDR 类型但没有明确指定 CidrRange，使用 Name 作为 CidrRange
+				// 如果是 CIDR 类型但没有明确指定 CidrRange，使用 name 作为 CidrRange
 				if inputType == "cidr" && detail.CidrRange == "" {
 					newDomain.CidrRange = detail.Name
 				}
@@ -139,7 +139,7 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) (*models.
 			}
 
 			// 检查是否已关联（使用内存映射）
-			if associatedDomainIDs[domainID] {
+			if linkedDomainIDs[domainID] {
 				// 域名已存在且已关联，无需处理
 				continue
 			} else {
