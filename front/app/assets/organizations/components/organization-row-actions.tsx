@@ -20,12 +20,14 @@ interface Organization {
 interface OrganizationRowActionsProps {
   organization: Organization
   onView: () => void
+  onEdit: () => void
   onDelete: () => void
 }
 
 export function OrganizationRowActions({
   organization,
   onView,
+  onEdit,
   onDelete,
 }: OrganizationRowActionsProps) {
   return (
@@ -41,7 +43,7 @@ export function OrganizationRowActions({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[160px]">
         <DropdownMenuItem onClick={onView}>View</DropdownMenuItem>
-        <DropdownMenuItem>Edit</DropdownMenuItem>
+        <DropdownMenuItem onClick={onEdit}>Edit</DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={onDelete}>Delete</DropdownMenuItem>
       </DropdownMenuContent>

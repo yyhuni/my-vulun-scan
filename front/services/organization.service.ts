@@ -46,6 +46,21 @@ export class OrganizationService {
   }
 
   /**
+   * 更新组织信息
+   */
+  static async updateOrganization(data: {
+    id: string | number
+    name: string
+    description: string
+  }): Promise<ApiResponse<Organization>> {
+    const response = await api.post<ApiResponse<Organization>>(`/organizations/${data.id}/update`, {
+      name: data.name,
+      description: data.description
+    })
+    return response.data
+  }
+
+  /**
    * 删除组织
    */
   static async deleteOrganization(id: string): Promise<ApiResponse> {

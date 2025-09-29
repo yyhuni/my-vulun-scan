@@ -18,12 +18,14 @@ export interface Organization {
 interface CreateColumnsProps {
   formatDate: (dateString: string) => string
   navigate: (path: string) => void
+  handleEdit: (org: Organization) => void
   handleDelete: (org: Organization) => void
 }
 
 export const createOrganizationColumns = ({
   formatDate,
   navigate,
+  handleEdit,
   handleDelete,
 }: CreateColumnsProps): ColumnDef<Organization>[] => [
   {
@@ -108,9 +110,10 @@ export const createOrganizationColumns = ({
   {
     id: "actions",
     cell: ({ row }) => (
-      <OrganizationRowActions 
+      <OrganizationRowActions
         organization={row.original}
         onView={() => navigate(`/assets/organizations/${row.original.id}`)}
+        onEdit={() => handleEdit(row.original)}
         onDelete={() => handleDelete(row.original)}
       />
     ),

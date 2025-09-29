@@ -31,6 +31,7 @@ import { createOrganizationColumns, Organization } from "./organization-columns"
 
 // 业务组件
 import AddOrganizationDialog from "./add-organization-dialog"
+import EditOrganizationDialog from "./edit-organization-dialog"
 
 
 type ViewState = "loading" | "data" | "empty" | "error"
@@ -39,7 +40,9 @@ export default function OrganizationList() {
   // 状态管理
   const [viewState, setViewState] = useState<ViewState>("loading")
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [organizationToDelete, setOrganizationToDelete] = useState<Organization | null>(null)
+  const [organizationToEdit, setOrganizationToEdit] = useState<Organization | null>(null)
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [error, setError] = useState<string | null>(null)
   const [selectedCount, setSelectedCount] = useState(0)
@@ -65,9 +68,14 @@ export default function OrganizationList() {
     setDeleteDialogOpen(true)
   }
 
+  const handleEdit = (org: Organization) => {
+    setOrganizationToEdit(org)
+    setEditDialogOpen(true)
+  }
+
   // 创建列定义
   const columns = useMemo(() =>
-    createOrganizationColumns({ formatDate, navigate, handleDelete }),
+    createOrganizationColumns({ formatDate, navigate, handleEdit, handleDelete }),
     [navigate]
   )
 
@@ -116,6 +124,17 @@ export default function OrganizationList() {
   // 添加组织
   const handleOrganizationAdded = () => {
     fetchOrganizations()
+  }
+
+  // 编辑组织
+  const handleOrganizationEdited = (updatedOrganization: Organization) => {
+    setOrganizations((prev) =>
+      prev.map((org) =>
+        org.id === updatedOrganization.id ? updatedOrganization : org
+      )
+    )
+    setEditDialogOpen(false)
+    setOrganizationToEdit(null)
   }
 
   // 批量删除处理函数
@@ -210,6 +229,16 @@ export default function OrganizationList() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* 编辑组织对话框 */}
+      {organizationToEdit && (
+        <EditOrganizationDialog
+          organization={organizationToEdit}
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          onEdit={handleOrganizationEdited}
+        />
+      )}
     </div>
   )
 }
