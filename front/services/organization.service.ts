@@ -1,9 +1,7 @@
 import { api } from "@/lib/api-client"
 import type { 
   ApiResponse, 
-  PaginatedResponse, 
   Organization, 
-  MainDomain, 
   SubDomain 
 } from "@/types/api.types"
 
