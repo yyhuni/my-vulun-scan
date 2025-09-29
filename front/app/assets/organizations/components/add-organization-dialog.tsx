@@ -35,11 +35,8 @@ interface Organization {
   CreatedAt: string
 }
 
-interface AddOrganizationDialogProps {
-  onAdd: (organization: Organization) => void
-}
 
-export default function AddOrganizationDialog({ onAdd }: AddOrganizationDialogProps) {
+export default function AddOrganizationDialog({ onAdd }: any) {
   const { toast } = useToast()
   const [open, setOpen] = useState(false)
   const [formData, setFormData] = useState({
@@ -68,7 +65,7 @@ export default function AddOrganizationDialog({ onAdd }: AddOrganizationDialogPr
       console.log('Backend response:', response)
 
       if (response.code === "200" && response.data) {
-        onAdd(response.data) // 使用后端返回的完整组织数据
+        onAdd() // 组织创建成功，通知父组件刷新列表
         toast({
           title: "添加成功",
           description: `组织 "${formData.name}" 已成功添加`,
