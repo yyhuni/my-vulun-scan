@@ -75,7 +75,7 @@ export default function OrganizationAssets({ organizationId }: OrganizationAsset
       // 使用组织服务
       const response = await OrganizationService.getOrganizationDomains(organizationId)
 
-      if (response.code === "SUCCESS" && response.data && Array.isArray(response.data.domains)) {
+      if (response.code === "200" && response.data && Array.isArray(response.data.domains)) {
         // 后端返回的是 domains 字段
         setDomains(response.data.domains)
       } else {
@@ -102,7 +102,7 @@ export default function OrganizationAssets({ organizationId }: OrganizationAsset
         organizationId: parseInt(organizationId),  // 转换为数字类型
       })
 
-      if (response.code === "SUCCESS") {
+      if (response.code === "200") {
         const successCount = response.data?.successCount || domains.length
         toast.success(`成功添加 ${successCount} 个域名`)
         // 重新获取域名列表
@@ -135,7 +135,7 @@ export default function OrganizationAssets({ organizationId }: OrganizationAsset
         domainId: parseInt(domainToDelete.id)
       })
 
-      if (response.code === "SUCCESS") {
+      if (response.code === "200") {
         // 从本地状态中移除该域名
         setDomains(prev => prev.filter(domain => domain.id !== domainToDelete.id))
         toast.success(`已解除组织与域名 "${domainToDelete.name || domainToDelete.domainName}" 的关联`)

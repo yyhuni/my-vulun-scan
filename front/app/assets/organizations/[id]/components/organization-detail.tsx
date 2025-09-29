@@ -68,7 +68,7 @@ export default function OrganizationDetail({ organizationId }: OrganizationDetai
       const response = await OrganizationService.getOrganization(id)
 
       // 检查响应码并获取数据
-      if (response.code === "SUCCESS" && response.data) {
+      if (response.code === "200" && response.data) {
         // 数据已经自动转换为 camelCase，无需手动转换
         setOrganization(response.data)
         setViewState("data")

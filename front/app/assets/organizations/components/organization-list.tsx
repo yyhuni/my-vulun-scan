@@ -88,7 +88,7 @@ export default function OrganizationList() {
       const response = await OrganizationService.getOrganizations()
 
       // 检查响应码并获取数据
-      if (response.code === "SUCCESS" && Array.isArray(response.data)) {
+      if (response.code === "200" && Array.isArray(response.data)) {
         // 数据已经自动转换为 camelCase，无需手动转换
         setOrganizations(response.data)
         setViewState(response.data.length > 0 ? "data" : "empty")

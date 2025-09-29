@@ -93,7 +93,7 @@ export default function AddOrganizationDialog({
           description: formData.description,
         })
 
-        if (response.code === "SUCCESS" && response.data) {
+        if (response.code === "200" && response.data) {
           onEdit?.(response.data)
           toast({
             title: "更新成功",
@@ -109,7 +109,7 @@ export default function AddOrganizationDialog({
           description: formData.description,
         })
 
-        if (response.code === "SUCCESS" && response.data) {
+        if (response.code === "200" && response.data) {
           onAdd(response.data)
           toast({
             title: "添加成功",

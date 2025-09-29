@@ -220,7 +220,7 @@ export default function OrganizationSubDomains({ organizationId }: OrganizationS
       // 使用组织服务
       const response = await OrganizationService.getOrganization(organizationId)
 
-      if (response.code === "SUCCESS" && response.data) {
+      if (response.code === "200" && response.data) {
         setOrganizationName(response.data.name || "")
       }
     } catch (error: any) {
@@ -236,7 +236,7 @@ export default function OrganizationSubDomains({ organizationId }: OrganizationS
       // 使用组织服务
       const response = await OrganizationService.getOrganizationDomains(organizationId)
 
-      if (response.code === "SUCCESS" && response.data) {
+      if (response.code === "200" && response.data) {
         // 后端返回的是 domains 字段
         const domains = response.data.domains || []
         setMainDomains(domains)
@@ -269,7 +269,7 @@ export default function OrganizationSubDomains({ organizationId }: OrganizationS
         page, pageSize
       })
 
-      if (response.code === "SUCCESS" && response.data) {
+      if (response.code === "200" && response.data) {
         const data = response.data
         // 数据已经自动转换为 camelCase，无需手动转换
         const subDomains = data.subDomains || []
