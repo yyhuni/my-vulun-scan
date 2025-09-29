@@ -37,15 +37,40 @@ interface Organization {
 
 interface AddOrganizationDialogProps {
   onAdd: (organization: Organization) => void
+  organization?: Organization | null  // 编辑模式下传入的组织数据
+  onEdit?: (organization: Organization) => void  // 编辑模式下的回调
 }
 
-export default function AddOrganizationDialog({ onAdd }: AddOrganizationDialogProps) {
+export default function AddOrganizationDialog({
+  onAdd,
+  organization,
+  onEdit
+}: AddOrganizationDialogProps) {
   const { toast } = useToast()
   const [open, setOpen] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
     description: "",
   })
+
+  const isEditMode = !!organization
+  const dialogTitle = isEditMode ? "编辑组织" : "添加新组织"
+  const submitButtonText = isEditMode ? "更新组织" : "添加组织"
+
+  // 当组织数据变化时更新表单
+  React.useEffect(() => {
+    if (organization) {
+      setFormData({
+        name: organization.name || "",
+        description: organization.description || "",
+      })
+    } else {
+      setFormData({
+        name: "",
+        description: "",
+      })
+    }
+  }, [organization])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -60,25 +85,39 @@ export default function AddOrganizationDialog({ onAdd }: AddOrganizationDialogPr
     }
 
     try {
-      // 使用组织服务
-      const response = await OrganizationService.createOrganization({
-        name: formData.name,
-        description: formData.description,
-      })
-      console.log('Backend response:', response)
+      if (isEditMode && organization) {
+        // 编辑模式
+        const response = await OrganizationService.updateOrganization({
+          id: organization.id,
+          name: formData.name,
+          description: formData.description,
+        })
 
-      if (response.code === "200" && response.data) {
-        onAdd(response.data) // 使用后端返回的完整组织数据
-        toast({
-          title: "添加成功",
-          description: `组织 "${formData.name}" 已成功添加`,
-        })
+        if (response.code === "SUCCESS" && response.data) {
+          onEdit?.(response.data)
+          toast({
+            title: "更新成功",
+            description: `组织 "${formData.name}" 已成功更新`,
+          })
+        } else {
+          throw new Error(response.message || "更新组织失败")
+        }
       } else {
-        toast({
-          title: "错误",
-          description: response.message || "创建组织失败，请重试。",
-          variant: "destructive",
+        // 添加模式
+        const response = await OrganizationService.createOrganization({
+          name: formData.name,
+          description: formData.description,
         })
+
+        if (response.code === "SUCCESS" && response.data) {
+          onAdd(response.data)
+          toast({
+            title: "添加成功",
+            description: `组织 "${formData.name}" 已成功添加`,
+          })
+        } else {
+          throw new Error(response.message || "创建组织失败")
+        }
       }
     } catch (error: any) {
       toast({
@@ -114,9 +153,14 @@ export default function AddOrganizationDialog({ onAdd }: AddOrganizationDialogPr
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <Building2 className="h-5 w-5" />
-            <span>添加新组织</span>
+            <span>{dialogTitle}</span>
           </DialogTitle>
-          <DialogDescription>填写组织信息以添加到系统中。标有 * 的字段为必填项。</DialogDescription>
+          <DialogDescription>
+            {isEditMode
+              ? "修改组织的基本信息。标有 * 的字段为必填项。"
+              : "填写组织信息以添加到系统中。标有 * 的字段为必填项。"
+            }
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
@@ -145,7 +189,7 @@ export default function AddOrganizationDialog({ onAdd }: AddOrganizationDialogPr
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               取消
             </Button>
-            <Button type="submit">添加组织</Button>
+            <Button type="submit">{submitButtonText}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
