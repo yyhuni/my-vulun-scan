@@ -182,24 +182,6 @@ func (s *OrganizationService) GetOrganizationStats(organizationID string) (map[s
 	}
 	stats["sub_domain_count"] = subDomainCount
 
-	// 获取扫描任务数量
-	var scanTaskCount int64
-	err = s.db.Model(&models.ScanTask{}).Where("organization_id = ?", organizationID).Count(&scanTaskCount).Error
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to count scan tasks")
-		return nil, err
-	}
-	stats["scan_task_count"] = scanTaskCount
-
-	// 获取漏洞数量
-	var vulnerabilityCount int64
-	err = s.db.Model(&models.Vulnerability{}).Where("organization_id = ?", organizationID).Count(&vulnerabilityCount).Error
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to count vulnerabilities")
-		return nil, err
-	}
-	stats["vulnerability_count"] = vulnerabilityCount
-
 	log.Info().Str("organization_id", organizationID).Msg("Organization stats retrieved successfully")
 	return stats, nil
 }

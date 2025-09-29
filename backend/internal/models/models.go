@@ -5,18 +5,7 @@ func GetAllModels() []interface{} {
 	return []interface{}{
 		&Organization{},
 		&Domain{},
-		&DomainInfo{},
 		&OrganizationDomain{},
 		&SubDomain{},
-		&ScanTask{},
-		&ScanResult{},
-		&Vulnerability{},
-		&DomainStatus{},
-		&NameServer{},
-		&DNSRecord{},
-		&RelatedDomain{},
-		&RelatedTLD{},
-		&SimilarDomain{},
-		&HistoricalIP{},
 	}
 }

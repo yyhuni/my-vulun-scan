@@ -2,7 +2,6 @@ package services
 
 import (
 	"fmt"
-	"net"
 	"strings"
 
 	"vulun-scan-backend/internal/models"
@@ -45,22 +44,6 @@ func (s *DomainService) GetOrganizationDomains(organizationID uint) ([]models.Do
 		Msg("Organization domains retrieved successfully")
 
 	return domains, nil
-}
-
-// inferInputType 推断输入类型
-func inferInputType(name string) string {
-	// 检查是否为 CIDR 格式
-	if strings.Contains(name, "/") {
-		return "cidr"
-	}
-
-	// 检查是否为 IP 地址
-	if net.ParseIP(name) != nil {
-		return "ip"
-	}
-
-	// 默认为域名
-	return "domain"
 }
 
 // CreateDomains 创建domain并关联到organization
@@ -114,18 +97,9 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) (*models.
 				existingDomains = append(existingDomains, detail.Name)
 			} else {
 				// domain不存在，创建新的
-				inputType := inferInputType(detail.Name)
 				newDomain := models.Domain{
-					Name:         detail.Name,
-					H1TeamHandle: detail.H1TeamHandle,
-					Description:  detail.Description,
-					CidrRange:    detail.CidrRange,
-					InputType:    inputType,
-				}
-
-				// 如果是 CIDR 类型但没有明确指定 CidrRange，使用 name 作为 CidrRange
-				if inputType == "cidr" && detail.CidrRange == "" {
-					newDomain.CidrRange = detail.Name
+					Name:        detail.Name,
+					Description: detail.Description,
 				}
 
 				if err := tx.Create(&newDomain).Error; err != nil {
@@ -292,16 +266,9 @@ func (s *DomainService) UpdateDomain(req models.UpdateDomainRequest) (*models.Do
 			return nil, fmt.Errorf("domain name already exists")
 		}
 		updates["name"] = req.Name
-		updates["input_type"] = inferInputType(req.Name)
-	}
-	if req.H1TeamHandle != "" {
-		updates["h1_team_handle"] = req.H1TeamHandle
 	}
 	if req.Description != "" {
 		updates["description"] = req.Description
-	}
-	if req.CidrRange != "" {
-		updates["cidr_range"] = req.CidrRange
 	}
 
 	if len(updates) == 0 {

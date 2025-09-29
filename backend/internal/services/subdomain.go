@@ -77,10 +77,6 @@ func (s *SubDomainService) GetOrganizationSubDomains(organizationID string, page
 
 // CreateSubDomains 创建子域名
 func (s *SubDomainService) CreateSubDomains(req models.CreateSubDomainsRequest) (*models.APIResponse, error) {
-	if req.Status == "" {
-		req.Status = "unknown"
-	}
-
 	var createdCount int
 	var existingDomains []string
 

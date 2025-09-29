@@ -25,9 +25,6 @@ func SetupOrganizationRoutes(api *gin.RouterGroup) {
 
 		// 组织子域名相关操作
 		orgGroup.GET("/:id/sub-domains", handlers.GetOrganizationSubDomains)
-
-		// 组织漏洞相关操作
-		orgGroup.GET("/:id/vulnerabilities", handlers.GetOrganizationVulnerabilities)
 	}
 }
 
@@ -53,16 +50,6 @@ func SetupDomainRoutes(api *gin.RouterGroup) {
 
 		// 搜索域名 - 支持分页搜索和模糊匹配
 		domainGroup.GET("/search", handlers.SearchDomains)
-	}
-}
-
-// SetupScanRoutes 设置扫描相关路由
-func SetupScanRoutes(api *gin.RouterGroup) {
-	scanGroup := api.Group("/scan")
-	{
-		// 组织扫描相关操作
-		scanGroup.POST("/organizations/:id/start", handlers.StartOrganizationScan)
-		scanGroup.GET("/organizations/:id/history", handlers.GetOrganizationScanHistory)
 	}
 }
 

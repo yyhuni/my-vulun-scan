@@ -6,7 +6,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// Domain 侦察目标的核心实体，可表示域名或 IP 地址
+// Domain 侦察目标的核心实体，专门表示域名
 type Domain struct {
 	// 数据库基础字段
 	ID        uint           `json:"id" gorm:"primaryKey;autoIncrement"`
@@ -15,25 +15,12 @@ type Domain struct {
 	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"index"`
 
 	// 核心业务字段
-	Name      string `json:"name" gorm:"uniqueIndex;not null;size:255"`
-	InputType string `json:"input_type" gorm:"not null;size:100;default:'domain'"`
-
-	// 扩展字段
-	H1TeamHandle string `json:"h1_team_handle" gorm:"size:100"`
-	Description  string `json:"description" gorm:"size:1000"`
-	CidrRange    string `json:"cidr_range" gorm:"size:100"`
-
-	// 关联字段
-	DomainInfoID uint `json:"domain_info_id"`
+	Name        string `json:"name" gorm:"uniqueIndex;not null;size:255"`
+	Description string `json:"description" gorm:"size:1000"`
 
 	// 关联关系
-	DomainInfo    *DomainInfo    `json:"domain_info,omitempty" gorm:"foreignKey:DomainInfoID;constraint:OnDelete:CASCADE"`
 	Organizations []Organization `json:"organizations,omitempty" gorm:"many2many:organization_domains;constraint:OnDelete:CASCADE"`
 	SubDomains    []SubDomain    `json:"sub_domains,omitempty" gorm:"foreignKey:DomainID;constraint:OnDelete:CASCADE"`
-	// ScanHistories  []ScanHistory   `json:"scan_histories,omitempty" gorm:"foreignKey:DomainID;constraint:OnDelete:CASCADE"` // TODO: 待实现 ScanHistory 模型
-	// EndPoints      []EndPoint      `json:"end_points,omitempty" gorm:"foreignKey:DomainID;constraint:OnDelete:CASCADE"` // TODO: 待实现 EndPoint 模型
-	Vulnerabilities []Vulnerability `json:"vulnerabilities,omitempty" gorm:"-"`
-	// MetaFinderDocuments []MetaFinderDocument `json:"meta_finder_documents,omitempty" gorm:"foreignKey:DomainID;constraint:OnDelete:CASCADE"` // TODO: 待实现 MetaFinderDocument 模型
 }
 
 // OrganizationDomain 组织域名关联模型（多对多中间表）
@@ -54,10 +41,8 @@ type CreateDomainsRequest struct {
 
 // DomainDetail 域名详细信息
 type DomainDetail struct {
-	Name         string `json:"name" binding:"required"`
-	H1TeamHandle string `json:"h1_team_handle,omitempty"`
-	Description  string `json:"description,omitempty"`
-	CidrRange    string `json:"cidr_range,omitempty"`
+	Name        string `json:"name" binding:"required"`
+	Description string `json:"description,omitempty"`
 }
 
 // RemoveOrganizationDomainRequest 移除组织域名关联请求
@@ -72,35 +57,29 @@ type GetOrganizationDomainsResponse struct {
 }
 
 // UpdateDomainRequest 更新域名请求结构体
-// 支持部分字段更新，只更新提供的非空字段
 type UpdateDomainRequest struct {
-	ID           uint   `json:"id" binding:"required"`    // 域名ID，必填
-	Name         string `json:"name,omitempty"`           // 域名名称，可选，用于更新
-	H1TeamHandle string `json:"h1_team_handle,omitempty"` // HackerOne团队句柄，可选
-	Description  string `json:"description,omitempty"`    // 域名描述，可选
-	CidrRange    string `json:"cidr_range,omitempty"`     // CIDR范围，可选
+	ID          uint   `json:"id" binding:"required"`
+	Name        string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
 }
 
 // BatchDeleteDomainsRequest 批量删除域名请求结构体
-// 支持同时删除多个域名，提高操作效率
 type BatchDeleteDomainsRequest struct {
-	DomainIDs []uint `json:"domain_ids" binding:"required,min=1"` // 要删除的域名ID列表，至少包含一个ID
+	DomainIDs []uint `json:"domain_ids" binding:"required,min=1"`
 }
 
 // SearchDomainsRequest 搜索域名请求结构体
-// 支持分页搜索和模糊匹配，提高查询效率
 type SearchDomainsRequest struct {
-	Query    string `json:"query,omitempty"`     // 搜索关键词，支持域名名称、H1团队句柄和描述的模糊匹配
-	Page     int    `json:"page,omitempty"`      // 页码，从1开始，默认值为1
-	PageSize int    `json:"page_size,omitempty"` // 每页显示数量，默认值为20，最大值为100
+	Query    string `json:"query,omitempty"`
+	Page     int    `json:"page,omitempty"`
+	PageSize int    `json:"page_size,omitempty"`
 }
 
 // SearchDomainsResponse 搜索域名响应结构体
-// 返回分页搜索结果和统计信息
 type SearchDomainsResponse struct {
-	Domains    []Domain `json:"domains"`     // 域名列表
-	Total      int64    `json:"total"`       // 符合条件的域名总数
-	Page       int      `json:"page"`        // 当前页码
-	PageSize   int      `json:"page_size"`   // 每页显示数量
-	TotalPages int      `json:"total_pages"` // 总页数
+	Domains    []Domain `json:"domains"`
+	Total      int64    `json:"total"`
+	Page       int      `json:"page"`
+	PageSize   int      `json:"page_size"`
+	TotalPages int      `json:"total_pages"`
 }
