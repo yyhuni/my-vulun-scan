@@ -64,13 +64,3 @@ func SetupAssetsRoutes(api *gin.RouterGroup) {
 		assetsGroup.POST("/sub-domains/create", handlers.CreateSubDomains)
 	}
 }
-
-// SetupWorkflowRoutes 设置工作流相关路由（占位符）
-func SetupWorkflowRoutes(api *gin.RouterGroup) {
-	// 暂时保留空实现，后续可扩展
-}
-
-// SetupDashboardRoutes 设置仪表盘相关路由（占位符）
-func SetupDashboardRoutes(api *gin.RouterGroup) {
-	// 暂时保留空实现，后续可扩展
-}
