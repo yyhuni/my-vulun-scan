@@ -23,7 +23,6 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 
 // 自定义 Hooks 和 API 客户端
-import { useToast } from "@/hooks/use-toast"
 import { getErrorMessage } from "@/lib/api-client"
 import { OrganizationService } from "@/services/organization.service"
 
@@ -37,7 +36,6 @@ interface Organization {
 
 
 export default function AddOrganizationDialog({ onAdd }: any) {
-  const { toast } = useToast()
   const [open, setOpen] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
@@ -46,15 +44,6 @@ export default function AddOrganizationDialog({ onAdd }: any) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    if (!formData.name.trim()) {
-      toast({
-        title: "错误",
-        description: "请输入组织名称",
-        variant: "destructive",
-      })
-      return
-    }
 
     try {
       // 使用组织服务
@@ -66,23 +55,11 @@ export default function AddOrganizationDialog({ onAdd }: any) {
 
       if (response.code === "200" && response.data) {
         onAdd() // 组织创建成功，通知父组件刷新列表
-        toast({
-          title: "添加成功",
-          description: `组织 "${formData.name}" 已成功添加`,
-        })
       } else {
-        toast({
-          title: "错误",
-          description: response.message || "创建组织失败，请重试。",
-          variant: "destructive",
-        })
+        console.error("创建组织失败:", response.message || "创建组织失败，请重试。")
       }
     } catch (error: any) {
-      toast({
-        title: "错误",
-        description: getErrorMessage(error),
-        variant: "destructive",
-      })
+      console.error("创建组织失败:", getErrorMessage(error))
     } finally {
       setFormData({
         name: "",

@@ -4,7 +4,6 @@
 import { useState, useEffect } from "react"
 
 // 第三方库和 API 客户端
-import { toast } from "sonner"
 import { getErrorMessage } from "@/lib/api-client"
 import { OrganizationService } from "@/services/organization.service"
 
@@ -84,7 +83,7 @@ export default function OrganizationAssets({ organizationId }: OrganizationAsset
       }
     } catch (error) {
       console.error("获取域名出错:", error)
-      toast.error(getErrorMessage(error))
+      console.error("操作失败:", getErrorMessage(error))
       setDomains([])
     } finally {
       setLoading(false)
@@ -104,7 +103,7 @@ export default function OrganizationAssets({ organizationId }: OrganizationAsset
 
       if (response.code === "200") {
         const successCount = response.data?.successCount || domains.length
-        toast.success(`成功添加 ${successCount} 个域名`)
+        console.log(`成功添加 ${successCount} 个域名`)
         // 重新获取域名列表
         fetchDomains()
       } else {
@@ -112,7 +111,7 @@ export default function OrganizationAssets({ organizationId }: OrganizationAsset
       }
     } catch (error: any) {
       console.error("添加域名失败:", error)
-      toast.error(getErrorMessage(error))
+      console.error("操作失败:", getErrorMessage(error))
     } finally {
       setIsAddDomainDialogOpen(false)
     }
@@ -138,13 +137,13 @@ export default function OrganizationAssets({ organizationId }: OrganizationAsset
       if (response.code === "200") {
         // 从本地状态中移除该域名
         setDomains(prev => prev.filter(domain => domain.id !== domainToDelete.id))
-        toast.success(`已解除组织与域名 "${domainToDelete.name || domainToDelete.domainName}" 的关联`)
+        console.log(`已解除组织与域名 "${domainToDelete.name || domainToDelete.domainName}" 的关联`)
       } else {
         throw new Error(response.message || "解除关联失败")
       }
     } catch (error: any) {
       console.error("解除域名关联失败:", error)
-      toast.error(getErrorMessage(error))
+      console.error("操作失败:", getErrorMessage(error))
     } finally {
       setIsDeleteDialogOpen(false)
       setDomainToDelete(null)

@@ -5,6 +5,8 @@ import Loading from '@/components/common/loading'
 import NavigationLoading from '@/components/common/navigation-loading'
 import NavigationProvider from '@/components/providers/navigation-provider'
 import PreloadProvider from '@/components/providers/preload-provider'
+import { Toaster } from "@/components/ui/sonner";
+
 
 import { ChunkErrorBoundary } from '@/components/common/chunk-error-boundary'
 

@@ -21,7 +21,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { useToast } from "@/hooks/use-toast"
 
 // 动态数据生成
 const defaultKpiData = {
@@ -87,7 +86,6 @@ const generateSecurityAlerts = () => {
 }
 
 export default function EnhancedDashboard() {
-  const { toast } = useToast()
   const [kpiData, setKpiData] = useState<ReturnType<typeof generateKpiData> | null>(null);
   const [recentScans, setRecentScans] = useState<ReturnType<typeof generateRecentScans> | null>(null);
   const [securityAlerts, setSecurityAlerts] = useState<ReturnType<typeof generateSecurityAlerts> | null>(null);
@@ -133,10 +131,6 @@ export default function EnhancedDashboard() {
     setLastUpdated(new Date())
     setIsRefreshing(false)
 
-    toast({
-      title: "刷新成功",
-      description: "仪表盘数据已更新",
-    })
   }
 
   const getStatusIcon = (status: string) => {

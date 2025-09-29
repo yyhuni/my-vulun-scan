@@ -11,7 +11,6 @@ import { DataTable } from "@/components/custom-ui/data-table/data-table"
 import { DataTableColumnHeader } from "@/components/custom-ui/data-table/data-table-column-header"
 import { vulnerabilityService } from "@/services/vulnerability.service"
 import { Vulnerability } from "@/types/api.types"
-import { useToast } from "@/hooks/use-toast"
 
 
 interface OrganizationVulnerabilitiesProps {
@@ -26,8 +25,6 @@ export default function OrganizationVulnerabilities({ organizationId }: Organiza
   const [viewState, setViewState] = useState<ViewState>("loading")
   const [vulnerabilities, setVulnerabilities] = useState<Vulnerability[]>([])
   const [selectedCount, setSelectedCount] = useState(0)
-  const { toast } = useToast()
-
   // 工具函数
   const getSeverityBadge = (severity: string) => {
     switch (severity) {
@@ -162,13 +159,8 @@ export default function OrganizationVulnerabilities({ organizationId }: Organiza
     } catch (error) {
       console.error('获取漏洞数据失败:', error)
       setViewState("error")
-      toast({
-        title: "获取漏洞数据失败",
-        description: error instanceof Error ? error.message : "请稍后重试",
-        variant: "destructive",
-      })
     }
-  }, [organizationId, toast])
+  }, [organizationId])
 
   // 组件加载时获取数据
   useEffect(() => {

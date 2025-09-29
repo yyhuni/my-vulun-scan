@@ -9,7 +9,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNavigation } from "@/hooks/use-navigation";
-import { useToast } from "@/hooks/use-toast";
 import DataStateWrapper, { DataViewState } from "@/components/common/data-state-wrapper";
 import { TablePagination } from "@/components/common/table-pagination";
 import { formatDateTime } from "@/lib/utils";
@@ -93,8 +92,6 @@ const mockScanTasks: ScanTask[] = [
 
 export default function ScanOverview() {
   const { navigate } = useNavigation();
-  const { toast } = useToast();
-
   // 状态管理 - 参考组织列表页面
   const [scanTasks, setScanTasks] = useState<ScanTask[]>(mockScanTasks);
   const [viewState, setViewState] = useState<DataViewState>("data");
@@ -133,7 +130,6 @@ export default function ScanOverview() {
   const confirmDelete = () => {
     if (taskToDelete) {
       setScanTasks(scanTasks.filter((task) => task.id !== taskToDelete.id));
-      toast({ title: "删除成功", description: `扫描任务 "${taskToDelete.name}" 已被删除。` });
       setDeleteDialogOpen(false);
       setTaskToDelete(null);
     }
@@ -186,19 +182,19 @@ export default function ScanOverview() {
                       查看详情
                     </DropdownMenuItem>
                     {task.status === "running" && (
-                      <DropdownMenuItem onClick={() => toast({title: "操作待实现", description: "停止扫描 " + task.id})}>
+                      <DropdownMenuItem onClick={() => console.log("停止扫描 " + task.id)}>
                         <PlayCircle className="h-4 w-4 mr-2 rotate-90" />
                         停止扫描
                       </DropdownMenuItem>
                     )}
                     {(task.status === "completed" || task.status === "failed") && (
-                      <DropdownMenuItem onClick={() => toast({title: "操作待实现", description: "重新扫描 " + task.id})}>
+                      <DropdownMenuItem onClick={() => console.log("重新扫描 " + task.id)}>
                         <RotateCcw className="h-4 w-4 mr-2" />
                         重新扫描
                       </DropdownMenuItem>
                     )}
                     {task.status === "completed" && (
-                      <DropdownMenuItem onClick={() => toast({title: "操作待实现", description: "下载报告 " + task.id})}>
+                      <DropdownMenuItem onClick={() => console.log("下载报告 " + task.id)}>
                         <Download className="h-4 w-4 mr-2" />
                         下载报告
                       </DropdownMenuItem>

@@ -5,7 +5,6 @@ import { useState, useEffect, useMemo } from "react"
 import { ColumnDef } from "@tanstack/react-table"
 
 // 第三方库和 API 客户端
-import { toast } from "sonner"
 import { getErrorMessage } from "@/lib/api-client"
 import { OrganizationService } from "@/services/organization.service"
 
@@ -282,7 +281,7 @@ export default function OrganizationSubDomains({ organizationId }: OrganizationS
       console.error("获取组织子域名出错:", error)
       const errorMessage = getErrorMessage(error)
       setError(errorMessage)
-      toast.error(errorMessage)
+      console.error("操作失败:", errorMessage)
       setSubDomains([])
       setViewState("error")
     }
@@ -315,14 +314,14 @@ export default function OrganizationSubDomains({ organizationId }: OrganizationS
         }
       }
 
-      toast.success(`成功添加 ${subdomains.length} 个子域名`)
+      console.log(`成功添加 ${subdomains.length} 个子域名`)
       setIsAddSubDomainDialogOpen(false)
 
       // 重新获取子域名列表
       fetchSubDomains()
     } catch (error: any) {
       console.error("添加子域名出错:", error)
-      toast.error(getErrorMessage(error))
+      console.error("添加子域名失败:", getErrorMessage(error))
     }
   }
 

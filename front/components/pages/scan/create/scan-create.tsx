@@ -10,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useNavigation } from "@/hooks/use-navigation";
-import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 
 // TODO: 替换为真实的 API 调用
@@ -26,7 +25,6 @@ interface ScanConfig {
 
 export default function ScanCreate() {
   const { navigate } = useNavigation();
-  const { toast } = useToast();
   const [scanConfig, setScanConfig] = useState<ScanConfig>({
     organizationId: "",
     domainIds: [], // 改为数组
@@ -125,46 +123,27 @@ export default function ScanCreate() {
   const handleSubmit = () => {
     // 验证表单
     if (!scanConfig.organizationId) {
-      toast({
-        title: "请选择组织",
-        description: "请先选择要扫描的组织",
-        variant: "destructive",
-      });
+      console.error("请先选择要扫描的组织");
       return;
     }
 
     if (scanConfig.domainIds.length === 0) {
-      toast({
-        title: "请选择域名",
-        description: "请至少选择一个要扫描的域名",
-        variant: "destructive",
-      });
+      console.error("请至少选择一个要扫描的域名");
       return;
     }
 
     if (!scanConfig.workflowId) {
-      toast({
-        title: "请选择工作流",
-        description: "请选择要使用的扫描工作流",
-        variant: "destructive",
-      });
+      console.error("请选择要使用的扫描工作流");
       return;
     }
 
     if (!scanConfig.scanName.trim()) {
-      toast({
-        title: "请输入任务名称",
-        description: "请为扫描任务输入一个名称",
-        variant: "destructive",
-      });
+      console.error("请为扫描任务输入一个名称");
       return;
     }
 
     // 这里应该调用API创建扫描任务
-    toast({
-      title: "扫描任务已创建",
-      description: `扫描任务 "${scanConfig.scanName}" 已成功创建并开始执行`,
-    });
+    console.log(`扫描任务 "${scanConfig.scanName}" 已成功创建并开始执行`);
 
     // 跳转到扫描总览页面
     navigate("/scan/overview");

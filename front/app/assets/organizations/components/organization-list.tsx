@@ -24,8 +24,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
-// 自定义 Hooks
-import { useToast } from "@/hooks/use-toast"
 
 // 数据表格组件
 import { DataTable } from "@/components/custom-ui/data-table/data-table"
@@ -47,7 +45,6 @@ export default function OrganizationList() {
   const [selectedCount, setSelectedCount] = useState(0)
   const tableRef = useRef<any>(null)
 
-  const { toast } = useToast()
   const { navigate } = useNavigation()
 
   // 辅助函数
@@ -109,19 +106,10 @@ export default function OrganizationList() {
     try {
       await OrganizationService.deleteOrganization(organizationToDelete.id)
       setOrganizations((prev) => prev.filter((org) => org.id !== organizationToDelete.id))
-      toast({
-        title: "Success",
-        description: `Organization "${organizationToDelete.name}" has been deleted`,
-      })
       setDeleteDialogOpen(false)
       setOrganizationToDelete(null)
     } catch (err: any) {
       console.error('Error deleting organization:', err)
-      toast({
-        title: "Error",
-        description: "Failed to delete organization",
-        variant: "destructive",
-      })
     }
   }
 
@@ -133,20 +121,10 @@ export default function OrganizationList() {
   // 批量删除处理函数
   const handleBulkDelete = () => {
     if (selectedCount === 0) {
-      toast({
-        title: "提示",
-        description: "请先选择要删除的组织",
-        variant: "default",
-      })
       return
     }
 
     // 这里可以实现批量删除逻辑
-    toast({
-      title: "批量删除",
-      description: `已选择 ${selectedCount} 个组织准备删除`,
-      variant: "destructive",
-    })
   }
 
   // 根据状态渲染内容
@@ -173,21 +151,6 @@ export default function OrganizationList() {
           <Button variant="outline" onClick={fetchOrganizations}>
             Try again
           </Button>
-        </div>
-      )
-    }
-
-    if (viewState === "empty") {
-      return (
-        <div className="flex flex-col items-center justify-center py-12">
-          <div className="rounded-full bg-muted p-3 mb-4">
-            <Plus className="h-6 w-6 text-muted-foreground" />
-          </div>
-          <h3 className="text-lg font-semibold mb-2">No organizations</h3>
-          <p className="text-muted-foreground text-center mb-4">
-            Get started by creating your first organization.
-          </p>
-          <AddOrganizationDialog onAdd={handleOrganizationAdded} />
         </div>
       )
     }
