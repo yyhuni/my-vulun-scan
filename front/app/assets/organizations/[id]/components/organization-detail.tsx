@@ -8,21 +8,17 @@ import { getErrorMessage } from "@/lib/api-client"
 import { OrganizationService } from "@/services/organization.service"
 
 // UI 图标库
-import { Building2, RefreshCw } from "lucide-react"
-
-// UI 组件库
-import { Button } from "@/components/ui/button"
+import { Building2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-// 自定义 Hooks
-import { useToast } from "@/hooks/use-toast"
 
 // 通用组件
 import DataStateWrapper from "@/components/common/data-state-wrapper"
 
 // 业务组件
 import OrganizationOverview from "./organization-overview"
+import OrganizationAssets from "./organization-assets"
 import OrganizationSubdomains from "./organization-subdomains"
 import OrganizationVulnerabilities from "./organization-vulnerabilities"
 import OrganizationScanHistory from "./organization-scan-history"
@@ -52,12 +48,10 @@ type ViewState = "loading" | "data" | "error"
 export default function OrganizationDetail({ organizationId }: OrganizationDetailProps) {
   const [activeTab, setActiveTab] = useState("overview")
   const [organization, setOrganization] = useState<Organization | null>(null)
-  const [isScanning, setIsScanning] = useState(false)
   const [viewState, setViewState] = useState<ViewState>("loading")
   const [error, setError] = useState<string | null>(null)
 
 
-  const { toast } = useToast()
 
   // 辅助函数
 
@@ -91,21 +85,13 @@ export default function OrganizationDetail({ organizationId }: OrganizationDetai
 
   
 
-  const handleStartScan = async () => {
-    setIsScanning(true)
-    await new Promise((resolve) => setTimeout(resolve, 3000))
-    setIsScanning(false)
-    toast({
-      title: "扫描完成",
-      description: "组织扫描已完成，发现3个新问题",
-    })
-  }
 
   // 组织详情内容组件
   const OrganizationDetailContent = () => (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-      <TabsList className="grid w-full grid-cols-4">
+      <TabsList className="grid w-full grid-cols-5">
         <TabsTrigger value="overview">概览</TabsTrigger>
+        <TabsTrigger value="assets">资产</TabsTrigger>
         <TabsTrigger value="domains">子域名</TabsTrigger>
         <TabsTrigger value="vulnerabilities">漏洞</TabsTrigger>
         <TabsTrigger value="scan-history">扫描历史</TabsTrigger>
@@ -116,6 +102,11 @@ export default function OrganizationDetail({ organizationId }: OrganizationDetai
         <OrganizationOverview
           organization={organization!}
         />
+      </TabsContent>
+
+      {/* 资产标签页 */}
+      <TabsContent value="assets" className="space-y-6">
+        <OrganizationAssets organizationId={organizationId} />
       </TabsContent>
 
       {/* 所有域名标签页 */}
@@ -145,17 +136,11 @@ export default function OrganizationDetail({ organizationId }: OrganizationDetai
             <h1 className="text-3xl font-bold tracking-tight">{organization?.name || "加载中..."}</h1>
             {organization?.id && (
               <Badge variant="outline" className="text-xs font-normal text-muted-foreground font-mono">
-                {organization.id}
+                organizationId: {organization.id}
               </Badge>
             )}
           </div>
           <p className="text-muted-foreground">{organization?.description || "暂无描述"}</p>
-        </div>
-        <div className="flex space-x-2">
-          <Button variant="outline" size="sm" onClick={handleStartScan} disabled={isScanning}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isScanning ? "animate-spin" : ""}`} />
-            {isScanning ? "扫描中..." : "开始扫描"}
-          </Button>
         </div>
       </div>
 

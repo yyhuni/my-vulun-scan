@@ -234,11 +234,11 @@ export default function OrganizationSubDomains({ organizationId }: OrganizationS
 
     try {
       // 使用组织服务
-      const response = await OrganizationService.getOrganizationMainDomains(organizationId)
+      const response = await OrganizationService.getOrganizationDomains(organizationId)
 
       if (response.code === "SUCCESS" && response.data) {
-        // 数据已经自动转换为 camelCase，无需手动转换
-        const domains = response.data.mainDomains || []
+        // 后端返回的是 domains 字段
+        const domains = response.data.domains || []
         setMainDomains(domains)
         // 主域名获取成功
       } else {

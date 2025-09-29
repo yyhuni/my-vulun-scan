@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { AlertCircle, CheckCircle, Loader2 } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
-interface AddMainDomainDialogProps {
+interface AddDomainDialogProps {
   isOpen: boolean
   onClose: () => void
   organizationName: string
@@ -21,12 +21,12 @@ interface ValidationResult {
   message?: string
 }
 
-export function AddMainDomainDialog({
+export function AddDomainDialog({
   isOpen,
   onClose,
   organizationName,
   onAddDomain,
-}: AddMainDomainDialogProps) {
+}: AddDomainDialogProps) {
   const [domainsInput, setDomainsInput] = useState("")
   const [validationResults, setValidationResults] = useState<ValidationResult[]>([])
   const [isValidating, setIsValidating] = useState(false)
@@ -107,16 +107,16 @@ export function AddMainDomainDialog({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>添加主域名</DialogTitle>
+          <DialogTitle>添加域名</DialogTitle>
           <DialogDescription>
-            为组织 <span className="font-medium">{organizationName}</span> 添加一个或多个主域名。
+            为组织 <span className="font-medium">{organizationName}</span> 添加一个或多个域名。
             每行输入一个域名，或用逗号分隔多个域名。
           </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-4 py-2">
           <div className="space-y-2">
-            <Label htmlFor="domains">主域名</Label>
+            <Label htmlFor="domains">域名</Label>
             <Textarea
               id="domains"
               placeholder={`example.com
@@ -182,7 +182,7 @@ github.com`}
             disabled={validCount === 0 || isSubmitting || isValidating}
           >
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isSubmitting ? "添加中..." : "添加主域名"}
+            {isSubmitting ? "添加中..." : "添加域名"}
           </Button>
         </DialogFooter>
       </DialogContent>

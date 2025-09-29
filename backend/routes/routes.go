@@ -31,6 +31,31 @@ func SetupOrganizationRoutes(api *gin.RouterGroup) {
 	}
 }
 
+// SetupDomainRoutes 设置域名相关路由
+// 该函数定义了所有域名管理相关的API路由，包括CRUD操作和搜索功能
+func SetupDomainRoutes(api *gin.RouterGroup) {
+	domainGroup := api.Group("/domains")
+	{
+		// 获取域名详情 - 根据域名ID获取完整的域名信息
+		domainGroup.GET("/:id", handlers.GetDomainByID)
+
+		// 创建域名 - 支持批量创建域名并关联到组织
+		domainGroup.POST("/create", handlers.CreateDomains)
+
+		// 更新域名 - 更新域名信息，支持部分字段更新
+		domainGroup.POST("/update", handlers.UpdateDomain)
+
+		// 删除域名 - 删除单个域名及其所有关联关系
+		domainGroup.POST("/delete", handlers.DeleteDomain)
+
+		// 批量删除域名 - 支持同时删除多个域名
+		domainGroup.POST("/batch-delete", handlers.BatchDeleteDomains)
+
+		// 搜索域名 - 支持分页搜索和模糊匹配
+		domainGroup.GET("/search", handlers.SearchDomains)
+	}
+}
+
 // SetupScanRoutes 设置扫描相关路由
 func SetupScanRoutes(api *gin.RouterGroup) {
 	scanGroup := api.Group("/scan")

@@ -70,3 +70,37 @@ type RemoveOrganizationDomainRequest struct {
 type GetOrganizationDomainsResponse struct {
 	Domains []Domain `json:"domains"`
 }
+
+// UpdateDomainRequest 更新域名请求结构体
+// 支持部分字段更新，只更新提供的非空字段
+type UpdateDomainRequest struct {
+	ID           uint   `json:"id" binding:"required"`    // 域名ID，必填
+	Name         string `json:"name,omitempty"`           // 域名名称，可选，用于更新
+	H1TeamHandle string `json:"h1_team_handle,omitempty"` // HackerOne团队句柄，可选
+	Description  string `json:"description,omitempty"`    // 域名描述，可选
+	CidrRange    string `json:"cidr_range,omitempty"`     // CIDR范围，可选
+}
+
+// BatchDeleteDomainsRequest 批量删除域名请求结构体
+// 支持同时删除多个域名，提高操作效率
+type BatchDeleteDomainsRequest struct {
+	DomainIDs []uint `json:"domain_ids" binding:"required,min=1"` // 要删除的域名ID列表，至少包含一个ID
+}
+
+// SearchDomainsRequest 搜索域名请求结构体
+// 支持分页搜索和模糊匹配，提高查询效率
+type SearchDomainsRequest struct {
+	Query    string `json:"query,omitempty"`     // 搜索关键词，支持域名名称、H1团队句柄和描述的模糊匹配
+	Page     int    `json:"page,omitempty"`      // 页码，从1开始，默认值为1
+	PageSize int    `json:"page_size,omitempty"` // 每页显示数量，默认值为20，最大值为100
+}
+
+// SearchDomainsResponse 搜索域名响应结构体
+// 返回分页搜索结果和统计信息
+type SearchDomainsResponse struct {
+	Domains    []Domain `json:"domains"`     // 域名列表
+	Total      int64    `json:"total"`       // 符合条件的域名总数
+	Page       int      `json:"page"`        // 当前页码
+	PageSize   int      `json:"page_size"`   // 每页显示数量
+	TotalPages int      `json:"total_pages"` // 总页数
+}

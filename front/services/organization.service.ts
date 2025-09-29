@@ -8,8 +8,8 @@ import type {
 } from "@/types/api.types"
 
 // 响应数据类型（简化复杂的泛型）
-type MainDomainsResponse = ApiResponse<{ mainDomains: MainDomain[] }>
-type SubDomainsResponse = ApiResponse<{ 
+type DomainsResponse = ApiResponse<{ domains: any[] }>
+type SubDomainsResponse = ApiResponse<{
   subDomains: SubDomain[]
   total?: number
   page?: number
@@ -60,32 +60,43 @@ export class OrganizationService {
   // ========== 主域名相关操作 ==========
 
   /**
-   * 获取组织的主域名列表
+   * 获取组织的域名列表
    */
-  static async getOrganizationMainDomains(organizationId: string): Promise<MainDomainsResponse> {
-    const response = await api.get<MainDomainsResponse>(`/organizations/${organizationId}/main-domains`)
+  static async getOrganizationDomains(organizationId: string): Promise<DomainsResponse> {
+    const response = await api.get<DomainsResponse>(`/organizations/${organizationId}/domains`)
     return response.data
   }
 
   /**
-   * 为组织创建主域名
+   * 为组织创建域名
    */
-  static async createMainDomains(data: {
-    mainDomains: string[]    // 前端camelCase，会自动转换为后端的main_domains
-    organizationId: string   // 前端camelCase，会自动转换为后端的organization_id
+  static async createDomains(data: {
+    domains: Array<{
+      name: string
+      h1TeamHandle?: string
+      description?: string
+      cidrRange?: string
+    }>
+    organizationId: number   // 后端期望数字类型
   }): Promise<ApiResponse> {
-    const response = await api.post<ApiResponse>('/assets/main-domains/create', data)
+    const response = await api.post<ApiResponse>('/assets/domains/create', {
+      domains: data.domains,
+      organization_id: data.organizationId
+    })
     return response.data
   }
 
   /**
-   * 从组织中移除主域名关联
+   * 从组织中移除域名关联
    */
-  static async removeMainDomainFromOrganization(data: {
-    organizationId: string   // 前端camelCase，会自动转换为后端的organization_id
-    mainDomainId: string     // 前端camelCase，会自动转换为后端的main_domain_id
+  static async removeDomainFromOrganization(data: {
+    organizationId: number   // 后端期望数字类型
+    domainId: number         // 后端期望数字类型
   }): Promise<ApiResponse> {
-    const response = await api.post<ApiResponse>('/assets/organizations/remove-main-domain', data)
+    const response = await api.post<ApiResponse>('/organizations/remove-domain', {
+      organization_id: data.organizationId,
+      domain_id: data.domainId
+    })
     return response.data
   }
 

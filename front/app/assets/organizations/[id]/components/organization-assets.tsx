@@ -9,7 +9,7 @@ import { getErrorMessage } from "@/lib/api-client"
 import { OrganizationService } from "@/services/organization.service"
 
 // UI 图标库
-import { Building2, Loader2, X } from "lucide-react"
+import { Globe, Loader2, Plus, Trash2 } from "lucide-react"
 
 // UI 组件库
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -35,29 +35,20 @@ interface Domain {
   name: string
   domainName: string  // 前端使用 camelCase
   createdAt: string   // 前端使用 camelCase
+  inputType: string
+  h1TeamHandle?: string
+  description?: string
+  cidrRange?: string
 }
 
-interface Organization {
-  id: string
-  name: string
-  description: string
-  createdAt: string       // 前端使用 camelCase
-  domainCount: number     // 前端使用 camelCase
-  status: string
-  mainDomain?: string     // 前端使用 camelCase
+interface OrganizationAssetsProps {
+  organizationId: string
 }
 
-interface OrganizationOverviewProps {
-  organization: Organization
-}
-
-
-
-export default function OrganizationOverview({ organization: initialOrganization }: OrganizationOverviewProps) {
-  const [isAddDomainDialogOpen, setIsAddDomainDialogOpen] = useState(false)
-  const [organization, setOrganization] = useState(initialOrganization)
+export default function OrganizationAssets({ organizationId }: OrganizationAssetsProps) {
   const [domains, setDomains] = useState<Domain[]>([])
-  const [loadingDomains, setLoadingDomains] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [isAddDomainDialogOpen, setIsAddDomainDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [domainToDelete, setDomainToDelete] = useState<Domain | null>(null)
 
@@ -76,13 +67,13 @@ export default function OrganizationOverview({ organization: initialOrganization
 
   // 获取组织关联的域名
   const fetchDomains = async () => {
-    if (!organization.id) return
+    if (!organizationId) return
 
     try {
-      setLoadingDomains(true)
+      setLoading(true)
 
       // 使用组织服务
-      const response = await OrganizationService.getOrganizationDomains(organization.id)
+      const response = await OrganizationService.getOrganizationDomains(organizationId)
 
       if (response.code === "SUCCESS" && response.data && Array.isArray(response.data.domains)) {
         // 后端返回的是 domains 字段
@@ -96,7 +87,7 @@ export default function OrganizationOverview({ organization: initialOrganization
       toast.error(getErrorMessage(error))
       setDomains([])
     } finally {
-      setLoadingDomains(false)
+      setLoading(false)
     }
   }
 
@@ -108,7 +99,7 @@ export default function OrganizationOverview({ organization: initialOrganization
       // 使用组织服务
       const response = await OrganizationService.createDomains({
         domains: domains.map(domain => ({ name: domain })),  // 转换为后端期望的格式
-        organizationId: parseInt(organization.id),  // 转换为数字类型
+        organizationId: parseInt(organizationId),  // 转换为数字类型
       })
 
       if (response.code === "SUCCESS") {
@@ -140,7 +131,7 @@ export default function OrganizationOverview({ organization: initialOrganization
     try {
       // 使用组织服务
       const response = await OrganizationService.removeDomainFromOrganization({
-        organizationId: parseInt(organization.id),
+        organizationId: parseInt(organizationId),
         domainId: parseInt(domainToDelete.id)
       })
 
@@ -163,81 +154,91 @@ export default function OrganizationOverview({ organization: initialOrganization
   // 组件挂载或组织ID变化时获取域名
   useEffect(() => {
     fetchDomains()
-  }, [organization.id])
+  }, [organizationId])
 
   return (
     <div className="space-y-6">
 
-      {/* 基本信息卡片 */}
+      {/* 资产概览卡片 */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center">
-            <Building2 className="h-5 w-5 mr-2" />
-            基本信息
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center">
+              <Globe className="h-5 w-5 mr-2" />
+              域名资产
+            </CardTitle>
+            <Button
+              onClick={() => setIsAddDomainDialogOpen(true)}
+              size="sm"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              添加域名
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">组织名称</label>
-              <p className="mt-1 text-sm"><span>{organization.name}</span></p>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin mr-2" />
+              <span>正在加载域名资产...</span>
             </div>
-            <div className="md:col-span-1 lg:col-span-1">
-              <label className="text-sm font-medium text-muted-foreground">组织描述</label>
-              <p className="mt-1 text-sm text-muted-foreground">{organization.description}</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">添加日期</label>
-              <p className="mt-1 text-sm">{formatDate(organization.createdAt)}</p>
-            </div>
-            <div className="md:col-span-2 lg:col-span-3">
-              <label className="text-sm font-medium text-muted-foreground">关联域名</label>
-              <div className="mt-1">
-                {loadingDomains ? (
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    加载中...
-                  </div>
-                ) : (
-                  <div className="flex items-center flex-wrap">
-                    {domains.length > 0 ? (
-                      <>
-                        {domains.map((domain) => (
-                          <div key={domain.id} className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-secondary text-secondary-foreground relative group mr-2 mb-2">
-                            <span className="group-hover:opacity-0 transition-opacity duration-300">{domain.name || domain.domainName}</span>
-                            <div
-                              className="absolute inset-0 rounded-full flex items-center justify-center bg-secondary/90 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer"
-                              onClick={() => handleDeleteDomain(domain)}
-                            >
-                              <X className="h-3 w-3 text-gray-700 hover:text-red-500" />
-                            </div>
-                          </div>
-                        ))}
-                      </>
-                    ) : (
-                      <span className="text-sm text-muted-foreground mr-2">暂无域名</span>
+          ) : domains.length > 0 ? (
+            <div className="grid gap-4">
+              {domains.map((domain) => (
+                <div
+                  key={domain.id}
+                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <h3 className="font-medium">
+                        {domain.name || domain.domainName}
+                      </h3>
+                      <Badge variant="outline" className="text-xs">
+                        {domain.inputType || 'domain'}
+                      </Badge>
+                    </div>
+                    {domain.description && (
+                      <p className="text-sm text-muted-foreground mb-1">
+                        {domain.description}
+                      </p>
                     )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mb-2"
-                      onClick={() => setIsAddDomainDialogOpen(true)}
-                    >
-                      添加域名
-                    </Button>
+                    <div className="flex items-center space-x-4 text-xs text-muted-foreground">
+                      <span>创建时间: {formatDate(domain.createdAt)}</span>
+                      {domain.h1TeamHandle && (
+                        <span>H1 Team: {domain.h1TeamHandle}</span>
+                      )}
+                      {domain.cidrRange && (
+                        <span>CIDR: {domain.cidrRange}</span>
+                      )}
+                    </div>
                   </div>
-                )}
-              </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteDomain(domain)}
+                    className="text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
             </div>
-          </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <Globe className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>暂无域名资产</p>
+              <p className="text-sm mt-1">点击上方按钮添加组织的第一个域名资产</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {/* 添加域名对话框 */}
-      <AddDomainDialog
+        <AddDomainDialog
         isOpen={isAddDomainDialogOpen}
         onClose={() => setIsAddDomainDialogOpen(false)}
-        organizationName={organization.name}
+        organizationName="当前组织"
         onAddDomain={handleAddDomains}
       />
 
@@ -245,17 +246,18 @@ export default function OrganizationOverview({ organization: initialOrganization
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>确认解除关联</AlertDialogTitle>
+            <AlertDialogTitle>确认删除域名</AlertDialogTitle>
             <AlertDialogDescription>
-              您确定要解除组织 "{organization.name}" 与域名 "{domainToDelete?.name || domainToDelete?.domainName}" 的关联吗？此操作不会删除域名本身，只会解除与当前组织的关联关系。
+              您确定要删除域名 "{domainToDelete?.name || domainToDelete?.domainName}" 吗？
+              此操作将从当前组织中移除该域名，但不会删除域名本身的数据记录。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteDomain}>确认解除</AlertDialogAction>
+            <AlertDialogAction onClick={confirmDeleteDomain}>确认删除</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
   )
-} 
+}
