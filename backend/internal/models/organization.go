@@ -2,17 +2,14 @@ package models
 
 import (
 	"time"
-
-	"gorm.io/gorm"
 )
 
 // Organization 组织管理，实现多个 Domain 的分组
 type Organization struct {
 	// 数据库基础字段
-	ID        uint           `json:"id" gorm:"primaryKey;autoIncrement"`
-	CreatedAt time.Time      `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt time.Time      `json:"updated_at" gorm:"autoUpdateTime"`
-	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"index"`
+	ID        uint      `json:"id" gorm:"primaryKey;autoIncrement"`
+	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 
 	// 核心业务字段
 	Name        string `json:"name" gorm:"uniqueIndex;not null;size:255"`

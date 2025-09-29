@@ -52,15 +52,3 @@ func SetupDomainRoutes(api *gin.RouterGroup) {
 		domainGroup.GET("/search", handlers.SearchDomains)
 	}
 }
-
-// SetupAssetsRoutes 设置资产相关路由
-func SetupAssetsRoutes(api *gin.RouterGroup) {
-	assetsGroup := api.Group("/assets")
-	{
-		// 域名相关操作
-		assetsGroup.POST("/domains/create", handlers.CreateDomains)
-
-		// 子域名相关操作
-		assetsGroup.POST("/sub-domains/create", handlers.CreateSubDomains)
-	}
-}

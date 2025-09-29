@@ -80,7 +80,7 @@ func setupRouter() *gin.Engine {
 	api := r.Group("/api/v1")
 	{
 		routes.SetupOrganizationRoutes(api)
-		routes.SetupAssetsRoutes(api)
+		routes.SetupDomainRoutes(api)
 	}
 
 	// 默认路由
