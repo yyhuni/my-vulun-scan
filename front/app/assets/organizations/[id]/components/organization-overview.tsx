@@ -32,10 +32,8 @@ import { AddDomainDialog } from "@/app/assets/organizations/[id]/components/add-
 // 类型定义
 import type { Organization } from "@/types/organization.types"
 import type { Domain } from "@/types/domain.types"
+import type { OrganizationOverviewProps } from "@/types/component.types"
 
-interface OrganizationOverviewProps {
-  organization: Organization
-}
 
 
 
@@ -72,8 +70,8 @@ export default function OrganizationOverview({ organization: initialOrganization
 
       // 临时使用模拟数据
       setDomains([
-        { id: '1', name: 'example.com', domainName: 'example.com', createdAt: new Date().toISOString() },
-        { id: '2', name: 'test.com', domainName: 'test.com', createdAt: new Date().toISOString() }
+        { id: 1, name: 'example.com', description: '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: 2, name: 'test.com', description: '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
       ])
 
       // if (response.code === "200" && response.data && Array.isArray(response.data.domains)) {
@@ -145,12 +143,12 @@ export default function OrganizationOverview({ organization: initialOrganization
       // 临时模拟成功响应
       // 从本地状态中移除该域名
       setDomains(prev => prev.filter(domain => domain.id !== domainToDelete.id))
-      toast.success(`已解除组织与域名 "${domainToDelete.name || domainToDelete.domainName}" 的关联`)
+      toast.success(`已解除组织与域名 "${domainToDelete.name}" 的关联`)
 
       // if (response.code === "200") {
       //   // 从本地状态中移除该域名
       //   setDomains(prev => prev.filter(domain => domain.id !== domainToDelete.id))
-      //   toast.success(`已解除组织与域名 "${domainToDelete.name || domainToDelete.domainName}" 的关联`)
+      //   toast.success(`已解除组织与域名 "${domainToDelete.name}" 的关联`)
       // } else {
       //   throw new Error(response.message || "解除关联失败")
       // }
@@ -208,7 +206,7 @@ export default function OrganizationOverview({ organization: initialOrganization
                       <>
                         {domains.map((domain) => (
                           <div key={domain.id} className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-secondary text-secondary-foreground relative group mr-2 mb-2">
-                            <span className="group-hover:opacity-0 transition-opacity duration-300">{domain.name || domain.domainName}</span>
+                            <span className="group-hover:opacity-0 transition-opacity duration-300">{domain.name}</span>
                             <div
                               className="absolute inset-0 rounded-full flex items-center justify-center bg-secondary/90 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer"
                               onClick={() => handleDeleteDomain(domain)}
@@ -251,7 +249,7 @@ export default function OrganizationOverview({ organization: initialOrganization
           <AlertDialogHeader>
             <AlertDialogTitle>确认解除关联</AlertDialogTitle>
             <AlertDialogDescription>
-              您确定要解除组织 "{organization.name}" 与域名 "{domainToDelete?.name || domainToDelete?.domainName}" 的关联吗？此操作不会删除域名本身，只会解除与当前组织的关联关系。
+              您确定要解除组织 "{organization.name}" 与域名 "{domainToDelete?.name}" 的关联吗？此操作不会删除域名本身，只会解除与当前组织的关联关系。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

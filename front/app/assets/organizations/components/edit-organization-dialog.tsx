@@ -27,13 +27,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { getErrorMessage } from "@/lib/api-client"
 import { OrganizationService } from "@/services/organization.service"
 import type { Organization } from "@/types/organization.types"
+import type { EditOrganizationDialogProps } from "@/types/component.types"
 
-interface EditOrganizationDialogProps {
-  organization: Organization
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onEdit?: (organization: Organization) => void
-}
 
 export default function EditOrganizationDialog({ organization, open, onOpenChange, onEdit }: EditOrganizationDialogProps) {
   const [formData, setFormData] = useState({

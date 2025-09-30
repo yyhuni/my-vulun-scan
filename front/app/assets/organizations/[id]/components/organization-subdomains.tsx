@@ -47,13 +47,11 @@ interface MainDomain {
   createdAt: string // 前端使用 camelCase
 }
 
-interface OrganizationSubDomainsProps {
-  organizationId: string
-}
 
 
 
 import type { ViewState, SubdomainStatusFilter } from "@/types/common.types"
+import type { OrganizationSubDomainsProps } from "@/types/component.types"
 
 
 
@@ -511,7 +509,10 @@ export default function OrganizationSubDomains({ organizationId }: OrganizationS
         organizationName={organizationName}
         mainDomains={mainDomains.map(domain => ({
           id: domain.id,
-          name: domain.name || domain.mainDomainName || ''
+          name: domain.name,
+          description: domain.description || '',
+          createdAt: domain.createdAt,
+          updatedAt: domain.updatedAt
         }))}
         onAddSubDomain={handleAddSubDomain}
       />

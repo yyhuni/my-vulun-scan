@@ -14,11 +14,9 @@ import { vulnerabilityService } from "@/services/vulnerability.service"
 import type { Vulnerability } from "@/types/scan.types"
 
 
-interface OrganizationVulnerabilitiesProps {
-  organizationId: string
-}
 
 import type { ViewState, SeverityFilter, VulnerabilityStatusFilter } from "@/types/common.types"
+import type { OrganizationVulnerabilitiesProps } from "@/types/component.types"
 
 export default function OrganizationVulnerabilities({ organizationId }: OrganizationVulnerabilitiesProps) {
   const [viewState, setViewState] = useState<ViewState>("loading")

@@ -23,6 +23,7 @@ export interface BreadcrumbItemType {
 // 通用响应包装类型（扩展原有的 ApiResponse）
 export interface ApiResponse<T = any> {
   code: string
+  state: string
   message: string
   data?: T
 }

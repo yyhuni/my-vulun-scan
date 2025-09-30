@@ -15,12 +15,8 @@ import Link from "next/link"
 
 
 import type { BreadcrumbItemType } from "@/types/common.types"
+import type { AppLayoutProps } from "@/types/component.types"
 
-interface AppLayoutProps {
-  children: ReactNode
-  breadcrumbItems?: BreadcrumbItemType[]
-  noPadding?: boolean
-}
 
 // 根据路径获取面包屑
 const getPathToBreadcrumb = (pathname: string): BreadcrumbItemType[] => {

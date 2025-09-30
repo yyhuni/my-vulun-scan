@@ -53,7 +53,7 @@ export class OrganizationService {
   /**
    * 删除组织
    */
-  static async deleteOrganization(id: string): Promise<ApiResponse> {
+  static async deleteOrganization(id: number): Promise<ApiResponse> {
     const response = await api.post<ApiResponse>('/organizations/delete', {
       organizationId: id  // 前端camelCase，会自动转换为后端的organization_id
     })

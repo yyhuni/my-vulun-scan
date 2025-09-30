@@ -11,15 +11,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 
 import type { MainDomain } from "@/types/domain.types"
 
-interface AddSubDomainDialogProps {
-  isOpen: boolean
-  onClose: () => void
-  organizationName: string
-  mainDomains: MainDomain[]
-  onAddSubDomain: (subdomains: { name: string; mainDomainId: string }[]) => void
-}
 
 import type { ValidationResult } from "@/types/domain.types"
+import type { AddSubDomainDialogProps } from "@/types/component.types"
 
 export function AddSubDomainDialog({
   isOpen,
@@ -29,7 +23,7 @@ export function AddSubDomainDialog({
   onAddSubDomain,
 }: AddSubDomainDialogProps) {
   const [subdomainsInput, setSubdomainsInput] = useState("")
-  const [selectedMainDomainId, setSelectedMainDomainId] = useState("")
+  const [selectedMainDomainId, setSelectedMainDomainId] = useState<number | null>(null)
   const [validationResults, setValidationResults] = useState<ValidationResult[]>([])
   const [isValidating, setIsValidating] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -119,7 +113,7 @@ export function AddSubDomainDialog({
       .filter(r => r.isValid)
       .map(r => ({
         name: r.subdomain,
-        mainDomainId: selectedMainDomainId
+        domainId: selectedMainDomainId
       }))
     
     if (validSubdomains.length === 0) {
@@ -156,14 +150,14 @@ export function AddSubDomainDialog({
           {/* 选择主域名 */}
           <div className="space-y-2">
             <Label htmlFor="main-domain">选择主域名</Label>
-            <Select value={selectedMainDomainId} onValueChange={setSelectedMainDomainId}>
+            <Select value={selectedMainDomainId?.toString() || ""} onValueChange={(value) => setSelectedMainDomainId(value ? parseInt(value) : null)}>
               <SelectTrigger>
                 <SelectValue placeholder="请选择一个主域名" />
               </SelectTrigger>
               <SelectContent>
                 {mainDomains.map((domain) => (
                   <SelectItem key={domain.id} value={domain.id}>
-                    {domain.name || domain.main_domain_name}
+                    {domain.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -192,7 +186,7 @@ mail`}
             />
             <p className="text-xs text-muted-foreground">
               {selectedMainDomain
-                ? `输入子域名前缀，将自动添加到 ${selectedMainDomain.name || selectedMainDomain.main_domain_name}`
+                ? `输入子域名前缀，将自动添加到 ${selectedMainDomain.name}`
                 : "请先选择主域名"
               }
             </p>
@@ -213,7 +207,7 @@ mail`}
                     {validCount} 个有效子域名
                     {selectedMainDomain && (
                       <div className="mt-1 text-xs">
-                        将添加到: {selectedMainDomain.name || selectedMainDomain.main_domain_name}
+                        将添加到: {selectedMainDomain.name}
                       </div>
                     )}
                   </AlertDescription>

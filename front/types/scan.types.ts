@@ -2,12 +2,12 @@
 
 // 扫描任务类型
 export interface ScanTask {
-  id: string
+  id: number
   name: string
   status?: string
   type?: string
-  organizationId?: string
-  domainIds?: string[]
+  organizationId?: number
+  domainIds?: number[]
   createdAt?: string
   startedAt?: string
   completedAt?: string
@@ -16,12 +16,12 @@ export interface ScanTask {
 
 // 扫描历史类型
 export interface ScanHistory {
-  id: string
+  id: number
   type: string
   name?: string
   status: string
-  organizationId?: string
-  domainIds?: string[]
+  organizationId?: number
+  domainIds?: number[]
   createdAt: string
   startedAt?: string
   completedAt?: string
@@ -31,8 +31,8 @@ export interface ScanHistory {
 
 // 扫描配置类型
 export interface ScanConfig {
-  organizationId: string
-  domainIds: string[]
+  organizationId: number
+  domainIds: number[]
   scanType?: string
   scanOptions?: {
     enableSubdomainDiscovery?: boolean
@@ -51,7 +51,7 @@ export type ScanType = "comprehensive" | "quick" | "vulnerability" | "custom"
 
 // 漏洞扫描相关类型
 export interface Vulnerability {
-  id: string
+  id: number
   title: string
   description: string
   severity: "高危" | "中危" | "低危"
@@ -60,13 +60,13 @@ export interface Vulnerability {
   cveId?: string
   affectedComponent?: string
   discoveredAt: string
-  organizationId?: string
-  domainId?: string
+  organizationId?: number
+  domainId?: number
 }
 
 // 获取组织漏洞参数
 export interface GetOrganizationVulnerabilitiesParams {
-  organizationId: string
+  organizationId: number
   severity?: string
   status?: string
   page?: number

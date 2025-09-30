@@ -26,12 +26,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { getErrorMessage } from "@/lib/api-client"
 import { OrganizationService } from "@/services/organization.service"
 import type { Organization } from "@/types/organization.types"
+import type { OrganizationDialogProps } from "@/types/component.types"
 
-interface AddOrganizationDialogProps {
-  onAdd: (organization: Organization) => void
-  organization?: Organization | null  // 编辑模式下传入的组织数据
-  onEdit?: (organization: Organization) => void  // 编辑模式下的回调
-}
 
 export default function AddOrganizationDialog({
   onAdd,

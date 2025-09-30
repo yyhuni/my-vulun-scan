@@ -5,44 +5,10 @@ import { LucideIcon } from "lucide-react"
 import Loading from "./loading"
 import FallbackPage from "./fallback-page"
 import EmptyState from "./empty-state"
+import type { DataStateWrapperProps } from "@/types/component.types"
 
 export type DataViewState = "loading" | "data" | "empty" | "error"
 
-interface DataStateWrapperProps {
-  state: DataViewState
-  
-  // Loading 配置
-  loadingText?: string
-  loadingSize?: "sm" | "md" | "lg"
-  
-  // Empty 配置
-  emptyIcon?: LucideIcon
-  emptyTitle?: string
-  emptyDescription?: string
-  emptyAction?: {
-    label: string
-    onClick?: () => void
-    href?: string // 支持导航
-    variant?: "default" | "outline" | "secondary" | "destructive" | "ghost" | "link"
-    disabled?: boolean
-  }
-  
-  // Error 配置
-  errorStatusCode?: number
-  errorTitle?: string
-  errorDescription?: string
-  showRetry?: boolean
-  onRetry?: () => void
-  
-  // Data 内容
-  children: ReactNode
-  
-  // 额外的检查条件（比如过滤后的数据是否为空）
-  hasData?: boolean
-  
-  // 类名
-  className?: string
-}
 
 export default function DataStateWrapper({
   state,

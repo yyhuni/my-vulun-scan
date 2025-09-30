@@ -8,14 +8,9 @@ import { Label } from "@/components/ui/label"
 import { AlertCircle, CheckCircle, Loader2 } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
-interface AddDomainDialogProps {
-  isOpen: boolean
-  onClose: () => void
-  organizationName: string
-  onAddDomain: (domains: string[]) => void
-}
 
 import type { ValidationResult } from "@/types/domain.types"
+import type { AddDomainDialogProps } from "@/types/component.types"
 
 export function AddDomainDialog({
   isOpen,

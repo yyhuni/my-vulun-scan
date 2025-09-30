@@ -20,73 +20,72 @@ import type { ScanConfig } from "@/types/scan.types"
 export default function ScanCreate() {
   const { navigate } = useNavigation();
   const [scanConfig, setScanConfig] = useState<ScanConfig>({
-    organizationId: "",
-    domainIds: [], // 改为数组
-    workflowId: "",
-    scanName: "",
-    description: "",
+    organizationId: 0,
+    domainIds: [],
+    scanType: "",
+    scanOptions: {}
   });
 
   // TODO: 这些数据应该从 API 获取
   const mockOrganizations = [
-    { id: "ORG-001", name: "华为技术有限公司" },
-    { id: "ORG-002", name: "腾讯科技有限公司" },
-    { id: "ORG-003", name: "阿里巴巴集团" },
+    { id: 1, name: "华为技术有限公司" },
+    { id: 2, name: "腾讯科技有限公司" },
+    { id: 3, name: "阿里巴巴集团" },
   ];
 
   const mockDomains = [
     // 华为技术有限公司 - 更多域名示例
-    { id: "DOM-001", domain: "huawei.com", organization: "华为技术有限公司", organizationId: "ORG-001" },
-    { id: "DOM-002", domain: "vmall.com", organization: "华为技术有限公司", organizationId: "ORG-001" },
-    { id: "DOM-003", domain: "hicloud.com", organization: "华为技术有限公司", organizationId: "ORG-001" },
-    { id: "DOM-004", domain: "huaweicloud.com", organization: "华为技术有限公司", organizationId: "ORG-001" },
-    { id: "DOM-005", domain: "consumer.huawei.com", organization: "华为技术有限公司", organizationId: "ORG-001" },
-    { id: "DOM-006", domain: "developer.huawei.com", organization: "华为技术有限公司", organizationId: "ORG-001" },
-    { id: "DOM-007", domain: "support.huawei.com", organization: "华为技术有限公司", organizationId: "ORG-001" },
-    { id: "DOM-008", domain: "enterprise.huawei.com", organization: "华为技术有限公司", organizationId: "ORG-001" },
-    { id: "DOM-009", domain: "carrier.huawei.com", organization: "华为技术有限公司", organizationId: "ORG-001" },
-    { id: "DOM-010", domain: "honor.com", organization: "华为技术有限公司", organizationId: "ORG-001" },
-    { id: "DOM-011", domain: "hihonor.com", organization: "华为技术有限公司", organizationId: "ORG-001" },
-    { id: "DOM-012", domain: "harmonyos.com", organization: "华为技术有限公司", organizationId: "ORG-001" },
+    { id: 1, domain: "huawei.com", organization: "华为技术有限公司", organizationId: 1 },
+    { id: 2, domain: "vmall.com", organization: "华为技术有限公司", organizationId: 1 },
+    { id: 3, domain: "hicloud.com", organization: "华为技术有限公司", organizationId: 1 },
+    { id: 4, domain: "huaweicloud.com", organization: "华为技术有限公司", organizationId: 1 },
+    { id: 5, domain: "consumer.huawei.com", organization: "华为技术有限公司", organizationId: 1 },
+    { id: 6, domain: "developer.huawei.com", organization: "华为技术有限公司", organizationId: 1 },
+    { id: 7, domain: "support.huawei.com", organization: "华为技术有限公司", organizationId: 1 },
+    { id: 8, domain: "enterprise.huawei.com", organization: "华为技术有限公司", organizationId: 1 },
+    { id: 9, domain: "carrier.huawei.com", organization: "华为技术有限公司", organizationId: 1 },
+    { id: 10, domain: "honor.com", organization: "华为技术有限公司", organizationId: 1 },
+    { id: 11, domain: "hihonor.com", organization: "华为技术有限公司", organizationId: 1 },
+    { id: 12, domain: "harmonyos.com", organization: "华为技术有限公司", organizationId: 1 },
 
     // 腾讯科技有限公司
-    { id: "DOM-013", domain: "tencent.com", organization: "腾讯科技有限公司", organizationId: "ORG-002" },
-    { id: "DOM-014", domain: "qq.com", organization: "腾讯科技有限公司", organizationId: "ORG-002" },
-    { id: "DOM-015", domain: "weixin.qq.com", organization: "腾讯科技有限公司", organizationId: "ORG-002" },
-    { id: "DOM-016", domain: "wechat.com", organization: "腾讯科技有限公司", organizationId: "ORG-002" },
-    { id: "DOM-017", domain: "qzone.qq.com", organization: "腾讯科技有限公司", organizationId: "ORG-002" },
-    { id: "DOM-018", domain: "qcloud.com", organization: "腾讯科技有限公司", organizationId: "ORG-002" },
-    { id: "DOM-019", domain: "cloud.tencent.com", organization: "腾讯科技有限公司", organizationId: "ORG-002" },
-    { id: "DOM-020", domain: "gaming.qq.com", organization: "腾讯科技有限公司", organizationId: "ORG-002" },
+    { id: 13, domain: "tencent.com", organization: "腾讯科技有限公司", organizationId: 2 },
+    { id: 14, domain: "qq.com", organization: "腾讯科技有限公司", organizationId: 2 },
+    { id: 15, domain: "weixin.qq.com", organization: "腾讯科技有限公司", organizationId: 2 },
+    { id: 16, domain: "wechat.com", organization: "腾讯科技有限公司", organizationId: 2 },
+    { id: 17, domain: "qzone.qq.com", organization: "腾讯科技有限公司", organizationId: 2 },
+    { id: 18, domain: "qcloud.com", organization: "腾讯科技有限公司", organizationId: 2 },
+    { id: 19, domain: "cloud.tencent.com", organization: "腾讯科技有限公司", organizationId: 2 },
+    { id: 20, domain: "gaming.qq.com", organization: "腾讯科技有限公司", organizationId: 2 },
 
     // 阿里巴巴集团
-    { id: "DOM-021", domain: "taobao.com", organization: "阿里巴巴集团", organizationId: "ORG-003" },
-    { id: "DOM-022", domain: "tmall.com", organization: "阿里巴巴集团", organizationId: "ORG-003" },
-    { id: "DOM-023", domain: "alipay.com", organization: "阿里巴巴集团", organizationId: "ORG-003" },
-    { id: "DOM-024", domain: "alibaba.com", organization: "阿里巴巴集团", organizationId: "ORG-003" },
-    { id: "DOM-025", domain: "alicloud.com", organization: "阿里巴巴集团", organizationId: "ORG-003" },
-    { id: "DOM-026", domain: "aliyun.com", organization: "阿里巴巴集团", organizationId: "ORG-003" },
-    { id: "DOM-027", domain: "1688.com", organization: "阿里巴巴集团", organizationId: "ORG-003" },
-    { id: "DOM-028", domain: "dingtalk.com", organization: "阿里巴巴集团", organizationId: "ORG-003" },
+    { id: 21, domain: "taobao.com", organization: "阿里巴巴集团", organizationId: 3 },
+    { id: 22, domain: "tmall.com", organization: "阿里巴巴集团", organizationId: 3 },
+    { id: 23, domain: "alipay.com", organization: "阿里巴巴集团", organizationId: 3 },
+    { id: 24, domain: "alibaba.com", organization: "阿里巴巴集团", organizationId: 3 },
+    { id: 25, domain: "alicloud.com", organization: "阿里巴巴集团", organizationId: 3 },
+    { id: 26, domain: "aliyun.com", organization: "阿里巴巴集团", organizationId: 3 },
+    { id: 27, domain: "1688.com", organization: "阿里巴巴集团", organizationId: 3 },
+    { id: 28, domain: "dingtalk.com", organization: "阿里巴巴集团", organizationId: 3 },
   ];
 
   const mockWorkflows = [
     {
-      id: "WF-001",
+      id: "WF-01",
       name: "Subfinder 子域名扫描",
       description: "使用 Subfinder 工具进行子域名发现",
       type: "子域名扫描",
       estimatedTime: "5-15分钟"
     },
     {
-      id: "WF-002",
+      id: "WF-02",
       name: "全面安全评估",
       description: "包含端口扫描、漏洞扫描和服务识别的综合评估",
       type: "综合扫描",
       estimatedTime: "30-60分钟"
     },
     {
-      id: "WF-003",
+      id: "WF-03",
       name: "快速端口扫描",
       description: "针对常用端口的快速扫描",
       type: "端口扫描",
@@ -97,7 +96,7 @@ export default function ScanCreate() {
   // 获取当前选择的数据
   const selectedOrganization = mockOrganizations.find(org => org.id === scanConfig.organizationId);
   const selectedDomains = mockDomains.filter(domain => scanConfig.domainIds.includes(domain.id));
-  const selectedWorkflow = mockWorkflows.find(workflow => workflow.id === scanConfig.workflowId);
+  // const selectedWorkflow = mockWorkflows.find(workflow => workflow.id === scanConfig.workflowId);
 
   // 根据选择的组织过滤域名
   const filteredDomains = mockDomains.filter(domain =>
@@ -126,18 +125,10 @@ export default function ScanCreate() {
       return;
     }
 
-    if (!scanConfig.workflowId) {
-      console.error("请选择要使用的扫描工作流");
-      return;
-    }
-
-    if (!scanConfig.scanName.trim()) {
-      console.error("请为扫描任务输入一个名称");
-      return;
-    }
+    // 验证逻辑可以在这里添加
 
     // 这里应该调用API创建扫描任务
-    console.log(`扫描任务 "${scanConfig.scanName}" 已成功创建并开始执行`);
+    console.log(`扫描任务已成功创建并开始执行`);
 
     // 跳转到扫描总览页面
     navigate("/scan/overview");
@@ -145,10 +136,8 @@ export default function ScanCreate() {
 
   // 检查表单是否可以提交
   const canSubmit = () => {
-    return scanConfig.organizationId !== "" &&
-           scanConfig.domainIds.length > 0 &&
-           scanConfig.workflowId !== "" &&
-           scanConfig.scanName.trim() !== "";
+    return scanConfig.organizationId !== 0 &&
+           scanConfig.domainIds.length > 0;
   };
 
   return (

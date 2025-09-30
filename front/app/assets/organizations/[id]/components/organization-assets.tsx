@@ -31,6 +31,7 @@ import { AddDomainDialog } from "@/app/assets/organizations/[id]/components/add-
 
 // 类型定义
 import type { Domain } from "@/types/domain.types"
+import type { OrganizationAssetsProps } from "@/types/component.types"
 
 interface Asset {
   domainName: string  // 前端使用 camelCase
@@ -41,9 +42,6 @@ interface Asset {
   cidrRange?: string
 }
 
-interface OrganizationAssetsProps {
-  organizationId: string
-}
 
 export default function OrganizationAssets({ organizationId }: OrganizationAssetsProps) {
   const [domains, setDomains] = useState<Domain[]>([])
@@ -77,8 +75,8 @@ export default function OrganizationAssets({ organizationId }: OrganizationAsset
 
       // 临时使用模拟数据
       setDomains([
-        { id: '1', name: 'example.com', domainName: 'example.com', createdAt: new Date().toISOString() },
-        { id: '2', name: 'test.com', domainName: 'test.com', createdAt: new Date().toISOString() }
+        { id: 1, name: 'example.com', description: '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: 2, name: 'test.com', description: '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
       ])
 
       // if (response.code === "200" && response.data && Array.isArray(response.data.domains)) {
@@ -150,12 +148,12 @@ export default function OrganizationAssets({ organizationId }: OrganizationAsset
       // 临时模拟成功响应
       // 从本地状态中移除该域名
       setDomains(prev => prev.filter(domain => domain.id !== domainToDelete.id))
-      toast.success(`已解除组织与域名 "${domainToDelete.name || domainToDelete.domainName}" 的关联`)
+      toast.success(`已解除组织与域名 "${domainToDelete.name}" 的关联`)
 
       // if (response.code === "200") {
       //   // 从本地状态中移除该域名
       //   setDomains(prev => prev.filter(domain => domain.id !== domainToDelete.id))
-      //   toast.success(`已解除组织与域名 "${domainToDelete.name || domainToDelete.domainName}" 的关联`)
+      //   toast.success(`已解除组织与域名 "${domainToDelete.name}" 的关联`)
       // } else {
       //   throw new Error(response.message || "解除关联失败")
       // }
@@ -210,7 +208,7 @@ export default function OrganizationAssets({ organizationId }: OrganizationAsset
                   <div className="flex-1">
                     <div className="flex items-center space-x-2 mb-1">
                       <h3 className="font-medium">
-                        {domain.name || domain.domainName}
+                        {domain.name}
                       </h3>
                       <Badge variant="outline" className="text-xs">
                         {'domain'}
@@ -255,7 +253,7 @@ export default function OrganizationAssets({ organizationId }: OrganizationAsset
           <AlertDialogHeader>
             <AlertDialogTitle>确认删除域名</AlertDialogTitle>
             <AlertDialogDescription>
-              您确定要删除域名 "{domainToDelete?.name || domainToDelete?.domainName}" 吗？
+              您确定要删除域名 "{domainToDelete?.name}" 吗？
               此操作将从当前组织中移除该域名，但不会删除域名本身的数据记录。
             </AlertDialogDescription>
           </AlertDialogHeader>

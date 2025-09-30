@@ -4,21 +4,8 @@ import { ReactNode } from "react"
 import { LucideIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import type { EmptyStateProps } from "@/types/component.types"
 
-interface EmptyStateProps {
-  icon?: LucideIcon
-  title: string
-  description: string
-  action?: {
-    label: string
-    onClick?: () => void
-    href?: string // 支持导航
-    variant?: "default" | "outline" | "secondary" | "destructive" | "ghost" | "link"
-    disabled?: boolean
-  }
-  children?: ReactNode
-  className?: string
-}
 
 export default function EmptyState({
   icon: Icon,

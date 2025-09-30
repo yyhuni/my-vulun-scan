@@ -3,15 +3,8 @@
 import { Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
+import type { LoadingProps } from "@/types/component.types"
 
-interface LoadingProps {
-  size?: "sm" | "md" | "lg"
-  text?: string
-  className?: string
-  fullScreen?: boolean
-  showSkeleton?: boolean
-  skeletonType?: "dashboard" | "table" | "form" | "cards" | "workflow"
-}
 
 // 不同类型的骨架屏组件
 const SkeletonLayouts = {

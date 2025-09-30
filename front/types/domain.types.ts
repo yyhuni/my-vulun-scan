@@ -2,27 +2,29 @@
 
 // 基础域名类型
 export interface Domain {
-  id: string
+  id: number
   name: string
-  domainName: string
+  description?: string
   createdAt: string
+  updatedAt: string
 }
 
 // 子域名类型
 export interface SubDomain {
-  id: string
-  name?: string
-  subdomain?: string
-  mainDomainId?: string
-  status?: string
+  id: number
+  name: string
+  domainId: number
+  createdAt: string
+  updatedAt: string
 }
 
 // 主域名类型
 export interface MainDomain {
-  id: string
-  name?: string
-  domainName?: string
-  status?: string
+  id: number
+  name: string
+  description?: string
+  createdAt: string
+  updatedAt: string
 }
 
 // 域名验证结果
