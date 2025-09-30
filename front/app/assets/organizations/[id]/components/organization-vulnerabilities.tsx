@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { ColumnDef } from "@tanstack/react-table"
+import { toast } from "sonner"
 import { AlertTriangle, Shield, Eye, ExternalLink, Loader2, AlertCircle, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -85,11 +86,11 @@ export default function OrganizationVulnerabilities({ organizationId }: Organiza
       ),
       cell: ({ row }) => (
         <div className="font-medium max-w-[200px] truncate">
-          <a href={row.original.affectedUrl} target="_blank" rel="noopener noreferrer" className="hover:underline flex items-center gap-1">
+          <div className="hover:underline flex items-center gap-1">
             <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
             {row.getValue("title")}
-          </a>
-          <div className="text-sm text-muted-foreground mt-1 line-clamp-1">{row.original.description}</div>
+          </div>
+          <div className="text-sm text-muted-foreground mt-1 line-clamp-1">{row.original.description || ''}</div>
         </div>
       ),
     },
@@ -157,6 +158,7 @@ export default function OrganizationVulnerabilities({ organizationId }: Organiza
     } catch (error) {
       console.error('获取漏洞数据失败:', error)
       setViewState("error")
+      toast.error(`获取漏洞数据失败: ${error instanceof Error ? error.message : '未知错误'}`)
     }
   }, [organizationId])
 
@@ -196,7 +198,7 @@ export default function OrganizationVulnerabilities({ organizationId }: Organiza
       </div>
       <h3 className="text-lg font-semibold mb-2">未找到漏洞</h3>
       <p className="text-muted-foreground text-center mb-4">
-        {searchTerm ? "请尝试调整搜索条件" : "该组织暂无漏洞数据"}
+        该组织暂无漏洞数据
       </p>
     </div>
   )
@@ -322,7 +324,7 @@ export default function OrganizationVulnerabilities({ organizationId }: Organiza
               批量删除
             </Button>
           }
-          onSelectionChange={(count) => setSelectedCount(count)}
+          onSelectionChange={(count: number) => setSelectedCount(count)}
         />
       )}
     </div>

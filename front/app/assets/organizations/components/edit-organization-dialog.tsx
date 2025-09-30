@@ -3,6 +3,7 @@
 // React 核心库
 import { useState, useEffect } from "react"
 import type React from "react"
+import { toast } from "sonner"
 
 // UI 图标库
 import { Edit, Building2 } from "lucide-react"
@@ -63,12 +64,14 @@ export default function EditOrganizationDialog({ organization, open, onOpenChang
       console.log('Backend response:', response)
 
       if (response.code === "200" && response.data) {
+        toast.success(`组织 "${formData.name}" 更新成功`)
         onEdit?.(response.data) // 组织更新成功，通知父组件刷新列表
       } else {
-        console.error("更新组织失败:", response.message || "更新组织失败，请重试。")
+        toast.error(response.message || "更新组织失败，请重试。")
       }
     } catch (error: any) {
       console.error("更新组织失败:", getErrorMessage(error))
+      toast.error(`更新组织失败: ${getErrorMessage(error)}`)
     } finally {
       onOpenChange(false)
     }

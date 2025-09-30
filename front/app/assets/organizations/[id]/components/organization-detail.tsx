@@ -2,6 +2,7 @@
 
 // React 核心库
 import { useState, useEffect } from "react"
+import { toast } from "sonner"
 
 // 第三方库和 API 客户端
 import { getErrorMessage } from "@/lib/api-client"
@@ -69,8 +70,10 @@ export default function OrganizationDetail({ organizationId }: OrganizationDetai
       }
     } catch (err: any) {
       console.error('Error fetching organization details:', err)
-      setError(getErrorMessage(err))
+      const errorMessage = getErrorMessage(err)
+      setError(errorMessage)
       setViewState("error")
+      toast.error(`获取组织详情失败: ${errorMessage}`)
     }
   }
 

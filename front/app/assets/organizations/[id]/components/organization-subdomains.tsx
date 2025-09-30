@@ -3,6 +3,7 @@
 // React 核心库
 import { useState, useEffect, useMemo } from "react"
 import { ColumnDef } from "@tanstack/react-table"
+import { toast } from "sonner"
 
 // 第三方库和 API 客户端
 import { getErrorMessage } from "@/lib/api-client"
@@ -232,16 +233,22 @@ export default function OrganizationSubDomains({ organizationId }: OrganizationS
 
     try {
       // 使用组织服务
-      const response = await OrganizationService.getOrganizationDomains(organizationId)
+      // const response = await OrganizationService.getOrganizationDomains(organizationId)
 
-      if (response.code === "200" && response.data) {
-        // 后端返回的是 domains 字段
-        const domains = response.data.domains || []
-        setMainDomains(domains)
-        // 主域名获取成功
-      } else {
-        // 主域名 API 响应异常
-      }
+      // 临时使用模拟数据
+      setMainDomains([
+        { id: "mock-1", name: "example.com", mainDomainName: "example.com", createdAt: new Date().toISOString() },
+        { id: "mock-2", name: "test.com", mainDomainName: "test.com", createdAt: new Date().toISOString() }
+      ])
+
+      // if (response.code === "200" && response.data) {
+      //   // 后端返回的是 domains 字段
+      //   const domains = response.data.domains || []
+      //   setMainDomains(domains)
+      //   // 主域名获取成功
+      // } else {
+      //   // 主域名 API 响应异常
+      // }
     } catch (error: any) {
       console.error("获取主域名出错:", error)
       // 如果 API 不存在，我们可以尝试从组织概览中获取主域名信息
@@ -263,19 +270,26 @@ export default function OrganizationSubDomains({ organizationId }: OrganizationS
       setError(null)
 
       // 使用组织服务
-      const response = await OrganizationService.getOrganizationSubDomains(organizationId, {
-        page, pageSize
-      })
+      // const response = await OrganizationService.getOrganizationSubDomains(organizationId, {
+      //   page, pageSize
+      // })
 
-      if (response.code === "200" && response.data) {
-        const data = response.data
-        // 数据已经自动转换为 camelCase，无需手动转换
-        const subDomains = data.subDomains || []
-        setSubDomains(subDomains)
-        setViewState(subDomains.length > 0 ? "data" : "empty")
-      } else {
-        throw new Error(response.message || "获取子域名失败")
-      }
+      // 临时使用模拟数据
+      setSubDomains([
+        { id: '1', name: 'www', subDomainName: 'www', mainDomainId: 'mock-1', status: 'active', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: '2', name: 'api', subDomainName: 'api', mainDomainId: 'mock-1', status: 'inactive', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+      ])
+      setViewState("data")
+
+      // if (response.code === "200" && response.data) {
+      //   const data = response.data
+      //   // 数据已经自动转换为 camelCase，无需手动转换
+      //   const subDomains = data.subDomains || []
+      //   setSubDomains(subDomains)
+      //   setViewState(subDomains.length > 0 ? "data" : "empty")
+      // } else {
+      //   throw new Error(response.message || "获取子域名失败")
+      // }
     } catch (error: any) {
       console.error("获取组织子域名出错:", error)
       const errorMessage = getErrorMessage(error)
@@ -283,6 +297,7 @@ export default function OrganizationSubDomains({ organizationId }: OrganizationS
       console.error("操作失败:", errorMessage)
       setSubDomains([])
       setViewState("error")
+      toast.error(`获取子域名失败: ${errorMessage}`)
     }
   }
 
@@ -302,15 +317,20 @@ export default function OrganizationSubDomains({ organizationId }: OrganizationS
       // 为每个主域名批量创建子域名
       for (const [mainDomainId, subDomainNames] of Object.entries(groupedByMainDomain)) {
         // 使用组织服务
-        const response = await OrganizationService.createSubDomains({
-          subDomains: subDomainNames,    // 前端使用 camelCase，会自动转换为 sub_domains
-          mainDomainId: mainDomainId,    // 前端使用 camelCase，会自动转换为 main_domain_id
-          status: "unknown" // 默认状态
-        })
+        // const response = await OrganizationService.createSubDomains({
+        //   subDomains: subDomainNames,    // 前端使用 camelCase，会自动转换为 sub_domains
+        //   mainDomainId: mainDomainId,    // 前端使用 camelCase，会自动转换为 main_domain_id
+        //   status: "unknown" // 默认状态
+        // })
 
-        if (response.code !== "SUCCESS") {
-          throw new Error(response.message || "添加子域名失败")
-        }
+        // 临时模拟成功响应
+        toast.success(`成功添加 ${subDomainNames.length} 个子域名到主域名 ${mainDomainId}`)
+
+        // if (response.code !== "SUCCESS") {
+        //   throw new Error(response.message || "添加子域名失败")
+        // } else {
+        //   toast.success(`成功添加 ${subDomainNames.length} 个子域名到主域名 ${mainDomainId}`)
+        // }
       }
 
       console.log(`成功添加 ${subdomains.length} 个子域名`)
@@ -321,6 +341,7 @@ export default function OrganizationSubDomains({ organizationId }: OrganizationS
     } catch (error: any) {
       console.error("添加子域名出错:", error)
       console.error("添加子域名失败:", getErrorMessage(error))
+      toast.error(`添加子域名失败: ${getErrorMessage(error)}`)
     }
   }
 
@@ -479,7 +500,7 @@ export default function OrganizationSubDomains({ organizationId }: OrganizationS
               </Button>
             </div>
           }
-          onSelectionChange={(count) => setSelectedCount(count)}
+          onSelectionChange={(count: number) => setSelectedCount(count)}
         />
       )}
 

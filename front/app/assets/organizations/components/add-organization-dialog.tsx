@@ -3,6 +3,7 @@
 // React 核心库
 import { useState } from "react"
 import type React from "react"
+import { toast } from "sonner"
 
 // UI 图标库
 import { Plus, Building2 } from "lucide-react"
@@ -46,12 +47,14 @@ export default function AddOrganizationDialog({ onAdd }: any) {
       console.log('Backend response:', response)
 
       if (response.code === "200" && response.data) {
+        toast.success(`组织 "${formData.name}" 创建成功`)
         onAdd() // 组织创建成功，通知父组件刷新列表
       } else {
-        console.error("创建组织失败:", response.message || "创建组织失败，请重试。")
+        toast.error(response.message || "创建组织失败，请重试。")
       }
     } catch (error: any) {
       console.error("创建组织失败:", getErrorMessage(error))
+      toast.error(`创建组织失败: ${getErrorMessage(error)}`)
     } finally {
       setFormData({
         name: "",

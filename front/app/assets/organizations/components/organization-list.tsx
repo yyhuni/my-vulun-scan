@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from "react"
 import { Trash2, Plus } from "lucide-react"
+import { toast } from "sonner"
 
 // 导航 Hook
 import { useNavigation } from "@/hooks/use-navigation"
@@ -103,8 +104,10 @@ export default function OrganizationList() {
       }
     } catch (err: any) {
       console.error('Error fetching organizations:', err)
-      setError(getErrorMessage(err))
+      const errorMessage = getErrorMessage(err)
+      setError(errorMessage)
       setViewState("error")
+      toast.error(`获取组织列表失败: ${errorMessage}`)
     }
   }
 
@@ -115,10 +118,12 @@ export default function OrganizationList() {
     try {
       await OrganizationService.deleteOrganization(organizationToDelete.id)
       setOrganizations((prev) => prev.filter((org) => org.id !== organizationToDelete.id))
+      toast.success(`组织 "${organizationToDelete.name}" 已成功删除`)
       setDeleteDialogOpen(false)
       setOrganizationToDelete(null)
     } catch (err: any) {
       console.error('Error deleting organization:', err)
+      toast.error(`删除组织失败: ${getErrorMessage(err)}`)
     }
   }
 
@@ -134,6 +139,7 @@ export default function OrganizationList() {
         org.id === updatedOrganization.id ? updatedOrganization : org
       )
     )
+    toast.success(`组织 "${updatedOrganization.name}" 已成功更新`)
     setEditDialogOpen(false)
     setOrganizationToEdit(null)
   }
@@ -195,7 +201,7 @@ export default function OrganizationList() {
             <AddOrganizationDialog onAdd={handleOrganizationAdded} />
           </div>
         }
-        onSelectionChange={(count) => setSelectedCount(count)}
+          onSelectionChange={(count: number) => setSelectedCount(count)}
       />
     )
   }

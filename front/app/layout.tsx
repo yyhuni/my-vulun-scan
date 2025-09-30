@@ -8,6 +8,7 @@ import PreloadProvider from '@/components/providers/preload-provider'
 import { Toaster } from "@/components/ui/sonner"
 
 
+
 import { ChunkErrorBoundary } from '@/components/common/chunk-error-boundary'
 
 export const metadata: Metadata = {

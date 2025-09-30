@@ -1,8 +1,8 @@
 "use client"
 
 // React 核心库
-import { useState } from "react"
-import type React from "react"
+import React, { useState } from "react"
+import { toast } from "sonner"
 
 // UI 图标库
 import { Plus, Building2 } from "lucide-react"
@@ -26,7 +26,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { getErrorMessage } from "@/lib/api-client"
 import { OrganizationService } from "@/services/organization.service"
 import type { Organization } from "@/types/organization.types"
-}
 
 interface AddOrganizationDialogProps {
   onAdd: (organization: Organization) => void
@@ -101,6 +100,7 @@ export default function AddOrganizationDialog({
       }
     } catch (error: any) {
       console.error("操作失败:", getErrorMessage(error))
+      toast.error(`操作失败: ${getErrorMessage(error)}`)
     } finally {
       setFormData({
         name: "",
