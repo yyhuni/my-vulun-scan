@@ -22,17 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 // 模拟扫描任务数据
-interface ScanTask {
-  id: string;
-  name: string;
-  target: string;
-  status: "running" | "completed" | "failed" | "pending";
-  createdAt: string;
-  lastRun?: string;
-  duration?: string;
-  resultsSummary: string;
-  type: string;
-}
+import type { ScanTask } from "@/types/scan.types";
 
 const mockScanTasks: ScanTask[] = [
   {

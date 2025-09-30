@@ -31,7 +31,7 @@ interface OrganizationDetailProps {
   organizationId: string
 }
 
-type ViewState = "loading" | "data" | "error"
+import type { ViewState } from "@/types/common.types"
 
 
 

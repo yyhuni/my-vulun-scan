@@ -262,14 +262,12 @@ interface OrganizationScanHistoryProps {
   organizationId: string
 }
 
-type ViewState = "loading" | "data" | "empty" | "error"
-type StatusFilter = "all" | "已完成" | "进行中" | "失败" | "已取消"
-type TypeFilter = "all" | "全面扫描" | "快速扫描" | "漏洞验证" | "自定义扫描"
+import type { ViewState, ScanStatusFilter, ScanTypeFilter } from "@/types/common.types"
 
 export default function OrganizationScanHistory({ organizationId }: OrganizationScanHistoryProps) {
   const [viewState, setViewState] = useState<ViewState>("data")
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all")
+  const [statusFilter, setStatusFilter] = useState<ScanStatusFilter>("all")
+  const [typeFilter, setTypeFilter] = useState<ScanTypeFilter>("all")
   const [scanHistory] = useState<ScanHistory[]>(sampleScanHistory.map(asScanHistory))
   const [selectedCount, setSelectedCount] = useState(0)
 

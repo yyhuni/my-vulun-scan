@@ -9,10 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertCircle, CheckCircle, Loader2, Globe } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
-interface MainDomain {
-  id: string
-  name: string
-}
+import type { MainDomain } from "@/types/domain.types"
 
 interface AddSubDomainDialogProps {
   isOpen: boolean
@@ -22,11 +19,7 @@ interface AddSubDomainDialogProps {
   onAddSubDomain: (subdomains: { name: string; mainDomainId: string }[]) => void
 }
 
-interface ValidationResult {
-  subdomain: string
-  isValid: boolean
-  message?: string
-}
+import type { ValidationResult } from "@/types/domain.types"
 
 export function AddSubDomainDialog({
   isOpen,

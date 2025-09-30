@@ -14,11 +14,7 @@ import React from "react"
 import Link from "next/link"
 
 
-interface BreadcrumbItemType {
-  name: string
-  href?: string
-  current?: boolean
-}
+import type { BreadcrumbItemType } from "@/types/common.types"
 
 interface AppLayoutProps {
   children: ReactNode

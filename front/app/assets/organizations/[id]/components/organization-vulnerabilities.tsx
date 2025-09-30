@@ -10,16 +10,14 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { DataTable } from "@/components/custom-ui/data-table/data-table"
 import { DataTableColumnHeader } from "@/components/custom-ui/data-table/data-table-column-header"
 import { vulnerabilityService } from "@/services/vulnerability.service"
-import { Vulnerability } from "@/types/api-response.types"
+import type { Vulnerability } from "@/types/scan.types"
 
 
 interface OrganizationVulnerabilitiesProps {
   organizationId: string
 }
 
-type ViewState = "loading" | "data" | "empty" | "error"
-type SeverityFilter = "all" | "高危" | "中危" | "低危"
-type StatusFilter = "all" | "待修复" | "处理中" | "已修复" | "已忽略"
+import type { ViewState, SeverityFilter, VulnerabilityStatusFilter } from "@/types/common.types"
 
 export default function OrganizationVulnerabilities({ organizationId }: OrganizationVulnerabilitiesProps) {
   const [viewState, setViewState] = useState<ViewState>("loading")

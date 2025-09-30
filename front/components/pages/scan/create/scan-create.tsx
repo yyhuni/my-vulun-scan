@@ -15,13 +15,7 @@ import { Badge } from "@/components/ui/badge";
 // TODO: 替换为真实的 API 调用
 // 这些数据应该从后端 API 获取
 
-interface ScanConfig {
-  organizationId: string;
-  domainIds: string[]; // 改为数组支持多选
-  workflowId: string;
-  scanName: string;
-  description: string;
-}
+import type { ScanConfig } from "@/types/scan.types"
 
 export default function ScanCreate() {
   const { navigate } = useNavigation();

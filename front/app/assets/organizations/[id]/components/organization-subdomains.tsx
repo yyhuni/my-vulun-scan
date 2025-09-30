@@ -52,8 +52,7 @@ interface OrganizationSubDomainsProps {
 
 
 
-type ViewState = "loading" | "data" | "empty" | "error"
-type StatusFilter = "all" | "active" | "inactive" | "unknown"
+import type { ViewState, SubdomainStatusFilter } from "@/types/common.types"
 
 
 

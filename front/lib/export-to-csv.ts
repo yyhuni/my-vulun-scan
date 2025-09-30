@@ -1,9 +1,4 @@
-interface CsvExportOptions<T> {
-  headers: { key: keyof T; label: string }[];
-  data: T[];
-  filename: string;
-  formatRow?: (item: T) => string[];
-}
+import type { CsvExportOptions } from "@/types/common.types"
 
 export function exportToCsv<T>({ headers, data, filename, formatRow }: CsvExportOptions<T>) {
   if (data.length === 0) {

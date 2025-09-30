@@ -28,18 +28,8 @@ import {
 import { DataTablePagination } from "./data-table-pagination"
 import { DataTableToolbar } from "./data-table-toolbar"
 
-interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[]
-  data: TData[]
-  searchableColumns?: string[]
-  filterableColumns?: {
-    key: string
-    title: string
-    options: { label: string; value: string; icon?: React.ComponentType<{ className?: string }> }[]
-  }[]
-  extraButtons?: React.ReactNode
-  onSelectionChange?: (count: number) => void
-}
+// DataTableProps 类型已在 common.types.ts 中定义，这里直接使用
+import type { DataTableProps } from "@/types/common.types"
 
 export function DataTable<TData, TValue>({
   columns,

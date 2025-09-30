@@ -35,7 +35,7 @@ import AddOrganizationDialog from "./add-organization-dialog"
 import EditOrganizationDialog from "./edit-organization-dialog"
 
 
-type ViewState = "loading" | "data" | "empty" | "error"
+import type { ViewState } from "@/types/common.types"
 
 export default function OrganizationList() {
   // 状态管理

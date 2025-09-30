@@ -13,10 +13,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 
-interface DataTableViewOptionsProps<TData> {
-  table: Table<TData>
-  extraButtons?: React.ReactNode
-}
+import type { DataTableViewOptionsProps } from "@/types/common.types"
 
 export function DataTableViewOptions<TData>({
   table,

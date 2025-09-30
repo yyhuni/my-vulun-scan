@@ -8,16 +8,7 @@ import { Input } from "@/components/ui/input"
 import { DataTableViewOptions } from "./data-table-view-options"
 import { DataTableFacetedFilter } from "./data-table-faceted-filter"
 
-interface DataTableToolbarProps<TData> {
-  table: Table<TData>
-  searchableColumns?: string[]
-  filterableColumns?: {
-    key: string
-    title: string
-    options: { label: string; value: string; icon?: React.ComponentType<{ className?: string }> }[]
-  }[]
-  extraButtons?: React.ReactNode
-}
+import type { DataTableToolbarProps } from "@/types/common.types"
 
 export function DataTableToolbar<TData>({
   table,

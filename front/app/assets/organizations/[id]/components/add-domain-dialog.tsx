@@ -15,11 +15,7 @@ interface AddDomainDialogProps {
   onAddDomain: (domains: string[]) => void
 }
 
-interface ValidationResult {
-  domain: string
-  isValid: boolean
-  message?: string
-}
+import type { ValidationResult } from "@/types/domain.types"
 
 export function AddDomainDialog({
   isOpen,

@@ -3,11 +3,7 @@
  * 使用 localStorage 实现数据缓存，支持 TTL（生存时间）机制
  */
 
-interface CacheItem<T> {
-  data: T
-  timestamp: number
-  ttl: number // 生存时间（毫秒）
-}
+import type { CacheItem } from "@/types/common.types"
 
 export class CacheService {
   /**

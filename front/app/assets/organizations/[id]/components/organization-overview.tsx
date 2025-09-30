@@ -29,14 +29,8 @@ import {
 import { AddDomainDialog } from "@/app/assets/organizations/[id]/components/add-domain-dialog"
 
 // 类型定义
-interface Domain {
-  id: string
-  name: string
-  domainName: string  // 前端使用 camelCase
-  createdAt: string   // 前端使用 camelCase
-}
-
 import type { Organization } from "@/types/organization.types"
+import type { Domain } from "@/types/domain.types"
 
 interface OrganizationOverviewProps {
   organization: Organization
