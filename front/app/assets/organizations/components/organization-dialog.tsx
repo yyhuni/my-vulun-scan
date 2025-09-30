@@ -25,13 +25,7 @@ import { Textarea } from "@/components/ui/textarea"
 // 自定义 Hooks 和 API 客户端
 import { getErrorMessage } from "@/lib/api-client"
 import { OrganizationService } from "@/services/organization.service"
-
-// 类型定义
-interface Organization {
-  id: string
-  name: string
-  description: string
-  CreatedAt: string
+import type { Organization } from "@/types/organization.types"
 }
 
 interface AddOrganizationDialogProps {

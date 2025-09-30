@@ -36,15 +36,7 @@ interface Domain {
   createdAt: string   // 前端使用 camelCase
 }
 
-interface Organization {
-  id: string
-  name: string
-  description: string
-  createdAt: string       // 前端使用 camelCase
-  domainCount: number     // 前端使用 camelCase
-  status: string
-  mainDomain?: string     // 前端使用 camelCase
-}
+import type { Organization } from "@/types/organization.types"
 
 interface OrganizationOverviewProps {
   organization: Organization

@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { DataTable } from "@/components/custom-ui/data-table/data-table"
 import { DataTableColumnHeader } from "@/components/custom-ui/data-table/data-table-column-header"
 import { vulnerabilityService } from "@/services/vulnerability.service"
-import { Vulnerability } from "@/types/api.types"
+import { Vulnerability } from "@/types/api-response.types"
 
 
 interface OrganizationVulnerabilitiesProps {

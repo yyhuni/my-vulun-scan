@@ -25,15 +25,7 @@ import OrganizationScanHistory from "./organization-scan-history"
 
 
 // 类型定义
-interface Organization {
-  id: string
-  name: string
-  description: string
-  createdAt: string   // 前端使用 camelCase
-  domainCount: number // 前端使用 camelCase
-  status: string      // 添加状态字段
-  mainDomain?: string // 前端使用 camelCase
-}
+import type { Organization } from "@/types/organization.types"
 
 interface OrganizationDetailProps {
   organizationId: string

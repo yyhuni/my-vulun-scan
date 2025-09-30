@@ -9,13 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-
-interface Organization {
-  id: string
-  name: string
-  description: string
-  createdAt: string
-}
+import type { Organization } from "@/types/organization.types"
 
 interface OrganizationRowActionsProps {
   organization: Organization

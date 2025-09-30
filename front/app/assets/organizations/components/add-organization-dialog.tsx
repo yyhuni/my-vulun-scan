@@ -26,14 +26,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { getErrorMessage } from "@/lib/api-client"
 import { OrganizationService } from "@/services/organization.service"
 
-// 类型定义
-interface Organization {
-  id: string
-  name: string
-  description: string
-  CreatedAt: string
-}
-
 
 export default function AddOrganizationDialog({ onAdd }: any) {
   const [open, setOpen] = useState(false)

@@ -27,7 +27,8 @@ import {
 
 // 数据表格组件
 import { DataTable } from "@/components/custom-ui/data-table/data-table"
-import { createOrganizationColumns, Organization } from "./organization-columns"
+import { createOrganizationColumns } from "./organization-columns"
+import type { Organization } from "@/types/organization.types"
 
 // 业务组件
 import AddOrganizationDialog from "./add-organization-dialog"

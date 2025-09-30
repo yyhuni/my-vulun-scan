@@ -4,16 +4,7 @@ import { ColumnDef } from "@tanstack/react-table"
 import { Checkbox } from "@/components/ui/checkbox"
 import { DataTableColumnHeader } from "@/components/custom-ui/data-table/data-table-column-header"
 import { OrganizationRowActions } from "./organization-row-actions"
-
-export interface Organization {
-  id: string
-  name: string
-  description: string
-  createdAt: string
-  updatedAt?: string // 添加 updatedAt 字段
-  domainCount?: number
-  status?: string
-}
+import type { Organization } from "@/types/organization.types"
 
 interface CreateColumnsProps {
   formatDate: (dateString: string) => string
