@@ -17,7 +17,6 @@ func SetupOrganizationRoutes(api *gin.RouterGroup) {
 		orgGroup.POST("/:id/update", handlers.UpdateOrganization)
 		orgGroup.POST("/delete", handlers.DeleteOrganization)
 		orgGroup.POST("/batch-delete", handlers.BatchDeleteOrganizations)
-		orgGroup.GET("/search", handlers.SearchOrganizations)
 
 		// 组织域名相关操作
 		orgGroup.GET("/:id/domains", handlers.GetOrganizationDomains)

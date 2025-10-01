@@ -11,6 +11,15 @@ import (
 )
 
 // GetOrganizationDomains 获取组织域名
+// @Summary 获取组织的域名列表
+// @Description 根据组织ID获取该组织下的所有域名
+// @Tags 域名管理
+// @Produce json
+// @Param id path string true "组织ID"
+// @Success 200 {object} map[string]interface{} "获取成功"
+// @Failure 400 {object} map[string]interface{} "请求参数错误"
+// @Failure 500 {object} map[string]interface{} "服务器内部错误"
+// @Router /organizations/{id}/domains [get]
 func GetOrganizationDomains(c *gin.Context) {
 	organizationIDStr := c.Param("id")
 	if organizationIDStr == "" {
@@ -39,6 +48,16 @@ func GetOrganizationDomains(c *gin.Context) {
 }
 
 // CreateDomains 创建域名
+// @Summary 批量创建域名
+// @Description 批量创建域名并关联到指定组织
+// @Tags 域名管理
+// @Accept json
+// @Produce json
+// @Param request body models.CreateDomainsRequest true "域名创建请求"
+// @Success 200 {object} map[string]interface{} "创建成功"
+// @Failure 400 {object} map[string]interface{} "请求参数错误"
+// @Failure 500 {object} map[string]interface{} "服务器内部错误"
+// @Router /domains/create [post]
 func CreateDomains(c *gin.Context) {
 	var req models.CreateDomainsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -62,6 +81,17 @@ func CreateDomains(c *gin.Context) {
 }
 
 // RemoveOrganizationDomain 移除组织域名关联
+// @Summary 移除组织域名关联
+// @Description 移除组织与域名之间的关联关系
+// @Tags 域名管理
+// @Accept json
+// @Produce json
+// @Param request body models.RemoveOrganizationDomainRequest true "移除关联请求"
+// @Success 200 {object} map[string]interface{} "移除成功"
+// @Failure 400 {object} map[string]interface{} "请求参数错误"
+// @Failure 404 {object} map[string]interface{} "未找到关联关系"
+// @Failure 500 {object} map[string]interface{} "服务器内部错误"
+// @Router /organizations/remove-domain [post]
 func RemoveOrganizationDomain(c *gin.Context) {
 	var req models.RemoveOrganizationDomainRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -84,9 +114,16 @@ func RemoveOrganizationDomain(c *gin.Context) {
 }
 
 // GetDomainByID 根据ID获取域名详情
-// 处理GET /domains/:id请求
-// 参数：域名ID（从URL路径参数获取）
-// 返回：域名详细信息，包括关联的子域名等
+// @Summary 获取域名详情
+// @Description 根据域名ID获取域名的详细信息，包括关联的子域名
+// @Tags 域名管理
+// @Produce json
+// @Param id path string true "域名ID"
+// @Success 200 {object} map[string]interface{} "获取成功"
+// @Failure 400 {object} map[string]interface{} "请求参数错误"
+// @Failure 404 {object} map[string]interface{} "域名不存在"
+// @Failure 500 {object} map[string]interface{} "服务器内部错误"
+// @Router /domains/{id} [get]
 func GetDomainByID(c *gin.Context) {
 	idStr := c.Param("id")
 	if idStr == "" {
@@ -115,9 +152,17 @@ func GetDomainByID(c *gin.Context) {
 }
 
 // UpdateDomain 更新域名信息
-// 处理POST /domains/update请求
-// 参数：UpdateDomainRequest结构体，支持部分字段更新
-// 返回：更新后的域名完整信息
+// @Summary 更新域名
+// @Description 更新域名的名称或描述信息，支持部分字段更新
+// @Tags 域名管理
+// @Accept json
+// @Produce json
+// @Param request body models.UpdateDomainRequest true "更新信息"
+// @Success 200 {object} map[string]interface{} "更新成功"
+// @Failure 400 {object} map[string]interface{} "请求参数错误"
+// @Failure 404 {object} map[string]interface{} "域名不存在"
+// @Failure 500 {object} map[string]interface{} "服务器内部错误"
+// @Router /domains/update [post]
 func UpdateDomain(c *gin.Context) {
 	var req models.UpdateDomainRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -144,9 +189,17 @@ func UpdateDomain(c *gin.Context) {
 }
 
 // DeleteDomain 删除单个域名
-// 处理POST /domains/delete请求
-// 参数：RemoveOrganizationDomainRequest结构体（复用，实际上只需要domain_id）
-// 返回：操作成功消息
+// @Summary 删除域名
+// @Description 删除指定域名及其所有关联数据
+// @Tags 域名管理
+// @Accept json
+// @Produce json
+// @Param request body models.RemoveOrganizationDomainRequest true "删除请求"
+// @Success 200 {object} map[string]interface{} "删除成功"
+// @Failure 400 {object} map[string]interface{} "请求参数错误"
+// @Failure 404 {object} map[string]interface{} "域名不存在"
+// @Failure 500 {object} map[string]interface{} "服务器内部错误"
+// @Router /domains/delete [post]
 func DeleteDomain(c *gin.Context) {
 	var req models.RemoveOrganizationDomainRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -169,9 +222,16 @@ func DeleteDomain(c *gin.Context) {
 }
 
 // BatchDeleteDomains 批量删除域名
-// 处理POST /domains/batch-delete请求
-// 参数：BatchDeleteDomainsRequest结构体，包含要删除的域名ID列表
-// 返回：APIResponse结构体，包含操作统计信息
+// @Summary 批量删除域名
+// @Description 批量删除多个域名及其关联数据
+// @Tags 域名管理
+// @Accept json
+// @Produce json
+// @Param request body models.BatchDeleteDomainsRequest true "域名ID列表"
+// @Success 200 {object} map[string]interface{} "批量删除成功"
+// @Failure 400 {object} map[string]interface{} "请求参数错误"
+// @Failure 500 {object} map[string]interface{} "服务器内部错误"
+// @Router /domains/batch-delete [post]
 func BatchDeleteDomains(c *gin.Context) {
 	var req models.BatchDeleteDomainsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -190,9 +250,16 @@ func BatchDeleteDomains(c *gin.Context) {
 }
 
 // SearchDomains 搜索域名
-// 处理GET /domains/search请求
-// 参数：通过查询参数获取，支持query（搜索关键词）、page（页码）、page_size（每页数量）
-// 返回：SearchDomainsResponse结构体，包含分页结果和统计信息
+// @Summary 搜索域名
+// @Description 支持关键词搜索和分页，返回匹配的域名列表
+// @Tags 域名管理
+// @Produce json
+// @Param query query string false "搜索关键词"
+// @Param page query int false "页码"
+// @Param page_size query int false "每页数量"
+// @Success 200 {object} map[string]interface{} "搜索成功"
+// @Failure 500 {object} map[string]interface{} "服务器内部错误"
+// @Router /domains/search [get]
 func SearchDomains(c *gin.Context) {
 	var req models.SearchDomainsRequest
 

@@ -16,7 +16,7 @@ type Organization struct {
 	Description string `json:"description" gorm:"size:1000"`
 
 	// 关联关系
-	Domains []Domain `json:"domains,omitempty" gorm:"many2many:organization_domains;constraint:OnDelete:CASCADE"`
+	Domains []Domain `json:"domains,omitempty" gorm:"many2many:organization_domains"`
 }
 
 // CreateOrganizationRequest 创建组织请求

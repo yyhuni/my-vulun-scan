@@ -31,6 +31,20 @@ if [ ! -f "config/config.yaml" ]; then
     cp config/config.yaml.example config/config.yaml 2>/dev/null || echo "Please create config/config.yaml"
 fi
 
+# 生成 Swagger 文档
+echo "📝 Generating Swagger documentation..."
+SWAG_BIN="$(go env GOPATH)/bin/swag"
+if [ -f "$SWAG_BIN" ]; then
+    $SWAG_BIN init -g cmd/main.go -o docs --parseDependency --parseInternal
+    echo "✅ Swagger docs generated"
+elif command -v swag &> /dev/null; then
+    swag init -g cmd/main.go -o docs --parseDependency --parseInternal
+    echo "✅ Swagger docs generated"
+else
+    echo "⚠️  swag command not found, skipping swagger generation"
+    echo "   Install with: go install github.com/swaggo/swag/cmd/swag@latest"
+fi
+
 # 编译并运行
 echo "🔨 Building application..."
 go build -o bin/server cmd/main.go

@@ -16,18 +16,8 @@ type Domain struct {
 	Description string `json:"description" gorm:"size:1000"`
 
 	// 关联关系
-	Organizations []Organization `json:"organizations,omitempty" gorm:"many2many:organization_domains;constraint:OnDelete:CASCADE"`
+	Organizations []Organization `json:"organizations,omitempty" gorm:"many2many:organization_domains"`
 	SubDomains    []SubDomain    `json:"sub_domains,omitempty" gorm:"foreignKey:DomainID;constraint:OnDelete:CASCADE"`
-}
-
-// OrganizationDomain 组织域名关联模型（多对多中间表）
-type OrganizationDomain struct {
-	OrganizationID uint `json:"organization_id" gorm:"primaryKey"`
-	DomainID       uint `json:"domain_id" gorm:"primaryKey"`
-
-	// 关联关系 - GORM 会自动管理多对多关系
-	Organization *Organization `json:"organization,omitempty"`
-	Domain       *Domain       `json:"domain,omitempty"`
 }
 
 // CreateDomainsRequest 创建域名请求

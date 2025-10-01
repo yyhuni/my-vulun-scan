@@ -111,6 +111,20 @@ init_backend() {
         }
     fi
 
+    # 生成 Swagger 文档
+    log_info "生成 Swagger 文档..."
+    SWAG_BIN="$(go env GOPATH)/bin/swag"
+    if [ -f "$SWAG_BIN" ]; then
+        $SWAG_BIN init -g cmd/main.go -o docs --parseDependency --parseInternal
+        log_info "Swagger 文档生成完成"
+    elif command -v swag &> /dev/null; then
+        swag init -g cmd/main.go -o docs --parseDependency --parseInternal
+        log_info "Swagger 文档生成完成"
+    else
+        log_warn "swag 命令未找到，跳过 Swagger 生成"
+        log_warn "安装命令: go install github.com/swaggo/swag/cmd/swag@latest"
+    fi
+
     log_info "后端初始化完成"
 }
 

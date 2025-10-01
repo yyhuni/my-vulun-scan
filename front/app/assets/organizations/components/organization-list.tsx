@@ -144,13 +144,9 @@ export default function OrganizationList() {
     setOrganizationToEdit(null)
   }
 
-  // 批量删除处理函数
+  // 批量删除处理函数（暂时禁用，需要集成 DataTable 选择功能）
   const handleBulkDelete = () => {
-    if (selectedCount === 0) {
-      return
-    }
-
-    // 这里可以实现批量删除逻辑
+    toast.info("批量删除功能即将上线，请使用单个删除功能")
   }
 
   // 根据状态渲染内容

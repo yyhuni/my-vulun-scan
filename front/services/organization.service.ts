@@ -59,4 +59,14 @@ export class OrganizationService {
     })
     return response.data
   }
+
+  /**
+   * 批量删除组织
+   */
+  static async batchDeleteOrganizations(organizationIds: string[]): Promise<ApiResponse> {
+    const response = await api.post<ApiResponse>('/organizations/batch-delete', {
+      organizationIds: organizationIds  // 前端camelCase，会自动转换为后端的organization_ids
+    })
+    return response.data
+  }
 }

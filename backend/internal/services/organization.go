@@ -53,23 +53,6 @@ func (s *OrganizationService) GetOrganizationByID(id string) (*models.Organizati
 	return &org, nil
 }
 
-// GetOrganizationWithRelations 根据ID获取组织及其关联数据
-func (s *OrganizationService) GetOrganizationWithRelations(id string) (*models.Organization, error) {
-	var org models.Organization
-
-	result := s.db.Preload("MainDomains").Preload("ScanTasks").First(&org, "id = ?", id)
-	if result.Error != nil {
-		if result.Error == gorm.ErrRecordNotFound {
-			return nil, fmt.Errorf("organization not found")
-		}
-		log.Error().Err(result.Error).Msg("Failed to query organization with relations")
-		return nil, result.Error
-	}
-
-	log.Info().Str("id", id).Msg("Organization with relations retrieved successfully")
-	return &org, nil
-}
-
 // CreateOrganization 创建组织
 func (s *OrganizationService) CreateOrganization(req models.CreateOrganizationRequest) (*models.Organization, error) {
 	org := models.Organization{
@@ -130,81 +113,28 @@ func (s *OrganizationService) UpdateOrganization(req models.UpdateOrganizationRe
 
 // DeleteOrganization 删除组织
 func (s *OrganizationService) DeleteOrganization(organizationID string) error {
-	// 检查组织是否存在
-	var org models.Organization
-	result := s.db.First(&org, "id = ?", organizationID)
-	if result.Error != nil {
-		if result.Error == gorm.ErrRecordNotFound {
-			return fmt.Errorf("organization not found")
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		// 检查组织是否存在
+		var org models.Organization
+		if err := tx.First(&org, "id = ?", organizationID).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return fmt.Errorf("organization not found")
+			}
+			log.Error().Err(err).Msg("Failed to query organization for deletion")
+			return err
 		}
-		log.Error().Err(result.Error).Msg("Failed to query organization for deletion")
-		return result.Error
-	}
 
-	// 删除组织（GORM会自动处理级联删除）
-	result = s.db.Delete(&org)
-	if result.Error != nil {
-		log.Error().Err(result.Error).Msg("Failed to delete organization")
-		return result.Error
-	}
+		// 删除组织（如配置了外键级联，GORM/DB 将自动处理关联删除）
+		res := tx.Delete(&org)
+		if res.Error != nil {
+			log.Error().Err(res.Error).Msg("Failed to delete organization")
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return fmt.Errorf("no rows affected during deletion")
+		}
 
-	if result.RowsAffected == 0 {
-		return fmt.Errorf("no rows affected during deletion")
-	}
-
-	log.Info().Str("id", organizationID).Msg("Organization deleted successfully")
-	return nil
-}
-
-// GetOrganizationStats 获取组织统计信息
-func (s *OrganizationService) GetOrganizationStats(organizationID string) (map[string]interface{}, error) {
-	stats := make(map[string]interface{})
-
-	// 获取域名数量
-	var domainCount int64
-	err := s.db.Model(&models.OrganizationDomain{}).Where("organization_id = ?", organizationID).Count(&domainCount).Error
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to count main domains")
-		return nil, err
-	}
-	stats["domain_count"] = domainCount
-
-	// 获取子域名数量
-	var subDomainCount int64
-	err = s.db.Table("sub_domains sd").
-		Joins("JOIN domains d ON sd.domain_id = d.id").
-		Joins("JOIN organization_domains od ON d.id = od.domain_id").
-		Where("od.organization_id = ?", organizationID).
-		Count(&subDomainCount).Error
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to count sub domains")
-		return nil, err
-	}
-	stats["sub_domain_count"] = subDomainCount
-
-	log.Info().Str("organization_id", organizationID).Msg("Organization stats retrieved successfully")
-	return stats, nil
-}
-
-// SearchOrganizations 搜索组织
-func (s *OrganizationService) SearchOrganizations(keyword string) ([]models.Organization, error) {
-	var organizations []models.Organization
-
-	query := s.db.Order("created_at DESC")
-	if keyword != "" {
-		query = query.Where("name ILIKE ? OR description ILIKE ?", "%"+keyword+"%", "%"+keyword+"%")
-	}
-
-	result := query.Find(&organizations)
-	if result.Error != nil {
-		log.Error().Err(result.Error).Msg("Failed to search organizations")
-		return nil, result.Error
-	}
-
-	log.Info().
-		Str("keyword", keyword).
-		Int("count", len(organizations)).
-		Msg("Organizations searched successfully")
-
-	return organizations, nil
+		log.Info().Str("id", organizationID).Msg("Organization deleted successfully")
+		return nil
+	})
 }

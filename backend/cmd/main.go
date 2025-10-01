@@ -12,11 +12,20 @@ import (
 	"vulun-scan-backend/pkg/database"
 	"vulun-scan-backend/routes"
 
+	// Swagger
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+	_ "vulun-scan-backend/docs"
+
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
+// @title Vulun Scan Backend API
+// @version 1.0
+// @description 漏洞扫描系统后端 API 文档
+// @BasePath /api/v1
 func main() {
 	// 加载配置
 	cfg := config.GetConfig()
@@ -67,6 +76,9 @@ func setupRouter() *gin.Engine {
 	r.Use(gin.Recovery())
 	r.Use(middleware.CORS())
 	r.Use(middleware.Logger())
+
+	// Swagger 文档路由
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// 健康检查路由
 	r.GET("/health", func(c *gin.Context) {
