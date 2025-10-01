@@ -7,18 +7,22 @@ const Toaster = ({ ...props }: ToasterProps) => {
   const { theme = "system" } = useTheme()
 
   return (
-    <Sonner
-      theme={theme as ToasterProps["theme"]}
-      className="toaster group"
-      style={
-        {
-          "--normal-bg": "var(--popover)",
-          "--normal-text": "var(--popover-foreground)",
-          "--normal-border": "var(--border)",
-        } as React.CSSProperties
-      }
-      {...props}
-    />
+<Sonner
+  theme={theme as ToasterProps["theme"]}
+  className="toaster group"
+  duration={2000}
+  position="bottom-center"
+  richColors  ={false}
+  closeButton={false}
+  toastOptions={{
+    style: {
+      background: 'hsl(var(--popover))',
+      color: 'hsl(var(--popover-foreground))',
+      border: '1px solid hsl(var(--border))',
+    },
+  }}
+  {...props}
+/>
   )
 }
 
