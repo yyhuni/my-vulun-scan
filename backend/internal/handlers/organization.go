@@ -198,75 +198,25 @@ func BatchDeleteOrganizations(c *gin.Context) {
 		return
 	}
 
-	// 使用数据库事务确保原子性
-	tx := database.DB.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	// 步骤1：验证所有组织ID都存在
+	// 验证所有组织ID都存在
 	var organizations []models.Organization
-	if err := tx.Where("id IN ?", req.OrganizationIDs).Find(&organizations).Error; err != nil {
-		tx.Rollback()
+	if err := database.DB.Where("id IN ?", req.OrganizationIDs).Find(&organizations).Error; err != nil {
 		utils.InternalServerErrorResponse(c, "查询组织失败: "+err.Error())
 		return
 	}
 
 	if len(organizations) != len(req.OrganizationIDs) {
-		tx.Rollback()
 		utils.BadRequestResponse(c, "部分组织ID不存在")
 		return
 	}
 
-	// 步骤2：先删除所有关联数据（按依赖顺序）
-	// 删除组织域名关联（多对多关系）
-	if err := tx.Where("organization_id IN ?", req.OrganizationIDs).Delete(&models.OrganizationDomain{}).Error; err != nil {
-		tx.Rollback()
-		utils.InternalServerErrorResponse(c, "删除组织域名关联失败: "+err.Error())
-		return
-	}
-
-	// 删除子域名（通过域名外键关联）
-	var domainIDs []uint
-	if err := tx.Table("domains").Where("id IN (SELECT domain_id FROM organization_domains WHERE organization_id IN ?)", req.OrganizationIDs).Pluck("id", &domainIDs).Error; err != nil {
-		tx.Rollback()
-		utils.InternalServerErrorResponse(c, "查询相关域名失败: "+err.Error())
-		return
-	}
-
-	if len(domainIDs) > 0 {
-		if err := tx.Where("domain_id IN ?", domainIDs).Delete(&models.SubDomain{}).Error; err != nil {
-			tx.Rollback()
-			utils.InternalServerErrorResponse(c, "删除子域名失败: "+err.Error())
-			return
-		}
-	}
-
-	// 删除域名
-	if len(domainIDs) > 0 {
-		if err := tx.Where("id IN ?", domainIDs).Delete(&models.Domain{}).Error; err != nil {
-			tx.Rollback()
-			utils.InternalServerErrorResponse(c, "删除域名失败: "+err.Error())
-			return
-		}
-	}
-
-	// 步骤3：最后删除组织本身
-	if err := tx.Where("id IN ?", req.OrganizationIDs).Delete(&models.Organization{}).Error; err != nil {
-		tx.Rollback()
+	// 删除组织（数据库 CASCADE 会自动删除 organization_domains 关联表记录）
+	// 域名和子域名保留，因为它们可能被其他组织使用
+	if err := database.DB.Where("id IN ?", req.OrganizationIDs).Delete(&models.Organization{}).Error; err != nil {
 		utils.InternalServerErrorResponse(c, "删除组织失败: "+err.Error())
 		return
 	}
 
-	// 提交事务
-	if err := tx.Commit().Error; err != nil {
-		utils.InternalServerErrorResponse(c, "提交事务失败: "+err.Error())
-		return
-	}
-
-	// 所有操作成功
 	utils.SuccessResponse(c, gin.H{
 		"message":       "批量删除组织成功",
 		"deleted_count": len(req.OrganizationIDs),
