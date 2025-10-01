@@ -15,8 +15,9 @@ type Domain struct {
 	Name        string `json:"name" gorm:"uniqueIndex;not null;size:255"`
 	Description string `json:"description" gorm:"size:1000"`
 
-	// 关联关系
+	// 关联关系 - 级联删除配置在 OrganizationDomain 中间表定义
 	Organizations []Organization `json:"organizations,omitempty" gorm:"many2many:organization_domains"`
+	// SubDomain 的级联删除：删除 Domain 时自动删除其所有子域名
 	SubDomains    []SubDomain    `json:"sub_domains,omitempty" gorm:"foreignKey:DomainID;constraint:OnDelete:CASCADE"`
 }
 

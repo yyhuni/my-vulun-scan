@@ -124,7 +124,14 @@ func (s *OrganizationService) DeleteOrganization(organizationID string) error {
 			return err
 		}
 
-		// 删除组织（如配置了外键级联，GORM/DB 将自动处理关联删除）
+		// 1. 使用 GORM Association API 清理多对多关联
+		// 这比直接 SQL 更优雅、类型安全,且不依赖表名
+		if err := tx.Model(&org).Association("Domains").Clear(); err != nil {
+			log.Error().Err(err).Msg("Failed to clear organization-domain associations")
+			return fmt.Errorf("failed to clear organization-domain associations: %w", err)
+		}
+
+		// 2. 删除组织本身
 		res := tx.Delete(&org)
 		if res.Error != nil {
 			log.Error().Err(res.Error).Msg("Failed to delete organization")
@@ -134,7 +141,7 @@ func (s *OrganizationService) DeleteOrganization(organizationID string) error {
 			return fmt.Errorf("no rows affected during deletion")
 		}
 
-		log.Info().Str("id", organizationID).Msg("Organization deleted successfully")
+		log.Info().Str("id", organizationID).Msg("Organization and its associations deleted successfully")
 		return nil
 	})
 }

@@ -15,7 +15,7 @@ type Organization struct {
 	Name        string `json:"name" gorm:"uniqueIndex;not null;size:255"`
 	Description string `json:"description" gorm:"size:1000"`
 
-	// 关联关系
+	// 关联关系 - 级联删除配置在 OrganizationDomain 中间表定义
 	Domains []Domain `json:"domains,omitempty" gorm:"many2many:organization_domains"`
 }
 

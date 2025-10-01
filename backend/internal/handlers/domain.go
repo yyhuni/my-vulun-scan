@@ -77,7 +77,8 @@ func CreateDomains(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, response)
+	// 使用统一的成功响应格式
+	utils.SuccessResponse(c, response.Data)
 }
 
 // RemoveOrganizationDomain 移除组织域名关联

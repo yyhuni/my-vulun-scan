@@ -71,24 +71,19 @@ export default function OrganizationAssets({ organizationId }: OrganizationAsset
       setLoading(true)
 
       // 使用组织服务
-      // const response = await OrganizationService.getOrganizationDomains(organizationId)
+      const response = await OrganizationService.getOrganizationDomains(String(organizationId))
 
-      // 临时使用模拟数据
-      setDomains([
-        { id: 1, name: 'example.com', description: '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        { id: 2, name: 'test.com', description: '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
-      ])
-
-      // if (response.code === "200" && response.data && Array.isArray(response.data.domains)) {
-      //   // 后端返回的是 domains 字段
-      //   setDomains(response.data.domains)
-      // } else {
-      //   console.error("获取域名失败:", response.message)
-      //   setDomains([])
-      // }
+      if (response.code === "200" && response.data && Array.isArray(response.data.domains)) {
+        // 后端返回的是 domains 字段
+        setDomains(response.data.domains)
+      } else {
+        console.error("获取域名失败:", response.message)
+        toast.error(`获取域名失败: ${response.message}`)
+        setDomains([])
+      }
     } catch (error) {
       console.error("获取域名出错:", error)
-      console.error("操作失败:", getErrorMessage(error))
+      toast.error(`获取域名失败: ${getErrorMessage(error)}`)
       setDomains([])
     } finally {
       setLoading(false)
@@ -101,27 +96,23 @@ export default function OrganizationAssets({ organizationId }: OrganizationAsset
 
     try {
       // 使用组织服务
-      // const response = await OrganizationService.createDomains({
-      //   domains: domains.map(domain => ({ name: domain })),  // 转换为后端期望的格式
-      //   organizationId: parseInt(organizationId),  // 转换为数字类型
-      // })
+      const response = await OrganizationService.createDomains({
+        domains: domains.map(domain => ({ name: domain })),  // 转换为后端期望的格式
+        organizationId: Number(organizationId),  // 转换为数字类型
+      })
 
-      // 临时模拟成功响应
-      toast.success(`成功添加 ${domains.length} 个域名`)
-      // 重新获取域名列表
-      fetchDomains()
-
-      // if (response.code === "200") {
-      //   const successCount = response.data?.successCount || domains.length
-      //   toast.success(`成功添加 ${successCount} 个域名`)
-      //   // 重新获取域名列表
-      //   fetchDomains()
-      // } else {
-      //   throw new Error(response.message || "添加域名失败")
-      // }
+      if (response.code === "200") {
+        const createdCount = response.data?.createdCount || 0
+        const associatedCount = response.data?.associatedCount || 0
+        const totalSuccess = createdCount + associatedCount
+        toast.success(`成功添加 ${totalSuccess} 个域名 (新建: ${createdCount}, 关联: ${associatedCount})`)
+        // 重新获取域名列表
+        fetchDomains()
+      } else {
+        throw new Error(response.message || "添加域名失败")
+      }
     } catch (error: any) {
       console.error("添加域名失败:", error)
-      console.error("操作失败:", getErrorMessage(error))
       toast.error(`添加域名失败: ${getErrorMessage(error)}`)
     } finally {
       setIsAddDomainDialogOpen(false)
@@ -140,26 +131,20 @@ export default function OrganizationAssets({ organizationId }: OrganizationAsset
 
     try {
       // 使用组织服务
-      // const response = await OrganizationService.removeDomainFromOrganization({
-      //   organizationId: parseInt(organizationId),
-      //   domainId: parseInt(domainToDelete.id)
-      // })
+      const response = await OrganizationService.removeDomainFromOrganization({
+        organizationId: Number(organizationId),
+        domainId: Number(domainToDelete.id)
+      })
 
-      // 临时模拟成功响应
-      // 从本地状态中移除该域名
-      setDomains(prev => prev.filter(domain => domain.id !== domainToDelete.id))
-      toast.success(`已解除组织与域名 "${domainToDelete.name}" 的关联`)
-
-      // if (response.code === "200") {
-      //   // 从本地状态中移除该域名
-      //   setDomains(prev => prev.filter(domain => domain.id !== domainToDelete.id))
-      //   toast.success(`已解除组织与域名 "${domainToDelete.name}" 的关联`)
-      // } else {
-      //   throw new Error(response.message || "解除关联失败")
-      // }
+      if (response.code === "200") {
+        // 从本地状态中移除该域名
+        setDomains(prev => prev.filter(domain => domain.id !== domainToDelete.id))
+        toast.success(`已解除组织与域名 "${domainToDelete.name}" 的关联`)
+      } else {
+        throw new Error(response.message || "解除关联失败")
+      }
     } catch (error: any) {
       console.error("解除域名关联失败:", error)
-      console.error("操作失败:", getErrorMessage(error))
       toast.error(`解除域名关联失败: ${getErrorMessage(error)}`)
     } finally {
       setIsDeleteDialogOpen(false)
