@@ -94,22 +94,14 @@ func GetOrganizationByID(c *gin.Context) {
 // @Tags 组织管理
 // @Accept json
 // @Produce json
-// @Param id path string true "组织ID"
 // @Param request body models.UpdateOrganizationRequest true "更新信息"
 // @Success 200 {object} map[string]interface{} "更新成功"
 // @Failure 400 {object} map[string]interface{} "请求参数错误"
 // @Failure 404 {object} map[string]interface{} "组织不存在"
 // @Failure 500 {object} map[string]interface{} "服务器内部错误"
-// @Router /organizations/{id}/update [post]
+// @Router /organizations/update [post]
 func UpdateOrganization(c *gin.Context) {
-	id, err := ParseUintParam(c, "id")
-	if err != nil {
-		utils.BadRequestResponse(c, err.Error())
-		return
-	}
-
 	var req models.UpdateOrganizationRequest
-	req.ID = id
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
@@ -144,13 +136,14 @@ func UpdateOrganization(c *gin.Context) {
 // @Router /organizations/delete [post]
 func DeleteOrganization(c *gin.Context) {
 	var req models.DeleteOrganizationRequest
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
 		return
 	}
 
 	service := services.NewOrganizationService()
-	err := service.DeleteOrganization(req.OrganizationID)
+	err := service.DeleteOrganization(req.ID)
 	if err != nil {
 		if err.Error() == "organization not found" {
 			utils.NotFoundResponse(c, "组织不存在")

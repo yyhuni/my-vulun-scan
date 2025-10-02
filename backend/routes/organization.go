@@ -22,7 +22,7 @@ func SetupOrganizationRoutes(api *gin.RouterGroup) {
 		organizations.GET("/:id", handlers.GetOrganizationByID)
 
 		// 更新组织
-		organizations.POST("/:id/update", handlers.UpdateOrganization)
+		organizations.POST("/update", handlers.UpdateOrganization)
 
 		// 删除组织
 		organizations.POST("/delete", handlers.DeleteOrganization)

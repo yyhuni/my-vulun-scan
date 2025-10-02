@@ -1,6 +1,6 @@
 basePath: /api/v1
 definitions:
-  vulun-scan-backend_internal_models.BatchDeleteDomainsRequest:
+  models.BatchDeleteDomainsRequest:
     properties:
       domain_ids:
         items:
@@ -10,11 +10,11 @@ definitions:
     required:
     - domain_ids
     type: object
-  vulun-scan-backend_internal_models.CreateDomainsRequest:
+  models.CreateDomainsRequest:
     properties:
       domains:
         items:
-          $ref: '#/definitions/vulun-scan-backend_internal_models.DomainDetail'
+          $ref: '#/definitions/models.DomainDetail'
         type: array
       organization_id:
         type: integer
@@ -22,7 +22,7 @@ definitions:
     - domains
     - organization_id
     type: object
-  vulun-scan-backend_internal_models.CreateOrganizationRequest:
+  models.CreateOrganizationRequest:
     properties:
       description:
         type: string
@@ -31,7 +31,7 @@ definitions:
     required:
     - name
     type: object
-  vulun-scan-backend_internal_models.CreateSubDomainsRequest:
+  models.CreateSubDomainsRequest:
     properties:
       domain_id:
         type: integer
@@ -43,14 +43,7 @@ definitions:
     - domain_id
     - sub_domains
     type: object
-  vulun-scan-backend_internal_models.DeleteOrganizationRequest:
-    properties:
-      organization_id:
-        type: integer
-    required:
-    - organization_id
-    type: object
-  vulun-scan-backend_internal_models.DomainDetail:
+  models.DomainDetail:
     properties:
       description:
         type: string
@@ -59,7 +52,7 @@ definitions:
     required:
     - name
     type: object
-  vulun-scan-backend_internal_models.RemoveOrganizationDomainRequest:
+  models.RemoveOrganizationDomainRequest:
     properties:
       domain_id:
         type: integer
@@ -69,7 +62,7 @@ definitions:
     - domain_id
     - organization_id
     type: object
-  vulun-scan-backend_internal_models.UpdateDomainRequest:
+  models.UpdateDomainRequest:
     properties:
       description:
         type: string
@@ -80,7 +73,7 @@ definitions:
     required:
     - id
     type: object
-  vulun-scan-backend_internal_models.UpdateOrganizationRequest:
+  models.UpdateOrganizationRequest:
     properties:
       description:
         type: string
@@ -143,7 +136,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/vulun-scan-backend_internal_models.BatchDeleteDomainsRequest'
+          $ref: '#/definitions/models.BatchDeleteDomainsRequest'
       produces:
       - application/json
       responses:
@@ -176,7 +169,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/vulun-scan-backend_internal_models.CreateDomainsRequest'
+          $ref: '#/definitions/models.CreateDomainsRequest'
       produces:
       - application/json
       responses:
@@ -209,7 +202,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/vulun-scan-backend_internal_models.RemoveOrganizationDomainRequest'
+          $ref: '#/definitions/models.RemoveOrganizationDomainRequest'
       produces:
       - application/json
       responses:
@@ -279,7 +272,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/vulun-scan-backend_internal_models.UpdateDomainRequest'
+          $ref: '#/definitions/models.UpdateDomainRequest'
       produces:
       - application/json
       responses:
@@ -308,7 +301,7 @@ paths:
       - 域名管理
   /organizations:
     get:
-      description: 返回所有组织，按创建时间倒序
+      description: 返回所有组织列表
       produces:
       - application/json
       responses:
@@ -326,6 +319,42 @@ paths:
       tags:
       - 组织管理
   /organizations/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 删除指定组织及其关联数据
+      parameters:
+      - description: 组织ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 删除成功
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: 组织不存在
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: 服务器内部错误
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 删除组织
+      tags:
+      - 组织管理
     get:
       description: 根据组织ID获取组织的详细信息
       parameters:
@@ -360,76 +389,6 @@ paths:
       summary: 获取组织详情
       tags:
       - 组织管理
-  /organizations/{id}/domains:
-    get:
-      description: 根据组织ID获取该组织下的所有域名
-      parameters:
-      - description: 组织ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 获取成功
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: 请求参数错误
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: 服务器内部错误
-          schema:
-            additionalProperties: true
-            type: object
-      summary: 获取组织的域名列表
-      tags:
-      - 域名管理
-  /organizations/{id}/sub-domains:
-    get:
-      description: 根据组织ID获取该组织下的所有子域名，支持分页
-      parameters:
-      - description: 组织ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - default: 1
-        description: 页码
-        in: query
-        name: page
-        type: integer
-      - default: 10
-        description: 每页数量
-        in: query
-        name: pageSize
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 获取成功
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: 请求参数错误
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: 服务器内部错误
-          schema:
-            additionalProperties: true
-            type: object
-      summary: 获取组织的子域名列表
-      tags:
-      - 子域名管理
   /organizations/{id}/update:
     post:
       consumes:
@@ -446,7 +405,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/vulun-scan-backend_internal_models.UpdateOrganizationRequest'
+          $ref: '#/definitions/models.UpdateOrganizationRequest'
       produces:
       - application/json
       responses:
@@ -477,7 +436,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: 批量删除多个组织及其关联数据，使用事务保证原子性
+      description: 批量删除多个组织及其关联数据
       parameters:
       - description: 组织ID列表
         in: body
@@ -487,7 +446,7 @@ paths:
           properties:
             organization_ids:
               items:
-                type: string
+                type: integer
               type: array
           type: object
       produces:
@@ -522,7 +481,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/vulun-scan-backend_internal_models.CreateOrganizationRequest'
+          $ref: '#/definitions/models.CreateOrganizationRequest'
       produces:
       - application/json
       responses:
@@ -544,106 +503,6 @@ paths:
       summary: 创建组织
       tags:
       - 组织管理
-  /organizations/delete:
-    post:
-      consumes:
-      - application/json
-      description: 删除指定组织及其关联数据
-      parameters:
-      - description: 删除请求
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/vulun-scan-backend_internal_models.DeleteOrganizationRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 删除成功
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: 请求参数错误
-          schema:
-            additionalProperties: true
-            type: object
-        "404":
-          description: 组织不存在
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: 服务器内部错误
-          schema:
-            additionalProperties: true
-            type: object
-      summary: 删除组织
-      tags:
-      - 组织管理
-  /organizations/remove-domain:
-    post:
-      consumes:
-      - application/json
-      description: 移除组织与域名之间的关联关系
-      parameters:
-      - description: 移除关联请求
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/vulun-scan-backend_internal_models.RemoveOrganizationDomainRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 移除成功
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: 请求参数错误
-          schema:
-            additionalProperties: true
-            type: object
-        "404":
-          description: 未找到关联关系
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: 服务器内部错误
-          schema:
-            additionalProperties: true
-            type: object
-      summary: 移除组织域名关联
-      tags:
-      - 域名管理
-  /organizations/search:
-    get:
-      description: 根据关键词搜索组织名称或描述
-      parameters:
-      - description: 搜索关键词
-        in: query
-        name: q
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 搜索成功
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: 服务器内部错误
-          schema:
-            additionalProperties: true
-            type: object
-      summary: 搜索组织
-      tags:
-      - 组织管理
   /sub-domains/create:
     post:
       consumes:
@@ -655,7 +514,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/vulun-scan-backend_internal_models.CreateSubDomainsRequest'
+          $ref: '#/definitions/models.CreateSubDomainsRequest'
       produces:
       - application/json
       responses:

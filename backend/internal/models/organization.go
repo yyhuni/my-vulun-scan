@@ -34,5 +34,5 @@ type UpdateOrganizationRequest struct {
 
 // DeleteOrganizationRequest 删除组织请求
 type DeleteOrganizationRequest struct {
-	OrganizationID uint `json:"organization_id" binding:"required"`
+	ID uint `json:"id" binding:"required"`
 }
