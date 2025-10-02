@@ -23,58 +23,6 @@ func NewSubDomainService() *SubDomainService {
 	}
 }
 
-// GetOrganizationSubDomains 获取组织的子域名（分页）
-func (s *SubDomainService) GetOrganizationSubDomains(organizationID string, page, pageSize int) (*models.GetOrganizationSubDomainsResponse, error) {
-	// 计算偏移量
-	offset := (page - 1) * pageSize
-
-	// 获取总数
-	var total int64
-	err := s.db.Table("sub_domains sd").
-		Joins("JOIN main_domains md ON sd.main_domain_id = md.id").
-		Joins("JOIN organization_main_domains omd ON md.id = omd.main_domain_id").
-		Where("omd.organization_id = ?", organizationID).
-		Count(&total).Error
-
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to count organization sub domains")
-		return nil, err
-	}
-
-	// 获取分页数据
-	var subDomains []models.SubDomain
-	result := s.db.
-		Preload("MainDomain").
-		Joins("JOIN main_domains md ON sub_domains.main_domain_id = md.id").
-		Joins("JOIN organization_main_domains omd ON md.id = omd.main_domain_id").
-		Where("omd.organization_id = ?", organizationID).
-		Order("sub_domains.created_at DESC").
-		Limit(pageSize).
-		Offset(offset).
-		Find(&subDomains)
-
-	if result.Error != nil {
-		log.Error().Err(result.Error).Msg("Failed to query organization sub domains")
-		return nil, result.Error
-	}
-
-	response := &models.GetOrganizationSubDomainsResponse{
-		SubDomains: subDomains,
-		Total:      int(total),
-		Page:       page,
-		PageSize:   pageSize,
-	}
-
-	log.Info().
-		Str("organization_id", organizationID).
-		Int64("total", total).
-		Int("page", page).
-		Int("page_size", pageSize).
-		Msg("Organization sub domains retrieved successfully")
-
-	return response, nil
-}
-
 // CreateSubDomains 创建子域名
 func (s *SubDomainService) CreateSubDomains(req models.CreateSubDomainsRequest) (*models.APIResponse, error) {
 	var createdCount int

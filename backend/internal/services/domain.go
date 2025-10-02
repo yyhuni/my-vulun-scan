@@ -177,28 +177,6 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) (*models.
 	return response, nil
 }
 
-// RemoveOrganizationDomain 移除组织和域名的关联
-func (s *DomainService) RemoveOrganizationDomain(req models.RemoveOrganizationDomainRequest) error {
-	result := s.db.Where("organization_id = ? AND domain_id = ?", req.OrganizationID, req.DomainID).
-		Delete(&models.OrganizationDomain{})
-
-	if result.Error != nil {
-		log.Error().Err(result.Error).Msg("Failed to remove organization domain association")
-		return result.Error
-	}
-
-	if result.RowsAffected == 0 {
-		return fmt.Errorf("association not found")
-	}
-
-	log.Info().
-		Uint("organization_id", req.OrganizationID).
-		Uint("domain_id", req.DomainID).
-		Msg("Organization domain association removed successfully")
-
-	return nil
-}
-
 // GetDomainByID 根据ID获取域名
 func (s *DomainService) GetDomainByID(id uint) (*models.Domain, error) {
 	var domain models.Domain

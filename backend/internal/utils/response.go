@@ -12,6 +12,7 @@ import (
 func SuccessResponse(c *gin.Context, data interface{}) {
 	response := models.APIResponse{
 		Code:    "200",
+		State:   "success",
 		Message: "操作成功",
 		Data:    data,
 	}
@@ -22,6 +23,7 @@ func SuccessResponse(c *gin.Context, data interface{}) {
 func ErrorResponse(c *gin.Context, statusCode int, message string) {
 	response := models.APIResponse{
 		Code:    "500", // 默认500
+		State:   "error",
 		Message: message,
 	}
 	c.JSON(statusCode, response)
@@ -31,6 +33,7 @@ func ErrorResponse(c *gin.Context, statusCode int, message string) {
 func BadRequestResponse(c *gin.Context, message string) {
 	response := models.APIResponse{
 		Code:    "400",
+		State:   "error",
 		Message: message,
 	}
 	c.JSON(http.StatusBadRequest, response)
@@ -40,6 +43,7 @@ func BadRequestResponse(c *gin.Context, message string) {
 func NotFoundResponse(c *gin.Context, message string) {
 	response := models.APIResponse{
 		Code:    "404",
+		State:   "error",
 		Message: message,
 	}
 	c.JSON(http.StatusNotFound, response)
@@ -49,6 +53,7 @@ func NotFoundResponse(c *gin.Context, message string) {
 func ValidationErrorResponse(c *gin.Context, message string) {
 	response := models.APIResponse{
 		Code:    "422",
+		State:   "error",
 		Message: message,
 	}
 	c.JSON(http.StatusUnprocessableEntity, response)
@@ -58,6 +63,7 @@ func ValidationErrorResponse(c *gin.Context, message string) {
 func InternalServerErrorResponse(c *gin.Context, message string) {
 	response := models.APIResponse{
 		Code:    "500",
+		State:   "error",
 		Message: message,
 	}
 	c.JSON(http.StatusInternalServerError, response)

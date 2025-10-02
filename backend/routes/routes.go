@@ -20,10 +20,7 @@ func SetupOrganizationRoutes(api *gin.RouterGroup) {
 
 		// 组织域名相关操作
 		orgGroup.GET("/:id/domains", handlers.GetOrganizationDomains)
-		orgGroup.POST("/remove-domain", handlers.RemoveOrganizationDomain)
 
-		// 组织子域名相关操作
-		orgGroup.GET("/:id/sub-domains", handlers.GetOrganizationSubDomains)
 	}
 }
 

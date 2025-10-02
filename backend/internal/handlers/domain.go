@@ -21,20 +21,14 @@ import (
 // @Failure 500 {object} map[string]interface{} "服务器内部错误"
 // @Router /organizations/{id}/domains [get]
 func GetOrganizationDomains(c *gin.Context) {
-	organizationIDStr := c.Param("id")
-	if organizationIDStr == "" {
-		utils.BadRequestResponse(c, "组织ID不能为空")
-		return
-	}
-
-	organizationID, err := strconv.ParseUint(organizationIDStr, 10, 32)
+	organizationID, err := ParseUintParam(c, "id")
 	if err != nil {
-		utils.BadRequestResponse(c, "无效的组织ID")
+		utils.BadRequestResponse(c, err.Error())
 		return
 	}
 
 	service := services.NewDomainService()
-	domains, err := service.GetOrganizationDomains(uint(organizationID))
+	domains, err := service.GetOrganizationDomains(organizationID)
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "获取组织域名失败: "+err.Error())
 		return
@@ -81,39 +75,6 @@ func CreateDomains(c *gin.Context) {
 	utils.SuccessResponse(c, response.Data)
 }
 
-// RemoveOrganizationDomain 移除组织域名关联
-// @Summary 移除组织域名关联
-// @Description 移除组织与域名之间的关联关系
-// @Tags 域名管理
-// @Accept json
-// @Produce json
-// @Param request body models.RemoveOrganizationDomainRequest true "移除关联请求"
-// @Success 200 {object} map[string]interface{} "移除成功"
-// @Failure 400 {object} map[string]interface{} "请求参数错误"
-// @Failure 404 {object} map[string]interface{} "未找到关联关系"
-// @Failure 500 {object} map[string]interface{} "服务器内部错误"
-// @Router /organizations/remove-domain [post]
-func RemoveOrganizationDomain(c *gin.Context) {
-	var req models.RemoveOrganizationDomainRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
-		return
-	}
-
-	service := services.NewDomainService()
-	err := service.RemoveOrganizationDomain(req)
-	if err != nil {
-		if err.Error() == "association not found" {
-			utils.NotFoundResponse(c, "未找到关联关系")
-			return
-		}
-		utils.InternalServerErrorResponse(c, "移除域名关联失败: "+err.Error())
-		return
-	}
-
-	utils.SuccessResponse(c, gin.H{"message": "域名关联移除成功"})
-}
-
 // GetDomainByID 根据ID获取域名详情
 // @Summary 获取域名详情
 // @Description 根据域名ID获取域名的详细信息，包括关联的子域名
@@ -126,20 +87,14 @@ func RemoveOrganizationDomain(c *gin.Context) {
 // @Failure 500 {object} map[string]interface{} "服务器内部错误"
 // @Router /domains/{id} [get]
 func GetDomainByID(c *gin.Context) {
-	idStr := c.Param("id")
-	if idStr == "" {
-		utils.BadRequestResponse(c, "域名ID不能为空")
-		return
-	}
-
-	id, err := strconv.ParseUint(idStr, 10, 32)
+	id, err := ParseUintParam(c, "id")
 	if err != nil {
-		utils.BadRequestResponse(c, "无效的域名ID")
+		utils.BadRequestResponse(c, err.Error())
 		return
 	}
 
 	service := services.NewDomainService()
-	domain, err := service.GetDomainByID(uint(id))
+	domain, err := service.GetDomainByID(id)
 	if err != nil {
 		if err.Error() == "domain not found" {
 			utils.NotFoundResponse(c, "域名不存在")

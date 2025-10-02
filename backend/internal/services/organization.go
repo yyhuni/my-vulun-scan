@@ -8,6 +8,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // OrganizationService 组织服务
@@ -26,7 +27,7 @@ func NewOrganizationService() *OrganizationService {
 func (s *OrganizationService) GetOrganizations() ([]models.Organization, error) {
 	var organizations []models.Organization
 
-	result := s.db.Order("created_at DESC").Find(&organizations)
+	result := s.db.Find(&organizations)
 	if result.Error != nil {
 		log.Error().Err(result.Error).Msg("Failed to query organizations")
 		return nil, result.Error
@@ -36,8 +37,8 @@ func (s *OrganizationService) GetOrganizations() ([]models.Organization, error) 
 	return organizations, nil
 }
 
-// GetOrganizationByID 根据ID获取组织
-func (s *OrganizationService) GetOrganizationByID(id string) (*models.Organization, error) {
+// GetOrganizationByID 根据ID获取组织详细信息
+func (s *OrganizationService) GetOrganizationByID(id uint) (*models.Organization, error) {
 	var org models.Organization
 
 	result := s.db.First(&org, "id = ?", id)
@@ -49,7 +50,7 @@ func (s *OrganizationService) GetOrganizationByID(id string) (*models.Organizati
 		return nil, result.Error
 	}
 
-	log.Info().Str("id", id).Msg("Organization retrieved successfully")
+	log.Info().Uint("id", id).Msg("Organization retrieved successfully")
 	return &org, nil
 }
 
@@ -112,7 +113,7 @@ func (s *OrganizationService) UpdateOrganization(req models.UpdateOrganizationRe
 }
 
 // DeleteOrganization 删除组织
-func (s *OrganizationService) DeleteOrganization(organizationID string) error {
+func (s *OrganizationService) DeleteOrganization(organizationID uint) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		// 检查组织是否存在
 		var org models.Organization
@@ -124,15 +125,10 @@ func (s *OrganizationService) DeleteOrganization(organizationID string) error {
 			return err
 		}
 
-		// 1. 使用 GORM Association API 清理多对多关联
-		// 这比直接 SQL 更优雅、类型安全,且不依赖表名
-		if err := tx.Model(&org).Association("Domains").Clear(); err != nil {
-			log.Error().Err(err).Msg("Failed to clear organization-domain associations")
-			return fmt.Errorf("failed to clear organization-domain associations: %w", err)
-		}
-
-		// 2. 删除组织本身
-		res := tx.Delete(&org)
+		// 使用 Select(clause.Associations) 自动清理所有关联
+		// 这会自动识别并清理模型中的所有关联字段（如 Domains 等）
+		// 无需手动逐个 Association().Clear()，代码更简洁且易于维护
+		res := tx.Select(clause.Associations).Delete(&org)
 		if res.Error != nil {
 			log.Error().Err(res.Error).Msg("Failed to delete organization")
 			return res.Error
@@ -141,7 +137,38 @@ func (s *OrganizationService) DeleteOrganization(organizationID string) error {
 			return fmt.Errorf("no rows affected during deletion")
 		}
 
-		log.Info().Str("id", organizationID).Msg("Organization and its associations deleted successfully")
+		log.Info().Uint("id", organizationID).Msg("Organization and associations deleted successfully")
 		return nil
 	})
+}
+
+// BatchDeleteOrganizations 批量删除组织
+func (s *OrganizationService) BatchDeleteOrganizations(organizationIDs []uint) ([]models.Organization, error) {
+	if len(organizationIDs) == 0 {
+		return nil, fmt.Errorf("no organization IDs provided")
+	}
+
+	var deletedOrgs []models.Organization
+
+	// 验证所有组织ID都存在
+	if err := s.db.Where("id IN ?", organizationIDs).Find(&deletedOrgs).Error; err != nil {
+		log.Error().Err(err).Msg("Failed to query organizations for batch deletion")
+		return nil, err
+	}
+
+	if len(deletedOrgs) != len(organizationIDs) {
+		return nil, fmt.Errorf("some organization IDs do not exist")
+	}
+
+	// 删除组织（数据库 CASCADE 会自动删除 organization_domains 关联表记录）
+	if err := s.db.Where("id IN ?", organizationIDs).Delete(&models.Organization{}).Error; err != nil {
+		log.Error().Err(err).Msg("Failed to batch delete organizations")
+		return nil, err
+	}
+
+	log.Info().
+		Int("count", len(organizationIDs)).
+		Msg("Organizations batch deleted successfully")
+
+	return deletedOrgs, nil
 }
