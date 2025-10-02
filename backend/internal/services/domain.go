@@ -23,29 +23,6 @@ func NewDomainService() *DomainService {
 	}
 }
 
-// GetOrganizationDomains 获取组织的域名
-func (s *DomainService) GetOrganizationDomains(organizationID uint) ([]models.Domain, error) {
-	var domains []models.Domain
-
-	result := s.db.
-		Joins("JOIN organization_domains ON domains.id = organization_domains.domain_id").
-		Where("organization_domains.organization_id = ?", organizationID).
-		Order("domains.created_at DESC").
-		Find(&domains)
-
-	if result.Error != nil {
-		log.Error().Err(result.Error).Msg("Failed to query organization domains")
-		return nil, result.Error
-	}
-
-	log.Info().
-		Uint("organization_id", organizationID).
-		Int("count", len(domains)).
-		Msg("Organization domains retrieved successfully")
-
-	return domains, nil
-}
-
 // CreateDomains 创建domain并关联到organization
 // 支持批量创建domain并关联到organization
 func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) (*models.APIResponse, error) {

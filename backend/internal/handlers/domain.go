@@ -10,37 +10,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GetOrganizationDomains 获取组织域名
-// @Summary 获取组织的域名列表
-// @Description 根据组织ID获取该组织下的所有域名
-// @Tags 域名管理
-// @Produce json
-// @Param id path string true "组织ID"
-// @Success 200 {object} map[string]interface{} "获取成功"
-// @Failure 400 {object} map[string]interface{} "请求参数错误"
-// @Failure 500 {object} map[string]interface{} "服务器内部错误"
-// @Router /organizations/{id}/domains [get]
-func GetOrganizationDomains(c *gin.Context) {
-	organizationID, err := ParseUintParam(c, "id")
-	if err != nil {
-		utils.BadRequestResponse(c, err.Error())
-		return
-	}
-
-	service := services.NewDomainService()
-	domains, err := service.GetOrganizationDomains(organizationID)
-	if err != nil {
-		utils.InternalServerErrorResponse(c, "获取组织域名失败: "+err.Error())
-		return
-	}
-
-	response := models.GetOrganizationDomainsResponse{
-		Domains: domains,
-	}
-
-	utils.SuccessResponse(c, response)
-}
-
 // CreateDomains 创建域名
 // @Summary 批量创建域名
 // @Description 批量创建域名并关联到指定组织
