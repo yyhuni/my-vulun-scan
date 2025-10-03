@@ -73,7 +73,6 @@ func LoadConfig() error {
 func setDefaults() {
 	// 服务器默认配置
 	viper.SetDefault("server.host", "localhost")
-	viper.SetDefault("server.port", 8080)
 	viper.SetDefault("server.mode", "release")
 	viper.SetDefault("server.read_timeout", 15)
 	viper.SetDefault("server.write_timeout", 15)

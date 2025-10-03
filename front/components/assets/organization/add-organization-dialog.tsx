@@ -9,6 +9,8 @@ import { Plus, Building2 } from "lucide-react"
 
 // 导入 UI 组件
 import { Button } from "@/components/ui/button"
+// 导入API服务
+import { OrganizationService } from "@/services/organization.service"
 import {
   Dialog,
   DialogContent,
@@ -84,32 +86,30 @@ export function AddOrganizationDialog({ onAdd, open: externalOpen, onOpenChange:
     setIsSubmitting(true)
 
     try {
-      // 模拟 API 调用 - 实际项目中替换为真实的 API 调用
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // 模拟创建成功的响应数据
-      const newOrganization: Organization = {
-        id: Date.now(), // 使用时间戳作为临时ID
+      // 调用真实API创建组织
+      const response = await OrganizationService.createOrganization({
         name: formData.name.trim(),
         description: formData.description.trim(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }
-
-      // 调用成功回调
-      onAdd(newOrganization)
-      
-      // 重置表单
-      setFormData({
-        name: "",
-        description: "",
       })
       
-      // 关闭对话框
-      setOpen(false)
-      
-      // 显示成功提示
-      toast.success(`组织 "${newOrganization.name}" 创建成功`)
+      if (response.state === "success" && response.data) {
+        // 调用成功回调
+        onAdd(response.data)
+        
+        // 重置表单
+        setFormData({
+          name: "",
+          description: "",
+        })
+        
+        // 关闭对话框
+        setOpen(false)
+        
+        // 显示成功提示
+        toast.success(`组织 "${response.data.name}" 创建成功`)
+      } else {
+        throw new Error(response.message || "创建组织失败")
+      }
       
     } catch (error: any) {
       console.error("创建组织失败:", error)

@@ -27,6 +27,8 @@ import { createOrganizationColumns } from "./organization-columns"
 // 导入业务组件
 import { AddOrganizationDialog } from "./add-organization-dialog"
 import { EditOrganizationDialog } from "./edit-organization-dialog"
+// 导入API服务
+import { OrganizationService } from "@/services/organization.service"
 
 // 导入类型定义
 interface Organization {
@@ -111,14 +113,16 @@ export function OrganizationList() {
       setViewState("loading")
       setError(null)
 
-      // 模拟 API 调用 - 实际项目中替换为真实的 API 调用
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // 调用真实API获取组织列表
+      const response = await OrganizationService.getOrganizations()
       
-      // 暂时返回空数据，等待后端接口
-      const data: Organization[] = []
-
-      setOrganizations(data)
-      setViewState(data.length > 0 ? "data" : "empty")
+      if (response.state === "success" && response.data) {
+        const organizations = response.data.data || []
+        setOrganizations(organizations)
+        setViewState(organizations.length > 0 ? "data" : "empty")
+      } else {
+        throw new Error(response.message || "获取组织列表失败")
+      }
     } catch (err: any) {
       console.error('Error fetching organizations:', err)
       const errorMessage = err.message || "获取组织列表失败"
@@ -148,7 +152,8 @@ export function OrganizationList() {
 
   // 添加组织成功回调
   const handleOrganizationAdded = (newOrganization: Organization) => {
-    setOrganizations((prev) => [...prev, newOrganization])
+    // 重新获取组织列表以确保数据同步
+    fetchOrganizations()
     toast.success(`组织 "${newOrganization.name}" 已成功添加`)
   }
 
