@@ -44,7 +44,8 @@ export class OrganizationService {
     name: string
     description: string
   }): Promise<ApiResponse<Organization>> {
-    const response = await api.post<ApiResponse<Organization>>(`/organizations/${data.id}/update`, {
+    const response = await api.post<ApiResponse<Organization>>('/organizations/update', {
+      id: data.id,
       name: data.name,
       description: data.description
     })

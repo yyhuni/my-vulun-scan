@@ -115,14 +115,21 @@ func (s *OrganizationService) UpdateOrganization(req models.UpdateOrganizationRe
 // DeleteOrganization 删除组织
 func (s *OrganizationService) DeleteOrganization(organizationID uint) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
-		// 检查组织是否存在
 		var org models.Organization
-		if err := tx.First(&org, "id = ?", organizationID).Error; err != nil {
+
+		// 预加载关联的域名
+		if err := tx.Preload("Domains").First(&org, "id = ?", organizationID).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
 				return fmt.Errorf("organization not found")
 			}
 			log.Error().Err(err).Msg("Failed to query organization for deletion")
 			return err
+		}
+
+		// 收集域名 ID
+		domainIDs := make([]uint, len(org.Domains))
+		for i, d := range org.Domains {
+			domainIDs[i] = d.ID
 		}
 
 		// 使用 Select(clause.Associations) 自动清理所有关联
@@ -137,7 +144,35 @@ func (s *OrganizationService) DeleteOrganization(organizationID uint) error {
 			return fmt.Errorf("no rows affected during deletion")
 		}
 
-		log.Info().Uint("id", organizationID).Msg("Organization and associations deleted successfully")
+		// 一次性查询孤儿域名(没有任何组织关联的域名)
+		if len(domainIDs) > 0 {
+			var orphanDomainIDs []uint
+			err := tx.Raw(`
+				SELECT d.id 
+				FROM domains d
+				WHERE d.id IN (?) 
+				AND NOT EXISTS (
+					SELECT 1 FROM organization_domains od 
+					WHERE od.domain_id = d.id
+				)
+			`, domainIDs).Scan(&orphanDomainIDs).Error
+
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to query orphan domains")
+				return err
+			}
+
+			// 批量删除孤儿域名
+			if len(orphanDomainIDs) > 0 {
+				if err := tx.Delete(&models.Domain{}, orphanDomainIDs).Error; err != nil {
+					log.Error().Err(err).Msg("Failed to delete orphan domains")
+					return err
+				}
+				log.Info().Int("count", len(orphanDomainIDs)).Msg("Orphan domains deleted")
+			}
+		}
+
+		log.Info().Uint("id", organizationID).Msg("Organization deleted successfully")
 		return nil
 	})
 }

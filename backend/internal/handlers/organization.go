@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GetOrganizations 获取所有组织列表
+// GetOrganizationList 获取所有组织列表
 // @Summary 获取组织列表
 // @Description 返回所有组织列表
 // @Tags 组织管理
@@ -16,7 +16,7 @@ import (
 // @Success 200 {object} map[string]interface{} "成功返回列表数据"
 // @Failure 500 {object} map[string]interface{} "服务器内部错误"
 // @Router /organizations [get]
-func GetOrganizations(c *gin.Context) {
+func GetOrganizationList(c *gin.Context) {
 	service := services.NewOrganizationService()
 
 	organizations, err := service.GetOrganizations()
