@@ -14,9 +14,20 @@ const apiClient = axios.create({
 // 请求拦截器：发送时转换为 snake_case
 apiClient.interceptors.request.use(
   (config) => {
+    // 添加调试日志
+    console.log('🚀 API Request:', {
+      method: config.method?.toUpperCase(),
+      url: config.url,
+      baseURL: config.baseURL,
+      fullURL: `${config.baseURL}${config.url}`,
+      data: config.data,
+      params: config.params
+    });
+    
     // 如果有请求体数据，转换为 snake_case
     if (config.data && typeof config.data === 'object') {
       config.data = snakecaseKeys(config.data, { deep: true });
+      console.log('📝 Data after snake_case conversion:', config.data);
     }
     
     // 如果有查询参数，也转换为 snake_case
@@ -27,6 +38,7 @@ apiClient.interceptors.request.use(
     return config;
   },
   (error) => {
+    console.error('❌ Request Error:', error);
     return Promise.reject(error);
   }
 );
@@ -34,13 +46,29 @@ apiClient.interceptors.request.use(
 // 响应拦截器：接收时转换为 camelCase
 apiClient.interceptors.response.use(
   (response) => {
+    console.log('✅ API Response:', {
+      status: response.status,
+      statusText: response.statusText,
+      url: response.config.url,
+      data: response.data
+    });
+    
     // 转换响应数据为 camelCase
     if (response.data && typeof response.data === 'object') {
       response.data = camelcaseKeys(response.data, { deep: true });
+      console.log('🔄 Data after camelCase conversion:', response.data);
     }
     return response;
   },
   (error) => {
+    console.error('❌ API Error:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      url: error.config?.url,
+      data: error.response?.data,
+      message: error.message
+    });
+    
     // 错误响应也进行转换
     if (error.response?.data && typeof error.response.data === 'object') {
       error.response.data = camelcaseKeys(error.response.data, { deep: true });

@@ -117,7 +117,7 @@ export function OrganizationList() {
       const response = await OrganizationService.getOrganizations()
       
       if (response.state === "success" && response.data) {
-        const organizations = response.data.data || []
+        const organizations = response.data.organizations || []
         setOrganizations(organizations)
         setViewState(organizations.length > 0 ? "data" : "empty")
       } else {

@@ -2,6 +2,7 @@ import { api } from "@/lib/api-client"
 import type {
   ApiResponse,
   PaginatedResponse,
+  OrganizationsResponse,
 } from "@/types/api-response.types"
 import type { Organization } from "@/types/organization.types"
 import type { Domain } from "@/types/domain.types"
@@ -15,12 +16,12 @@ export class OrganizationService {
    * @param params - 分页参数对象
    * @param params.page - 当前页码，1-based
    * @param params.pageSize - 分页大小，1-based
-   * @returns Promise<ApiResponse<PaginatedResponse<Organization>>>
+   * @returns Promise<ApiResponse<OrganizationsResponse<Organization>>>
    */
   static async getOrganizations(params?: {
     page?: number
     pageSize?: number
-  }): Promise<ApiResponse<PaginatedResponse<Organization>>> {
+  }): Promise<ApiResponse<OrganizationsResponse<Organization>>> {
     const queryParams = new URLSearchParams()
     if (params?.page !== undefined) {
       queryParams.append('page', params.page.toString())
@@ -32,7 +33,7 @@ export class OrganizationService {
     const queryString = queryParams.toString()
     const url = `/organizations${queryString ? `?${queryString}` : ''}`
     
-    const response = await api.get<ApiResponse<PaginatedResponse<Organization>>>(url)
+    const response = await api.get<ApiResponse<OrganizationsResponse<Organization>>>(url)
     return response.data
   }
 

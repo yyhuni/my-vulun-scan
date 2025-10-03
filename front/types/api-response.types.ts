@@ -14,3 +14,12 @@ export interface PaginatedResponse<T> {
   pageSize: number;      // 每页大小
   totalPages: number;    // 总页数
 }
+
+// 组织列表响应类型（匹配后端GetOrganizationsResponse）
+export interface OrganizationsResponse<T> {
+  organizations: T[];    // 组织数据列表
+  total: number;         // 总记录数
+  page: number;          // 当前页码（从1开始）
+  pageSize: number;      // 每页大小
+  totalPages: number;    // 总页数
+}

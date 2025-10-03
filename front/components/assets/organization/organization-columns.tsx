@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 // 导入图标组件
-import { MoreHorizontal, Eye, Edit, Trash2 } from "lucide-react"
+import { MoreHorizontal, Eye, Edit, Trash2, ArrowUpDown } from "lucide-react"
 
 // 组织数据类型定义
 interface Organization {
@@ -82,7 +82,7 @@ function OrganizationRowActions({
 
 /**
  * 数据表格列头组件
- * 支持排序功能的列头
+ * 支持排序功能的列头，参考 shadcn/ui 示例设计
  */
 function DataTableColumnHeader({ 
   column, 
@@ -91,19 +91,17 @@ function DataTableColumnHeader({
   column: any
   title: string 
 }) {
+  if (!column.getCanSort()) {
+    return <div className="font-medium">{title}</div>
+  }
+
   return (
     <Button
       variant="ghost"
-      size="sm"
-      className="-ml-3 h-8 data-[state=open]:bg-accent"
       onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
     >
-      <span>{title}</span>
-      {column.getIsSorted() === "desc" ? (
-        <span className="ml-2">↓</span>
-      ) : column.getIsSorted() === "asc" ? (
-        <span className="ml-2">↑</span>
-      ) : null}
+      {title}
+      <ArrowUpDown className="ml-2 h-4 w-4" />
     </Button>
   )
 }
