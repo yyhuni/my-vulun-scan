@@ -36,3 +36,18 @@ type UpdateOrganizationRequest struct {
 type DeleteOrganizationRequest struct {
 	ID uint `json:"id" binding:"required"`
 }
+
+// GetOrganizationsRequest 获取组织列表请求
+type GetOrganizationsRequest struct {
+	Page     int `json:"page,omitempty"`
+	PageSize int `json:"page_size,omitempty"`
+}
+
+// GetOrganizationsResponse 获取组织列表响应
+type GetOrganizationsResponse struct {
+	Organizations []Organization `json:"organizations"`
+	Total         int64          `json:"total"`
+	Page          int            `json:"page"`
+	PageSize      int            `json:"page_size"`
+	TotalPages    int            `json:"total_pages"`
+}

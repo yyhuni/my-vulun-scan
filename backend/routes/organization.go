@@ -13,7 +13,7 @@ func SetupOrganizationRoutes(api *gin.RouterGroup) {
 	organizations := api.Group("/organizations")
 	{
 		// 获取组织列表
-		organizations.GET("", handlers.GetOrganizationList)
+		organizations.GET("", handlers.GetOrganizations)
 
 		// 创建组织
 		organizations.POST("/create", handlers.CreateOrganization)

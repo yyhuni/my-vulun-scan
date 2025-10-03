@@ -23,18 +23,50 @@ func NewOrganizationService() *OrganizationService {
 	}
 }
 
-// GetOrganizations 获取所有组织
-func (s *OrganizationService) GetOrganizations() ([]models.Organization, error) {
-	var organizations []models.Organization
+// GetOrganizations 获取组织列表(支持分页)
+func (s *OrganizationService) GetOrganizations(req models.GetOrganizationsRequest) (*models.GetOrganizationsResponse, error) {
+	// 设置默认值
+	if req.Page <= 0 {
+		req.Page = 1
+	}
+	if req.PageSize <= 0 {
+		req.PageSize = 10
+	}
 
-	result := s.db.Find(&organizations)
+	var organizations []models.Organization
+	var total int64
+
+	// 查询总数
+	if err := s.db.Model(&models.Organization{}).Count(&total).Error; err != nil {
+		log.Error().Err(err).Msg("Failed to count organizations")
+		return nil, err
+	}
+
+	// 计算总页数
+	totalPages := int((total + int64(req.PageSize) - 1) / int64(req.PageSize))
+
+	// 分页查询
+	offset := (req.Page - 1) * req.PageSize
+	result := s.db.Offset(offset).Limit(req.PageSize).Find(&organizations)
 	if result.Error != nil {
 		log.Error().Err(result.Error).Msg("Failed to query organizations")
 		return nil, result.Error
 	}
 
-	log.Info().Int("count", len(organizations)).Msg("Organizations retrieved successfully")
-	return organizations, nil
+	log.Info().
+		Int("page", req.Page).
+		Int("page_size", req.PageSize).
+		Int64("total", total).
+		Int("count", len(organizations)).
+		Msg("Organizations retrieved successfully")
+
+	return &models.GetOrganizationsResponse{
+		Organizations: organizations,
+		Total:         total,
+		Page:          req.Page,
+		PageSize:      req.PageSize,
+		TotalPages:    totalPages,
+	}, nil
 }
 
 // GetOrganizationByID 根据ID获取组织详细信息

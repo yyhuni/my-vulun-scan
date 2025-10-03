@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"strconv"
 	"vulun-scan-backend/internal/models"
 	"vulun-scan-backend/internal/services"
 	"vulun-scan-backend/internal/utils"
@@ -8,24 +9,39 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GetOrganizationList 获取所有组织列表
+// GetOrganizationList 获取组织列表(支持分页)
 // @Summary 获取组织列表
-// @Description 返回所有组织列表
+// @Description 返回组织列表,支持分页查询
 // @Tags 组织管理
 // @Produce json
+// @Param page query int false "页码,默认1"
+// @Param page_size query int false "每页数量,默认10"
 // @Success 200 {object} map[string]interface{} "成功返回列表数据"
 // @Failure 500 {object} map[string]interface{} "服务器内部错误"
 // @Router /organizations [get]
-func GetOrganizationList(c *gin.Context) {
+func GetOrganizations(c *gin.Context) {
 	service := services.NewOrganizationService()
 
-	organizations, err := service.GetOrganizations()
+	// 解析分页参数
+	var req models.GetOrganizationsRequest
+	if pageStr := c.Query("page"); pageStr != "" {
+		if page, err := strconv.Atoi(pageStr); err == nil && page > 0 {
+			req.Page = page
+		}
+	}
+	if pageSizeStr := c.Query("page_size"); pageSizeStr != "" {
+		if pageSize, err := strconv.Atoi(pageSizeStr); err == nil && pageSize > 0 {
+			req.PageSize = pageSize
+		}
+	}
+
+	response, err := service.GetOrganizations(req)
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "获取组织列表失败: "+err.Error())
 		return
 	}
 
-	utils.SuccessResponse(c, organizations)
+	utils.SuccessResponse(c, response)
 }
 
 // CreateOrganization 创建新组织
