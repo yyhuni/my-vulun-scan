@@ -221,7 +221,7 @@ export function OrganizationDataTable({
       <div className="rounded-md border">
         <Table>
           {/* 表头 */}
-          <TableHeader className="bg-muted sticky top-0 z-10">
+          <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {

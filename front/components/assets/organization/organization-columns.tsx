@@ -92,16 +92,17 @@ function DataTableColumnHeader({
   title: string 
 }) {
   if (!column.getCanSort()) {
-    return <div className="font-medium">{title}</div>
+    return <div className="-ml-3 font-medium">{title}</div>
   }
 
   return (
     <Button
       variant="ghost"
       onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      className="-ml-3 h-8 data-[state=open]:bg-accent hover:bg-muted"
     >
       {title}
-      <ArrowUpDown className="ml-2 h-4 w-4" />
+      <ArrowUpDown className="ml-1 h-4 w-4" />
     </Button>
   )
 }
@@ -131,16 +132,14 @@ export const createOrganizationColumns = ({
           (table.getIsSomePageRowsSelected() && "indeterminate")
         }
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="选择全部"
-        className="translate-y-[2px]"
+        aria-label="Select all"
       />
     ),
     cell: ({ row }) => (
       <Checkbox
         checked={row.getIsSelected()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="选择行"
-        className="translate-y-[2px]"
+        aria-label="Select row"
       />
     ),
     enableSorting: false,  // 禁用排序

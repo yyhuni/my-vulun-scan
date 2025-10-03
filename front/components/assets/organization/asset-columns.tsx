@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 // 导入图标组件
-import { MoreHorizontal, Eye, Edit, Trash2, Server, Globe, Network, Copy, Check } from "lucide-react"
+import { MoreHorizontal, Eye, Edit, Trash2, Server, Globe, Network, Copy, Check, ArrowUpDown } from "lucide-react"
 // 导入 Tabler 图标
 import { IconCircleCheckFilled, IconLoader } from "@tabler/icons-react"
 // 导入提示组件
@@ -92,7 +92,7 @@ function AssetRowActions({
 
 /**
  * 数据表格列头组件
- * 支持排序功能的列头
+ * 支持排序功能的列头，参考 shadcn/ui 示例设计
  */
 function DataTableColumnHeader({ 
   column, 
@@ -101,19 +101,18 @@ function DataTableColumnHeader({
   column: any
   title: string 
 }) {
+  if (!column.getCanSort()) {
+    return <div className="-ml-3 font-medium">{title}</div>
+  }
+
   return (
     <Button
       variant="ghost"
-      size="sm"
-      className="-ml-3 h-8 data-[state=open]:bg-accent"
       onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      className="-ml-3 h-8 data-[state=open]:bg-accent hover:bg-muted"
     >
-      <span>{title}</span>
-      {column.getIsSorted() === "desc" ? (
-        <span className="ml-2">↓</span>
-      ) : column.getIsSorted() === "asc" ? (
-        <span className="ml-2">↑</span>
-      ) : null}
+      {title}
+      <ArrowUpDown className="ml-1 h-4 w-4" />
     </Button>
   )
 }
@@ -180,16 +179,14 @@ export const createMainAssetColumns = ({
           (table.getIsSomePageRowsSelected() && "indeterminate")
         }
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="选择全部"
-        className="translate-y-[2px]"
+        aria-label="Select all"
       />
     ),
     cell: ({ row }) => (
       <Checkbox
         checked={row.getIsSelected()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="选择行"
-        className="translate-y-[2px]"
+        aria-label="Select row"
       />
     ),
     enableSorting: false,
@@ -328,16 +325,14 @@ export const createSubdomainColumns = ({
           (table.getIsSomePageRowsSelected() && "indeterminate")
         }
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="选择全部"
-        className="translate-y-[2px]"
+        aria-label="Select all"
       />
     ),
     cell: ({ row }) => (
       <Checkbox
         checked={row.getIsSelected()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="选择行"
-        className="translate-y-[2px]"
+        aria-label="Select row"
       />
     ),
     enableSorting: false,
@@ -457,16 +452,14 @@ export const createEndpointColumns = ({
           (table.getIsSomePageRowsSelected() && "indeterminate")
         }
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="选择全部"
-        className="translate-y-[2px]"
+        aria-label="Select all"
       />
     ),
     cell: ({ row }) => (
       <Checkbox
         checked={row.getIsSelected()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="选择行"
-        className="translate-y-[2px]"
+        aria-label="Select row"
       />
     ),
     enableSorting: false,
