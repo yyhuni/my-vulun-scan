@@ -176,7 +176,7 @@ export const createOrganizationColumns = ({
       return (
         <div className="flex space-x-2">
           <span className="max-w-[300px] truncate text-muted-foreground">
-            {description || "暂无描述"}
+            {description || "-"}
           </span>
         </div>
       )
