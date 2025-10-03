@@ -1,5 +1,7 @@
 // 导入组织管理组件
 import { OrganizationList } from "@/components/assets/organization/organization-list"
+// 导入图标
+import { Building2 } from "lucide-react"
 
 /**
  * 组织管理页面
@@ -12,7 +14,10 @@ export default function OrganizationPage() {
       {/* 页面头部 */}
       <div className="flex items-center justify-between px-4 lg:px-6">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">组织管理</h2>
+          <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            <Building2 className="h-6 w-6" />
+            组织管理
+          </h2>
           <p className="text-muted-foreground">
             管理和查看系统中的所有组织信息
           </p>
