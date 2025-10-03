@@ -13,26 +13,26 @@ Thumbs.db
 # 前端 (Next.js/Node.js) 相关
 # ============================
 # 依赖目录
-front/node_modules/
-front/.pnpm-store/
+front-back/node_modules/
+front-back/.pnpm-store/
 
 # Next.js 构建产物
-front/.next/
-front/out/
-front/dist/
+front-back/.next/
+front-back/out/
+front-back/dist/
 
 # 环境变量文件
-front/.env
-front/.env.local
-front/.env.development.local
-front/.env.test.local
-front/.env.production.local
+front-back/.env
+front-back/.env.local
+front-back/.env.development.local
+front-back/.env.test.local
+front-back/.env.production.local
 
 # 运行时和缓存
-front/.turbo/
-front/.swc/
-front/.eslintcache
-front/.tsbuildinfo
+front-back/.turbo/
+front-back/.swc/
+front-back/.eslintcache
+front-back/.tsbuildinfo
 
 # ============================
 # 后端 (Go) 相关
