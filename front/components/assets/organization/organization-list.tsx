@@ -114,33 +114,11 @@ export function OrganizationList() {
       // 模拟 API 调用 - 实际项目中替换为真实的 API 调用
       await new Promise(resolve => setTimeout(resolve, 1000))
       
-      // 模拟数据
-      const mockData: Organization[] = [
-        {
-          id: 1,
-          name: "技术部",
-          description: "负责公司技术研发和系统维护",
-          createdAt: "2024-01-15T10:30:00Z",
-          updatedAt: "2024-03-20T14:45:00Z"
-        },
-        {
-          id: 2,
-          name: "市场部",
-          description: "负责市场推广和客户关系维护",
-          createdAt: "2024-01-20T09:15:00Z",
-          updatedAt: "2024-02-28T16:20:00Z"
-        },
-        {
-          id: 3,
-          name: "人事部",
-          description: "负责人力资源管理和招聘",
-          createdAt: "2024-02-01T11:00:00Z",
-          updatedAt: "2024-03-15T13:30:00Z"
-        }
-      ]
+      // 暂时返回空数据，等待后端接口
+      const data: Organization[] = []
 
-      setOrganizations(mockData)
-      setViewState(mockData.length > 0 ? "data" : "empty")
+      setOrganizations(data)
+      setViewState(data.length > 0 ? "data" : "empty")
     } catch (err: any) {
       console.error('Error fetching organizations:', err)
       const errorMessage = err.message || "获取组织列表失败"
