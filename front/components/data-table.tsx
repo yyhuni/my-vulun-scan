@@ -1,57 +1,67 @@
-"use client"
+"use client" // 标记为客户端组件，可以使用浏览器 API 和交互功能
 
+// 导入 React 库
 import * as React from "react"
+// 导入拖拽功能相关组件
 import {
-  closestCenter,
-  DndContext,
-  KeyboardSensor,
-  MouseSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type UniqueIdentifier,
+  closestCenter,          // 最近中心碰撞检测
+  DndContext,            // 拖拽上下文
+  KeyboardSensor,        // 键盘传感器
+  MouseSensor,           // 鼠标传感器
+  TouchSensor,           // 触摸传感器
+  useSensor,             // 传感器Hook
+  useSensors,            // 多传感器Hook
+  type DragEndEvent,     // 拖拽结束事件类型
+  type UniqueIdentifier, // 唯一标识符类型
 } from "@dnd-kit/core"
-import { restrictToVerticalAxis } from "@dnd-kit/modifiers"
+// 导入拖拽修饰符
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers" // 限制为垂直轴拖拽
+// 导入可排序功能
 import {
-  arrayMove,
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
+  arrayMove,                    // 数组移动工具
+  SortableContext,             // 可排序上下文
+  useSortable,                 // 可排序Hook
+  verticalListSortingStrategy, // 垂直列表排序策略
 } from "@dnd-kit/sortable"
-import { CSS } from "@dnd-kit/utilities"
+// 导入CSS工具
+import { CSS } from "@dnd-kit/utilities" // CSS变换工具
+// 导入图标组件
 import {
-  IconChevronDown,
-  IconChevronLeft,
-  IconChevronRight,
-  IconChevronsLeft,
-  IconChevronsRight,
-  IconCircleCheckFilled,
-  IconDotsVertical,
-  IconGripVertical,
-  IconLayoutColumns,
-  IconLoader,
-  IconPlus,
-  IconTrendingUp,
+  IconChevronDown,      // 向下箭头
+  IconChevronLeft,      // 向左箭头
+  IconChevronRight,     // 向右箭头
+  IconChevronsLeft,     // 双向左箭头
+  IconChevronsRight,    // 双向右箭头
+  IconCircleCheckFilled, // 填充的圆形勾选
+  IconDotsVertical,     // 垂直三点
+  IconGripVertical,     // 垂直抓取手柄
+  IconLayoutColumns,    // 列布局
+  IconLoader,           // 加载器
+  IconPlus,             // 加号
+  IconTrendingUp,       // 上升趋势
 } from "@tabler/icons-react"
+// 导入表格相关组件和类型
 import {
-  ColumnDef,
-  ColumnFiltersState,
-  flexRender,
-  getCoreRowModel,
-  getFacetedRowModel,
-  getFacetedUniqueValues,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  Row,
-  SortingState,
-  useReactTable,
-  VisibilityState,
+  ColumnDef,               // 列定义类型
+  ColumnFiltersState,      // 列过滤状态类型
+  flexRender,              // 灵活渲染函数
+  getCoreRowModel,         // 获取核心行模型
+  getFacetedRowModel,      // 获取分面行模型
+  getFacetedUniqueValues,  // 获取分面唯一值
+  getFilteredRowModel,     // 获取过滤行模型
+  getPaginationRowModel,   // 获取分页行模型
+  getSortedRowModel,       // 获取排序行模型
+  Row,                     // 行类型
+  SortingState,            // 排序状态类型
+  useReactTable,           // React表格Hook
+  VisibilityState,         // 可见性状态类型
 } from "@tanstack/react-table"
+// 导入图表组件
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
-import { toast } from "sonner"
-import { z } from "zod"
+// 导入提示组件
+import { toast } from "sonner" // 轻量级提示库
+// 导入数据验证库
+import { z } from "zod" // 数据模式验证
 
 import { useIsMobile } from '@/hooks/use-mobile'
 import { Badge } from '@/components/ui/badge'
@@ -106,147 +116,172 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs'
 
+// 数据表格项的数据模式定义
 export const schema = z.object({
-  id: z.number(),
-  header: z.string(),
-  type: z.string(),
-  status: z.string(),
-  target: z.string(),
-  limit: z.string(),
-  reviewer: z.string(),
+  id: z.number(),       // ID - 数字类型
+  header: z.string(),   // 标题 - 字符串类型
+  type: z.string(),     // 类型 - 字符串类型
+  status: z.string(),   // 状态 - 字符串类型
+  target: z.string(),   // 目标 - 字符串类型
+  limit: z.string(),    // 限制 - 字符串类型
+  reviewer: z.string(), // 审查者 - 字符串类型
 })
 
-// Create a separate component for the drag handle
+/**
+ * 拖拽手柄组件
+ * 用于表格行的拖拽排序功能
+ * @param {number} id - 行的唯一标识符
+ */
 function DragHandle({ id }: { id: number }) {
+  // 获取可排序属性和监听器
   const { attributes, listeners } = useSortable({
-    id,
+    id, // 传入行ID
   })
 
   return (
     <Button
-      {...attributes}
-      {...listeners}
-      variant="ghost"
-      size="icon"
-      className="text-muted-foreground size-7 hover:bg-transparent"
+      {...attributes}  // 拖拽属性
+      {...listeners}   // 拖拽监听器
+      variant="ghost"  // 幽灵按钮样式
+      size="icon"     // 图标尺寸
+      className="text-muted-foreground size-7 hover:bg-transparent" // 样式类
     >
+      {/* 垂直抓取图标 */}
       <IconGripVertical className="text-muted-foreground size-3" />
-      <span className="sr-only">Drag to reorder</span>
+      {/* 无障碍文本 */}
+      <span className="sr-only">Drag to reorder</span> {/* 拖拽重新排序 */}
     </Button>
   )
 }
 
+// 表格列定义数组
 const columns: ColumnDef<z.infer<typeof schema>>[] = [
+  // 拖拽列 - 用于行排序
   {
-    id: "drag",
-    header: () => null,
-    cell: ({ row }) => <DragHandle id={row.original.id} />,
+    id: "drag",                                      // 列ID
+    header: () => null,                              // 不显示列头
+    cell: ({ row }) => <DragHandle id={row.original.id} />, // 显示拖拽手柄
   },
+  // 选择列 - 用于行选择
   {
-    id: "select",
+    id: "select",                                   // 列ID
+    // 列头 - 全选复选框
     header: ({ table }) => (
       <div className="flex items-center justify-center">
         <Checkbox
           checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
+            table.getIsAllPageRowsSelected() ||          // 全部选中
+            (table.getIsSomePageRowsSelected() && "indeterminate") // 部分选中显示不确定状态
           }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)} // 切换全选状态
+          aria-label="Select all" // 无障碍标签
         />
       </div>
     ),
+    // 单元格 - 单行选择复选框
     cell: ({ row }) => (
       <div className="flex items-center justify-center">
         <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
+          checked={row.getIsSelected()}                      // 当前行是否选中
+          onCheckedChange={(value) => row.toggleSelected(!!value)} // 切换选中状态
+          aria-label="Select row"                           // 无障碍标签
         />
       </div>
     ),
-    enableSorting: false,
-    enableHiding: false,
+    enableSorting: false, // 禁用排序
+    enableHiding: false,  // 禁用隐藏
   },
+  // 标题列
   {
-    accessorKey: "header",
-    header: "Header",
+    accessorKey: "header",                           // 数据键
+    header: "Header",                               // 列头显示名称
     cell: ({ row }) => {
-      return <TableCellViewer item={row.original} />
+      return <TableCellViewer item={row.original} /> // 使用自定义查看器组件
     },
-    enableHiding: false,
+    enableHiding: false, // 禁用隐藏
   },
+  // 类型列
   {
-    accessorKey: "type",
-    header: "Section Type",
+    accessorKey: "type",                            // 数据键
+    header: "Section Type",                        // 列头显示名称
     cell: ({ row }) => (
-      <div className="w-32">
+      <div className="w-32">                        {/* 固定宽度 */}
         <Badge variant="outline" className="text-muted-foreground px-1.5">
-          {row.original.type}
+          {row.original.type}                        {/* 显示类型内容 */}
         </Badge>
       </div>
     ),
   },
+  // 状态列
   {
-    accessorKey: "status",
-    header: "Status",
+    accessorKey: "status",                          // 数据键
+    header: "Status",                              // 列头显示名称
     cell: ({ row }) => (
       <Badge variant="outline" className="text-muted-foreground px-1.5">
+        {/* 根据状态显示不同图标 */}
         {row.original.status === "Done" ? (
-          <IconCircleCheckFilled className="fill-green-500 dark:fill-green-400" />
+          <IconCircleCheckFilled className="fill-green-500 dark:fill-green-400" /> // 完成状态显示绿色勾选
         ) : (
-          <IconLoader />
+          <IconLoader />                             // 其他状态显示加载图标
         )}
-        {row.original.status}
+        {row.original.status}                        {/* 显示状态文本 */}
       </Badge>
     ),
   },
+  // 目标列 - 可编辑输入框
   {
-    accessorKey: "target",
-    header: () => <div className="w-full text-right">Target</div>,
+    accessorKey: "target",                          // 数据键
+    header: () => <div className="w-full text-right">Target</div>, // 右对齐列头
     cell: ({ row }) => (
       <form
         onSubmit={(e) => {
-          e.preventDefault()
+          e.preventDefault()                           // 阻止默认提交行为
+          // 显示保存进度提示
           toast.promise(new Promise((resolve) => setTimeout(resolve, 1000)), {
-            loading: `Saving ${row.original.header}`,
-            success: "Done",
-            error: "Error",
+            loading: `Saving ${row.original.header}`,  // 加载中提示
+            success: "Done",                          // 成功提示
+            error: "Error",                           // 错误提示
           })
         }}
       >
+        {/* 无障碍标签 */}
         <Label htmlFor={`${row.original.id}-target`} className="sr-only">
           Target
         </Label>
+        {/* 可编辑输入框 */}
         <Input
           className="hover:bg-input/30 focus-visible:bg-background dark:hover:bg-input/30 dark:focus-visible:bg-input/30 h-8 w-16 border-transparent bg-transparent text-right shadow-none focus-visible:border dark:bg-transparent"
-          defaultValue={row.original.target}
-          id={`${row.original.id}-target`}
+          defaultValue={row.original.target}          // 默认值
+          id={`${row.original.id}-target`}            // 唯一ID
         />
       </form>
     ),
   },
+  // 限制列 - 可编辑输入框
   {
-    accessorKey: "limit",
-    header: () => <div className="w-full text-right">Limit</div>,
+    accessorKey: "limit",                           // 数据键
+    header: () => <div className="w-full text-right">Limit</div>, // 右对齐列头
     cell: ({ row }) => (
       <form
         onSubmit={(e) => {
-          e.preventDefault()
+          e.preventDefault()                           // 阻止默认提交行为
+          // 显示保存进度提示
           toast.promise(new Promise((resolve) => setTimeout(resolve, 1000)), {
-            loading: `Saving ${row.original.header}`,
-            success: "Done",
-            error: "Error",
+            loading: `Saving ${row.original.header}`,  // 加载中提示
+            success: "Done",                          // 成功提示
+            error: "Error",                           // 错误提示
           })
         }}
       >
+        {/* 无障碍标签 */}
         <Label htmlFor={`${row.original.id}-limit`} className="sr-only">
           Limit
         </Label>
+        {/* 可编辑输入框 */}
         <Input
           className="hover:bg-input/30 focus-visible:bg-background dark:hover:bg-input/30 dark:focus-visible:bg-input/30 h-8 w-16 border-transparent bg-transparent text-right shadow-none focus-visible:border dark:bg-transparent"
-          defaultValue={row.original.limit}
-          id={`${row.original.id}-limit`}
+          defaultValue={row.original.limit}           // 默认值
+          id={`${row.original.id}-limit`}             // 唯一ID
         />
       </form>
     ),

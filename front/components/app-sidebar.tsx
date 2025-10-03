@@ -80,59 +80,13 @@ const data = {
       icon: IconDashboard,
     },
     {
-      title: "Analytics", // 分析
-      url: "/analytics",
-      icon: IconChartBar,
+      title: "资产管理", // 资产管理
+      url: "/assets",
+      icon: IconDatabase,
       items: [
         {
-          title: "Overview", // 概览
-          url: "/analytics/overview",
-        },
-        {
-          title: "Reports", // 报告
-          url: "/analytics/reports",
-        },
-        {
-          title: "Insights", // 洞察
-          url: "/analytics/insights",
-        },
-      ],
-    },
-    {
-      title: "Projects", // 项目
-      url: "/projects",
-      icon: IconFolder,
-      items: [
-        {
-          title: "Active Projects", // 活跃项目
-          url: "/projects/active",
-        },
-        {
-          title: "Archived", // 已归档
-          url: "/projects/archived",
-        },
-        {
-          title: "Templates", // 模板
-          url: "/projects/templates",
-        },
-      ],
-    },
-    {
-      title: "Team", // 团队
-      url: "/team",
-      icon: IconUsers,
-      items: [
-        {
-          title: "Members", // 成员
-          url: "/team/members",
-        },
-        {
-          title: "Roles", // 角色
-          url: "/team/roles",
-        },
-        {
-          title: "Permissions", // 权限
-          url: "/team/permissions",
+          title: "组织管理", // 组织管理
+          url: "/assets/organization",
         },
       ],
     },
