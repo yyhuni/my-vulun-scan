@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/alert-dialog"
 
 // 导入数据表格组件
-import { DataTable } from "@/components/data-table"
+import { OrganizationDataTable } from "./organization-data-table"
 import { createOrganizationColumns } from "./organization-columns"
 
 // 导入业务组件
@@ -55,6 +55,7 @@ export function OrganizationList() {
   const [viewState, setViewState] = useState<ViewState>("loading")
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [organizationToDelete, setOrganizationToDelete] = useState<Organization | null>(null)
   const [organizationToEdit, setOrganizationToEdit] = useState<Organization | null>(null)
   const [organizations, setOrganizations] = useState<Organization[]>([])
@@ -233,30 +234,34 @@ export function OrganizationList() {
     }
 
     return (
-      <DataTable
-        columns={columns}
-        data={organizations}
-        // 可搜索的列
-        searchableColumns={['name', 'description']}
-        // 额外的操作按钮
-        extraButtons={
-          <div className="flex items-center space-x-2">
+      <div className="space-y-4">
+        {/* 批量操作工具栏 */}
+        {selectedCount > 0 && (
+          <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+            <span className="text-sm text-muted-foreground">
+              已选择 {selectedCount} 个组织
+            </span>
             <Button
               variant="outline"
               size="sm"
               onClick={handleBulkDelete}
-              disabled={selectedCount === 0}
-              className={selectedCount === 0 ? "text-muted-foreground" : "text-destructive hover:text-destructive"}
+              className="text-destructive hover:text-destructive"
             >
               <Trash2 className="h-4 w-4 mr-2" />
-              批量删除 ({selectedCount})
+              批量删除
             </Button>
-            <AddOrganizationDialog onAdd={handleOrganizationAdded} />
           </div>
-        }
-        // 选择变化回调
-        onSelectionChange={(count: number) => setSelectedCount(count)}
-      />
+        )}
+
+        {/* 组织数据表格 */}
+        <OrganizationDataTable
+          data={organizations}
+          columns={columns}
+          onAddNew={() => setAddDialogOpen(true)}
+          searchPlaceholder="搜索组织名称或描述..."
+          searchColumn="name"
+        />
+      </div>
     )
   }
 
@@ -292,6 +297,13 @@ export function OrganizationList() {
           onEdit={handleOrganizationEdited}
         />
       )}
+
+      {/* 添加组织对话框 */}
+      <AddOrganizationDialog 
+        open={addDialogOpen}
+        onOpenChange={setAddDialogOpen}
+        onAdd={handleOrganizationAdded} 
+      />
     </div>
   )
 }

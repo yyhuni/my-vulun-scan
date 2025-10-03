@@ -20,7 +20,9 @@ export default function OrganizationPage() {
       </div>
 
       {/* 组织列表组件 */}
+      <div className="px-4 lg:px-6">
         <OrganizationList />
+      </div>
     </div>
   )
 }

@@ -34,6 +34,8 @@ interface Organization {
 // 组件属性类型定义
 interface AddOrganizationDialogProps {
   onAdd: (organization: Organization) => void  // 添加成功回调函数
+  open?: boolean                               // 外部控制对话框开关状态
+  onOpenChange?: (open: boolean) => void       // 外部控制对话框开关回调
 }
 
 /**
@@ -46,9 +48,11 @@ interface AddOrganizationDialogProps {
  * 3. 加载状态
  * 4. 用户友好的交互
  */
-export function AddOrganizationDialog({ onAdd }: AddOrganizationDialogProps) {
-  // 对话框开关状态
-  const [open, setOpen] = useState(false)
+export function AddOrganizationDialog({ onAdd, open: externalOpen, onOpenChange: externalOnOpenChange }: AddOrganizationDialogProps) {
+  // 对话框开关状态 - 支持外部控制
+  const [internalOpen, setInternalOpen] = useState(false)
+  const open = externalOpen !== undefined ? externalOpen : internalOpen
+  const setOpen = externalOnOpenChange || setInternalOpen
   // 提交加载状态
   const [isSubmitting, setIsSubmitting] = useState(false)
   // 表单数据状态
@@ -139,13 +143,15 @@ export function AddOrganizationDialog({ onAdd }: AddOrganizationDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      {/* 触发按钮 */}
-      <DialogTrigger asChild>
-        <Button size="sm">
-          <Plus className="h-4 w-4 mr-2" />
-          添加组织
-        </Button>
-      </DialogTrigger>
+      {/* 触发按钮 - 仅在非外部控制时显示 */}
+      {externalOpen === undefined && (
+        <DialogTrigger asChild>
+          <Button size="sm">
+            <Plus className="h-4 w-4 mr-2" />
+            添加组织
+          </Button>
+        </DialogTrigger>
+      )}
       
       {/* 对话框内容 */}
       <DialogContent className="sm:max-w-[425px]">
