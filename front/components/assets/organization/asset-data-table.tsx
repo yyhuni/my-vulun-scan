@@ -1,4 +1,4 @@
-"use client" // 标记为客户端组件，可以使用浏览器 API 和交互功能
+"use client" // 标记为客户端组件
 
 // 导入 React 库和 Hooks
 import * as React from "react"
@@ -55,40 +55,46 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-// 组织数据类型定义
-interface Organization {
+// 资产数据类型定义
+interface Asset {
   id: number
   name: string
-  description: string
+  type: string
+  status: string
+  ip?: string
+  domain?: string
+  port?: number
   createdAt: string
   updatedAt: string
 }
 
 // 组件属性类型定义
-interface OrganizationDataTableProps {
-  data: Organization[]                           // 组织数据数组
-  columns: ColumnDef<Organization>[]             // 列定义数组
-  onAddNew?: () => void                          // 添加新组织的回调函数
+interface AssetDataTableProps {
+  data: Asset[]                                  // 资产数据数组
+  columns: ColumnDef<Asset>[]                    // 列定义数组
+  onAddNew?: () => void                          // 添加新资产的回调函数
   onBulkDelete?: () => void                      // 批量删除回调函数
-  onSelectionChange?: (selectedRows: Organization[]) => void  // 选中行变化回调
+  onSelectionChange?: (selectedRows: Asset[]) => void  // 选中行变化回调
   searchPlaceholder?: string                     // 搜索框占位符
   searchColumn?: string                          // 搜索的列名
+  addButtonText?: string                         // 添加按钮文本
 }
 
 /**
- * 组织数据表格组件
- * 专门用于显示和管理组织数据的表格
+ * 资产数据表格组件
+ * 专门用于显示和管理资产数据的表格
  * 包含搜索、分页、列显示控制等功能
  */
-export function OrganizationDataTable({
+export function AssetDataTable({
   data,
   columns,
   onAddNew,
   onBulkDelete,
   onSelectionChange,
-  searchPlaceholder = "搜索组织...",
+  searchPlaceholder = "搜索资产...",
   searchColumn = "name",
-}: OrganizationDataTableProps) {
+  addButtonText = "添加",
+}: AssetDataTableProps) {
   // 表格状态管理
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
@@ -175,11 +181,15 @@ export function OrganizationDataTable({
                       checked={column.getIsVisible()}
                       onCheckedChange={(value) => column.toggleVisibility(!!value)}
                     >
-                      {column.id === "name" && "组织名称"}
-                      {column.id === "description" && "描述"}
+                      {column.id === "name" && "资产名称"}
+                      {column.id === "type" && "类型"}
+                      {column.id === "status" && "状态"}
+                      {column.id === "ip" && "IP地址"}
+                      {column.id === "domain" && "域名"}
+                      {column.id === "port" && "端口"}
                       {column.id === "createdAt" && "创建时间"}
                       {column.id === "updatedAt" && "更新时间"}
-                      {!["name", "description", "createdAt", "updatedAt"].includes(column.id) && column.id}
+                      {!["name", "type", "status", "ip", "domain", "port", "createdAt", "updatedAt"].includes(column.id) && column.id}
                     </DropdownMenuCheckboxItem>
                   )
                 })}
@@ -207,11 +217,11 @@ export function OrganizationDataTable({
             </Button>
           )}
 
-          {/* 添加新组织按钮 */}
+          {/* 添加新资产按钮 */}
           {onAddNew && (
             <Button onClick={onAddNew} size="sm">
               <IconPlus className="mr-2 h-4 w-4" />
-              添加组织
+              {addButtonText}
             </Button>
           )}
         </div>
