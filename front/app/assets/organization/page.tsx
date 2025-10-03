@@ -1,5 +1,5 @@
 // 导入组织管理组件
-import { OrganizationList } from "@/components/assets/organization-list"
+import { OrganizationList } from "@/components/assets/organization/organization-list"
 
 /**
  * 组织管理页面

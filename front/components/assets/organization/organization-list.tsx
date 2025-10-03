@@ -60,7 +60,8 @@ export function OrganizationList() {
   const [organizationToEdit, setOrganizationToEdit] = useState<Organization | null>(null)
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [selectedCount, setSelectedCount] = useState(0)
+  const [selectedOrganizations, setSelectedOrganizations] = useState<Organization[]>([])
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
 
   // 辅助函数 - 格式化日期
   const formatDate = (dateString: string): string => {
@@ -187,7 +188,33 @@ export function OrganizationList() {
 
   // 批量删除处理函数
   const handleBulkDelete = () => {
-    toast.info("批量删除功能即将上线，请使用单个删除功能")
+    if (selectedOrganizations.length === 0) {
+      toast.error("请先选择要删除的组织")
+      return
+    }
+    setBulkDeleteDialogOpen(true)
+  }
+
+  // 确认批量删除
+  const confirmBulkDelete = async () => {
+    if (selectedOrganizations.length === 0) return
+
+    try {
+      // 模拟 API 批量删除调用
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      const deletedIds = selectedOrganizations.map(org => org.id)
+      const deletedNames = selectedOrganizations.map(org => org.name)
+      
+      setOrganizations((prev) => prev.filter((org) => !deletedIds.includes(org.id)))
+      
+      toast.success(`成功删除 ${selectedOrganizations.length} 个组织: ${deletedNames.join(", ")}`)
+      setBulkDeleteDialogOpen(false)
+      setSelectedOrganizations([])
+    } catch (err: any) {
+      console.error('Error bulk deleting organizations:', err)
+      toast.error(`批量删除组织失败: ${err.message || "未知错误"}`)
+    }
   }
 
   // 根据状态渲染内容
@@ -234,34 +261,15 @@ export function OrganizationList() {
     }
 
     return (
-      <div className="space-y-4">
-        {/* 批量操作工具栏 */}
-        {selectedCount > 0 && (
-          <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-            <span className="text-sm text-muted-foreground">
-              已选择 {selectedCount} 个组织
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleBulkDelete}
-              className="text-destructive hover:text-destructive"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              批量删除
-            </Button>
-          </div>
-        )}
-
-        {/* 组织数据表格 */}
-        <OrganizationDataTable
-          data={organizations}
-          columns={columns}
-          onAddNew={() => setAddDialogOpen(true)}
-          searchPlaceholder="搜索组织名称或描述..."
-          searchColumn="name"
-        />
-      </div>
+      <OrganizationDataTable
+        data={organizations}
+        columns={columns}
+        onAddNew={() => setAddDialogOpen(true)}
+        onBulkDelete={handleBulkDelete}
+        onSelectionChange={setSelectedOrganizations}
+        searchPlaceholder="搜索组织名称或描述..."
+        searchColumn="name"
+      />
     )
   }
 
@@ -297,6 +305,39 @@ export function OrganizationList() {
           onEdit={handleOrganizationEdited}
         />
       )}
+
+      {/* 批量删除确认对话框 */}
+      <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认批量删除</AlertDialogTitle>
+            <AlertDialogDescription>
+              此操作无法撤销。这将永久删除以下 {selectedOrganizations.length} 个组织及其相关数据：
+              <div className="mt-2 p-2 bg-muted rounded-md">
+                <ul className="text-sm space-y-1">
+                  {selectedOrganizations.map((org) => (
+                    <li key={org.id} className="flex items-center">
+                      <span className="font-medium">{org.name}</span>
+                      {org.description && (
+                        <span className="ml-2 text-muted-foreground">- {org.description}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmBulkDelete} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              删除 {selectedOrganizations.length} 个组织
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* 添加组织对话框 */}
       <AddOrganizationDialog 

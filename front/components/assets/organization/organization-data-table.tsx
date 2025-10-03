@@ -26,6 +26,7 @@ import {
   IconChevronsRight,
   IconLayoutColumns,
   IconPlus,
+  IconTrash,
 } from "@tabler/icons-react"
 
 // 导入 UI 组件
@@ -68,6 +69,8 @@ interface OrganizationDataTableProps {
   data: Organization[]                           // 组织数据数组
   columns: ColumnDef<Organization>[]             // 列定义数组
   onAddNew?: () => void                          // 添加新组织的回调函数
+  onBulkDelete?: () => void                      // 批量删除回调函数
+  onSelectionChange?: (selectedRows: Organization[]) => void  // 选中行变化回调
   searchPlaceholder?: string                     // 搜索框占位符
   searchColumn?: string                          // 搜索的列名
 }
@@ -81,6 +84,8 @@ export function OrganizationDataTable({
   data,
   columns,
   onAddNew,
+  onBulkDelete,
+  onSelectionChange,
   searchPlaceholder = "搜索组织...",
   searchColumn = "name",
 }: OrganizationDataTableProps) {
@@ -119,6 +124,14 @@ export function OrganizationDataTable({
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
   })
+
+  // 监听选中行变化，通知父组件
+  React.useEffect(() => {
+    if (onSelectionChange) {
+      const selectedRows = table.getFilteredSelectedRowModel().rows.map(row => row.original)
+      onSelectionChange(selectedRows)
+    }
+  }, [rowSelection, onSelectionChange, table])
 
   return (
     <div className="w-full space-y-4">
@@ -172,6 +185,27 @@ export function OrganizationDataTable({
                 })}
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* 批量删除按钮 */}
+          {onBulkDelete && (
+            <Button 
+              onClick={onBulkDelete}
+              size="sm"
+              variant="outline"
+              disabled={table.getFilteredSelectedRowModel().rows.length === 0}
+              className={
+                table.getFilteredSelectedRowModel().rows.length === 0
+                  ? "text-muted-foreground"
+                  : "text-destructive hover:text-destructive hover:bg-destructive/10"
+              }
+            >
+              <IconTrash className="mr-2 h-4 w-4" />
+              批量删除
+              {table.getFilteredSelectedRowModel().rows.length > 0 && (
+                <span className="ml-1">({table.getFilteredSelectedRowModel().rows.length})</span>
+              )}
+            </Button>
+          )}
 
           {/* 添加新组织按钮 */}
           {onAddNew && (
