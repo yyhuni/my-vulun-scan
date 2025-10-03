@@ -10,6 +10,11 @@ import "./globals.css"
 import { Suspense } from "react"
 import NavigationProvider from "@/components/providers/navigation-provider"
 
+// 导入公共布局组件
+import { AppSidebar } from "@/components/app-sidebar"
+import { SiteHeader } from "@/components/site-header"
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
+
 // 定义页面的元数据信息,用于 SEO 优化
 export const metadata: Metadata = {
   title: "v0 App", // 页面标题
@@ -20,6 +25,7 @@ export const metadata: Metadata = {
 /**
  * 根布局组件
  * 这是整个应用的最外层布局,所有页面都会被包裹在这个组件中
+ * 包含公共的侧边栏、头部等布局组件
  * @param children - 子组件内容,即各个页面的实际内容
  */
 export default function RootLayout({
@@ -40,7 +46,40 @@ export default function RootLayout({
         {/* 使用 NavigationProvider 包裹整个应用 */}
         <NavigationProvider>
           {/* 使用 Suspense 包裹页面内容 */}
-          <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>
+          <Suspense fallback={<div>Loading...</div>}>
+            {/* SidebarProvider 提供侧边栏的上下文状态管理 */}
+            <SidebarProvider
+              // 自定义 CSS 变量,设置侧边栏宽度和头部高度
+              style={
+                {
+                  "--sidebar-width": "calc(var(--spacing) * 72)", // 侧边栏宽度为 72 个间距单位
+                  "--header-height": "calc(var(--spacing) * 12)", // 头部高度为 12 个间距单位
+                } as React.CSSProperties
+              }
+            >
+              {/* 应用侧边栏,使用 inset 变体样式 */}
+              <AppSidebar variant="inset" />
+
+              {/* 侧边栏内嵌区域,包含主要内容 */}
+              <SidebarInset>
+                {/* 网站头部 */}
+                <SiteHeader />
+
+                {/* 主内容区域,使用 flex 布局垂直排列 */}
+                <div className="flex flex-1 flex-col">
+                  {/* 
+                    容器查询包装器
+                    @container/main: 定义一个名为 main 的容器查询上下文
+                    用于响应式设计,根据容器大小而非视口大小调整样式
+                  */}
+                  <div className="@container/main flex flex-1 flex-col gap-2">
+                    {/* 页面内容区域 */}
+                    {children}
+                  </div>
+                </div>
+              </SidebarInset>
+            </SidebarProvider>
+          </Suspense>
         </NavigationProvider>
       </body>
     </html>
