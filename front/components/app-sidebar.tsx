@@ -1,0 +1,293 @@
+"use client" // 标记为客户端组件,可以使用浏览器 API 和交互功能
+
+// 导入 React 库
+import type * as React from "react"
+// 导入 Tabler Icons 图标库中的各种图标
+import {
+  IconCamera, // 相机图标
+  IconChartBar, // 柱状图图标
+  IconDashboard, // 仪表板图标
+  IconDatabase, // 数据库图标
+  IconFileAi, // AI 文件图标
+  IconFileDescription, // 文件描述图标
+  IconFileWord, // Word 文件图标
+  IconFolder, // 文件夹图标
+  IconHelp, // 帮助图标
+  IconInnerShadowTop, // 内阴影图标
+  IconListDetails, // 列表详情图标
+  IconReport, // 报告图标
+  IconSearch, // 搜索图标
+  IconSettings, // 设置图标
+  IconUsers, // 用户图标
+  IconChevronRight, // 右箭头图标
+} from "@tabler/icons-react"
+// 导入路径名 hook
+import { usePathname } from "next/navigation"
+
+// 导入自定义导航组件
+import { NavDocuments } from "@/components/nav-documents"
+import { NavSecondary } from "@/components/nav-secondary"
+import { NavUser } from "@/components/nav-user"
+// 导入导航 hook
+import { useNavigation } from "@/hooks/use-navigation"
+// 导入侧边栏 UI 组件
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+} from "@/components/ui/sidebar"
+// 导入折叠组件
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
+
+// 定义导航菜单项的类型
+interface NavItem {
+  title: string
+  url: string
+  icon: React.ComponentType<any>
+  items?: {
+    title: string
+    url: string
+  }[]
+}
+
+// 定义侧边栏的数据结构
+const data = {
+  // 用户信息
+  user: {
+    name: "shadcn",
+    email: "m@example.com",
+    avatar: "/avatars/shadcn.jpg",
+  },
+  // 主导航菜单项
+  navMain: [
+    {
+      title: "Dashboard", // 仪表板
+      url: "/dashboard",
+      icon: IconDashboard,
+    },
+    {
+      title: "Analytics", // 分析
+      url: "/analytics",
+      icon: IconChartBar,
+      items: [
+        {
+          title: "Overview", // 概览
+          url: "/analytics/overview",
+        },
+        {
+          title: "Reports", // 报告
+          url: "/analytics/reports",
+        },
+        {
+          title: "Insights", // 洞察
+          url: "/analytics/insights",
+        },
+      ],
+    },
+    {
+      title: "Projects", // 项目
+      url: "/projects",
+      icon: IconFolder,
+      items: [
+        {
+          title: "Active Projects", // 活跃项目
+          url: "/projects/active",
+        },
+        {
+          title: "Archived", // 已归档
+          url: "/projects/archived",
+        },
+        {
+          title: "Templates", // 模板
+          url: "/projects/templates",
+        },
+      ],
+    },
+    {
+      title: "Team", // 团队
+      url: "/team",
+      icon: IconUsers,
+      items: [
+        {
+          title: "Members", // 成员
+          url: "/team/members",
+        },
+        {
+          title: "Roles", // 角色
+          url: "/team/roles",
+        },
+        {
+          title: "Permissions", // 权限
+          url: "/team/permissions",
+        },
+      ],
+    },
+  ],
+  // 次要导航菜单项
+  navSecondary: [
+    {
+      title: "Settings", // 设置
+      url: "#",
+      icon: IconSettings,
+    },
+    {
+      title: "Get Help", // 获取帮助
+      url: "#",
+      icon: IconHelp,
+    },
+    {
+      title: "Search", // 搜索
+      url: "#",
+      icon: IconSearch,
+    },
+  ],
+  // 文档相关菜单项
+  documents: [
+    {
+      name: "Data Library", // 数据库
+      url: "#",
+      icon: IconDatabase,
+    },
+    {
+      name: "Reports", // 报告
+      url: "#",
+      icon: IconReport,
+    },
+    {
+      name: "Word Assistant", // Word 助手
+      url: "#",
+      icon: IconFileWord,
+    },
+  ],
+}
+
+/**
+ * 应用侧边栏组件
+ * 显示应用的主要导航菜单,包括用户信息、主菜单、文档和次要菜单
+ * 支持子菜单的展开和折叠功能
+ * @param props - Sidebar 组件的所有属性
+ */
+export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const pathname = usePathname()
+  const { navigate } = useNavigation()
+
+  return (
+    // collapsible="offcanvas" 表示侧边栏可以折叠为画布外模式
+    <Sidebar collapsible="offcanvas" {...props}>
+      {/* 侧边栏头部 */}
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            {/* 
+              侧边栏菜单按钮,作为链接使用
+              data-[slot=sidebar-menu-button]:!p-1.5 设置内边距
+            */}
+            <SidebarMenuButton 
+              onClick={() => navigate("/")} 
+              className="data-[slot=sidebar-menu-button]:!p-1.5 cursor-pointer"
+            >
+              {/* 公司 Logo 图标 */}
+              <IconInnerShadowTop className="!size-5" />
+              {/* 公司名称 */}
+              <span className="text-base font-semibold">Acme Inc.</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
+
+      {/* 侧边栏主要内容区域 */}
+      <SidebarContent>
+        {/* 主导航菜单 */}
+        <SidebarGroup>
+          <SidebarGroupLabel>主要功能</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {data.navMain.map((item) => {
+                const isActive = item.url === "/" ? pathname === "/" : pathname.startsWith(item.url)
+                const hasSubItems = item.items && item.items.length > 0
+
+                if (!hasSubItems) {
+                  // 无子菜单的普通菜单项
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        isActive={isActive}
+                        onClick={() => navigate(item.url)}
+                        className="cursor-pointer"
+                      >
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )
+                }
+
+                // 有子菜单的折叠菜单项
+                return (
+                  <Collapsible
+                    key={item.title}
+                    defaultOpen={isActive}
+                    className="group/collapsible"
+                  >
+                    <SidebarMenuItem>
+                      <CollapsibleTrigger asChild>
+                        <SidebarMenuButton isActive={isActive}>
+                          <item.icon />
+                          <span>{item.title}</span>
+                          <IconChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                        </SidebarMenuButton>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <SidebarMenuSub>
+                          {item.items?.map((subItem) => (
+                            <SidebarMenuSubItem key={subItem.title}>
+                              <SidebarMenuSubButton
+                                href={subItem.url}
+                                isActive={pathname === subItem.url}
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  navigate(subItem.url)
+                                }}
+                              >
+                                <span>{subItem.title}</span>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          ))}
+                        </SidebarMenuSub>
+                      </CollapsibleContent>
+                    </SidebarMenuItem>
+                  </Collapsible>
+                )
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        
+        {/* 文档导航菜单 */}
+        <NavDocuments items={data.documents} />
+        {/* 次要导航菜单,使用 mt-auto 推到底部 */}
+        <NavSecondary items={data.navSecondary} className="mt-auto" />
+      </SidebarContent>
+
+      {/* 侧边栏底部 */}
+      <SidebarFooter>
+        {/* 用户信息组件 */}
+        <NavUser user={data.user} />
+      </SidebarFooter>
+    </Sidebar>
+  )
+}
