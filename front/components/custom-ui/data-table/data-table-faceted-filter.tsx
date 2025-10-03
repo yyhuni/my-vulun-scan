@@ -1,3 +1,5 @@
+"use client"
+
 import * as React from "react"
 import { Column } from "@tanstack/react-table"
 import { Check, PlusCircle } from "lucide-react"

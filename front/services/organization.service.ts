@@ -1,6 +1,7 @@
 import { api } from "@/lib/api-client"
 import type {
   ApiResponse,
+  PaginatedResponse,
 } from "@/types/api-response.types"
 import type { Organization } from "@/types/organization.types"
 import type { Domain } from "@/types/domain.types"
@@ -8,12 +9,30 @@ import type { Domain } from "@/types/domain.types"
 
 export class OrganizationService {
   // ========== 组织基础操作 ==========
-  
+
   /**
-   * 获取所有组织列表
+   * 获取所有组织列表（支持分页）
+   * @param params - 分页参数对象
+   * @param params.page - 当前页码，1-based
+   * @param params.pageSize - 分页大小，1-based
+   * @returns Promise<ApiResponse<PaginatedResponse<Organization>>>
    */
-  static async getOrganizations(): Promise<ApiResponse<Organization[]>> {
-    const response = await api.get<ApiResponse<Organization[]>>('/organizations')
+  static async getOrganizations(params?: {
+    page?: number
+    pageSize?: number
+  }): Promise<ApiResponse<PaginatedResponse<Organization>>> {
+    const queryParams = new URLSearchParams()
+    if (params?.page !== undefined) {
+      queryParams.append('page', params.page.toString())
+    }
+    if (params?.pageSize !== undefined) {
+      queryParams.append('page_size', params.pageSize.toString())
+    }
+    
+    const queryString = queryParams.toString()
+    const url = `/organizations${queryString ? `?${queryString}` : ''}`
+    
+    const response = await api.get<ApiResponse<PaginatedResponse<Organization>>>(url)
     return response.data
   }
 
