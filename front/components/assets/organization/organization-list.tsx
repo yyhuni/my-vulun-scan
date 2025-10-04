@@ -39,6 +39,14 @@ interface Organization {
   updatedAt: string
 }
 
+// 添加分页信息接口
+interface PaginationInfo {
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+}
+
 type ViewState = "loading" | "data" | "empty" | "error"
 
 /**
@@ -64,6 +72,19 @@ export function OrganizationList() {
   const [error, setError] = useState<string | null>(null)
   const [selectedOrganizations, setSelectedOrganizations] = useState<Organization[]>([])
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
+  const [isPaginationLoading, setIsPaginationLoading] = useState(false) // 分页加载状态
+  
+  // 添加分页状态
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,  // 0-based for react-table
+    pageSize: 10,
+  })
+  const [paginationInfo, setPaginationInfo] = useState<PaginationInfo>({
+    total: 0,
+    page: 1,
+    pageSize: 10,
+    totalPages: 0,
+  })
 
   // 辅助函数 - 格式化日期
   const formatDate = (dateString: string): string => {
@@ -104,21 +125,42 @@ export function OrganizationList() {
 
   // 初始化时加载组织数据
   useEffect(() => {
-    fetchOrganizations()
+    fetchOrganizations(undefined, undefined, true) // 标记为初始加载
   }, [])
 
-  // 获取组织数据
-  const fetchOrganizations = async () => {
+  // 获取组织数据 - 修改为支持分页参数
+  const fetchOrganizations = async (page?: number, pageSize?: number, isInitialLoad = false) => {
     try {
-      setViewState("loading")
+      // 只在初始加载时设置loading状态，分页时使用独立的加载状态
+      if (isInitialLoad) {
+        setViewState("loading")
+      } else {
+        setIsPaginationLoading(true)
+      }
       setError(null)
 
-      // 调用真实API获取组织列表
-      const response = await OrganizationService.getOrganizations()
+      // 使用传入的参数或当前分页状态
+      const currentPage = page ?? pagination.pageIndex + 1  // 转换为1-based
+      const currentPageSize = pageSize ?? pagination.pageSize
+
+      // 调用真实API获取组织列表，传递分页参数
+      const response = await OrganizationService.getOrganizations({
+        page: currentPage,
+        pageSize: currentPageSize
+      })
       
       if (response.state === "success" && response.data) {
         const organizations = response.data.organizations || []
         setOrganizations(organizations)
+        
+        // 更新分页信息
+        setPaginationInfo({
+          total: response.data.total || 0,
+          page: response.data.page || 1,
+          pageSize: (response.data as any).page_size || response.data.pageSize || 10,
+          totalPages: (response.data as any).total_pages || response.data.totalPages || 0,
+        })
+        
         setViewState(organizations.length > 0 ? "data" : "empty")
       } else {
         throw new Error(response.message || "获取组织列表失败")
@@ -127,8 +169,12 @@ export function OrganizationList() {
       console.error('Error fetching organizations:', err)
       const errorMessage = err.message || "获取组织列表失败"
       setError(errorMessage)
-      setViewState("error")
+      if (isInitialLoad) {
+        setViewState("error")
+      }
       toast.error(`获取组织列表失败: ${errorMessage}`)
+    } finally {
+      setIsPaginationLoading(false)
     }
   }
 
@@ -221,7 +267,7 @@ export function OrganizationList() {
           <p className="text-muted-foreground text-center mb-4">
             {error || "加载组织数据时出现错误，请重试"}
           </p>
-          <Button variant="outline" onClick={fetchOrganizations}>
+          <Button variant="outline" onClick={() => fetchOrganizations()}>
             重新加载
           </Button>
         </div>
@@ -252,6 +298,15 @@ export function OrganizationList() {
         onSelectionChange={setSelectedOrganizations}
         searchPlaceholder="搜索组织名称或描述..."
         searchColumn="name"
+        // 添加分页相关属性
+        pagination={pagination}
+        setPagination={setPagination}
+        paginationInfo={paginationInfo}
+        isPaginationLoading={isPaginationLoading}
+        onPaginationChange={(newPagination: { pageIndex: number; pageSize: number }) => {
+          setPagination(newPagination)
+          fetchOrganizations(newPagination.pageIndex + 1, newPagination.pageSize)
+        }}
       />
     )
   }
