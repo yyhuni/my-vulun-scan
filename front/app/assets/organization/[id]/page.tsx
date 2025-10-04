@@ -329,16 +329,16 @@ export default function OrganizationDetailPage({
         <div className="flex items-center justify-between px-4 lg:px-6">
           <TabsList className="**:data-[slot=badge]:bg-muted-foreground/30 hidden **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:px-1 @4xl/main:flex">
             <TabsTrigger value="main-assets">
-              主资产表
-              <Badge variant="secondary" className="ml-2">{mainAssets.length}</Badge>
+              主资产
+              <Badge variant="secondary" className="ml-1">{mainAssets.length}</Badge>
             </TabsTrigger>
             <TabsTrigger value="subdomains">
               子域名
-              <Badge variant="secondary" className="ml-2">{subdomains.length}</Badge>
+              <Badge variant="secondary" className="ml-1">{subdomains.length}</Badge>
             </TabsTrigger>
             <TabsTrigger value="endpoints">
               Endpoint
-              <Badge variant="secondary" className="ml-2">{endpoints.length}</Badge>
+              <Badge variant="secondary" className="ml-1">{endpoints.length}</Badge>
             </TabsTrigger>
           </TabsList>
         </div>

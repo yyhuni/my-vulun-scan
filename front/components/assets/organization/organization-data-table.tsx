@@ -57,7 +57,6 @@ import {
 
 // 导入类型定义
 import type { Organization, OrganizationDataTableProps } from "@/types/organization.types"
-import type { PaginationInfo } from "@/types/common.types"
 export function OrganizationDataTable({
   data,
   columns,
