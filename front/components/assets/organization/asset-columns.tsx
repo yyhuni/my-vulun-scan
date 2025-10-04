@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 // 导入图标组件
-import { MoreHorizontal, Eye, Edit, Trash2, Server, Globe, Network, Copy, Check, ArrowUpDown } from "lucide-react"
+import { MoreHorizontal, Eye, Edit, Trash2, Server, Globe, Network, Copy, Check, ChevronsUpDown } from "lucide-react"
 // 导入 Tabler 图标
 import { IconCircleCheckFilled, IconLoader } from "@tabler/icons-react"
 // 导入提示组件
@@ -102,7 +102,7 @@ function DataTableColumnHeader({
       className="-ml-3 h-8 data-[state=open]:bg-accent hover:bg-muted"
     >
       {title}
-      <ArrowUpDown className="ml-1 h-4 w-4" />
+      <ChevronsUpDown className="h-4 w-4" />
     </Button>
   )
 }

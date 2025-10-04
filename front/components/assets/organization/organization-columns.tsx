@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 // 导入图标组件
-import { MoreHorizontal, Eye, Edit, Trash2, ArrowUpDown } from "lucide-react"
+import { MoreHorizontal, Eye, Edit, Trash2, ChevronsUpDown } from "lucide-react"
 
 // 导入类型定义
 import type { Organization } from "@/types/organization.types"
@@ -93,10 +93,10 @@ function DataTableColumnHeader({
     <Button
       variant="ghost"
       onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-      className="-ml-3 h-8 data-[state=open]:bg-accent hover:bg-muted"
+      className="-ml-3 h-8 data-[state=open]:bg-accent"
     >
       {title}
-      <ArrowUpDown className="ml-1 h-4 w-4" />
+      <ChevronsUpDown className="h-4 w-4" />
     </Button>
   )
 }
