@@ -14,6 +14,7 @@ import NavigationProvider from "@/components/providers/navigation-provider"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
+import { Toaster } from "@/components/ui/sonner"
 
 // 定义页面的元数据信息,用于 SEO 优化
 export const metadata: Metadata = {
@@ -75,6 +76,7 @@ export default function RootLayout({
                   <div className="@container/main flex flex-1 flex-col gap-2">
                     {/* 页面内容区域 */}
                     {children}
+                    <Toaster />
                   </div>
                 </div>
               </SidebarInset>
