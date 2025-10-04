@@ -55,18 +55,8 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-// 资产数据类型定义
-interface Asset {
-  id: number
-  name: string
-  type: string
-  status: string
-  ip?: string
-  domain?: string
-  port?: number
-  createdAt: string
-  updatedAt: string
-}
+// 导入资产类型定义
+import type { Asset } from "@/types/asset.types"
 
 // 组件属性类型定义
 interface AssetDataTableProps {
@@ -96,11 +86,16 @@ export function AssetDataTable({
   addButtonText = "添加",
 }: AssetDataTableProps) {
   // 表格状态管理
-  const [rowSelection, setRowSelection] = React.useState({})
+  // 选中行状态，key为行id，value为true或false
+  const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({})
+  // 列可见性状态，key为列id，value为true或false
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
+  // 列过滤状态，key为列id，value为过滤条件对象数组
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
+  // 排序状态，key为列id，value为true或false
   const [sorting, setSorting] = React.useState<SortingState>([])
-  const [pagination, setPagination] = React.useState({
+  // 分页状态，pageIndex为当前页码，pageSize为每页显示的行数
+  const [pagination, setPagination] = React.useState<{ pageIndex: number, pageSize: number }>({
     pageIndex: 0,
     pageSize: 10,
   })

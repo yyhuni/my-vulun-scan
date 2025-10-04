@@ -22,18 +22,8 @@ import {
   createEndpointColumns 
 } from "@/components/assets/organization/asset-columns"
 
-// 资产数据类型定义
-interface Asset {
-  id: number
-  name: string
-  type: string
-  status: string
-  ip?: string
-  domain?: string
-  port?: number
-  createdAt: string
-  updatedAt: string
-}
+// 导入资产类型定义
+import type { Asset } from "@/types/asset.types"
 
 // 组织信息类型定义
 interface Organization {
@@ -58,11 +48,17 @@ export default function OrganizationDetailPage({
   // 解包 params Promise
   const resolvedParams = React.use(params)
   // 状态管理
+  // 组织信息状态，初始化为 null
   const [organization, setOrganization] = useState<Organization | null>(null)
+  // 主资产列表状态，初始化为空数组
   const [mainAssets, setMainAssets] = useState<Asset[]>([])
+  // 子域名列表状态，初始化为空数组
   const [subdomains, setSubdomains] = useState<Asset[]>([])
+  // 端点列表状态，初始化为空数组
   const [endpoints, setEndpoints] = useState<Asset[]>([])
+  // 加载中状态，初始化为 true
   const [loading, setLoading] = useState(true)
+  // 选中的资产列表状态，初始化为空数组
   const [selectedAssets, setSelectedAssets] = useState<Asset[]>([])
 
   // 辅助函数 - 格式化日期

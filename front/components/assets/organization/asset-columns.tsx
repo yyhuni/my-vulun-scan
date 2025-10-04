@@ -21,18 +21,8 @@ import { IconCircleCheckFilled, IconLoader } from "@tabler/icons-react"
 // 导入提示组件
 import { toast } from "sonner"
 
-// 资产数据类型定义
-interface Asset {
-  id: number
-  name: string
-  type: string
-  status: string
-  ip?: string
-  domain?: string
-  port?: number
-  createdAt: string
-  updatedAt: string
-}
+// 导入资产类型定义
+import type { Asset } from "@/types/asset.types"
 
 // 列创建函数的参数类型
 interface CreateColumnsProps {
