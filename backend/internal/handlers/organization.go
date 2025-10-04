@@ -9,20 +9,22 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GetOrganizationList 获取组织列表(支持分页)
+// GetOrganizationList 获取组织列表(支持分页和排序)
 // @Summary 获取组织列表
-// @Description 返回组织列表,支持分页查询
+// @Description 返回组织列表,支持分页查询和排序
 // @Tags 组织管理
 // @Produce json
 // @Param page query int false "页码,默认1"
 // @Param page_size query int false "每页数量,默认10"
+// @Param sort_by query string false "排序字段: id, name, created_at, updated_at,默认updated_at"
+// @Param sort_order query string false "排序方向: asc, desc,默认desc"
 // @Success 200 {object} map[string]interface{} "成功返回列表数据"
 // @Failure 500 {object} map[string]interface{} "服务器内部错误"
 // @Router /organizations [get]
 func GetOrganizations(c *gin.Context) {
 	service := services.NewOrganizationService()
 
-	// 解析分页参数
+	// 解析分页和排序参数
 	var req models.GetOrganizationsRequest
 	if pageStr := c.Query("page"); pageStr != "" {
 		if page, err := strconv.Atoi(pageStr); err == nil && page > 0 {
@@ -33,6 +35,13 @@ func GetOrganizations(c *gin.Context) {
 		if pageSize, err := strconv.Atoi(pageSizeStr); err == nil && pageSize > 0 {
 			req.PageSize = pageSize
 		}
+	}
+	// 解析排序参数
+	if sortBy := c.Query("sort_by"); sortBy != "" {
+		req.SortBy = sortBy
+	}
+	if sortOrder := c.Query("sort_order"); sortOrder != "" {
+		req.SortOrder = sortOrder
 	}
 
 	response, err := service.GetOrganizations(req)

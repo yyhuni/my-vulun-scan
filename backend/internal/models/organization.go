@@ -39,8 +39,10 @@ type DeleteOrganizationRequest struct {
 
 // GetOrganizationsRequest 获取组织列表请求
 type GetOrganizationsRequest struct {
-	Page     int `json:"page,omitempty"`
-	PageSize int `json:"page_size,omitempty"`
+	Page      int    `json:"page,omitempty"`
+	PageSize  int    `json:"page_size,omitempty"`
+	SortBy    string `json:"sort_by,omitempty"`    // 排序字段：id, name, created_at, updated_at
+	SortOrder string `json:"sort_order,omitempty"` // 排序方向：asc, desc
 }
 
 // GetOrganizationsResponse 获取组织列表响应

@@ -24,7 +24,7 @@ func NewOrganizationService() *OrganizationService {
 	}
 }
 
-// GetOrganizations 获取组织列表(支持分页)
+// GetOrganizations 获取组织列表(支持分页和排序)
 func (s *OrganizationService) GetOrganizations(req models.GetOrganizationsRequest) (*models.GetOrganizationsResponse, error) {
 	time.Sleep(2 * time.Second) // 模拟延迟
 	// 设置默认值
@@ -33,6 +33,13 @@ func (s *OrganizationService) GetOrganizations(req models.GetOrganizationsReques
 	}
 	if req.PageSize <= 0 {
 		req.PageSize = 10
+	}
+	// 设置默认排序
+	if req.SortBy == "" {
+		req.SortBy = "updated_at"
+	}
+	if req.SortOrder == "" {
+		req.SortOrder = "desc"
 	}
 
 	var organizations []models.Organization
@@ -47,9 +54,12 @@ func (s *OrganizationService) GetOrganizations(req models.GetOrganizationsReques
 	// 计算总页数
 	totalPages := int((total + int64(req.PageSize) - 1) / int64(req.PageSize))
 
-	// 分页查询，按更新时间倒序排列（最近更新的在前）
+	// 构建排序字符串
+	orderClause := s.buildOrderClause(req.SortBy, req.SortOrder)
+	
+	// 分页查询，支持动态排序
 	offset := (req.Page - 1) * req.PageSize
-	result := s.db.Order("updated_at DESC").Offset(offset).Limit(req.PageSize).Find(&organizations)
+	result := s.db.Order(orderClause).Offset(offset).Limit(req.PageSize).Find(&organizations)
 	if result.Error != nil {
 		log.Error().Err(result.Error).Msg("Failed to query organizations")
 		return nil, result.Error
@@ -245,4 +255,28 @@ func (s *OrganizationService) BatchDeleteOrganizations(organizationIDs []uint) (
 		Msg("Organizations batch deleted successfully")
 
 	return deletedOrgs, nil
+}
+
+// buildOrderClause 构建排序子句
+func (s *OrganizationService) buildOrderClause(sortBy, sortOrder string) string {
+	// 允许的排序字段白名单，防止SQL注入
+	allowedSortFields := map[string]string{
+		"id":         "id",
+		"name":       "name",
+		"created_at": "created_at",
+		"updated_at": "updated_at",
+	}
+
+	// 验证排序字段
+	dbField, exists := allowedSortFields[sortBy]
+	if !exists {
+		dbField = "updated_at" // 默认字段
+	}
+
+	// 验证排序方向
+	if sortOrder != "asc" && sortOrder != "desc" {
+		sortOrder = "desc" // 默认降序
+	}
+
+	return dbField + " " + sortOrder
 }

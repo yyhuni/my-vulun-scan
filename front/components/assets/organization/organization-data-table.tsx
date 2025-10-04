@@ -55,41 +55,9 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-// 组织数据类型定义
-interface Organization {
-  id: number
-  name: string
-  description: string
-  createdAt: string
-  updatedAt: string
-}
-
-// 添加分页信息接口
-interface PaginationInfo {
-  total: number
-  page: number
-  pageSize: number
-  totalPages: number
-}
-
-// 组件属性类型定义
-interface OrganizationDataTableProps {
-  data: Organization[]                           // 组织数据数组
-  columns: ColumnDef<Organization>[]             // 列定义数组
-  onAddNew?: () => void                          // 添加新组织的回调函数
-  onBulkDelete?: () => void                      // 批量删除回调函数
-  onSelectionChange?: (selectedRows: Organization[]) => void  // 选中行变化回调
-  searchPlaceholder?: string                     // 搜索框占位符
-  searchColumn?: string                          // 搜索的列名
-  // 添加分页相关属性
-  pagination?: {
-    pageIndex: number
-    pageSize: number
-  }
-  setPagination?: (pagination: { pageIndex: number; pageSize: number }) => void
-  paginationInfo?: PaginationInfo
-  onPaginationChange?: (pagination: { pageIndex: number; pageSize: number }) => void
-}
+// 导入类型定义
+import type { Organization, OrganizationDataTableProps } from "@/types/organization.types"
+import type { PaginationInfo } from "@/types/common.types"
 export function OrganizationDataTable({
   data,
   columns,

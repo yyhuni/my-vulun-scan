@@ -15,14 +15,8 @@ import {
 // 导入图标组件
 import { MoreHorizontal, Eye, Edit, Trash2, ArrowUpDown } from "lucide-react"
 
-// 组织数据类型定义
-interface Organization {
-  id: number
-  name: string
-  description: string
-  createdAt: string
-  updatedAt: string
-}
+// 导入类型定义
+import type { Organization } from "@/types/organization.types"
 
 // 列创建函数的参数类型
 interface CreateColumnsProps {

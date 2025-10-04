@@ -1,33 +1,38 @@
 import { api } from "@/lib/api-client"
 import type {
   ApiResponse,
-  PaginatedResponse,
   OrganizationsResponse,
 } from "@/types/api-response.types"
 import type { Organization } from "@/types/organization.types"
 import type { Domain } from "@/types/domain.types"
+import type { PaginationParams } from "@/types/common.types"
 
 
 export class OrganizationService {
   // ========== 组织基础操作 ==========
 
   /**
-   * 获取所有组织列表（支持分页）
-   * @param params - 分页参数对象
+   * 获取所有组织列表（支持分页和排序）
+   * @param params - 分页和排序参数对象
    * @param params.page - 当前页码，1-based
    * @param params.pageSize - 分页大小，1-based
+   * @param params.sortBy - 排序字段：id, name, created_at, updated_at
+   * @param params.sortOrder - 排序方向：asc, desc
    * @returns Promise<ApiResponse<OrganizationsResponse<Organization>>>
    */
-  static async getOrganizations(params?: {
-    page?: number
-    pageSize?: number
-  }): Promise<ApiResponse<OrganizationsResponse<Organization>>> {
+  static async getOrganizations(params?: PaginationParams): Promise<ApiResponse<OrganizationsResponse<Organization>>> {
     const queryParams = new URLSearchParams()
     if (params?.page !== undefined) {
       queryParams.append('page', params.page.toString())
     }
     if (params?.pageSize !== undefined) {
       queryParams.append('page_size', params.pageSize.toString())
+    }
+    if (params?.sortBy !== undefined) {
+      queryParams.append('sort_by', params.sortBy)
+    }
+    if (params?.sortOrder !== undefined) {
+      queryParams.append('sort_order', params.sortOrder)
     }
     
     const queryString = queryParams.toString()

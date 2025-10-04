@@ -31,21 +31,8 @@ import { EditOrganizationDialog } from "./edit-organization-dialog"
 import { OrganizationService } from "@/services/organization.service"
 
 // 导入类型定义
-interface Organization {
-  id: number
-  name: string
-  description: string
-  createdAt: string
-  updatedAt: string
-}
-
-// 添加分页信息接口
-interface PaginationInfo {
-  total: number
-  page: number
-  pageSize: number
-  totalPages: number
-}
+import type { Organization } from "@/types/organization.types"
+import type { PaginationInfo } from "@/types/common.types"
 
 type ViewState = "loading" | "data" | "empty" | "error"
 
@@ -137,10 +124,12 @@ export function OrganizationList() {
       const currentPage = page ?? pagination.pageIndex + 1  // 转换为1-based
       const currentPageSize = pageSize ?? pagination.pageSize
 
-      // 调用真实API获取组织列表，传递分页参数
+      // 调用真实API获取组织列表，传递分页和排序参数
       const response = await OrganizationService.getOrganizations({
         page: currentPage,
-        pageSize: currentPageSize
+        pageSize: currentPageSize,
+        sortBy: "updated_at",    // 默认按更新时间排序
+        sortOrder: "desc"        // 默认降序，最新的在前
       })
       
       if (response.state === "success" && response.data) {

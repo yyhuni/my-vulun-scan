@@ -24,14 +24,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 
-// 组织数据类型定义
-interface Organization {
-  id: number
-  name: string
-  description: string
-  createdAt: string
-  updatedAt: string
-}
+// 导入类型定义
+import type { Organization } from "@/types/organization.types"
 
 // 组件属性类型定义
 interface AddOrganizationDialogProps {

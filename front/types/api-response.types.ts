@@ -6,15 +6,6 @@ export interface ApiResponse<T = any> {
   data?: T;              // 响应数据
 }
 
-// 分页响应类型
-export interface PaginatedResponse<T> {
-  data: T[];             // 数据列表
-  total: number;         // 总记录数
-  page: number;          // 当前页码（从1开始）
-  pageSize: number;      // 每页大小
-  totalPages: number;    // 总页数
-}
-
 // 组织列表响应类型（匹配后端GetOrganizationsResponse）
 export interface OrganizationsResponse<T> {
   organizations: T[];    // 组织数据列表

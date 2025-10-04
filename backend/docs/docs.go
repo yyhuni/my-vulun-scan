@@ -326,7 +326,7 @@ const docTemplate = `{
         },
         "/organizations": {
             "get": {
-                "description": "返回组织列表,支持分页查询",
+                "description": "返回组织列表,支持分页查询和排序",
                 "produces": [
                     "application/json"
                 ],
@@ -345,6 +345,18 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "每页数量,默认10",
                         "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "排序字段: id, name, created_at, updated_at,默认updated_at",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "排序方向: asc, desc,默认desc",
+                        "name": "sort_order",
                         "in": "query"
                     }
                 ],
