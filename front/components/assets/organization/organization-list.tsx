@@ -157,21 +157,40 @@ export function OrganizationList() {
     }
   }
 
-  // 确认删除组织
+  // 确认删除组织 - 使用乐观更新策略
   const confirmDelete = async () => {
     if (!organizationToDelete) return
 
+    const orgToDelete = organizationToDelete
+    const orgName = orgToDelete.name
+    
+    // 1. 立即关闭对话框,提升响应速度
+    setDeleteDialogOpen(false)
+    setOrganizationToDelete(null)
+    
+    // 2. 乐观更新: 立即从 UI 中移除该组织
+    const previousOrganizations = organizations
+    setOrganizations((prev) => prev.filter((org) => org.id !== orgToDelete.id))
+    
+    // 3. 显示加载提示
+    toast.loading(`正在删除组织 "${orgName}"...`, { id: 'delete-org' })
+
     try {
-      // 模拟 API 删除调用
-      await new Promise(resolve => setTimeout(resolve, 500))
+      // 4. 调用真实 API 删除组织
+      const response = await OrganizationService.deleteOrganization(Number(orgToDelete.id))
       
-      setOrganizations((prev) => prev.filter((org) => org.id !== organizationToDelete.id))
-      toast.success(`组织 "${organizationToDelete.name}" 已成功删除`)
-      setDeleteDialogOpen(false)
-      setOrganizationToDelete(null)
+      if (response.state === "success") {
+        // 5. 删除成功,显示成功提示
+        toast.success(`组织 "${orgName}" 已成功删除`, { id: 'delete-org' })
+      } else {
+        throw new Error(response.message || "删除组织失败")
+      }
     } catch (err: any) {
       console.error('Error deleting organization:', err)
-      toast.error(`删除组织失败: ${err.message || "未知错误"}`)
+      
+      // 6. 删除失败,回滚 UI 状态
+      setOrganizations(previousOrganizations)
+      toast.error(`删除组织失败: ${err.message || "未知错误"}`, { id: 'delete-org' })
     }
   }
 

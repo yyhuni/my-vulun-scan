@@ -84,19 +84,23 @@ export class OrganizationService {
     })
     return response.data
   }
-
   /**
    * 删除组织
+   * 
+   * @param id - 组织ID，number类型
+   * @returns Promise<ApiResponse> - 删除成功后的响应对象
    */
   static async deleteOrganization(id: number): Promise<ApiResponse> {
     const response = await api.post<ApiResponse>('/organizations/delete', {
-      organizationId: id  // 前端camelCase，会自动转换为后端的organization_id
+      id: id  // 后端期望字段名为 id
     })
     return response.data
   }
 
   /**
    * 批量删除组织
+   * @param organizationIds - 组织ID数组，string类型
+   * @returns Promise<ApiResponse> - 删除成功后的响应对象
    */
   static async batchDeleteOrganizations(organizationIds: string[]): Promise<ApiResponse> {
     const response = await api.post<ApiResponse>('/organizations/batch-delete', {
@@ -105,35 +109,5 @@ export class OrganizationService {
     return response.data
   }
 
-  // ========== 组织域名操作 ==========
 
-  /**
-   * 获取组织的域名列表
-   */
-  static async getOrganizationDomains(organizationId: string): Promise<ApiResponse<{ domains: Domain[] }>> {
-    const response = await api.get<ApiResponse<{ domains: Domain[] }>>(`/organizations/${organizationId}/domains`)
-    return response.data
-  }
-
-  /**
-   * 批量创建域名并关联到组织
-   */
-  static async createDomains(data: {
-    domains: { name: string; description?: string }[]
-    organizationId: number
-  }): Promise<ApiResponse> {
-    const response = await api.post<ApiResponse>('/domains/create', data)
-    return response.data
-  }
-
-  /**
-   * 移除组织与域名的关联
-   */
-  static async removeDomainFromOrganization(data: {
-    organizationId: number
-    domainId: number
-  }): Promise<ApiResponse> {
-    const response = await api.post<ApiResponse>('/organizations/remove-domain', data)
-    return response.data
-  }
 }
