@@ -308,7 +308,16 @@ paths:
       - 域名管理
   /organizations:
     get:
-      description: 返回所有组织列表
+      description: 返回组织列表,支持分页查询
+      parameters:
+      - description: 页码,默认1
+        in: query
+        name: page
+        type: integer
+      - description: 每页数量,默认10
+        in: query
+        name: page_size
+        type: integer
       produces:
       - application/json
       responses:

@@ -88,7 +88,6 @@ interface OrganizationDataTableProps {
   }
   setPagination?: (pagination: { pageIndex: number; pageSize: number }) => void
   paginationInfo?: PaginationInfo
-  isPaginationLoading?: boolean
   onPaginationChange?: (pagination: { pageIndex: number; pageSize: number }) => void
 }
 export function OrganizationDataTable({
@@ -102,14 +101,18 @@ export function OrganizationDataTable({
   pagination: externalPagination,
   setPagination: setExternalPagination,
   paginationInfo,
-  isPaginationLoading,
   onPaginationChange,
 }: OrganizationDataTableProps) {
   // 表格状态管理
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
-  const [sorting, setSorting] = React.useState<SortingState>([])
+  const [sorting, setSorting] = React.useState<SortingState>([
+    {
+      id: "updatedAt",
+      desc: true, // 降序排列，最新的在前
+    },
+  ])
   
   // 使用外部分页状态或内部默认状态
   const [internalPagination, setInternalPagination] = React.useState({
@@ -326,7 +329,6 @@ export function OrganizationDataTable({
               onValueChange={(value) => {
                 table.setPageSize(Number(value))
               }}
-              disabled={isPaginationLoading}
             >
               <SelectTrigger className="h-8 w-[70px]" id="rows-per-page">
                 <SelectValue placeholder={table.getState().pagination.pageSize} />
@@ -353,7 +355,7 @@ export function OrganizationDataTable({
               variant="outline"
               className="hidden h-8 w-8 p-0 lg:flex"
               onClick={() => table.setPageIndex(0)}
-              disabled={!table.getCanPreviousPage() || isPaginationLoading}
+              disabled={!table.getCanPreviousPage()}
             >
               <span className="sr-only">跳转到第一页</span>
               <IconChevronsLeft className="h-4 w-4" />
@@ -362,7 +364,7 @@ export function OrganizationDataTable({
               variant="outline"
               className="h-8 w-8 p-0"
               onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage() || isPaginationLoading}
+              disabled={!table.getCanPreviousPage()}
             >
               <span className="sr-only">上一页</span>
               <IconChevronLeft className="h-4 w-4" />
@@ -371,20 +373,16 @@ export function OrganizationDataTable({
               variant="outline"
               className="h-8 w-8 p-0"
               onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage() || isPaginationLoading}
+              disabled={!table.getCanNextPage()}
             >
               <span className="sr-only">下一页</span>
-              {isPaginationLoading ? (
-                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
-              ) : (
-                <IconChevronRight className="h-4 w-4" />
-              )}
+              <IconChevronRight className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
               className="hidden h-8 w-8 p-0 lg:flex"
               onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-              disabled={!table.getCanNextPage() || isPaginationLoading}
+              disabled={!table.getCanNextPage()}
             >
               <span className="sr-only">跳转到最后一页</span>
               <IconChevronsRight className="h-4 w-4" />

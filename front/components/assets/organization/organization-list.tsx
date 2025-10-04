@@ -72,7 +72,6 @@ export function OrganizationList() {
   const [error, setError] = useState<string | null>(null)
   const [selectedOrganizations, setSelectedOrganizations] = useState<Organization[]>([])
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
-  const [isPaginationLoading, setIsPaginationLoading] = useState(false) // 分页加载状态
   
   // 添加分页状态
   const [pagination, setPagination] = useState({
@@ -125,18 +124,13 @@ export function OrganizationList() {
 
   // 初始化时加载组织数据
   useEffect(() => {
-    fetchOrganizations(undefined, undefined, true) // 标记为初始加载
+    fetchOrganizations()
   }, [])
 
   // 获取组织数据 - 修改为支持分页参数
-  const fetchOrganizations = async (page?: number, pageSize?: number, isInitialLoad = false) => {
+  const fetchOrganizations = async (page?: number, pageSize?: number) => {
     try {
-      // 只在初始加载时设置loading状态，分页时使用独立的加载状态
-      if (isInitialLoad) {
-        setViewState("loading")
-      } else {
-        setIsPaginationLoading(true)
-      }
+      setViewState("loading")
       setError(null)
 
       // 使用传入的参数或当前分页状态
@@ -169,12 +163,8 @@ export function OrganizationList() {
       console.error('Error fetching organizations:', err)
       const errorMessage = err.message || "获取组织列表失败"
       setError(errorMessage)
-      if (isInitialLoad) {
-        setViewState("error")
-      }
+      setViewState("error")
       toast.error(`获取组织列表失败: ${errorMessage}`)
-    } finally {
-      setIsPaginationLoading(false)
     }
   }
 
@@ -302,7 +292,6 @@ export function OrganizationList() {
         pagination={pagination}
         setPagination={setPagination}
         paginationInfo={paginationInfo}
-        isPaginationLoading={isPaginationLoading}
         onPaginationChange={(newPagination: { pageIndex: number; pageSize: number }) => {
           setPagination(newPagination)
           fetchOrganizations(newPagination.pageIndex + 1, newPagination.pageSize)

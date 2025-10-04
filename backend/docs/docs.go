@@ -326,7 +326,7 @@ const docTemplate = `{
         },
         "/organizations": {
             "get": {
-                "description": "返回所有组织列表",
+                "description": "返回组织列表,支持分页查询",
                 "produces": [
                     "application/json"
                 ],
@@ -334,6 +334,20 @@ const docTemplate = `{
                     "组织管理"
                 ],
                 "summary": "获取组织列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "页码,默认1",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页数量,默认10",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "成功返回列表数据",
