@@ -80,7 +80,7 @@ export function AddOrganizationDialog({ onAdd, open: externalOpen, onOpenChange:
     setIsSubmitting(true)
 
     try {
-      // 调用真实API创建组织
+      // 创建组织
       const response = await OrganizationService.createOrganization({
         name: formData.name.trim(),
         description: formData.description.trim(),

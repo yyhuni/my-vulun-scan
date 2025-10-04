@@ -23,6 +23,8 @@ import { Textarea } from "@/components/ui/textarea"
 
 // 导入类型定义
 import type { Organization } from "@/types/organization.types"
+// 导入 API 服务
+import { OrganizationService } from "@/services/organization.service"
 
 // 组件属性类型定义
 interface EditOrganizationDialogProps {
@@ -104,22 +106,29 @@ export function EditOrganizationDialog({
     setIsSubmitting(true)
 
     try {
-      // 模拟 API 调用 - 实际项目中替换为真实的 API 调用
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // 模拟更新成功的响应数据
-      const updatedOrganization: Organization = {
-        ...organization,
+      // 调用真实的 API 服务更新组织
+      const response = await OrganizationService.updateOrganization({
+        id: organization.id,
         name: formData.name.trim(),
         description: formData.description.trim(),
-        updatedAt: new Date().toISOString(),
-      }
-
-      // 调用成功回调
-      onEdit(updatedOrganization)
+      })
       
-      // 显示成功提示
-      toast.success(`组织 "${updatedOrganization.name}" 更新成功`)
+      // 检查响应状态
+      if (response.state === "success" && response.data) {
+        // 使用后端返回的更新后数据
+        const updatedOrganization: Organization = response.data
+
+        // 调用成功回调
+        onEdit(updatedOrganization)
+        
+        // 显示成功提示
+        toast.success(`组织 "${updatedOrganization.name}" 更新成功`)
+        
+        // 关闭对话框
+        onOpenChange(false)
+      } else {
+        throw new Error(response.message || "更新失败")
+      }
       
     } catch (error: any) {
       console.error("更新组织失败:", error)

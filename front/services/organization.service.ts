@@ -49,9 +49,12 @@ export class OrganizationService {
     const response = await api.get<ApiResponse<Organization>>(`/organizations/${id}`)
     return response.data
   }
-
   /**
    * 创建新组织
+   * @param data - 组织信息对象
+   * @param data.name - 组织名称
+   * @param data.description - 组织描述
+   * @returns Promise<ApiResponse<Organization>> - 创建成功后的组织信息对象
    */
   static async createOrganization(data: {
     name: string
@@ -63,6 +66,11 @@ export class OrganizationService {
 
   /**
    * 更新组织信息
+   * @param data - 组织信息对象
+   * @param data.id - 组织ID，number或string类型
+   * @param data.name - 组织名称
+   * @param data.description - 组织描述
+   * @returns Promise<ApiResponse<Organization>> - 更新成功后的组织信息对象
    */
   static async updateOrganization(data: {
     id: string | number
