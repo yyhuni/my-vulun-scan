@@ -276,13 +276,12 @@ export function AssetDataTable({
           </TableBody>
         </Table>
       </div>
-
       {/* 分页控制 */}
       <div className="flex items-center justify-between px-2">
         {/* 选中行信息 */}
         <div className="flex-1 text-sm text-muted-foreground">
-          已选择 {table.getFilteredSelectedRowModel().rows.length} 行，共{" "}
-          {table.getFilteredRowModel().rows.length} 行
+          {table.getFilteredSelectedRowModel().rows.length} of{" "}
+          {table.getFilteredRowModel().rows.length} row(s) selected
         </div>
 
         {/* 分页控制器 */}
@@ -290,7 +289,7 @@ export function AssetDataTable({
           {/* 每页显示数量选择 */}
           <div className="flex items-center space-x-2">
             <Label htmlFor="rows-per-page" className="text-sm font-medium">
-              每页显示
+              Rows per page
             </Label>
             <Select
               value={`${table.getState().pagination.pageSize}`}
@@ -313,8 +312,8 @@ export function AssetDataTable({
 
           {/* 页码信息 */}
           <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-            第 {table.getState().pagination.pageIndex + 1} 页，共{" "}
-            {table.getPageCount()} 页
+            Page {table.getState().pagination.pageIndex + 1} of{" "}
+            {table.getPageCount()}
           </div>
 
           {/* 分页按钮 */}
