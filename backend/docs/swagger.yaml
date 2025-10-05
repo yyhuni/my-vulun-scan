@@ -136,13 +136,40 @@ paths:
       - 域名管理
   /domains/list:
     get:
-      description: 根据组织ID获取该组织下的所有域名
+      description: 根据组织ID获取该组织下的所有域名，支持分页和排序
       parameters:
       - description: 组织ID
         in: query
         name: organization_id
         required: true
         type: integer
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: 每页数量
+        in: query
+        name: page_size
+        type: integer
+      - default: updated_at
+        description: 排序字段
+        enum:
+        - name
+        - created_at
+        - updated_at
+        in: query
+        name: sort_by
+        type: string
+      - default: desc
+        description: 排序方向
+        enum:
+        - asc
+        - desc
+        in: query
+        name: sort_order
+        type: string
       produces:
       - application/json
       responses:
@@ -161,7 +188,7 @@ paths:
           schema:
             additionalProperties: true
             type: object
-      summary: 获取组织的域名列表
+      summary: 获取组织的域名列表(支持分页和排序)
       tags:
       - 域名管理
   /organizations:

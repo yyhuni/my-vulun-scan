@@ -234,19 +234,66 @@ func (s *OrganizationService) BatchDeleteOrganizations(organizationIDs []uint) (
 
 	var deletedOrgs []models.Organization
 
-	// 验证所有组织ID都存在
-	if err := s.db.Where("id IN ?", organizationIDs).Find(&deletedOrgs).Error; err != nil {
-		log.Error().Err(err).Msg("Failed to query organizations for batch deletion")
-		return nil, err
-	}
+	// 使用事务确保原子性
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		// 1. 验证并预加载所有组织及其域名
+		if err := tx.Preload("Domains").Where("id IN ?", organizationIDs).Find(&deletedOrgs).Error; err != nil {
+			log.Error().Err(err).Msg("Failed to query organizations for batch deletion")
+			return err
+		}
 
-	if len(deletedOrgs) != len(organizationIDs) {
-		return nil, fmt.Errorf("some organization IDs do not exist")
-	}
+		if len(deletedOrgs) != len(organizationIDs) {
+			return fmt.Errorf("some organization IDs do not exist")
+		}
 
-	// 删除组织（数据库 CASCADE 会自动删除 organization_domains 关联表记录）
-	if err := s.db.Where("id IN ?", organizationIDs).Delete(&models.Organization{}).Error; err != nil {
-		log.Error().Err(err).Msg("Failed to batch delete organizations")
+		// 2. 收集所有域名ID
+		var allDomainIDs []uint
+		for _, org := range deletedOrgs {
+			for _, domain := range org.Domains {
+				allDomainIDs = append(allDomainIDs, domain.ID)
+			}
+		}
+
+		// 3. 批量删除组织（使用 Select(clause.Associations) 自动清理关联）
+		for _, org := range deletedOrgs {
+			if err := tx.Select(clause.Associations).Delete(&org).Error; err != nil {
+				log.Error().Err(err).Uint("org_id", org.ID).Msg("Failed to delete organization")
+				return err
+			}
+		}
+
+		// 4. 批量查询并删除孤儿域名（没有任何组织关联的域名）
+		if len(allDomainIDs) > 0 {
+			var orphanDomainIDs []uint
+			err := tx.Raw(`
+				SELECT d.id 
+				FROM domains d
+				WHERE d.id IN (?) 
+				AND NOT EXISTS (
+					SELECT 1 FROM organization_domains od 
+					WHERE od.domain_id = d.id
+				)
+			`, allDomainIDs).Scan(&orphanDomainIDs).Error
+
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to query orphan domains")
+				return err
+			}
+
+			// 批量删除孤儿域名
+			if len(orphanDomainIDs) > 0 {
+				if err := tx.Delete(&models.Domain{}, orphanDomainIDs).Error; err != nil {
+					log.Error().Err(err).Msg("Failed to delete orphan domains")
+					return err
+				}
+				log.Info().Int("count", len(orphanDomainIDs)).Msg("Orphan domains deleted")
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
 		return nil, err
 	}
 

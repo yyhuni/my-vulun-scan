@@ -96,12 +96,12 @@ export class OrganizationService {
 
   /**
    * 批量删除组织
-   * @param organizationIds - 组织ID数组，string类型
+   * @param organizationIds - 组织ID数组，number类型
    * @returns Promise<ApiResponse> - 删除成功后的响应对象
    */
-  static async batchDeleteOrganizations(organizationIds: string[]): Promise<ApiResponse> {
+  static async batchDeleteOrganizations(organizationIds: number[]): Promise<ApiResponse> {
     const response = await api.post<ApiResponse>('/organizations/batch-delete', {
-      organizationIds: organizationIds  // 前端camelCase，会自动转换为后端的organization_ids
+      organization_ids: organizationIds  // 后端期望字段名为 organization_ids
     })
     return response.data
   }

@@ -59,14 +59,14 @@
         },
         "/domains/list": {
             "get": {
-                "description": "根据组织ID获取该组织下的所有域名",
+                "description": "根据组织ID获取该组织下的所有域名，支持分页和排序",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "域名管理"
                 ],
-                "summary": "获取组织的域名列表",
+                "summary": "获取组织的域名列表(支持分页和排序)",
                 "parameters": [
                     {
                         "type": "integer",
@@ -74,6 +74,43 @@
                         "name": "organization_id",
                         "in": "query",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "每页数量",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "name",
+                            "created_at",
+                            "updated_at"
+                        ],
+                        "type": "string",
+                        "default": "updated_at",
+                        "description": "排序字段",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "asc",
+                            "desc"
+                        ],
+                        "type": "string",
+                        "default": "desc",
+                        "description": "排序方向",
+                        "name": "sort_order",
+                        "in": "query"
                     }
                 ],
                 "responses": {

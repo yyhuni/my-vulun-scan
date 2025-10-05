@@ -219,25 +219,34 @@ export function OrganizationList() {
     setBulkDeleteDialogOpen(true)
   }
 
-  // 确认批量删除
+  // 确认批量删除（乐观更新）
   const confirmBulkDelete = async () => {
     if (selectedOrganizations.length === 0) return
 
+    const deletedIds = selectedOrganizations.map(org => org.id)
+    const deletedNames = selectedOrganizations.map(org => org.name)
+    const previousOrganizations = [...organizations] // 备份数据用于回滚
+
     try {
-      // 模拟 API 批量删除调用
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // 1. 立即显示 loading toast
+      toast.loading(`正在删除 ${selectedOrganizations.length} 个组织...`, { id: 'bulk-delete' })
       
-      const deletedIds = selectedOrganizations.map(org => org.id)
-      const deletedNames = selectedOrganizations.map(org => org.name)
-      
+      // 2. 立即更新 UI（乐观更新）
       setOrganizations((prev) => prev.filter((org) => !deletedIds.includes(org.id)))
-      
-      toast.success(`成功删除 ${selectedOrganizations.length} 个组织: ${deletedNames.join(", ")}`)
       setBulkDeleteDialogOpen(false)
       setSelectedOrganizations([])
+      
+      // 3. 调用 API
+      await OrganizationService.batchDeleteOrganizations(deletedIds)
+      
+      // 4. API 成功，更新 toast
+      toast.success(`成功删除 ${deletedNames.length} 个组织: ${deletedNames.join(", ")}`, { id: 'bulk-delete' })
+      
     } catch (err: any) {
+      // 5. API 失败，回滚 UI
       console.error('Error bulk deleting organizations:', err)
-      toast.error(`批量删除组织失败: ${err.message || "未知错误"}`)
+      setOrganizations(previousOrganizations)
+      toast.error(`批量删除组织失败: ${err.message || "未知错误"}`, { id: 'bulk-delete' })
     }
   }
 
@@ -344,21 +353,21 @@ export function OrganizationList() {
           <AlertDialogHeader>
             <AlertDialogTitle>确认批量删除</AlertDialogTitle>
             <AlertDialogDescription>
-              此操作无法撤销。这将永久删除以下 {selectedOrganizations.length} 个组织及其相关数据：
-              <div className="mt-2 p-2 bg-muted rounded-md">
-                <ul className="text-sm space-y-1">
-                  {selectedOrganizations.map((org) => (
-                    <li key={org.id} className="flex items-center">
-                      <span className="font-medium">{org.name}</span>
-                      {org.description && (
-                        <span className="ml-2 text-muted-foreground">- {org.description}</span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              此操作无法撤销。这将永久删除以下 {selectedOrganizations.length} 个组织及其相关数据。
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="mt-2 p-2 bg-muted rounded-md">
+            <ul className="text-sm space-y-1">
+              {selectedOrganizations.map((org) => (
+                <li key={org.id} className="flex items-center">
+                  <span className="font-medium">{org.name}</span>
+                  {org.description && (
+                    <span className="ml-2 text-muted-foreground">- {org.description}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
             <AlertDialogAction 

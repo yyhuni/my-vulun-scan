@@ -10,6 +10,6 @@ trigger: always_on
 7.所有响应应该由 handlers 层返回
 8.所有前端 api 接口都应该写在@services 中，所有 type 类型都应该写在@types 中
 9.使用 Select(clause.Associations) 自动清理所有关联
-10.前端删除逻辑采用方案：乐观更新 (Optimistic Update)，立即更新 UI,如果 API 失败再回滚。
+10.前端删除逻辑采用方案：乐观更新 (Optimistic Update)，立即更新 UI,如果 API 失败再回滚，流程为 立即更新 UI + loading toast → API 成功更新 toast / 失败回滚
 11.前端的添加，编辑逻辑采用等待响应 loading 方案，不用乐观更新。
 12.所有后端接口都模拟下延迟，默认添加	time.Sleep(2 * time.Second) // 模拟延迟
