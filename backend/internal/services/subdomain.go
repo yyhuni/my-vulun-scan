@@ -9,7 +9,6 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 // SubDomainService 子域名服务
@@ -43,7 +42,7 @@ func (s *SubDomainService) GetSubDomains(req models.GetSubDomainsRequest) (*mode
 	}
 
 	// 构建查询
-	query := s.db.Model(&models.SubDomain{}).Select(clause.Associations)
+	query := s.db.Model(&models.SubDomain{})
 
 	// 如果指定了域名ID，添加筛选条件
 	if req.DomainID > 0 {
@@ -173,7 +172,7 @@ func (s *SubDomainService) GetSubDomainsByDomain(domainID uint) ([]models.SubDom
 // GetSubDomainByID 根据ID获取子域名详情
 func (s *SubDomainService) GetSubDomainByID(id uint) (*models.SubDomain, error) {
 	time.Sleep(2 * time.Second) // 模拟延迟
-	
+
 	var subDomain models.SubDomain
 	result := s.db.Preload("Domain").First(&subDomain, id)
 	if result.Error != nil {
