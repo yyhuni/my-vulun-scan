@@ -134,6 +134,36 @@ paths:
       summary: 批量创建域名
       tags:
       - 域名管理
+  /domains/list:
+    get:
+      description: 根据组织ID获取该组织下的所有域名
+      parameters:
+      - description: 组织ID
+        in: query
+        name: organization_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 获取成功
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: 服务器内部错误
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 获取组织的域名列表
+      tags:
+      - 域名管理
   /organizations:
     get:
       description: 返回组织列表,支持分页查询和排序

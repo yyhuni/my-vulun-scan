@@ -130,3 +130,39 @@ func (s *DomainService) GetDomainByID(id uint) (*models.Domain, error) {
 	log.Info().Uint("id", id).Msg("Domain retrieved successfully")
 	return &domain, nil
 }
+
+// GetDomainsByOrgID 根据组织ID获取域名列表
+func (s *DomainService) GetDomainsByOrgID(organizationID uint) ([]models.Domain, error) {
+	// 验证组织是否存在
+	var org models.Organization
+	if err := s.db.First(&org, "id = ?", organizationID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			log.Error().Uint("organization_id", organizationID).Msg("Organization not found")
+			return nil, fmt.Errorf("组织不存在")
+		}
+		log.Error().Err(err).Msg("Failed to query organization")
+		return nil, err
+	}
+
+	var domains []models.Domain
+
+	// 通过中间表查询该组织的所有域名
+	result := s.db.
+		Joins("JOIN organization_domains ON organization_domains.domain_id = domains.id").
+		Where("organization_domains.organization_id = ?", organizationID).
+		Find(&domains)
+
+	if result.Error != nil {
+		log.Error().Err(result.Error).
+			Uint("organization_id", organizationID).
+			Msg("Failed to query domains by organization ID")
+		return nil, result.Error
+	}
+
+	log.Info().
+		Uint("organization_id", organizationID).
+		Int("count", len(domains)).
+		Msg("Domains retrieved successfully")
+
+	return domains, nil
+}

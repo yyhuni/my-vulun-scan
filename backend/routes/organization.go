@@ -27,7 +27,7 @@ func SetupOrganizationRoutes(api *gin.RouterGroup) {
 		// 删除组织
 		organizations.POST("/delete", handlers.DeleteOrganization)
 
-		// 批量删除组织
+		// 批量删除组织（待实现）
 		organizations.POST("/batch-delete", handlers.BatchDeleteOrganizations)
 
 	}

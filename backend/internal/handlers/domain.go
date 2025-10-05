@@ -74,3 +74,29 @@ func GetDomainByID(c *gin.Context) {
 	utils.SuccessResponse(c, domain)
 }
 
+// GetDomainsByOrgID 根据组织ID获取域名列表
+// @Summary 获取组织的域名列表
+// @Description 根据组织ID获取该组织下的所有域名
+// @Tags 域名管理
+// @Produce json
+// @Param organization_id query uint true "组织ID"
+// @Success 200 {object} map[string]interface{} "获取成功"
+// @Failure 400 {object} map[string]interface{} "请求参数错误"
+// @Failure 500 {object} map[string]interface{} "服务器内部错误"
+// @Router /domains/list [get]
+func GetDomainsByOrgID(c *gin.Context) {
+	var req models.GetOrganizationDomainsRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	service := services.NewDomainService()
+	domains, err := service.GetDomainsByOrgID(req.OrganizationID)
+	if err != nil {
+		utils.InternalServerErrorResponse(c, "获取域名列表失败: "+err.Error())
+		return
+	}
+
+	utils.SuccessResponse(c, domains)
+}

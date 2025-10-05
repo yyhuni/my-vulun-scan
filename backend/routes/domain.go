@@ -17,5 +17,8 @@ func SetupDomainRoutes(api *gin.RouterGroup) {
 
 		// 获取域名详情
 		domains.GET("/:id", handlers.GetDomainByID)
+
+		// 获取域名列表，根据组织 ID
+		domains.GET("/list", handlers.GetDomainsByOrgID)
 	}
 }

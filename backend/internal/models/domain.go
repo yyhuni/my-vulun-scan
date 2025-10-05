@@ -39,6 +39,11 @@ type RemoveOrganizationDomainRequest struct {
 	DomainID       uint `json:"domain_id" binding:"required"`
 }
 
+// GetOrganizationDomainsRequest 获取组织域名请求
+type GetOrganizationDomainsRequest struct {
+	OrganizationID uint `form:"organization_id" binding:"required"`
+}
+
 // GetOrganizationDomainsResponse 获取组织域名响应
 type GetOrganizationDomainsResponse struct {
 	Domains []Domain `json:"domains"`
