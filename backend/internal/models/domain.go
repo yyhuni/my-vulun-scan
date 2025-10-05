@@ -39,14 +39,22 @@ type RemoveOrganizationDomainRequest struct {
 	DomainID       uint `json:"domain_id" binding:"required"`
 }
 
-// GetOrganizationDomainsRequest 获取组织域名请求
+// GetOrganizationDomainsRequest 获取组织域名请求(支持分页和排序)
 type GetOrganizationDomainsRequest struct {
-	OrganizationID uint `form:"organization_id" binding:"required"`
+	OrganizationID uint   `form:"organization_id" binding:"required"`
+	Page           int    `form:"page"`
+	PageSize       int    `form:"page_size"`
+	SortBy         string `form:"sort_by"`    // 排序字段: name, created_at, updated_at
+	SortOrder      string `form:"sort_order"` // 排序方向: asc, desc
 }
 
 // GetOrganizationDomainsResponse 获取组织域名响应
 type GetOrganizationDomainsResponse struct {
-	Domains []Domain `json:"domains"`
+	Domains    []Domain `json:"domains"`
+	Total      int64    `json:"total"`
+	Page       int      `json:"page"`
+	PageSize   int      `json:"page_size"`
+	TotalPages int      `json:"total_pages"`
 }
 
 // UpdateDomainRequest 更新域名请求结构体

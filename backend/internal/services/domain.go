@@ -135,14 +135,30 @@ func (s *DomainService) GetDomainByID(id uint) (*models.Domain, error) {
 	return &domain, nil
 }
 
-// GetDomainsByOrgID 根据组织ID获取域名列表
-func (s *DomainService) GetDomainsByOrgID(organizationID uint) ([]models.Domain, error) {
+// GetDomainsByOrgID 根据组织ID获取域名列表(支持分页和排序)
+func (s *DomainService) GetDomainsByOrgID(req models.GetOrganizationDomainsRequest) (*models.GetOrganizationDomainsResponse, error) {
 	time.Sleep(2 * time.Second) // 模拟延迟
+
+	// 设置默认值
+	if req.Page <= 0 {
+		req.Page = 1
+	}
+	if req.PageSize <= 0 {
+		req.PageSize = 10
+	}
+	// 设置默认排序
+	if req.SortBy == "" {
+		req.SortBy = "updated_at"
+	}
+	if req.SortOrder == "" {
+		req.SortOrder = "desc"
+	}
+
 	// 验证组织是否存在
 	var org models.Organization
-	if err := s.db.First(&org, "id = ?", organizationID).Error; err != nil {
+	if err := s.db.First(&org, "id = ?", req.OrganizationID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			log.Error().Uint("organization_id", organizationID).Msg("Organization not found")
+			log.Error().Uint("organization_id", req.OrganizationID).Msg("Organization not found")
 			return nil, fmt.Errorf("组织不存在")
 		}
 		log.Error().Err(err).Msg("Failed to query organization")
@@ -150,24 +166,73 @@ func (s *DomainService) GetDomainsByOrgID(organizationID uint) ([]models.Domain,
 	}
 
 	var domains []models.Domain
+	var total int64
 
-	// 通过中间表查询该组织的所有域名
+	// 查询总数
+	if err := s.db.Model(&models.Domain{}).
+		Joins("JOIN organization_domains ON organization_domains.domain_id = domains.id").
+		Where("organization_domains.organization_id = ?", req.OrganizationID).
+		Count(&total).Error; err != nil {
+		log.Error().Err(err).Msg("Failed to count domains")
+		return nil, err
+	}
+
+	// 计算总页数
+	totalPages := int((total + int64(req.PageSize) - 1) / int64(req.PageSize))
+
+	// 构建排序字符串
+	orderClause := s.buildOrderClause(req.SortBy, req.SortOrder)
+
+	// 分页查询，支持动态排序
+	offset := (req.Page - 1) * req.PageSize
 	result := s.db.
 		Joins("JOIN organization_domains ON organization_domains.domain_id = domains.id").
-		Where("organization_domains.organization_id = ?", organizationID).
+		Where("organization_domains.organization_id = ?", req.OrganizationID).
+		Order(orderClause).
+		Offset(offset).
+		Limit(req.PageSize).
 		Find(&domains)
 
 	if result.Error != nil {
 		log.Error().Err(result.Error).
-			Uint("organization_id", organizationID).
+			Uint("organization_id", req.OrganizationID).
 			Msg("Failed to query domains by organization ID")
 		return nil, result.Error
 	}
 
 	log.Info().
-		Uint("organization_id", organizationID).
+		Uint("organization_id", req.OrganizationID).
+		Int("page", req.Page).
+		Int("page_size", req.PageSize).
+		Int64("total", total).
 		Int("count", len(domains)).
 		Msg("Domains retrieved successfully")
 
-	return domains, nil
+	return &models.GetOrganizationDomainsResponse{
+		Domains:    domains,
+		Total:      total,
+		Page:       req.Page,
+		PageSize:   req.PageSize,
+		TotalPages: totalPages,
+	}, nil
+}
+
+// buildOrderClause 构建排序子句
+func (s *DomainService) buildOrderClause(sortBy, sortOrder string) string {
+	// 验证排序字段
+	validSortFields := map[string]bool{
+		"name":       true,
+		"created_at": true,
+		"updated_at": true,
+	}
+	if !validSortFields[sortBy] {
+		sortBy = "updated_at"
+	}
+
+	// 验证排序方向
+	if sortOrder != "asc" && sortOrder != "desc" {
+		sortOrder = "desc"
+	}
+
+	return fmt.Sprintf("domains.%s %s", sortBy, sortOrder)
 }

@@ -9,3 +9,11 @@ export interface Domain {
   updatedAt: string
 }
 
+// 获取域名列表响应
+export interface GetDomainsResponse {
+  domains: Domain[]
+  total: number
+  page: number
+  page_size: number
+  total_pages: number
+}

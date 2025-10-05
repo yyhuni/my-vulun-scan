@@ -75,11 +75,15 @@ func GetDomainByID(c *gin.Context) {
 }
 
 // GetDomainsByOrgID 根据组织ID获取域名列表
-// @Summary 获取组织的域名列表
-// @Description 根据组织ID获取该组织下的所有域名
+// @Summary 获取组织的域名列表(支持分页和排序)
+// @Description 根据组织ID获取该组织下的所有域名，支持分页和排序
 // @Tags 域名管理
 // @Produce json
 // @Param organization_id query uint true "组织ID"
+// @Param page query int false "页码" default(1)
+// @Param page_size query int false "每页数量" default(10)
+// @Param sort_by query string false "排序字段" default(updated_at) Enums(name, created_at, updated_at)
+// @Param sort_order query string false "排序方向" default(desc) Enums(asc, desc)
 // @Success 200 {object} map[string]interface{} "获取成功"
 // @Failure 400 {object} map[string]interface{} "请求参数错误"
 // @Failure 500 {object} map[string]interface{} "服务器内部错误"
@@ -92,11 +96,11 @@ func GetDomainsByOrgID(c *gin.Context) {
 	}
 
 	service := services.NewDomainService()
-	domains, err := service.GetDomainsByOrgID(req.OrganizationID)
+	response, err := service.GetDomainsByOrgID(req)
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "获取域名列表失败: "+err.Error())
 		return
 	}
 
-	utils.SuccessResponse(c, domains)
+	utils.SuccessResponse(c, response)
 }

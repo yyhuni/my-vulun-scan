@@ -7,6 +7,7 @@ import { createMainAssetColumns } from "./main-assets-columns"
 import { AddDomainDialog } from "./add-domain-dialog"
 import { DomainService } from "@/services/domain.service"
 import type { Asset } from "@/types/asset.types"
+import type { PaginationInfo } from "@/types/common.types"
 
 /**
  * 主资产列表组件
@@ -17,6 +18,18 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
   const [selectedAssets, setSelectedAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  
+  // 添加分页状态
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,  // 0-based for react-table
+    pageSize: 10,
+  })
+  const [paginationInfo, setPaginationInfo] = useState<PaginationInfo>({
+    total: 0,
+    page: 1,
+    pageSize: 10,
+    totalPages: 0,
+  })
 
   // 辅助函数 - 格式化日期
   const formatDate = (dateString: string): string => {
@@ -56,11 +69,32 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
   }
 
   // 刷新数据
-  const refreshData = async () => {
+  const refreshData = async (page?: number, pageSize?: number) => {
     try {
-      const response = await DomainService.getDomainsByOrgId(parseInt(organizationId))
+      // 使用传入的参数或当前分页状态
+      const currentPage = page ?? pagination.pageIndex + 1  // 转换为1-based
+      const currentPageSize = pageSize ?? pagination.pageSize
+      
+      const response = await DomainService.getDomainsByOrgId(
+        parseInt(organizationId),
+        {
+          page: currentPage,
+          pageSize: currentPageSize,
+          sortBy: "updated_at",
+          sortOrder: "desc"
+        }
+      )
+      
       if (response.state === "success" && response.data) {
-        setMainAssets(response.data)
+        setMainAssets(response.data.domains || [])
+        
+        // 更新分页信息
+        setPaginationInfo({
+          total: response.data.total || 0,
+          page: response.data.page || 1,
+          pageSize: response.data.page_size || 10,
+          totalPages: response.data.total_pages || 0,
+        })
       }
     } catch (error: any) {
       console.error("刷新数据失败:", error)
@@ -98,10 +132,26 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
         setLoading(true)
 
         // 调用后端 API 获取域名列表
-        const response = await DomainService.getDomainsByOrgId(parseInt(organizationId))
+        const response = await DomainService.getDomainsByOrgId(
+          parseInt(organizationId),
+          {
+            page: 1,
+            pageSize: 10,
+            sortBy: "updated_at",
+            sortOrder: "desc"
+          }
+        )
         
         if (response.state === "success" && response.data) {
-          setMainAssets(response.data)
+          setMainAssets(response.data.domains || [])
+          
+          // 更新分页信息
+          setPaginationInfo({
+            total: response.data.total || 0,
+            page: response.data.page || 1,
+            pageSize: response.data.page_size || 10,
+            totalPages: response.data.total_pages || 0,
+          })
         } else {
           throw new Error(response.message || "获取域名列表失败")
         }
@@ -136,6 +186,14 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
         searchPlaceholder="搜索主资产..."
         searchColumn="name"
         addButtonText="添加主资产"
+        // 添加分页相关属性
+        pagination={pagination}
+        setPagination={setPagination}
+        paginationInfo={paginationInfo}
+        onPaginationChange={(newPagination: { pageIndex: number; pageSize: number }) => {
+          setPagination(newPagination)
+          refreshData(newPagination.pageIndex + 1, newPagination.pageSize)
+        }}
       />
       
       {/* 添加域名对话框 */}

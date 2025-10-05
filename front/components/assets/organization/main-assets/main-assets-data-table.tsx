@@ -57,6 +57,7 @@ import {
 
 // 导入资产类型定义
 import type { Asset } from "@/types/asset.types"
+import type { PaginationInfo } from "@/types/common.types"
 
 // 组件属性类型定义
 interface AssetDataTableProps {
@@ -68,6 +69,11 @@ interface AssetDataTableProps {
   searchPlaceholder?: string                     // 搜索框占位符
   searchColumn?: string                          // 搜索的列名
   addButtonText?: string                         // 添加按钮文本
+  // 服务端分页支持
+  pagination?: { pageIndex: number; pageSize: number }
+  setPagination?: React.Dispatch<React.SetStateAction<{ pageIndex: number; pageSize: number }>>
+  paginationInfo?: PaginationInfo
+  onPaginationChange?: (pagination: { pageIndex: number; pageSize: number }) => void
 }
 
 /**
@@ -84,6 +90,10 @@ export function MainAssetsDataTable({
   searchPlaceholder = "搜索资产...",
   searchColumn = "name",
   addButtonText = "添加",
+  pagination: externalPagination,
+  setPagination: setExternalPagination,
+  paginationInfo,
+  onPaginationChange,
 }: AssetDataTableProps) {
   // 表格状态管理
   // 选中行状态，key为行id，value为true或false
@@ -94,11 +104,15 @@ export function MainAssetsDataTable({
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   // 排序状态，key为列id，value为true或false
   const [sorting, setSorting] = React.useState<SortingState>([])
-  // 分页状态，pageIndex为当前页码，pageSize为每页显示的行数
-  const [pagination, setPagination] = React.useState<{ pageIndex: number, pageSize: number }>({
+  
+  // 使用外部分页状态或内部默认状态
+  const [internalPagination, setInternalPagination] = React.useState<{ pageIndex: number, pageSize: number }>({
     pageIndex: 0,
     pageSize: 10,
   })
+  
+  const pagination = externalPagination || internalPagination
+  const setPagination = setExternalPagination || setInternalPagination
 
   // 创建表格实例
   const table = useReactTable({
@@ -111,13 +125,23 @@ export function MainAssetsDataTable({
       columnFilters,
       pagination,
     },
+    // 服务端分页配置
+    pageCount: paginationInfo?.totalPages ?? -1,
+    manualPagination: !!paginationInfo,  // 如果有paginationInfo，使用服务端分页
     getRowId: (row) => row.id.toString(),
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
-    onPaginationChange: setPagination,
+    onPaginationChange: (updater) => {
+      const newPagination = typeof updater === 'function' ? updater(pagination) : updater
+      setPagination(newPagination)
+      // 如果有外部分页回调，调用它
+      if (onPaginationChange) {
+        onPaginationChange(newPagination)
+      }
+    },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -278,7 +302,7 @@ export function MainAssetsDataTable({
         {/* 选中行信息 */}
         <div className="flex-1 text-sm text-muted-foreground">
           {table.getFilteredSelectedRowModel().rows.length} of{" "}
-          {table.getFilteredRowModel().rows.length} row(s) selected
+          {paginationInfo ? paginationInfo.total : table.getFilteredRowModel().rows.length} row(s) selected
         </div>
 
         {/* 分页控制器 */}
