@@ -6,6 +6,7 @@ import { SubdomainsDataTable } from "./subdomains-data-table"
 import { createSubdomainColumns } from "./subdomains-columns"
 import { SubDomainService } from "@/services/subdomain.service"
 import type { SubDomain } from "@/types/subdomain.types"
+import type { PaginationInfo } from "@/types/common.types"
 
 /**
  * 子域名列表组件
@@ -15,6 +16,18 @@ export function SubdomainsList({ organizationId }: { organizationId: string }) {
   const [subdomains, setSubdomains] = useState<SubDomain[]>([])
   const [selectedSubdomains, setSelectedSubdomains] = useState<SubDomain[]>([])
   const [loading, setLoading] = useState(true)
+  
+  // 添加分页状态
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,  // 0-based for react-table
+    pageSize: 10,
+  })
+  const [paginationInfo, setPaginationInfo] = useState<PaginationInfo>({
+    total: 0,
+    page: 1,
+    pageSize: 10,
+    totalPages: 0,
+  })
 
   // 辅助函数 - 格式化日期
   const formatDate = (dateString: string): string => {
@@ -133,15 +146,19 @@ export function SubdomainsList({ organizationId }: { organizationId: string }) {
     []
   )
 
-  // 获取子域名数据
-  const fetchSubdomains = async () => {
+  // 获取子域名数据 - 支持分页参数
+  const fetchSubdomains = async (page?: number, pageSize?: number) => {
     try {
       setLoading(true)
       
+      // 使用传入的参数或当前分页状态
+      const currentPage = page ?? pagination.pageIndex + 1  // 转换为1-based
+      const currentPageSize = pageSize ?? pagination.pageSize
+      
       const response = await SubDomainService.getSubDomains({
         organizationId: parseInt(organizationId),
-        page: 1,
-        pageSize: 100,
+        page: currentPage,
+        pageSize: currentPageSize,
         sortBy: 'created_at',
         sortOrder: 'desc'
       })
@@ -156,16 +173,43 @@ export function SubdomainsList({ organizationId }: { organizationId: string }) {
           console.log('获取到的子域名数据:', validSubdomains)
           console.log('子域名数量:', validSubdomains.length)
           setSubdomains(validSubdomains)
+          
+          // 更新分页信息
+          const responseData = response.data as any
+          setPaginationInfo({
+            total: responseData.total || validSubdomains.length,
+            page: responseData.page || currentPage,
+            pageSize: responseData.page_size || responseData.pageSize || currentPageSize,
+            totalPages: responseData.total_pages || responseData.totalPages || Math.ceil((responseData.total || validSubdomains.length) / currentPageSize),
+          })
         } else if (response.data.id) {
           console.log('获取到单个子域名:', response.data)
           setSubdomains([response.data])
+          setPaginationInfo({
+            total: 1,
+            page: 1,
+            pageSize: currentPageSize,
+            totalPages: 1,
+          })
         } else {
           console.log('没有获取到有效的子域名数据')
           setSubdomains([])
+          setPaginationInfo({
+            total: 0,
+            page: 1,
+            pageSize: currentPageSize,
+            totalPages: 0,
+          })
         }
       } else {
         console.log('API 响应失败:', response)
         setSubdomains([])
+        setPaginationInfo({
+          total: 0,
+          page: 1,
+          pageSize: currentPageSize,
+          totalPages: 0,
+        })
         toast.error(response.message || "获取子域名数据失败")
       }
     } catch (error) {
@@ -199,6 +243,14 @@ export function SubdomainsList({ organizationId }: { organizationId: string }) {
       searchPlaceholder="搜索子域名..."
       searchColumn="name"
       addButtonText="添加子域名"
+      // 添加分页相关属性
+      pagination={pagination}
+      setPagination={setPagination}
+      paginationInfo={paginationInfo}
+      onPaginationChange={(newPagination: { pageIndex: number; pageSize: number }) => {
+        setPagination(newPagination)
+        fetchSubdomains(newPagination.pageIndex + 1, newPagination.pageSize)
+      }}
     />
   )
 }

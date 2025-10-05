@@ -89,13 +89,12 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
         setMainAssets(responseData.domains || [])
         
         // 更新分页信息
-        setPagination(prev => ({
-          ...prev,
-          total: responseData.total,
-          pageIndex: responseData.page - 1, // 转换为0-based
-          pageSize: responseData.page_size,
-          totalPages: responseData.total_pages
-        }))
+        setPaginationInfo({
+          total: responseData.total || 0,
+          page: responseData.page || currentPage,
+          pageSize: responseData.page_size || currentPageSize,
+          totalPages: responseData.total_pages || 0,
+        })
       }
     } catch (error: any) {
       console.error("刷新数据失败:", error)

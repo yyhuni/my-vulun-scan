@@ -57,6 +57,7 @@ import {
 
 // 导入子域名类型定义
 import type { SubDomain } from "@/types/subdomain.types"
+import type { PaginationInfo } from "@/types/common.types"
 
 // 组件属性类型定义
 interface SubdomainsDataTableProps {
@@ -68,6 +69,11 @@ interface SubdomainsDataTableProps {
   searchPlaceholder?: string                     // 搜索框占位符
   searchColumn?: string                          // 搜索的列名
   addButtonText?: string                         // 添加按钮文本
+  // 服务端分页支持
+  pagination?: { pageIndex: number; pageSize: number }
+  setPagination?: React.Dispatch<React.SetStateAction<{ pageIndex: number; pageSize: number }>>
+  paginationInfo?: PaginationInfo
+  onPaginationChange?: (pagination: { pageIndex: number; pageSize: number }) => void
 }
 
 /**
@@ -84,6 +90,10 @@ export function SubdomainsDataTable({
   searchPlaceholder = "搜索子域名...",
   searchColumn = "name",
   addButtonText = "添加",
+  pagination: externalPagination,
+  setPagination: setExternalPagination,
+  paginationInfo,
+  onPaginationChange,
 }: SubdomainsDataTableProps) {
   // 表格状态管理
   // 选中行状态，key为行id，value为true或false
@@ -94,11 +104,15 @@ export function SubdomainsDataTable({
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   // 排序状态，key为列id，value为true或false
   const [sorting, setSorting] = React.useState<SortingState>([])
-  // 分页状态，pageIndex为当前页码，pageSize为每页显示的行数
-  const [pagination, setPagination] = React.useState<{ pageIndex: number, pageSize: number }>({
+  
+  // 使用外部分页状态或内部默认状态
+  const [internalPagination, setInternalPagination] = React.useState<{ pageIndex: number, pageSize: number }>({
     pageIndex: 0,
     pageSize: 10,
   })
+  
+  const pagination = externalPagination || internalPagination
+  const setPagination = setExternalPagination || setInternalPagination
 
   // 过滤有效数据，确保每个行都有有效的 id
   const validData = React.useMemo(() => {
@@ -120,13 +134,23 @@ export function SubdomainsDataTable({
       columnFilters,
       pagination,
     },
+    // 服务端分页配置
+    pageCount: paginationInfo?.totalPages ?? -1,
+    manualPagination: !!paginationInfo,  // 如果有paginationInfo，使用服务端分页
     getRowId: (row) => row.id.toString(),
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
-    onPaginationChange: setPagination,
+    onPaginationChange: (updater) => {
+      const newPagination = typeof updater === 'function' ? updater(pagination) : updater
+      setPagination(newPagination)
+      // 如果有外部分页回调，调用它
+      if (onPaginationChange) {
+        onPaginationChange(newPagination)
+      }
+    },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -286,7 +310,7 @@ export function SubdomainsDataTable({
         {/* 选中行信息 */}
         <div className="flex-1 text-sm text-muted-foreground">
           {table.getFilteredSelectedRowModel().rows.length} of{" "}
-          {table.getFilteredRowModel().rows.length} row(s) selected
+          {paginationInfo ? paginationInfo.total : table.getFilteredRowModel().rows.length} row(s) selected
         </div>
 
         {/* 分页控制器 */}
