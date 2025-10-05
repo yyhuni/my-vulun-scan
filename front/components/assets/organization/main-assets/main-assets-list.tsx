@@ -75,15 +75,13 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
       const currentPage = page ?? pagination.pageIndex + 1  // 转换为1-based
       const currentPageSize = pageSize ?? pagination.pageSize
       
-      const response = await DomainService.getDomainsByOrgId(
-        parseInt(organizationId),
-        {
-          page: currentPage,
-          pageSize: currentPageSize,
-          sortBy: "updated_at",
-          sortOrder: "desc"
-        }
-      )
+      const response = await DomainService.getDomainsByOrgId({
+        organizationId: parseInt(organizationId),
+        page: currentPage,
+        pageSize: currentPageSize,
+        sortBy: "updated_at",
+        sortOrder: "desc"
+      })
       
       if (response.state === "success" && response.data) {
         setMainAssets(response.data.domains || [])
@@ -132,15 +130,13 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
         setLoading(true)
 
         // 调用后端 API 获取域名列表
-        const response = await DomainService.getDomainsByOrgId(
-          parseInt(organizationId),
-          {
-            page: 1,
-            pageSize: 10,
-            sortBy: "updated_at",
-            sortOrder: "desc"
-          }
-        )
+        const response = await DomainService.getDomainsByOrgId({
+          organizationId: parseInt(organizationId),
+          page: 1,
+          pageSize: 10,
+          sortBy: "updated_at",
+          sortOrder: "desc"
+        })
         
         if (response.state === "success" && response.data) {
           setMainAssets(response.data.domains || [])

@@ -1,9 +1,6 @@
 import { api } from "@/lib/api-client"
-import type {
-  ApiResponse,
-  OrganizationsResponse,
-} from "@/types/api-response.types"
-import type { Organization } from "@/types/organization.types"
+import type { ApiResponse } from "@/types/api-response.types"
+import type { Organization, OrganizationsResponse } from "@/types/organization.types"
 import type { Domain } from "@/types/domain.types"
 import type { PaginationParams } from "@/types/common.types"
 
