@@ -71,11 +71,11 @@ interface AssetDataTableProps {
 }
 
 /**
- * 资产数据表格组件
- * 专门用于显示和管理资产数据的表格
+ * 子域名数据表格组件
+ * 专门用于显示和管理子域名数据的表格
  * 包含搜索、分页、列显示控制等功能
  */
-export function AssetDataTable({
+export function SubdomainsDataTable({
   data,
   columns,
   onAddNew,
