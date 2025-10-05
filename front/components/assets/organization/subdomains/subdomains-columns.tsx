@@ -152,13 +152,13 @@ export const createSubdomainColumns = ({
 
   // 域名ID列
   {
-    accessorKey: "domain_id",
+    accessorKey: "domainId",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="域名ID" />
     ),
     cell: ({ row }) => (
       <div className="font-mono text-sm text-muted-foreground">
-        {row.getValue("domain_id")}
+        {row.getValue("domainId")}
       </div>
     ),
   },
@@ -181,26 +181,26 @@ export const createSubdomainColumns = ({
 
   // 创建时间列
   {
-    accessorKey: "created_at",
+    accessorKey: "createdAt",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="创建时间" />
     ),
     cell: ({ row }) => (
       <div className="text-sm text-muted-foreground">
-        {formatDate(row.getValue("created_at"))}
+        {formatDate(row.getValue("createdAt"))}
       </div>
     ),
   },
 
   // 更新时间列
   {
-    accessorKey: "updated_at",
+    accessorKey: "updatedAt",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="更新时间" />
     ),
     cell: ({ row }) => (
       <div className="text-sm text-muted-foreground">
-        {formatDate(row.getValue("updated_at"))}
+        {formatDate(row.getValue("updatedAt"))}
       </div>
     ),
   },

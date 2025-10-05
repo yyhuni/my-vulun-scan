@@ -206,15 +206,16 @@ export function SubdomainsDataTable({
                     <DropdownMenuCheckboxItem
                       key={column.id}
                       className="capitalize"
+                      checked={column.getIsVisible()}
                       onCheckedChange={(value) => column.toggleVisibility(!!value)}
                     >
                       {column.id === "id" && "ID"}
                       {column.id === "name" && "子域名"}
-                      {column.id === "domain_id" && "域名ID"}
+                      {column.id === "domainId" && "域名ID"}
                       {column.id === "domain" && "所属域名"}
-                      {column.id === "created_at" && "创建时间"}
-                      {column.id === "updated_at" && "更新时间"}
-                      {!["id", "name", "domain_id", "domain", "created_at", "updated_at"].includes(column.id) && column.id}
+                      {column.id === "createdAt" && "创建时间"}
+                      {column.id === "updatedAt" && "更新时间"}
+                      {!["id", "name", "domainId", "domain", "createdAt", "updatedAt"].includes(column.id) && column.id}
                     </DropdownMenuCheckboxItem>
                   )
                 })}

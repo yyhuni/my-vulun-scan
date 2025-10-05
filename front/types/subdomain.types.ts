@@ -2,10 +2,10 @@ import type { Domain } from './domain.types'
 
 export interface SubDomain {
   id: number
-  created_at: string
-  updated_at: string
+  createdAt: string
+  updatedAt: string
   name: string
-  domain_id: number
+  domainId: number
   domain?: Domain
 }
 
@@ -15,25 +15,25 @@ export interface GetSubDomainsParams {
   organizationId?: number
   page?: number
   pageSize?: number
-  sortBy?: 'id' | 'name' | 'created_at' | 'updated_at'
+  sortBy?: 'id' | 'name' | 'createdAt' | 'updatedAt'
   sortOrder?: 'asc' | 'desc'
 }
 
 export interface GetSubDomainsResponse {
-  sub_domains: SubDomain[]
+  subDomains: SubDomain[]
   total: number
   page: number
-  page_size: number
+  pageSize: number
 }
 
 export interface CreateSubDomainsRequest {
-  sub_domains: string[]
-  domain_id: number
+  subDomains: string[]
+  domainId: number
 }
 
 export interface CreateSubDomainsResponse {
-  success_count: number
-  existing_domains: string[]
-  total_requested: number
+  successCount: number
+  existingDomains: string[]
+  totalRequested: number
   message: string
 }
