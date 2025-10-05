@@ -32,14 +32,14 @@ func CreateDomains(c *gin.Context) {
 	}
 
 	service := services.NewDomainService()
-	response, err := service.CreateDomains(req)
+	domains, err := service.CreateDomains(req)
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "创建域名失败: "+err.Error())
 		return
 	}
 
 	// 使用统一的成功响应格式
-	utils.SuccessResponse(c, response.Data)
+	utils.SuccessResponse(c, domains)
 }
 
 // GetDomainByID 根据ID获取域名详情

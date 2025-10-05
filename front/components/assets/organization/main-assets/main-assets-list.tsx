@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from "react"
 import { toast } from "sonner"
 import { MainAssetsDataTable } from "./main-assets-data-table"
 import { createMainAssetColumns } from "./main-assets-columns"
+import { AddDomainDialog } from "./add-domain-dialog"
 import type { Asset } from "@/types/asset.types"
 
 /**
@@ -14,6 +15,7 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
   const [mainAssets, setMainAssets] = useState<Asset[]>([])
   const [selectedAssets, setSelectedAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
 
   // 辅助函数 - 格式化日期
   const formatDate = (dateString: string): string => {
@@ -54,7 +56,14 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
 
   // 处理添加主资产
   const handleAddMainAsset = () => {
-    toast.info("添加主资产功能开发中")
+    setIsAddDialogOpen(true)
+  }
+
+  // 处理添加成功
+  const handleAddSuccess = (newDomains: Asset[]) => {
+    // 乐观更新：立即添加到列表
+    setMainAssets(prev => [...newDomains, ...prev])
+    toast.success(`成功添加 ${newDomains.length} 个域名`)
   }
 
   // 创建列定义
@@ -125,15 +134,25 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
   }
 
   return (
-    <MainAssetsDataTable
-      data={mainAssets}
-      columns={mainAssetColumns}
-      onAddNew={handleAddMainAsset}
-      onBulkDelete={handleBulkDelete}
-      onSelectionChange={setSelectedAssets}
-      searchPlaceholder="搜索主资产..."
-      searchColumn="name"
-      addButtonText="添加主资产"
-    />
+    <>
+      <MainAssetsDataTable
+        data={mainAssets}
+        columns={mainAssetColumns}
+        onAddNew={handleAddMainAsset}
+        onBulkDelete={handleBulkDelete}
+        onSelectionChange={setSelectedAssets}
+        searchPlaceholder="搜索主资产..."
+        searchColumn="name"
+        addButtonText="添加主资产"
+      />
+      
+      {/* 添加域名对话框 */}
+      <AddDomainDialog
+        organizationId={organizationId}
+        onAdd={handleAddSuccess}
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+      />
+    </>
   )
 }

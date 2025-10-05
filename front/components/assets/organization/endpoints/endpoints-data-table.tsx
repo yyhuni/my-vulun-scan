@@ -176,6 +176,7 @@ export function EndpointsDataTable({
                       checked={column.getIsVisible()}
                       onCheckedChange={(value) => column.toggleVisibility(!!value)}
                     >
+                      {column.id === "id" && "ID"}
                       {column.id === "name" && "资产名称"}
                       {column.id === "type" && "类型"}
                       {column.id === "status" && "状态"}
@@ -184,7 +185,7 @@ export function EndpointsDataTable({
                       {column.id === "port" && "端口"}
                       {column.id === "createdAt" && "创建时间"}
                       {column.id === "updatedAt" && "更新时间"}
-                      {!["name", "type", "status", "ip", "domain", "port", "createdAt", "updatedAt"].includes(column.id) && column.id}
+                      {!["id", "name", "type", "status", "ip", "domain", "port", "createdAt", "updatedAt"].includes(column.id) && column.id}
                     </DropdownMenuCheckboxItem>
                   )
                 })}

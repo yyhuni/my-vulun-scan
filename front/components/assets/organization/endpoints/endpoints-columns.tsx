@@ -154,6 +154,19 @@ export const createEndpointColumns = ({
     enableHiding: false,
   },
 
+  // ID 列
+  {
+    accessorKey: "id",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="ID" />
+    ),
+    cell: ({ row }) => (
+      <div className="w-[80px] font-mono text-sm text-muted-foreground">
+        {row.getValue("id")}
+      </div>
+    ),
+  },
+
   // 资产名称列
   {
     accessorKey: "name",
