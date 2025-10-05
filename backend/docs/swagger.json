@@ -8,72 +8,28 @@
     },
     "basePath": "/api/v1",
     "paths": {
-        "/domains/create": {
-            "post": {
-                "description": "批量创建域名并关联到指定组织",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "域名管理"
-                ],
-                "summary": "批量创建域名",
-                "parameters": [
-                    {
-                        "description": "域名创建请求",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.CreateDomainsRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "创建成功",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "服务器内部错误",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/domains/list": {
+        "/domains": {
             "get": {
-                "description": "根据组织ID获取该组织下的所有域名，支持分页和排序",
+                "description": "支持按ID查询单个域名、按组织ID查询域名列表、分页和排序等",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "域名管理"
                 ],
-                "summary": "获取组织的域名列表(支持分页和排序)",
+                "summary": "获取域名信息(支持多种查询方式)",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "组织ID",
+                        "description": "域名ID(查询单个域名时使用)",
+                        "name": "id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "组织ID(查询组织下域名列表时使用)",
                         "name": "organization_id",
-                        "in": "query",
-                        "required": true
+                        "in": "query"
                     },
                     {
                         "type": "integer",
@@ -128,50 +84,6 @@
                             "additionalProperties": true
                         }
                     },
-                    "500": {
-                        "description": "服务器内部错误",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/domains/{id}": {
-            "get": {
-                "description": "根据域名ID获取域名的详细信息，包括关联的子域名",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "域名管理"
-                ],
-                "summary": "获取域名详情",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "域名ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "获取成功",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
                     "404": {
                         "description": "域名不存在",
                         "schema": {
@@ -189,17 +101,128 @@
                 }
             }
         },
+        "/domains/create": {
+            "post": {
+                "description": "批量创建域名并关联到指定组织",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "域名管理"
+                ],
+                "summary": "批量创建域名",
+                "parameters": [
+                    {
+                        "description": "域名创建请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.CreateDomainsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "创建成功",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/domains/remove-from-organization": {
+            "post": {
+                "description": "解除指定组织与域名的关联关系，如果域名成为孤儿（没有任何组织关联）则自动删除该域名",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "域名管理"
+                ],
+                "summary": "解除组织与域名的关联",
+                "parameters": [
+                    {
+                        "description": "解除关联请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.RemoveOrganizationDomainRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "解除关联成功",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "组织、域名或关联不存在",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/organizations": {
             "get": {
-                "description": "返回组织列表,支持分页查询和排序",
+                "description": "支持按ID查询单个组织、获取组织列表、分页和排序等",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "组织管理"
                 ],
-                "summary": "获取组织列表",
+                "summary": "获取组织信息(支持多种查询方式)",
                 "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "组织ID(查询单个组织时使用)",
+                        "name": "id",
+                        "in": "query"
+                    },
                     {
                         "type": "integer",
                         "description": "页码,默认1",
@@ -227,7 +250,21 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功返回列表数据",
+                        "description": "成功返回数据",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "组织不存在",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -245,7 +282,7 @@
         },
         "/organizations/batch-delete": {
             "post": {
-                "description": "批量删除多个组织及其关联数据",
+                "description": "批量删除多个组织及其关联数据，如果组织下有孤儿域名，将一并删除",
                 "consumes": [
                     "application/json"
                 ],
@@ -461,28 +498,63 @@
                 }
             }
         },
-        "/organizations/{id}": {
+        "/subdomains": {
             "get": {
-                "description": "根据组织ID获取组织的详细信息",
+                "description": "支持按ID查询单个子域名、按域名ID筛选、分页查询和排序等",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "组织管理"
+                    "子域名管理"
                 ],
-                "summary": "获取组织详情",
+                "summary": "获取子域名信息(支持多种查询方式)",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "组织ID",
+                        "type": "integer",
+                        "description": "子域名ID(查询单个子域名时使用)",
                         "name": "id",
-                        "in": "path",
-                        "required": true
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "域名ID,用于筛选特定域名下的子域名",
+                        "name": "domain_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "组织ID,用于筛选特定组织下的子域名",
+                        "name": "organization_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码,默认1",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页数量,默认10",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "排序字段: id, name, created_at, updated_at,默认updated_at",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "排序方向: asc, desc,默认desc",
+                        "name": "sort_order",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "获取成功",
+                        "description": "成功返回数据",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -496,7 +568,7 @@
                         }
                     },
                     "404": {
-                        "description": "组织不存在",
+                        "description": "子域名不存在",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -512,7 +584,7 @@
                 }
             }
         },
-        "/sub-domains/create": {
+        "/subdomains/create": {
             "post": {
                 "description": "批量创建子域名并关联到指定域名",
                 "consumes": [
@@ -635,6 +707,21 @@
                 },
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "vulun-scan-backend_internal_models.RemoveOrganizationDomainRequest": {
+            "type": "object",
+            "required": [
+                "domain_id",
+                "organization_id"
+            ],
+            "properties": {
+                "domain_id": {
+                    "type": "integer"
+                },
+                "organization_id": {
+                    "type": "integer"
                 }
             }
         },

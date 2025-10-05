@@ -56,31 +56,3 @@ type GetOrganizationDomainsResponse struct {
 	PageSize   int      `json:"page_size"`
 	TotalPages int      `json:"total_pages"`
 }
-
-// UpdateDomainRequest 更新域名请求结构体
-type UpdateDomainRequest struct {
-	ID          uint   `json:"id" binding:"required"`
-	Name        string `json:"name,omitempty"`
-	Description string `json:"description,omitempty"`
-}
-
-// BatchDeleteDomainsRequest 批量删除域名请求结构体
-type BatchDeleteDomainsRequest struct {
-	DomainIDs []uint `json:"domain_ids" binding:"required,min=1"`
-}
-
-// SearchDomainsRequest 搜索域名请求结构体
-type SearchDomainsRequest struct {
-	Query    string `json:"query,omitempty"`
-	Page     int    `json:"page,omitempty"`
-	PageSize int    `json:"page_size,omitempty"`
-}
-
-// SearchDomainsResponse 搜索域名响应结构体
-type SearchDomainsResponse struct {
-	Domains    []Domain `json:"domains"`
-	Total      int64    `json:"total"`
-	Page       int      `json:"page"`
-	PageSize   int      `json:"page_size"`
-	TotalPages int      `json:"total_pages"`
-}

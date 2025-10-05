@@ -9,21 +9,47 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GetOrganizationList 获取组织列表(支持分页和排序)
-// @Summary 获取组织列表
-// @Description 返回组织列表,支持分页查询和排序
+// GetOrganizations 获取组织信息
+// @Summary 获取组织信息(支持多种查询方式)
+// @Description 支持按ID查询单个组织、获取组织列表、分页和排序等
 // @Tags 组织管理
 // @Produce json
+// @Param id query uint false "组织ID(查询单个组织时使用)"
 // @Param page query int false "页码,默认1"
 // @Param page_size query int false "每页数量,默认10"
 // @Param sort_by query string false "排序字段: id, name, created_at, updated_at,默认updated_at"
 // @Param sort_order query string false "排序方向: asc, desc,默认desc"
-// @Success 200 {object} map[string]interface{} "成功返回列表数据"
+// @Success 200 {object} map[string]interface{} "成功返回数据"
+// @Failure 400 {object} map[string]interface{} "请求参数错误"
+// @Failure 404 {object} map[string]interface{} "组织不存在"
 // @Failure 500 {object} map[string]interface{} "服务器内部错误"
 // @Router /organizations [get]
 func GetOrganizations(c *gin.Context) {
 	service := services.NewOrganizationService()
 
+	// 如果有 id 参数，查询单个组织
+	if idStr := c.Query("id"); idStr != "" {
+		id, err := ParseUintFromString(idStr)
+		if err != nil {
+			utils.BadRequestResponse(c, "组织ID格式错误")
+			return
+		}
+
+		organization, err := service.GetOrganizationByID(id)
+		if err != nil {
+			if err.Error() == "organization not found" {
+				utils.NotFoundResponse(c, "组织不存在")
+				return
+			}
+			utils.InternalServerErrorResponse(c, "获取组织详情失败: "+err.Error())
+			return
+		}
+
+		utils.SuccessResponse(c, organization)
+		return
+	}
+
+	// 否则查询组织列表
 	// 解析分页和排序参数
 	var req models.GetOrganizationsRequest
 	if pageStr := c.Query("page"); pageStr != "" {
@@ -75,38 +101,6 @@ func CreateOrganization(c *gin.Context) {
 	organization, err := service.CreateOrganization(req)
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "创建组织失败: "+err.Error())
-		return
-	}
-
-	utils.SuccessResponse(c, organization)
-}
-
-// GetOrganizationByID 根据ID获取组织详情
-// @Summary 获取组织详情
-// @Description 根据组织ID获取组织的详细信息
-// @Tags 组织管理
-// @Produce json
-// @Param id path string true "组织ID"
-// @Success 200 {object} map[string]interface{} "获取成功"
-// @Failure 400 {object} map[string]interface{} "请求参数错误"
-// @Failure 404 {object} map[string]interface{} "组织不存在"
-// @Failure 500 {object} map[string]interface{} "服务器内部错误"
-// @Router /organizations/{id} [get]
-func GetOrganizationByID(c *gin.Context) {
-	id, err := ParseUintParam(c, "id")
-	if err != nil {
-		utils.BadRequestResponse(c, err.Error())
-		return
-	}
-
-	service := services.NewOrganizationService()
-	organization, err := service.GetOrganizationByID(id)
-	if err != nil {
-		if err.Error() == "organization not found" {
-			utils.NotFoundResponse(c, "组织不存在")
-			return
-		}
-		utils.InternalServerErrorResponse(c, "获取组织详情失败: "+err.Error())
 		return
 	}
 
@@ -183,7 +177,7 @@ func DeleteOrganization(c *gin.Context) {
 
 // BatchDeleteOrganizations 批量删除组织
 // @Summary 批量删除组织
-// @Description 批量删除多个组织及其关联数据
+// @Description 批量删除多个组织及其关联数据，如果组织下有孤儿域名，将一并删除
 // @Tags 组织管理
 // @Accept json
 // @Produce json

@@ -49,6 +49,16 @@ definitions:
     required:
     - name
     type: object
+  vulun-scan-backend_internal_models.RemoveOrganizationDomainRequest:
+    properties:
+      domain_id:
+        type: integer
+      organization_id:
+        type: integer
+    required:
+    - domain_id
+    - organization_id
+    type: object
   vulun-scan-backend_internal_models.UpdateOrganizationRequest:
     properties:
       description:
@@ -66,82 +76,17 @@ info:
   title: Vulun Scan Backend API
   version: "1.0"
 paths:
-  /domains/{id}:
+  /domains:
     get:
-      description: 根据域名ID获取域名的详细信息，包括关联的子域名
+      description: 支持按ID查询单个域名、按组织ID查询域名列表、分页和排序等
       parameters:
-      - description: 域名ID
-        in: path
+      - description: 域名ID(查询单个域名时使用)
+        in: query
         name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 获取成功
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: 请求参数错误
-          schema:
-            additionalProperties: true
-            type: object
-        "404":
-          description: 域名不存在
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: 服务器内部错误
-          schema:
-            additionalProperties: true
-            type: object
-      summary: 获取域名详情
-      tags:
-      - 域名管理
-  /domains/create:
-    post:
-      consumes:
-      - application/json
-      description: 批量创建域名并关联到指定组织
-      parameters:
-      - description: 域名创建请求
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/vulun-scan-backend_internal_models.CreateDomainsRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 创建成功
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: 请求参数错误
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: 服务器内部错误
-          schema:
-            additionalProperties: true
-            type: object
-      summary: 批量创建域名
-      tags:
-      - 域名管理
-  /domains/list:
-    get:
-      description: 根据组织ID获取该组织下的所有域名，支持分页和排序
-      parameters:
-      - description: 组织ID
+        type: integer
+      - description: 组织ID(查询组织下域名列表时使用)
         in: query
         name: organization_id
-        required: true
         type: integer
       - default: 1
         description: 页码
@@ -183,18 +128,98 @@ paths:
           schema:
             additionalProperties: true
             type: object
+        "404":
+          description: 域名不存在
+          schema:
+            additionalProperties: true
+            type: object
         "500":
           description: 服务器内部错误
           schema:
             additionalProperties: true
             type: object
-      summary: 获取组织的域名列表(支持分页和排序)
+      summary: 获取域名信息(支持多种查询方式)
+      tags:
+      - 域名管理
+  /domains/create:
+    post:
+      consumes:
+      - application/json
+      description: 批量创建域名并关联到指定组织
+      parameters:
+      - description: 域名创建请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/vulun-scan-backend_internal_models.CreateDomainsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 创建成功
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: 服务器内部错误
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 批量创建域名
+      tags:
+      - 域名管理
+  /domains/remove-from-organization:
+    post:
+      consumes:
+      - application/json
+      description: 解除指定组织与域名的关联关系，如果域名成为孤儿（没有任何组织关联）则自动删除该域名
+      parameters:
+      - description: 解除关联请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/vulun-scan-backend_internal_models.RemoveOrganizationDomainRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 解除关联成功
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: 组织、域名或关联不存在
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: 服务器内部错误
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 解除组织与域名的关联
       tags:
       - 域名管理
   /organizations:
     get:
-      description: 返回组织列表,支持分页查询和排序
+      description: 支持按ID查询单个组织、获取组织列表、分页和排序等
       parameters:
+      - description: 组织ID(查询单个组织时使用)
+        in: query
+        name: id
+        type: integer
       - description: 页码,默认1
         in: query
         name: page
@@ -215,32 +240,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 成功返回列表数据
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: 服务器内部错误
-          schema:
-            additionalProperties: true
-            type: object
-      summary: 获取组织列表
-      tags:
-      - 组织管理
-  /organizations/{id}:
-    get:
-      description: 根据组织ID获取组织的详细信息
-      parameters:
-      - description: 组织ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 获取成功
+          description: 成功返回数据
           schema:
             additionalProperties: true
             type: object
@@ -259,14 +259,14 @@ paths:
           schema:
             additionalProperties: true
             type: object
-      summary: 获取组织详情
+      summary: 获取组织信息(支持多种查询方式)
       tags:
       - 组织管理
   /organizations/batch-delete:
     post:
       consumes:
       - application/json
-      description: 批量删除多个组织及其关联数据
+      description: 批量删除多个组织及其关联数据，如果组织下有孤儿域名，将一并删除
       parameters:
       - description: 组织ID列表
         in: body
@@ -409,7 +409,65 @@ paths:
       summary: 更新组织
       tags:
       - 组织管理
-  /sub-domains/create:
+  /subdomains:
+    get:
+      description: 支持按ID查询单个子域名、按域名ID筛选、分页查询和排序等
+      parameters:
+      - description: 子域名ID(查询单个子域名时使用)
+        in: query
+        name: id
+        type: integer
+      - description: 域名ID,用于筛选特定域名下的子域名
+        in: query
+        name: domain_id
+        type: integer
+      - description: 组织ID,用于筛选特定组织下的子域名
+        in: query
+        name: organization_id
+        type: integer
+      - description: 页码,默认1
+        in: query
+        name: page
+        type: integer
+      - description: 每页数量,默认10
+        in: query
+        name: page_size
+        type: integer
+      - description: '排序字段: id, name, created_at, updated_at,默认updated_at'
+        in: query
+        name: sort_by
+        type: string
+      - description: '排序方向: asc, desc,默认desc'
+        in: query
+        name: sort_order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功返回数据
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: 子域名不存在
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: 服务器内部错误
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 获取子域名信息(支持多种查询方式)
+      tags:
+      - 子域名管理
+  /subdomains/create:
     post:
       consumes:
       - application/json

@@ -2,13 +2,14 @@ package services
 
 import (
 	"fmt"
-	"strings"
+	"time"
 
 	"vulun-scan-backend/internal/models"
 	"vulun-scan-backend/pkg/database"
 
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // SubDomainService 子域名服务
@@ -23,8 +24,84 @@ func NewSubDomainService() *SubDomainService {
 	}
 }
 
+// GetSubDomains 获取子域名列表
+func (s *SubDomainService) GetSubDomains(req models.GetSubDomainsRequest) (*models.GetSubDomainsResponse, error) {
+	time.Sleep(2 * time.Second) // 模拟延迟
+
+	// 设置默认值
+	if req.Page <= 0 {
+		req.Page = 1
+	}
+	if req.PageSize <= 0 {
+		req.PageSize = 10
+	}
+	if req.SortBy == "" {
+		req.SortBy = "updated_at"
+	}
+	if req.SortOrder == "" {
+		req.SortOrder = "desc"
+	}
+
+	// 构建查询
+	query := s.db.Model(&models.SubDomain{}).Select(clause.Associations)
+
+	// 如果指定了域名ID，添加筛选条件
+	if req.DomainID > 0 {
+		query = query.Where("domain_id = ?", req.DomainID)
+	}
+
+	// 如果指定了组织ID，通过关联查询筛选
+	if req.OrganizationID > 0 {
+		query = query.Joins("JOIN domains ON sub_domains.domain_id = domains.id").
+			Joins("JOIN organization_domains ON domains.id = organization_domains.domain_id").
+			Where("organization_domains.organization_id = ?", req.OrganizationID)
+	}
+
+	// 计算总数
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		log.Error().Err(err).Msg("Failed to count sub domains")
+		return nil, err
+	}
+
+	// 排序
+	orderClause := fmt.Sprintf("%s %s", req.SortBy, req.SortOrder)
+	query = query.Order(orderClause)
+
+	// 分页
+	offset := (req.Page - 1) * req.PageSize
+	query = query.Offset(offset).Limit(req.PageSize)
+
+	// 预加载关联数据
+	query = query.Preload("Domain")
+
+	// 执行查询
+	var subDomains []models.SubDomain
+	if err := query.Find(&subDomains).Error; err != nil {
+		log.Error().Err(err).Msg("Failed to query sub domains")
+		return nil, err
+	}
+
+	response := &models.GetSubDomainsResponse{
+		SubDomains: subDomains,
+		Total:      total,
+		Page:       req.Page,
+		PageSize:   req.PageSize,
+	}
+
+	log.Info().
+		Int("page", req.Page).
+		Int("page_size", req.PageSize).
+		Int64("total", total).
+		Int("count", len(subDomains)).
+		Msg("Sub domains retrieved successfully")
+
+	return response, nil
+}
+
 // CreateSubDomains 创建子域名
-func (s *SubDomainService) CreateSubDomains(req models.CreateSubDomainsRequest) (*models.APIResponse, error) {
+func (s *SubDomainService) CreateSubDomains(req models.CreateSubDomainsRequest) (*models.CreateSubDomainsResponse, error) {
+	time.Sleep(2 * time.Second) // 模拟延迟
 	var createdCount int
 	var existingDomains []string
 
@@ -60,19 +137,10 @@ func (s *SubDomainService) CreateSubDomains(req models.CreateSubDomainsRequest) 
 		return nil, err
 	}
 
-	message := fmt.Sprintf("成功创建 %d 个子域名", createdCount)
-	if len(existingDomains) > 0 {
-		message += fmt.Sprintf("，%d 个子域名已存在: %s", len(existingDomains), strings.Join(existingDomains, ", "))
-	}
-
-	response := &models.APIResponse{
-		Code:    "SUCCESS",
-		Message: message,
-		Data: map[string]interface{}{
-			"success_count":    createdCount,
-			"existing_domains": existingDomains,
-			"total_requested":  len(req.SubDomains),
-		},
+	response := &models.CreateSubDomainsResponse{
+		SuccessCount:    createdCount,
+		ExistingDomains: existingDomains,
+		TotalRequested:  len(req.SubDomains),
 	}
 
 	log.Info().
@@ -102,18 +170,21 @@ func (s *SubDomainService) GetSubDomainsByDomain(domainID uint) ([]models.SubDom
 	return subDomains, nil
 }
 
-// DeleteSubDomain 删除子域名
-func (s *SubDomainService) DeleteSubDomain(subDomainID string) error {
-	result := s.db.Delete(&models.SubDomain{}, "id = ?", subDomainID)
+// GetSubDomainByID 根据ID获取子域名详情
+func (s *SubDomainService) GetSubDomainByID(id uint) (*models.SubDomain, error) {
+	time.Sleep(2 * time.Second) // 模拟延迟
+	
+	var subDomain models.SubDomain
+	result := s.db.Preload("Domain").First(&subDomain, id)
 	if result.Error != nil {
-		log.Error().Err(result.Error).Msg("Failed to delete sub domain")
-		return result.Error
+		if result.Error == gorm.ErrRecordNotFound {
+			log.Warn().Uint("id", id).Msg("Sub domain not found")
+			return nil, fmt.Errorf("subdomain not found")
+		}
+		log.Error().Err(result.Error).Uint("id", id).Msg("Failed to get sub domain by ID")
+		return nil, result.Error
 	}
 
-	if result.RowsAffected == 0 {
-		return fmt.Errorf("sub domain not found")
-	}
-
-	log.Info().Str("sub_domain_id", subDomainID).Msg("Sub domain deleted successfully")
-	return nil
+	log.Info().Uint("id", id).Str("name", subDomain.Name).Msg("Sub domain retrieved successfully")
+	return &subDomain, nil
 }

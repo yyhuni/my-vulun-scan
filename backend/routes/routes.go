@@ -10,7 +10,10 @@ import (
 func SetupRoutes(api *gin.RouterGroup) {
 	// 设置组织路由
 	SetupOrganizationRoutes(api)
-	
+
 	// 设置域名路由
 	SetupDomainRoutes(api)
+
+	// 设置子域名路由
+	SetupSubDomainRoutes(api)
 }

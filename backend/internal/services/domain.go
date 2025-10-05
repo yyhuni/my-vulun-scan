@@ -236,3 +236,82 @@ func (s *DomainService) buildOrderClause(sortBy, sortOrder string) string {
 
 	return fmt.Sprintf("domains.%s %s", sortBy, sortOrder)
 }
+
+// RemoveOrganizationDomain 解除组织与域名的关联，如果域名成为孤儿则删除
+func (s *DomainService) RemoveOrganizationDomain(req models.RemoveOrganizationDomainRequest) error {
+	time.Sleep(2 * time.Second) // 模拟延迟
+
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		// 1. 验证组织是否存在
+		var org models.Organization
+		if err := tx.First(&org, "id = ?", req.OrganizationID).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				log.Error().Uint("organization_id", req.OrganizationID).Msg("Organization not found")
+				return fmt.Errorf("organization not found")
+			}
+			log.Error().Err(err).Msg("Failed to query organization")
+			return err
+		}
+
+		// 2. 验证域名是否存在
+		var domain models.Domain
+		if err := tx.First(&domain, "id = ?", req.DomainID).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				log.Error().Uint("domain_id", req.DomainID).Msg("Domain not found")
+				return fmt.Errorf("domain not found")
+			}
+			log.Error().Err(err).Msg("Failed to query domain")
+			return err
+		}
+
+		// 3. 验证关联是否存在
+		var count int64
+		if err := tx.Model(&models.OrganizationDomain{}).
+			Where("organization_id = ? AND domain_id = ?", req.OrganizationID, req.DomainID).
+			Count(&count).Error; err != nil {
+			log.Error().Err(err).Msg("Failed to query association")
+			return err
+		}
+
+		if count == 0 {
+			log.Error().
+				Uint("organization_id", req.OrganizationID).
+				Uint("domain_id", req.DomainID).
+				Msg("Association not found")
+			return fmt.Errorf("association not found")
+		}
+
+		// 4. 使用 Association 方法删除关联
+		if err := tx.Model(&org).Association("Domains").Delete(&domain); err != nil {
+			log.Error().Err(err).Msg("Failed to delete association")
+			return err
+		}
+
+		log.Info().
+			Uint("organization_id", req.OrganizationID).
+			Uint("domain_id", req.DomainID).
+			Msg("Association removed successfully")
+
+		// 5. 检查域名是否成为孤儿（没有任何组织关联）
+		if err := tx.Model(&models.OrganizationDomain{}).
+			Where("domain_id = ?", req.DomainID).
+			Count(&count).Error; err != nil {
+			log.Error().Err(err).Msg("Failed to count domain associations")
+			return err
+		}
+
+		// 6. 如果是孤儿域名，则删除
+		if count == 0 {
+			if err := tx.Delete(&domain).Error; err != nil {
+				log.Error().Err(err).Msg("Failed to delete orphan domain")
+				return err
+			}
+			log.Info().
+				Uint("domain_id", req.DomainID).
+				Str("domain_name", domain.Name).
+				Msg("Orphan domain deleted")
+		}
+
+		return nil
+	})
+}

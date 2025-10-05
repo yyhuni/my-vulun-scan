@@ -13,3 +13,4 @@ trigger: always_on
 10.前端删除逻辑采用方案：乐观更新 (Optimistic Update)，立即更新 UI,如果 API 失败再回滚，流程为 立即更新 UI + loading toast → API 成功更新 toast / 失败回滚
 11.前端的添加，编辑逻辑采用等待响应 loading 方案，不用乐观更新。
 12.所有后端接口都模拟下延迟，默认添加	time.Sleep(2 * time.Second) // 模拟延迟
+13.用 GORM 的 Association 方法来简化解除关联的操作

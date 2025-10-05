@@ -33,3 +33,22 @@ func ParseUintParam(c *gin.Context, paramName string) (uint, error) {
 
 	return uint(id), nil
 }
+
+// ParseUintFromString 解析字符串为 uint
+// 返回解析后的值和错误，由调用者决定如何处理错误
+func ParseUintFromString(str string) (uint, error) {
+	if str == "" {
+		return 0, fmt.Errorf("字符串不能为空")
+	}
+
+	id, err := strconv.ParseUint(str, 10, 32)
+	if err != nil {
+		log.Warn().
+			Err(err).
+			Str("value", str).
+			Msg("Failed to parse string as uint")
+		return 0, fmt.Errorf("无效的数字格式")
+	}
+
+	return uint(id), nil
+}

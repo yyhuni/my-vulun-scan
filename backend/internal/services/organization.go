@@ -56,7 +56,7 @@ func (s *OrganizationService) GetOrganizations(req models.GetOrganizationsReques
 
 	// 构建排序字符串
 	orderClause := s.buildOrderClause(req.SortBy, req.SortOrder)
-	
+
 	// 分页查询，支持动态排序
 	offset := (req.Page - 1) * req.PageSize
 	result := s.db.Order(orderClause).Offset(offset).Limit(req.PageSize).Find(&organizations)
@@ -246,7 +246,7 @@ func (s *OrganizationService) BatchDeleteOrganizations(organizationIDs []uint) (
 			return fmt.Errorf("some organization IDs do not exist")
 		}
 
-		// 2. 收集所有域名ID
+		// 2. 收集所有关联的域名ID
 		var allDomainIDs []uint
 		for _, org := range deletedOrgs {
 			for _, domain := range org.Domains {
@@ -254,7 +254,7 @@ func (s *OrganizationService) BatchDeleteOrganizations(organizationIDs []uint) (
 			}
 		}
 
-		// 3. 批量删除组织（使用 Select(clause.Associations) 自动清理关联）
+		// 3. 批量删除组织（使用 Select(clause.Associations) 自动清理所有的关联）
 		for _, org := range deletedOrgs {
 			if err := tx.Select(clause.Associations).Delete(&org).Error; err != nil {
 				log.Error().Err(err).Uint("org_id", org.ID).Msg("Failed to delete organization")

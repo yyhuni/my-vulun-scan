@@ -25,6 +25,31 @@ type CreateSubDomainsRequest struct {
 	DomainID   uint     `json:"domain_id" binding:"required"`
 }
 
+// GetSubDomainsRequest 获取子域名列表请求
+type GetSubDomainsRequest struct {
+	DomainID       uint   `json:"domain_id,omitempty"`       // 可选，按域名ID筛选
+	OrganizationID uint   `json:"organization_id,omitempty"` // 可选，按组织ID筛选
+	Page           int    `json:"page,omitempty"`
+	PageSize       int    `json:"page_size,omitempty"`
+	SortBy         string `json:"sort_by,omitempty"`    // 排序字段：id, name, created_at, updated_at
+	SortOrder      string `json:"sort_order,omitempty"` // 排序方向：asc, desc
+}
+
+// GetSubDomainsResponse 获取子域名列表响应
+type GetSubDomainsResponse struct {
+	SubDomains []SubDomain `json:"sub_domains"`
+	Total      int64       `json:"total"`
+	Page       int         `json:"page"`
+	PageSize   int         `json:"page_size"`
+}
+
+// CreateSubDomainsResponse 创建子域名响应
+type CreateSubDomainsResponse struct {
+	SuccessCount    int      `json:"success_count"`
+	ExistingDomains []string `json:"existing_domains"`
+	TotalRequested  int      `json:"total_requested"`
+}
+
 // GetOrganizationSubDomainsResponse 获取组织子域名响应
 type GetOrganizationSubDomainsResponse struct {
 	SubDomains []SubDomain `json:"sub_domains"`
