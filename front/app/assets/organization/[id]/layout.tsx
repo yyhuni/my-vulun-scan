@@ -58,11 +58,12 @@ export default function OrganizationLayout({
       try {
         setLoading(true)
 
-        const response = await OrganizationService.getOrganization(
-          resolvedParams.id
-        )
+        const response = await OrganizationService.getOrganizations({
+          id: resolvedParams.id
+        })
         if (response.state === "success" && response.data) {
-          setOrganization(response.data)
+          // 当查询单个组织时，返回的是 Organization 对象
+          setOrganization(response.data as Organization)
         } else {
           toast.error(response.message || "获取组织信息失败")
           setOrganization(null)

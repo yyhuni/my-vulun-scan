@@ -55,16 +55,16 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-// 导入资产类型定义
-import type { Asset } from "@/types/asset.types"
+// 导入子域名类型定义
+import type { SubDomain } from "@/types/subdomain.types"
 
 // 组件属性类型定义
-interface AssetDataTableProps {
-  data: Asset[]                                  // 资产数据数组
-  columns: ColumnDef<Asset>[]                    // 列定义数组
-  onAddNew?: () => void                          // 添加新资产的回调函数
+interface SubdomainsDataTableProps {
+  data: SubDomain[]                                  // 子域名数据数组
+  columns: ColumnDef<SubDomain>[]                    // 列定义数组
+  onAddNew?: () => void                          // 添加新子域名的回调函数
   onBulkDelete?: () => void                      // 批量删除回调函数
-  onSelectionChange?: (selectedRows: Asset[]) => void  // 选中行变化回调
+  onSelectionChange?: (selectedRows: SubDomain[]) => void  // 选中行变化回调
   searchPlaceholder?: string                     // 搜索框占位符
   searchColumn?: string                          // 搜索的列名
   addButtonText?: string                         // 添加按钮文本
@@ -76,15 +76,15 @@ interface AssetDataTableProps {
  * 包含搜索、分页、列显示控制等功能
  */
 export function SubdomainsDataTable({
-  data,
+  data = [],
   columns,
   onAddNew,
   onBulkDelete,
   onSelectionChange,
-  searchPlaceholder = "搜索资产...",
+  searchPlaceholder = "搜索子域名...",
   searchColumn = "name",
   addButtonText = "添加",
-}: AssetDataTableProps) {
+}: SubdomainsDataTableProps) {
   // 表格状态管理
   // 选中行状态，key为行id，value为true或false
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({})
@@ -100,9 +100,18 @@ export function SubdomainsDataTable({
     pageSize: 10,
   })
 
+  // 过滤有效数据，确保每个行都有有效的 id
+  const validData = React.useMemo(() => {
+    const filtered = (data || []).filter(item => item && typeof item.id !== 'undefined' && item.id !== null)
+    console.log('数据表格接收到的原始数据:', data)
+    console.log('过滤后的有效数据:', filtered)
+    console.log('有效数据数量:', filtered.length)
+    return filtered
+  }, [data])
+
   // 创建表格实例
   const table = useReactTable({
-    data,
+    data: validData,
     columns,
     state: {
       sorting,
@@ -173,25 +182,20 @@ export function SubdomainsDataTable({
                     <DropdownMenuCheckboxItem
                       key={column.id}
                       className="capitalize"
-                      checked={column.getIsVisible()}
                       onCheckedChange={(value) => column.toggleVisibility(!!value)}
                     >
                       {column.id === "id" && "ID"}
-                      {column.id === "name" && "资产名称"}
-                      {column.id === "type" && "类型"}
-                      {column.id === "status" && "状态"}
-                      {column.id === "ip" && "IP地址"}
-                      {column.id === "domain" && "域名"}
-                      {column.id === "port" && "端口"}
-                      {column.id === "createdAt" && "创建时间"}
-                      {column.id === "updatedAt" && "更新时间"}
-                      {!["id", "name", "type", "status", "ip", "domain", "port", "createdAt", "updatedAt"].includes(column.id) && column.id}
+                      {column.id === "name" && "子域名"}
+                      {column.id === "domain_id" && "域名ID"}
+                      {column.id === "domain" && "所属域名"}
+                      {column.id === "created_at" && "创建时间"}
+                      {column.id === "updated_at" && "更新时间"}
+                      {!["id", "name", "domain_id", "domain", "created_at", "updated_at"].includes(column.id) && column.id}
                     </DropdownMenuCheckboxItem>
                   )
                 })}
             </DropdownMenuContent>
           </DropdownMenu>
-
           {/* 批量删除按钮 */}
           {onBulkDelete && (
             <Button 
@@ -213,7 +217,7 @@ export function SubdomainsDataTable({
             </Button>
           )}
 
-          {/* 添加新资产按钮 */}
+          {/* 添加新子域名按钮 */}
           {onAddNew && (
             <Button onClick={onAddNew} size="sm">
               <IconPlus className="mr-2 h-4 w-4" />

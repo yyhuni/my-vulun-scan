@@ -27,47 +27,50 @@ export class DomainService {
   }
 
   /**
-   * 获取单个域名详情
-   * @param id - 域名ID
-   * @returns Promise<ApiResponse<Domain>> - 域名详情
-   */
-  static async getDomainById(id: string | number): Promise<ApiResponse<Domain>> {
-    const response = await api.get<ApiResponse<Domain>>(`/domains/${id}`)
-    return response.data
-  }
-
-  /**
-   * 根据组织ID获取域名列表(支持分页和排序)
-   * @param params - 获取域名列表参数对象
-   * @param params.organizationId - 组织ID
+   * 获取域名信息(支持多种查询方式)
+   * @param params - 查询参数对象
+   * @param params.id - 域名ID(查询单个域名时使用)
+   * @param params.organizationId - 组织ID(按组织筛选时使用)
    * @param params.page - 当前页码，1-based
    * @param params.pageSize - 分页大小
    * @param params.sortBy - 排序字段: name, created_at, updated_at
    * @param params.sortOrder - 排序方向: asc, desc
-   * @returns Promise<ApiResponse<GetDomainsResponse>> - 域名列表响应
+   * @returns Promise<ApiResponse<Domain | GetDomainsResponse>> - 域名信息或列表
    */
-  static async getDomainsByOrgId(params: GetDomainsParams): Promise<ApiResponse<GetDomainsResponse>> {
+  static async getDomains(params?: {
+    id?: string | number
+    organizationId?: number
+    page?: number
+    pageSize?: number
+    sortBy?: string
+    sortOrder?: 'asc' | 'desc'
+  }): Promise<ApiResponse<Domain | GetDomainsResponse>> {
     const queryParams = new URLSearchParams()
-    // 组织ID是必填参数
-    queryParams.append('organization_id', params.organizationId.toString())
     
-    if (params.page !== undefined) {
+    if (params?.id !== undefined) {
+      queryParams.append('id', params.id.toString())
+    }
+    if (params?.organizationId !== undefined) {
+      queryParams.append('organization_id', params.organizationId.toString())
+    }
+    if (params?.page !== undefined) {
       queryParams.append('page', params.page.toString())
     }
-    if (params.pageSize !== undefined) {
+    if (params?.pageSize !== undefined) {
       queryParams.append('page_size', params.pageSize.toString())
     }
-    if (params.sortBy !== undefined) {
+    if (params?.sortBy !== undefined) {
       queryParams.append('sort_by', params.sortBy)
     }
-    if (params.sortOrder !== undefined) {
+    if (params?.sortOrder !== undefined) {
       queryParams.append('sort_order', params.sortOrder)
     }
     
     const queryString = queryParams.toString()
-    const url = `/domains/list${queryString ? `?${queryString}` : ''}`
+    const url = `/domains${queryString ? `?${queryString}` : ''}`
     
-    const response = await api.get<ApiResponse<GetDomainsResponse>>(url)
+    const response = await api.get<ApiResponse<Domain | GetDomainsResponse>>(url)
     return response.data
   }
+
 }

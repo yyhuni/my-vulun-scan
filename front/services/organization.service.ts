@@ -9,16 +9,27 @@ export class OrganizationService {
   // ========== 组织基础操作 ==========
 
   /**
-   * 获取所有组织列表（支持分页和排序）
-   * @param params - 分页和排序参数对象
+   * 获取组织信息(支持多种查询方式)
+   * @param params - 查询参数对象
+   * @param params.id - 组织ID(查询单个组织时使用)
    * @param params.page - 当前页码，1-based
    * @param params.pageSize - 分页大小，1-based
    * @param params.sortBy - 排序字段：id, name, created_at, updated_at
    * @param params.sortOrder - 排序方向：asc, desc
-   * @returns Promise<ApiResponse<OrganizationsResponse<Organization>>>
+   * @returns Promise<ApiResponse<Organization | OrganizationsResponse<Organization>>>
    */
-  static async getOrganizations(params?: PaginationParams): Promise<ApiResponse<OrganizationsResponse<Organization>>> {
+  static async getOrganizations(params?: {
+    id?: string | number
+    page?: number
+    pageSize?: number
+    sortBy?: string
+    sortOrder?: 'asc' | 'desc'
+  }): Promise<ApiResponse<Organization | OrganizationsResponse<Organization>>> {
     const queryParams = new URLSearchParams()
+    
+    if (params?.id !== undefined) {
+      queryParams.append('id', params.id.toString())
+    }
     if (params?.page !== undefined) {
       queryParams.append('page', params.page.toString())
     }
@@ -35,17 +46,10 @@ export class OrganizationService {
     const queryString = queryParams.toString()
     const url = `/organizations${queryString ? `?${queryString}` : ''}`
     
-    const response = await api.get<ApiResponse<OrganizationsResponse<Organization>>>(url)
+    const response = await api.get<ApiResponse<Organization | OrganizationsResponse<Organization>>>(url)
     return response.data
   }
 
-  /**
-   * 获取单个组织详情
-   */
-  static async getOrganization(id: string): Promise<ApiResponse<Organization>> {
-    const response = await api.get<ApiResponse<Organization>>(`/organizations/${id}`)
-    return response.data
-  }
   /**
    * 创建新组织
    * @param data - 组织信息对象

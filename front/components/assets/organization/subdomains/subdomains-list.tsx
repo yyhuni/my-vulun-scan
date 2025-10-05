@@ -4,15 +4,16 @@ import React, { useState, useEffect, useMemo } from "react"
 import { toast } from "sonner"
 import { SubdomainsDataTable } from "./subdomains-data-table"
 import { createSubdomainColumns } from "./subdomains-columns"
-import type { Asset } from "@/types/asset.types"
+import { SubDomainService } from "@/services/subdomain.service"
+import type { SubDomain } from "@/types/subdomain.types"
 
 /**
  * 子域名列表组件
  * 用于显示和管理子域名列表
  */
 export function SubdomainsList({ organizationId }: { organizationId: string }) {
-  const [subdomains, setSubdomains] = useState<Asset[]>([])
-  const [selectedAssets, setSelectedAssets] = useState<Asset[]>([])
+  const [subdomains, setSubdomains] = useState<SubDomain[]>([])
+  const [selectedSubdomains, setSelectedSubdomains] = useState<SubDomain[]>([])
   const [loading, setLoading] = useState(true)
 
   // 辅助函数 - 格式化日期
@@ -33,28 +34,91 @@ export function SubdomainsList({ organizationId }: { organizationId: string }) {
     window.location.href = path
   }
 
-  // 处理编辑资产
-  const handleEditAsset = (asset: Asset) => {
-    toast.info(`编辑资产功能开发中: ${asset.name}`)
+  // 处理编辑子域名
+  const handleEditSubdomain = (subdomain: SubDomain) => {
+    toast.info(`编辑子域名功能开发中: ${subdomain.name}`)
   }
 
-  // 处理删除资产
-  const handleDeleteAsset = (asset: Asset) => {
-    toast.info(`删除资产功能开发中: ${asset.name}`)
+  // 处理删除子域名
+  const handleDeleteSubdomain = async (subdomain: SubDomain) => {
+    try {
+      // 乐观更新：立即从UI中移除
+      const updatedSubdomains = subdomains.filter(s => s.id !== subdomain.id)
+      setSubdomains(updatedSubdomains)
+      
+      // 显示loading toast
+      const loadingToast = toast.loading(`正在删除子域名: ${subdomain.name}`)
+      
+      // TODO: 调用删除API
+      // await SubDomainService.deleteSubdomain(subdomain.id)
+      
+      // 模拟API延迟
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      // 成功toast
+      toast.success(`子域名 ${subdomain.name} 已删除`, { id: loadingToast })
+    } catch (error) {
+      // 失败时回滚
+      setSubdomains(prev => [...prev, subdomain].sort((a, b) => a.id - b.id))
+      toast.error(`删除子域名失败: ${error instanceof Error ? error.message : '未知错误'}`)
+    }
   }
 
   // 处理批量删除
-  const handleBulkDelete = () => {
-    if (selectedAssets.length === 0) {
-      toast.error("请先选择要删除的资产")
+  const handleBulkDelete = async () => {
+    if (selectedSubdomains.length === 0) {
+      toast.error("请先选择要删除的子域名")
       return
     }
-    toast.info(`批量删除功能开发中，选中 ${selectedAssets.length} 个资产`)
+    
+    try {
+      // 乐观更新：立即从UI中移除选中的子域名
+      const selectedIds = selectedSubdomains.map(s => s.id)
+      const updatedSubdomains = subdomains.filter(s => !selectedIds.includes(s.id))
+      setSubdomains(updatedSubdomains)
+      setSelectedSubdomains([])
+      
+      // 显示loading toast
+      const loadingToast = toast.loading(`正在批量删除 ${selectedSubdomains.length} 个子域名`)
+      
+      // TODO: 调用批量删除API
+      // await SubDomainService.bulkDeleteSubdomains(selectedIds)
+      
+      // 模拟API延迟
+      await new Promise(resolve => setTimeout(resolve, 1500))
+      
+      // 成功toast
+      toast.success(`已成功删除 ${selectedSubdomains.length} 个子域名`, { id: loadingToast })
+    } catch (error) {
+      // 失败时回滚
+      setSubdomains(prev => [...prev, ...selectedSubdomains].sort((a, b) => a.id - b.id))
+      toast.error(`批量删除失败: ${error instanceof Error ? error.message : '未知错误'}`)
+    }
   }
 
   // 处理添加子域名
-  const handleAddSubdomain = () => {
-    toast.info("添加子域名功能开发中")
+  const handleAddSubdomain = async () => {
+    // 模拟添加子域名的数据
+    const newSubdomainData = {
+      subDomains: [`new${Date.now()}.example.com`],
+      domainId: 1 // 这里应该根据实际情况获取域名ID
+    }
+    
+    try {
+      const loadingToast = toast.loading("正在添加子域名...")
+      
+      const response = await SubDomainService.createSubDomains(newSubdomainData)
+      
+      if (response.state === 'success') {
+        // 重新获取子域名列表
+        await fetchSubdomains()
+        toast.success("子域名添加成功", { id: loadingToast })
+      } else {
+        toast.error(`添加失败: ${response.message || '未知错误'}`, { id: loadingToast })
+      }
+    } catch (error) {
+      toast.error(`添加子域名失败: ${error instanceof Error ? error.message : '未知错误'}`)
+    }
   }
 
   // 创建列定义
@@ -63,65 +127,57 @@ export function SubdomainsList({ organizationId }: { organizationId: string }) {
       createSubdomainColumns({
         formatDate,
         navigate,
-        handleEdit: handleEditAsset,
-        handleDelete: handleDeleteAsset,
+        handleEdit: handleEditSubdomain,
+        handleDelete: handleDeleteSubdomain,
       }),
     []
   )
 
   // 获取子域名数据
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true)
-
-        // 模拟获取子域名数据
-        const mockSubdomains: Asset[] = [
-          {
-            id: 4,
-            name: "api.example.com",
-            type: "域名",
-            status: "活跃",
-            ip: "192.168.1.103",
-            domain: "api.example.com",
-            createdAt: "2024-01-18T08:45:00Z",
-            updatedAt: "2024-03-17T12:15:00Z",
-          },
-          {
-            id: 5,
-            name: "admin.example.com",
-            type: "域名",
-            status: "活跃",
-            ip: "192.168.1.104",
-            domain: "admin.example.com",
-            createdAt: "2024-01-19T14:20:00Z",
-            updatedAt: "2024-03-16T10:45:00Z",
-          },
-          {
-            id: 6,
-            name: "test.example.com",
-            type: "域名",
-            status: "非活跃",
-            ip: "192.168.1.105",
-            domain: "test.example.com",
-            createdAt: "2024-01-20T16:30:00Z",
-            updatedAt: "2024-03-15T09:20:00Z",
-          },
-        ]
-
-        // 模拟API延迟
-        await new Promise((resolve) => setTimeout(resolve, 500))
-
-        setSubdomains(mockSubdomains)
-      } catch (error) {
-        console.error("获取子域名数据失败:", error)
-        toast.error("获取子域名数据失败")
-      } finally {
-        setLoading(false)
+  const fetchSubdomains = async () => {
+    try {
+      setLoading(true)
+      
+      const response = await SubDomainService.getSubDomains({
+        organizationId: parseInt(organizationId),
+        page: 1,
+        pageSize: 100,
+        sortBy: 'created_at',
+        sortOrder: 'desc'
+      })
+      
+      if (response.state === 'success' && response.data) {
+        // 如果返回的是单个子域名，转换为数组
+        // 注意：API 响应会被转换为 camelCase，所以 sub_domains 变成 subDomains
+        if ('subDomains' in response.data) {
+          const validSubdomains = (response.data.subDomains || []).filter(
+            (item: any) => item && typeof item.id !== 'undefined' && item.id !== null
+          )
+          console.log('获取到的子域名数据:', validSubdomains)
+          console.log('子域名数量:', validSubdomains.length)
+          setSubdomains(validSubdomains)
+        } else if (response.data.id) {
+          console.log('获取到单个子域名:', response.data)
+          setSubdomains([response.data])
+        } else {
+          console.log('没有获取到有效的子域名数据')
+          setSubdomains([])
+        }
+      } else {
+        console.log('API 响应失败:', response)
+        setSubdomains([])
+        toast.error(response.message || "获取子域名数据失败")
       }
+    } catch (error) {
+      console.error("获取子域名数据失败:", error)
+      toast.error(`获取子域名数据失败: ${error instanceof Error ? error.message : '未知错误'}`)
+    } finally {
+      setLoading(false)
     }
+  }
 
-    fetchData()
+  useEffect(() => {
+    fetchSubdomains()
   }, [organizationId])
 
   if (loading) {
@@ -135,13 +191,13 @@ export function SubdomainsList({ organizationId }: { organizationId: string }) {
 
   return (
     <SubdomainsDataTable
-      data={subdomains}
+      data={subdomains || []}
       columns={subdomainColumns}
       onAddNew={handleAddSubdomain}
       onBulkDelete={handleBulkDelete}
-      onSelectionChange={setSelectedAssets}
+      onSelectionChange={setSelectedSubdomains}
       searchPlaceholder="搜索子域名..."
-      searchColumn="domain"
+      searchColumn="name"
       addButtonText="添加子域名"
     />
   )

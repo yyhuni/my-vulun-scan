@@ -75,7 +75,7 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
       const currentPage = page ?? pagination.pageIndex + 1  // 转换为1-based
       const currentPageSize = pageSize ?? pagination.pageSize
       
-      const response = await DomainService.getDomainsByOrgId({
+      const response = await DomainService.getDomains({
         organizationId: parseInt(organizationId),
         page: currentPage,
         pageSize: currentPageSize,
@@ -84,15 +84,18 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
       })
       
       if (response.state === "success" && response.data) {
-        setMainAssets(response.data.domains || [])
+        // 当按组织ID查询时，返回的是 GetDomainsResponse 对象
+        const responseData = response.data as any
+        setMainAssets(responseData.domains || [])
         
         // 更新分页信息
-        setPaginationInfo({
-          total: response.data.total || 0,
-          page: response.data.page || 1,
-          pageSize: response.data.page_size || 10,
-          totalPages: response.data.total_pages || 0,
-        })
+        setPagination(prev => ({
+          ...prev,
+          total: responseData.total,
+          pageIndex: responseData.page - 1, // 转换为0-based
+          pageSize: responseData.page_size,
+          totalPages: responseData.total_pages
+        }))
       }
     } catch (error: any) {
       console.error("刷新数据失败:", error)
@@ -130,7 +133,7 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
         setLoading(true)
 
         // 调用后端 API 获取域名列表
-        const response = await DomainService.getDomainsByOrgId({
+        const response = await DomainService.getDomains({
           organizationId: parseInt(organizationId),
           page: 1,
           pageSize: 10,
@@ -139,14 +142,16 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
         })
         
         if (response.state === "success" && response.data) {
-          setMainAssets(response.data.domains || [])
+          // 当按组织ID查询时，返回的是 GetDomainsResponse 对象
+          const responseData = response.data as any
+          setMainAssets(responseData.domains || [])
           
           // 更新分页信息
           setPaginationInfo({
-            total: response.data.total || 0,
-            page: response.data.page || 1,
-            pageSize: response.data.page_size || 10,
-            totalPages: response.data.total_pages || 0,
+            total: responseData.total || 0,
+            page: responseData.page || 1,
+            pageSize: responseData.page_size || 10,
+            totalPages: responseData.total_pages || 0,
           })
         } else {
           throw new Error(response.message || "获取域名列表失败")

@@ -4,7 +4,6 @@ import React from "react"
 import { ColumnDef } from "@tanstack/react-table"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,28 +11,27 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Eye, Edit, Trash2, Globe, ChevronsUpDown } from "lucide-react"
-import { IconCircleCheckFilled, IconLoader } from "@tabler/icons-react"
-import type { Asset } from "@/types/asset.types"
+import { MoreHorizontal, Eye, Edit, Trash2, ChevronsUpDown } from "lucide-react"
+import type { SubDomain } from "@/types/subdomain.types"
 
 // 列创建函数的参数类型
 interface CreateColumnsProps {
   formatDate: (dateString: string) => string
   navigate: (path: string) => void
-  handleEdit: (asset: Asset) => void
-  handleDelete: (asset: Asset) => void
+  handleEdit: (subdomain: SubDomain) => void
+  handleDelete: (subdomain: SubDomain) => void
 }
 
 /**
  * 子域名行操作组件
  */
 function SubdomainRowActions({
-  asset,
+  subdomain,
   onView,
   onEdit,
   onDelete,
 }: {
-  asset: Asset
+  subdomain: SubDomain
   onView: () => void
   onEdit: () => void
   onDelete: () => void
@@ -98,30 +96,6 @@ function DataTableColumnHeader({
 }
 
 /**
- * 子域名状态徽章组件
- */
-function SubdomainStatusBadge({ status }: { status: string }) {
-  const getStatusIcon = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "active":
-      case "活跃":
-      case "secure":
-      case "安全":
-        return <IconCircleCheckFilled className="fill-green-500 dark:fill-green-400" />
-      default:
-        return <IconLoader />
-    }
-  }
-
-  return (
-    <Badge variant="outline" className="text-muted-foreground px-1.5">
-      {getStatusIcon(status)}
-      {status}
-    </Badge>
-  )
-}
-
-/**
  * 创建子域名表格列定义
  */
 export const createSubdomainColumns = ({
@@ -129,7 +103,7 @@ export const createSubdomainColumns = ({
   navigate,
   handleEdit,
   handleDelete,
-}: CreateColumnsProps): ColumnDef<Asset>[] => [
+}: CreateColumnsProps): ColumnDef<SubDomain>[] => [
   // 选择列
   {
     id: "select",
@@ -167,81 +141,66 @@ export const createSubdomainColumns = ({
     ),
   },
 
-  // 资产名称列
+  // 子域名列
   {
     accessorKey: "name",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="资产名称" />
+      <DataTableColumnHeader column={column} title="子域名" />
     ),
     cell: ({ row }) => <div className="font-medium">{row.getValue("name")}</div>,
   },
 
-  // 资产类型列
+  // 域名ID列
   {
-    accessorKey: "type",
+    accessorKey: "domain_id",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="类型" />
+      <DataTableColumnHeader column={column} title="域名ID" />
     ),
     cell: ({ row }) => (
-      <div className="flex items-center space-x-2">
-        <Globe className="h-4 w-4" />
-        <span>{row.getValue("type")}</span>
+      <div className="font-mono text-sm text-muted-foreground">
+        {row.getValue("domain_id")}
       </div>
     ),
   },
 
-  // 状态列
-  {
-    accessorKey: "status",
-    header: "状态",
-    cell: ({ row }) => <SubdomainStatusBadge status={row.getValue("status")} />,
-  },
-
-  // IP地址列
-  {
-    accessorKey: "ip",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="IP地址" />
-    ),
-    cell: ({ row }) => {
-      const ip = row.getValue("ip") as string
-      return <div className="font-mono text-sm">{ip || "-"}</div>
-    },
-  },
-
-  // 域名列
+  // 所属域名列
   {
     accessorKey: "domain",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="域名" />
+      <DataTableColumnHeader column={column} title="所属域名" />
     ),
     cell: ({ row }) => {
-      const domain = row.getValue("domain") as string
-      return <div className="font-mono text-sm">{domain || "-"}</div>
-    },
-  },
-
-  // 端口列
-  {
-    accessorKey: "port",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="端口" />
-    ),
-    cell: ({ row }) => {
-      const port = row.getValue("port") as number
-      return <div className="font-mono text-sm">{port || "-"}</div>
+      const domain = row.getValue("domain") as any
+      return (
+        <div className="font-mono text-sm">
+          {domain?.name || "-"}
+        </div>
+      )
     },
   },
 
   // 创建时间列
   {
-    accessorKey: "createdAt",
+    accessorKey: "created_at",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="创建时间" />
     ),
     cell: ({ row }) => (
       <div className="text-sm text-muted-foreground">
-        {formatDate(row.getValue("createdAt"))}
+        {formatDate(row.getValue("created_at"))}
+      </div>
+    ),
+  },
+
+  // 更新时间列
+  {
+    accessorKey: "updated_at",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="更新时间" />
+    ),
+    cell: ({ row }) => (
+      <div className="text-sm text-muted-foreground">
+        {formatDate(row.getValue("updated_at"))}
       </div>
     ),
   },
@@ -251,8 +210,8 @@ export const createSubdomainColumns = ({
     id: "actions",
     cell: ({ row }) => (
       <SubdomainRowActions
-        asset={row.original}
-        onView={() => navigate(`/assets/asset/${row.original.id}`)}
+        subdomain={row.original}
+        onView={() => navigate(`/assets/subdomain/${row.original.id}`)}
         onEdit={() => handleEdit(row.original)}
         onDelete={() => handleDelete(row.original)}
       />
