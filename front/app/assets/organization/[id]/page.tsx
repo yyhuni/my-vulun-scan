@@ -23,15 +23,10 @@ import {
 
 // 导入资产类型定义
 import type { Asset } from "@/types/asset.types"
-
-// 组织信息类型定义
-interface Organization {
-  id: number
-  name: string
-  description: string
-  createdAt: string
-  updatedAt: string
-}
+// 导入组织类型定义
+import type { Organization } from "@/types/organization.types"
+// 导入组织服务
+import { OrganizationService } from "@/services/organization.service"
 
 /**
  * 组织详情页面
@@ -134,13 +129,15 @@ export default function OrganizationDetailPage({
       try {
         setLoading(true)
         
-        // 模拟获取组织信息
-        const mockOrganization: Organization = {
-          id: parseInt(resolvedParams.id),
-          name: "技术研发部",
-          description: "负责公司技术研发和系统维护",
-          createdAt: "2024-01-15T10:30:00Z",
-          updatedAt: "2024-03-20T14:45:00Z"
+        // 调用 API 获取组织信息
+        const response = await OrganizationService.getOrganization(resolvedParams.id)
+        if (response.state === "success" && response.data) {
+          setOrganization(response.data)
+        } else {
+          toast.error(response.message || '获取组织信息失败')
+          setOrganization(null)
+          setLoading(false)
+          return
         }
 
         // 模拟获取主资产数据
@@ -261,7 +258,6 @@ export default function OrganizationDetailPage({
         // 模拟API延迟
         await new Promise(resolve => setTimeout(resolve, 1000))
 
-        setOrganization(mockOrganization)
         setMainAssets(mockMainAssets)
         setSubdomains(mockSubdomains)
         setEndpoints(mockEndpoints)

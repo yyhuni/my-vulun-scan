@@ -172,15 +172,12 @@ export function OrganizationList() {
     const previousOrganizations = organizations
     setOrganizations((prev) => prev.filter((org) => org.id !== orgToDelete.id))
     
-    // 3. 显示加载提示
     toast.loading(`正在删除组织 "${orgName}"...`, { id: 'delete-org' })
 
     try {
-      // 4. 调用真实 API 删除组织
       const response = await OrganizationService.deleteOrganization(Number(orgToDelete.id))
       
       if (response.state === "success") {
-        // 5. 删除成功,显示成功提示
         toast.success(`组织 "${orgName}" 已成功删除`, { id: 'delete-org' })
       } else {
         throw new Error(response.message || "删除组织失败")
@@ -188,7 +185,7 @@ export function OrganizationList() {
     } catch (err: any) {
       console.error('Error deleting organization:', err)
       
-      // 6. 删除失败,回滚 UI 状态
+      // 删除失败,回滚 UI 状态
       setOrganizations(previousOrganizations)
       toast.error(`删除组织失败: ${err.message || "未知错误"}`, { id: 'delete-org' })
     }
