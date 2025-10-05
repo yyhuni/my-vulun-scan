@@ -14,3 +14,4 @@ trigger: always_on
 11.前端的添加，编辑逻辑采用等待响应 loading 方案，不用乐观更新。
 12.所有后端接口都模拟下延迟，默认添加	time.Sleep(2 * time.Second) // 模拟延迟
 13.用 GORM 的 Association 方法来简化解除关联的操作
+14.注意前端的驼峰命名，后端的下划线命名，这之间会自动的转换，通过front/lib/api-client.ts文件进行的
