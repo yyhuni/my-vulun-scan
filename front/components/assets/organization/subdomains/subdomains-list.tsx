@@ -159,7 +159,7 @@ export function SubdomainsList({ organizationId }: { organizationId: string }) {
         organizationId: parseInt(organizationId),
         page: currentPage,
         pageSize: currentPageSize,
-        sortBy: 'created_at',
+        sortBy: 'createdAt',
         sortOrder: 'desc'
       })
       
