@@ -1,14 +1,10 @@
 // 资产相关类型定义
 
-// 资产数据类型定义
+// 主资产(Domain)数据类型定义
 export interface Asset {
   id: number
   name: string
-  type: string
-  status: string
-  ip?: string
-  domain?: string
-  port?: number
+  description?: string
   createdAt: string
   updatedAt: string
 }

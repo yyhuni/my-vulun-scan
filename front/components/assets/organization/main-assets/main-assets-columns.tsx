@@ -4,7 +4,6 @@ import React from "react"
 import { ColumnDef } from "@tanstack/react-table"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,8 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Eye, Edit, Trash2, Server, ChevronsUpDown } from "lucide-react"
-import { IconCircleCheckFilled, IconLoader } from "@tabler/icons-react"
+import { MoreHorizontal, Eye, Edit, Trash2, ChevronsUpDown } from "lucide-react"
 import type { Asset } from "@/types/asset.types"
 
 // 列创建函数的参数类型
@@ -98,30 +96,6 @@ function DataTableColumnHeader({
 }
 
 /**
- * 主资产状态徽章组件
- */
-function MainAssetStatusBadge({ status }: { status: string }) {
-  const getStatusIcon = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "active":
-      case "活跃":
-      case "secure":
-      case "安全":
-        return <IconCircleCheckFilled className="fill-green-500 dark:fill-green-400" />
-      default:
-        return <IconLoader />
-    }
-  }
-
-  return (
-    <Badge variant="outline" className="text-muted-foreground px-1.5">
-      {getStatusIcon(status)}
-      {status}
-    </Badge>
-  )
-}
-
-/**
  * 创建主资产表格列定义
  */
 export const createMainAssetColumns = ({
@@ -158,65 +132,20 @@ export const createMainAssetColumns = ({
   {
     accessorKey: "name",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="资产名称" />
-    ),
-    cell: ({ row }) => <div className="font-medium">{row.getValue("name")}</div>,
-  },
-
-  // 资产类型列
-  {
-    accessorKey: "type",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="类型" />
-    ),
-    cell: ({ row }) => (
-      <div className="flex items-center space-x-2">
-        <Server className="h-4 w-4" />
-        <span>{row.getValue("type")}</span>
-      </div>
-    ),
-  },
-
-  // 状态列
-  {
-    accessorKey: "status",
-    header: "状态",
-    cell: ({ row }) => <MainAssetStatusBadge status={row.getValue("status")} />,
-  },
-
-  // IP地址列
-  {
-    accessorKey: "ip",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="IP地址" />
-    ),
-    cell: ({ row }) => {
-      const ip = row.getValue("ip") as string
-      return <div className="font-mono text-sm">{ip || "-"}</div>
-    },
-  },
-
-  // 域名列
-  {
-    accessorKey: "domain",
-    header: ({ column }) => (
       <DataTableColumnHeader column={column} title="域名" />
     ),
-    cell: ({ row }) => {
-      const domain = row.getValue("domain") as string
-      return <div className="font-mono text-sm">{domain || "-"}</div>
-    },
+    cell: ({ row }) => <div className="font-medium font-mono">{row.getValue("name")}</div>,
   },
 
-  // 端口列
+  // 描述列
   {
-    accessorKey: "port",
+    accessorKey: "description",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="端口" />
+      <DataTableColumnHeader column={column} title="描述" />
     ),
     cell: ({ row }) => {
-      const port = row.getValue("port") as number
-      return <div className="font-mono text-sm">{port || "-"}</div>
+      const description = row.getValue("description") as string
+      return <div className="text-sm text-muted-foreground max-w-md truncate">{description || "-"}</div>
     },
   },
 
@@ -229,6 +158,19 @@ export const createMainAssetColumns = ({
     cell: ({ row }) => (
       <div className="text-sm text-muted-foreground">
         {formatDate(row.getValue("createdAt"))}
+      </div>
+    ),
+  },
+
+  // 更新时间列
+  {
+    accessorKey: "updatedAt",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="更新时间" />
+    ),
+    cell: ({ row }) => (
+      <div className="text-sm text-muted-foreground">
+        {formatDate(row.getValue("updatedAt"))}
       </div>
     ),
   },
