@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"time"
 
 	"vulun-scan-backend/internal/models"
 	"vulun-scan-backend/pkg/database"
@@ -24,6 +25,8 @@ func NewDomainService() *DomainService {
 
 // CreateDomains 批量创建域名并关联到组织
 func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models.Domain, error) {
+	time.Sleep(2 * time.Second) // 模拟延迟
+
 	var createdDomains []models.Domain
 
 	// 验证组织是否存在
@@ -116,6 +119,7 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 
 // GetDomainByID 根据ID获取域名
 func (s *DomainService) GetDomainByID(id uint) (*models.Domain, error) {
+	time.Sleep(2 * time.Second) // 模拟延迟
 	var domain models.Domain
 
 	result := s.db.Preload("SubDomains").First(&domain, "id = ?", id)
@@ -133,6 +137,7 @@ func (s *DomainService) GetDomainByID(id uint) (*models.Domain, error) {
 
 // GetDomainsByOrgID 根据组织ID获取域名列表
 func (s *DomainService) GetDomainsByOrgID(organizationID uint) ([]models.Domain, error) {
+	time.Sleep(2 * time.Second) // 模拟延迟
 	// 验证组织是否存在
 	var org models.Organization
 	if err := s.db.First(&org, "id = ?", organizationID).Error; err != nil {

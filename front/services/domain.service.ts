@@ -35,4 +35,14 @@ export class DomainService {
     const response = await api.get<ApiResponse<Domain>>(`/domains/${id}`)
     return response.data
   }
+
+  /**
+   * 根据组织ID获取域名列表
+   * @param organizationId - 组织ID
+   * @returns Promise<ApiResponse<Domain[]>> - 域名列表
+   */
+  static async getDomainsByOrgId(organizationId: number): Promise<ApiResponse<Domain[]>> {
+    const response = await api.get<ApiResponse<Domain[]>>(`/domains/list?organization_id=${organizationId}`)
+    return response.data
+  }
 }

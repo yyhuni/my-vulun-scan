@@ -5,6 +5,7 @@ import { toast } from "sonner"
 import { MainAssetsDataTable } from "./main-assets-data-table"
 import { createMainAssetColumns } from "./main-assets-columns"
 import { AddDomainDialog } from "./add-domain-dialog"
+import { DomainService } from "@/services/domain.service"
 import type { Asset } from "@/types/asset.types"
 
 /**
@@ -54,16 +55,28 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
     toast.info(`批量删除功能开发中，选中 ${selectedAssets.length} 个资产`)
   }
 
+  // 刷新数据
+  const refreshData = async () => {
+    try {
+      const response = await DomainService.getDomainsByOrgId(parseInt(organizationId))
+      if (response.state === "success" && response.data) {
+        setMainAssets(response.data)
+      }
+    } catch (error: any) {
+      console.error("刷新数据失败:", error)
+      toast.error(`刷新数据失败: ${error.message || "未知错误"}`)
+    }
+  }
+
   // 处理添加主资产
   const handleAddMainAsset = () => {
     setIsAddDialogOpen(true)
   }
 
   // 处理添加成功
-  const handleAddSuccess = (newDomains: Asset[]) => {
-    // 乐观更新：立即添加到列表
-    setMainAssets(prev => [...newDomains, ...prev])
-    toast.success(`成功添加 ${newDomains.length} 个域名`)
+  const handleAddSuccess = async (newDomains: Asset[]) => {
+    // 等待响应方案：重新获取数据（不使用乐观更新）
+    await refreshData()
   }
 
   // 创建列定义
@@ -84,38 +97,17 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
       try {
         setLoading(true)
 
-        // 模拟获取主资产数据
-        const mockMainAssets: Asset[] = [
-          {
-            id: 1,
-            name: "example.com",
-            description: "主域名 - 公司官网",
-            createdAt: "2024-01-15T10:30:00Z",
-            updatedAt: "2024-03-20T14:45:00Z",
-          },
-          {
-            id: 2,
-            name: "api.example.com",
-            description: "API服务域名",
-            createdAt: "2024-01-16T09:15:00Z",
-            updatedAt: "2024-03-19T16:20:00Z",
-          },
-          {
-            id: 3,
-            name: "test.example.com",
-            description: "测试环境域名",
-            createdAt: "2024-01-17T11:00:00Z",
-            updatedAt: "2024-03-18T13:30:00Z",
-          },
-        ]
-
-        // 模拟API延迟
-        await new Promise((resolve) => setTimeout(resolve, 500))
-
-        setMainAssets(mockMainAssets)
-      } catch (error) {
+        // 调用后端 API 获取域名列表
+        const response = await DomainService.getDomainsByOrgId(parseInt(organizationId))
+        
+        if (response.state === "success" && response.data) {
+          setMainAssets(response.data)
+        } else {
+          throw new Error(response.message || "获取域名列表失败")
+        }
+      } catch (error: any) {
         console.error("获取主资产数据失败:", error)
-        toast.error("获取主资产数据失败")
+        toast.error(`获取主资产数据失败: ${error.message || "未知错误"}`)
       } finally {
         setLoading(false)
       }
