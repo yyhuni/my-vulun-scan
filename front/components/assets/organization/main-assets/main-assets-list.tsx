@@ -4,7 +4,7 @@ import React, { useState, useMemo } from "react"
 import { MainAssetsDataTable } from "./main-assets-data-table"
 import { createMainAssetColumns } from "./main-assets-columns"
 import { AddDomainDialog } from "./add-domain-dialog"
-import { LoadingState } from "@/components/ui/loading-spinner"
+import { LoadingState } from "@/components/loading-spinner"
 import { useDomains, useCreateDomain } from "@/hooks/use-domains"
 import type { Asset } from "@/types/asset.types"
 

@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from "react"
 import { SubdomainsDataTable } from "./subdomains-data-table"
 import { createSubdomainColumns } from "./subdomains-columns"
-import { LoadingState } from "@/components/ui/loading-spinner"
+import { LoadingState } from "@/components/loading-spinner"
 import { useSubdomains } from "@/hooks/use-subdomains"
 import type { SubDomain } from "@/types/subdomain.types"
 

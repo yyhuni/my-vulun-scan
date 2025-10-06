@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Building2 } from "lucide-react"
-import { LoadingState } from "@/components/ui/loading-spinner"
+import { LoadingState } from "@/components/loading-spinner"
 import { useOrganization } from "@/hooks/use-organizations"
 import type { Organization } from "@/types/organization.types"
 

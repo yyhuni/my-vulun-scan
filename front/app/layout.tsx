@@ -46,42 +46,41 @@ export default function RootLayout({
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         {/* 使用 QueryProvider 提供 React Query 功能 */}
         <QueryProvider>
-            {/* 使用 Suspense 包裹页面内容 */}
-            <Suspense fallback={<div>Loading...</div>}>
-            {/* SidebarProvider 提供侧边栏的上下文状态管理 */}
-            <SidebarProvider
-              // 自定义 CSS 变量,设置侧边栏宽度和头部高度
-              style={
-                {
-                  "--sidebar-width": "calc(var(--spacing) * 72)", // 侧边栏宽度为 72 个间距单位
-                  "--header-height": "calc(var(--spacing) * 12)", // 头部高度为 12 个间距单位
-                } as React.CSSProperties
-              }
-            >
-              {/* 应用侧边栏,使用 inset 变体样式 */}
-              <AppSidebar variant="inset" />
+          {/* SidebarProvider 提供侧边栏的上下文状态管理 */}
+          <SidebarProvider
+            // 自定义 CSS 变量,设置侧边栏宽度和头部高度
+            style={
+              {
+                "--sidebar-width": "calc(var(--spacing) * 72)", // 侧边栏宽度为 72 个间距单位
+                "--header-height": "calc(var(--spacing) * 12)", // 头部高度为 12 个间距单位
+              } as React.CSSProperties
+            }
+          >
+            {/* 应用侧边栏,使用 inset 变体样式 */}
+            <AppSidebar variant="inset" />
 
-              {/* 侧边栏内嵌区域,包含主要内容 */}
-              <SidebarInset>
-                {/* 网站头部 */}
-                <SiteHeader />
+            {/* 侧边栏内嵌区域,包含主要内容 */}
+            <SidebarInset>
+              {/* 网站头部 */}
+              <SiteHeader />
 
-                {/* 主内容区域,使用 flex 布局垂直排列 */}
-                <div className="flex flex-1 flex-col">
-                  {/* 
-                    容器查询包装器
-                    @container/main: 定义一个名为 main 的容器查询上下文
-                    用于响应式设计,根据容器大小而非视口大小调整样式
-                  */}
-                  <div className="@container/main flex flex-1 flex-col gap-2">
-                    {/* 页面内容区域 */}
+              {/* 主内容区域,使用 flex 布局垂直排列 */}
+              <div className="flex flex-1 flex-col">
+                {/* 
+                  容器查询包装器
+                  @container/main: 定义一个名为 main 的容器查询上下文
+                  用于响应式设计,根据容器大小而非视口大小调整样式
+                */}
+                <div className="@container/main flex flex-1 flex-col gap-2">
+                  {/* 使用 Suspense 只包裹页面内容,避免影响侧边栏和头部 */}
+                  <Suspense fallback={<div className="flex items-center justify-center py-12 text-muted-foreground">Loading...</div>}>
                     {children}
-                    <Toaster />
-                  </div>
+                  </Suspense>
+                  <Toaster />
                 </div>
-              </SidebarInset>
-            </SidebarProvider>
-            </Suspense>
+              </div>
+            </SidebarInset>
+          </SidebarProvider>
         </QueryProvider>
       </body>
     </html>

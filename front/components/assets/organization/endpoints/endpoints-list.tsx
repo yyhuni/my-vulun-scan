@@ -4,7 +4,7 @@ import React, { useState, useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { EndpointsDataTable } from "./endpoints-data-table"
 import { createEndpointColumns } from "./endpoints-columns"
-import { LoadingState } from "@/components/ui/loading-spinner"
+import { LoadingState } from "@/components/loading-spinner"
 import type { Asset } from "@/types/asset.types"
 
 /**

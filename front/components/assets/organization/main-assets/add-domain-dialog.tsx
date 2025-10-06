@@ -5,7 +5,7 @@ import { Plus, Globe } from "lucide-react"
 
 // 导入 UI 组件
 import { Button } from "@/components/ui/button"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { LoadingSpinner } from "@/components/loading-spinner"
 
 // 导入 React Query Hook
 import { useCreateDomain } from "@/hooks/use-domains"

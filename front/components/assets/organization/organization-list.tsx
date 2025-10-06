@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { LoadingState, LoadingSpinner } from "@/components/ui/loading-spinner"
+import { LoadingState, LoadingSpinner } from "@/components/loading-spinner"
 
 // 导入数据表格组件
 import { OrganizationDataTable } from "./organization-data-table"
