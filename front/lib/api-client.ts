@@ -186,21 +186,26 @@ const apiClient = axios.create({
  */
 apiClient.interceptors.request.use(
   (config) => {
-    // 开发环境调试日志
-    console.log('🚀 API Request:', {
-      method: config.method?.toUpperCase(),
-      url: config.url,
-      baseURL: config.baseURL,
-      fullURL: `${config.baseURL}${config.url}`,
-      data: config.data,
-      params: config.params
-    });
+    // 只在开发环境输出调试日志
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🚀 API Request:', {
+        method: config.method?.toUpperCase(),
+        url: config.url,
+        baseURL: config.baseURL,
+        fullURL: `${config.baseURL}${config.url}`,
+        // 不输出敏感数据到生产环境
+        data: config.data,
+        params: config.params
+      });
+    }
     
     // 转换请求体数据为 snake_case
     // 适用于 POST/PUT 等带 body 的请求
     if (config.data && typeof config.data === 'object') {
       config.data = snakecaseKeys(config.data, { deep: true });
-      console.log('📝 Data after snake_case conversion:', config.data);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📝 Data after snake_case conversion:', config.data);
+      }
     }
     
     // 转换查询参数为 snake_case
@@ -214,7 +219,9 @@ apiClient.interceptors.request.use(
     return config;
   },
   (error) => {
-    console.error('❌ Request Error:', error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('❌ Request Error:', error);
+    }
     return Promise.reject(error);
   }
 );
@@ -255,31 +262,38 @@ apiClient.interceptors.request.use(
  */
 apiClient.interceptors.response.use(
   (response) => {
-    // 开发环境调试日志
-    console.log('✅ API Response:', {
-      status: response.status,
-      statusText: response.statusText,
-      url: response.config.url,
-      data: response.data
-    });
+    // 只在开发环境输出调试日志
+    if (process.env.NODE_ENV === 'development') {
+      console.log('✅ API Response:', {
+        status: response.status,
+        statusText: response.statusText,
+        url: response.config.url,
+        // 不输出敏感数据到生产环境
+        data: response.data
+      });
+    }
     
     // 转换响应数据为 camelCase
     // 后端的 snake_case 字段会自动转换为 camelCase
     if (response.data && typeof response.data === 'object') {
       response.data = camelcaseKeys(response.data, { deep: true });
-      console.log('🔄 Data after camelCase conversion:', response.data);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔄 Data after camelCase conversion:', response.data);
+      }
     }
     return response;
   },
   (error) => {
-    // 错误日志记录
-    console.error('❌ API Error:', {
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      url: error.config?.url,
-      data: error.response?.data,
-      message: error.message
-    });
+    // 只在开发环境输出错误日志
+    if (process.env.NODE_ENV === 'development') {
+      console.error('❌ API Error:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        url: error.config?.url,
+        data: error.response?.data,
+        message: error.message
+      });
+    }
     
     // 错误响应也进行命名转换
     // 确保错误消息的字段名也是驼峰格式
