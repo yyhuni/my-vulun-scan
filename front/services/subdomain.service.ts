@@ -36,7 +36,14 @@ export class SubDomainService {
       queryParams.append('page_size', params.pageSize.toString())
     }
     if (params?.sortBy !== undefined) {
-      queryParams.append('sort_by', params.sortBy)
+      // 将驼峰命名转换为下划线命名
+      const sortByMap: Record<string, string> = {
+        'id': 'id',
+        'name': 'name',
+        'createdAt': 'created_at',
+        'updatedAt': 'updated_at'
+      }
+      queryParams.append('sort_by', sortByMap[params.sortBy] || params.sortBy)
     }
     if (params?.sortOrder !== undefined) {
       queryParams.append('sort_order', params.sortOrder)

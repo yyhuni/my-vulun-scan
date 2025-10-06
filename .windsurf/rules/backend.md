@@ -15,3 +15,4 @@ trigger: always_on
 12.所有后端接口都模拟下延迟，默认添加	time.Sleep(2 * time.Second) // 模拟延迟
 13.用 GORM 的 Association 方法来简化解除关联的操作
 14.注意前端的驼峰命名，后端的下划线命名，这之间会自动的转换，通过front/lib/api-client.ts文件进行的
+15.注意：api-client.ts 的 snakecaseKeys 只转换请求体（body）和查询参数对象（params），不转换手动构建的 URL 查询字符串中的值，所以需要在服务层手动映射。

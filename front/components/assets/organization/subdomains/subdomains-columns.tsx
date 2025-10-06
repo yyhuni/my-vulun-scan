@@ -150,18 +150,7 @@ export const createSubdomainColumns = ({
     cell: ({ row }) => <div className="font-medium">{row.getValue("name")}</div>,
   },
 
-  // 域名ID列
-  {
-    accessorKey: "domainId",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="域名ID" />
-    ),
-    cell: ({ row }) => (
-      <div className="font-mono text-sm text-muted-foreground">
-        {row.getValue("domainId")}
-      </div>
-    ),
-  },
+
 
   // 所属域名列
   {
