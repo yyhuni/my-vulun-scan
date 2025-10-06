@@ -6,6 +6,7 @@ toolchain go1.24.3
 
 require (
 	github.com/gin-gonic/gin v1.11.0
+	github.com/google/uuid v1.6.0
 	github.com/rs/zerolog v1.34.0
 	github.com/spf13/viper v1.16.0
 	github.com/swaggo/files v1.0.1

@@ -250,7 +250,7 @@ r.GET("/health", func(c *gin.Context) {
 
 ---
 
-### 7. 缺少请求 ID 追踪
+### 7. 缺少请求 ID 追踪 ✅已修复
 
 **文件**: `backend/internal/middleware/logger.go`  
 **问题**: 未实现请求 ID 追踪
@@ -263,28 +263,32 @@ r.GET("/health", func(c *gin.Context) {
 - 问题排查效率低
 - 无法关联同一请求的所有日志
 
-**建议修复**:
-```go
-// 新建 middleware/request_id.go
-func RequestID() gin.HandlerFunc {
-    return func(c *gin.Context) {
-        requestID := c.GetHeader("X-Request-ID")
-        if requestID == "" {
-            requestID = uuid.New().String()
-        }
-        c.Header("X-Request-ID", requestID)
-        c.Set("request_id", requestID)
-        
-        // 注入到 zerolog 上下文
-        logger := log.With().Str("request_id", requestID).Logger()
-        c.Set("logger", &logger)
-        
-        c.Next()
-    }
-}
+**已修复**:
+1. ✅ 创建了 `internal/middleware/request_id.go` - RequestID 中间件
+2. ✅ 更新了 `internal/middleware/logger.go` - 整合 Request ID 到日志
+3. ✅ 更新了 `cmd/main.go` - 按正确顺序注册中间件
+4. ✅ 安装了 `github.com/google/uuid` 依赖
 
-// 在 cmd/main.go 中使用
-r.Use(middleware.RequestID())
+**中间件顺序**:
+```go
+r.Use(gin.Recovery())           // 1. 恢复 panic
+r.Use(middleware.RequestID())   // 2. 生成 Request ID
+r.Use(middleware.Logger())      // 3. 记录日志（使用 Request ID）
+r.Use(middleware.CORS())        // 4. CORS
+```
+
+**日志输出示例**:
+```json
+{
+  "level": "info",
+  "request_id": "550e8400-e29b-41d4-a716-446655440000",
+  "method": "POST",
+  "path": "/api/v1/organizations/create",
+  "status": 200,
+  "latency": 45.2,
+  "ip": "127.0.0.1",
+  "message": "API Request"
+}
 ```
 
 ---

@@ -73,11 +73,11 @@ func setupRouter() *gin.Engine {
 	// 创建 Gin 引擎
 	r := gin.New()
 
-	// 使用中间件
-	r.Use(gin.Logger())
-	r.Use(gin.Recovery())
-	r.Use(middleware.CORS())
-	r.Use(middleware.Logger())
+	// 使用中间件（顺序很重要！）
+	r.Use(gin.Recovery())           // 1. 恢复 panic
+	r.Use(middleware.RequestID())   // 2. 生成 Request ID（必须在 Logger 之前）
+	r.Use(middleware.Logger())      // 3. 记录日志（使用 Request ID）
+	r.Use(middleware.CORS())        // 4. CORS
 
 	// Swagger JSON 文档（供 Scalar 使用）
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
