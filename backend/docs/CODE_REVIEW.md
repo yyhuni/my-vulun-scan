@@ -430,7 +430,7 @@ const apiClient = axios.create({
 
 ---
 
-### 12. NoRoute 使用 gin.H 而非结构化响应
+### 12. NoRoute 使用 gin.H 而非结构化响应 ✅已修复
 
 **文件**: `backend/cmd/main.go`  
 **行号**: 110-114
@@ -450,10 +450,10 @@ r.NoRoute(func(c *gin.Context) {
 - 响应格式不一致
 - 前端需要特殊处理
 
-**建议修复**:
+**已修复**:
 ```go
 r.NoRoute(func(c *gin.Context) {
-    utils.NotFoundResponse(c, "Route not found")
+    utils.NotFoundResponse(c, "路由不存在")
 })
 ```
 

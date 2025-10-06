@@ -9,6 +9,7 @@ import (
 	"vulun-scan-backend/config"
 	"vulun-scan-backend/internal/middleware"
 	"vulun-scan-backend/internal/models"
+	"vulun-scan-backend/internal/utils"
 	"vulun-scan-backend/pkg/database"
 	"vulun-scan-backend/routes"
 
@@ -106,11 +107,9 @@ func setupRouter() *gin.Engine {
 		routes.SetupRoutes(api)
 	}
 
-	// 默认路由
+	// 默认路由 - 使用统一的结构化响应
 	r.NoRoute(func(c *gin.Context) {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "Route not found",
-		})
+		utils.NotFoundResponse(c, "路由不存在")
 	})
 
 	return r
