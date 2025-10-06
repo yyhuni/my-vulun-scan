@@ -159,12 +159,36 @@ func (s *OrganizationService) UpdateOrganization(req models.UpdateOrganizationRe
 }
 
 // DeleteOrganization 删除组织
+//
+// 业务逻辑说明：
+// 1. 预加载组织及其关联的所有域名
+// 2. 删除组织记录（自动清理 organization_domains 关联）
+// 3. 批量查询孤儿域名（删除组织后没有任何组织关联的域名）
+// 4. 批量删除孤儿域名
+//
+// 核心逻辑 - 孤儿域名清理：
+// - 删除组织后，某些域名可能不再被任何组织使用
+// - 使用 SQL 子查询一次性找出所有孤儿域名（NOT EXISTS）
+// - 批量删除孤儿域名，提高性能
+//
+// 使用 Select(clause.Associations) 的作用：
+// - 自动识别并清理模型中定义的所有关联字段（如 Domains）
+// - 相当于自动执行：Association("Domains").Clear()
+// - 无需手动逐个清理关联，代码更简洁且易于维护
+//
+// 性能优化：
+// - 使用原生 SQL 子查询批量查找孤儿域名，避免 N+1 查询问题
+// - 批量删除而非逐个删除，减少数据库交互次数
+//
+// 事务保证：
+// - 所有操作在事务中执行，确保数据一致性
+// - 如果孤儿域名删除失败，整个删除操作会回滚
 func (s *OrganizationService) DeleteOrganization(organizationID uint) error {
 
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		var org models.Organization
 
-		// 预加载关联的域名
+		// 步骤1: 预加载关联的域名，以便后续检查孤儿域名
 		if err := tx.Preload("Domains").First(&org, "id = ?", organizationID).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
 				return fmt.Errorf("organization not found")
@@ -173,15 +197,18 @@ func (s *OrganizationService) DeleteOrganization(organizationID uint) error {
 			return err
 		}
 
-		// 收集域名 ID
+		// 步骤2: 收集该组织关联的所有域名ID
+		// 这些域名在组织删除后可能成为孤儿域名，需要检查
 		domainIDs := make([]uint, len(org.Domains))
 		for i, d := range org.Domains {
 			domainIDs[i] = d.ID
 		}
 
-		// 使用 Select(clause.Associations) 自动清理所有关联
-		// 这会自动识别并清理模型中的所有关联字段（如 Domains 等）
-		// 无需手动逐个 Association().Clear()，代码更简洁且易于维护
+		// 步骤3: 删除组织记录，并自动清理所有关联
+		// Select(clause.Associations) 的作用：
+		// - 自动识别并清理模型中定义的所有关联字段（如 Domains 等）
+		// - 相当于自动执行：Association("Domains").Clear()
+		// - 无需手动逐个清理关联，代码更简洁且易于维护
 		res := tx.Select(clause.Associations).Delete(&org)
 		if res.Error != nil {
 			log.Error().Err(res.Error).Msg("Failed to delete organization")
@@ -191,9 +218,13 @@ func (s *OrganizationService) DeleteOrganization(organizationID uint) error {
 			return fmt.Errorf("no rows affected during deletion")
 		}
 
-		// 一次性查询孤儿域名(没有任何组织关联的域名)
+		// 步骤4: 批量查询孤儿域名（没有任何组织关联的域名）
+		// 只检查刚才删除的组织原本关联的域名
 		if len(domainIDs) > 0 {
 			var orphanDomainIDs []uint
+			// 使用 SQL 子查询一次性找出孤儿域名
+			// NOT EXISTS 用于检查 organization_domains 表中是否还有关联记录
+			// 性能优化：相比逐个查询，子查询方式只需一次数据库交互
 			err := tx.Raw(`
 				SELECT d.id 
 				FROM domains d
@@ -209,7 +240,8 @@ func (s *OrganizationService) DeleteOrganization(organizationID uint) error {
 				return err
 			}
 
-			// 批量删除孤儿域名
+			// 步骤5: 批量删除孤儿域名
+			// 孤儿域名没有实际用途，应该被清理以保持数据库整洁
 			if len(orphanDomainIDs) > 0 {
 				if err := tx.Delete(&models.Domain{}, orphanDomainIDs).Error; err != nil {
 					log.Error().Err(err).Msg("Failed to delete orphan domains")
@@ -225,6 +257,26 @@ func (s *OrganizationService) DeleteOrganization(organizationID uint) error {
 }
 
 // BatchDeleteOrganizations 批量删除组织
+//
+// 业务逻辑说明：
+// 1. 验证所有组织是否存在
+// 2. 预加载所有组织及其关联的域名
+// 3. 批量删除组织（自动清理关联）
+// 4. 批量查询并删除孤儿域名
+//
+// 与单个删除的区别：
+// - 一次性处理多个组织，减少数据库交互
+// - 收集所有组织的域名后，统一查询孤儿域名
+// - 批量操作性能更好，但逻辑复杂度更高
+//
+// 事务保证：
+// - 所有组织的删除要么全部成功，要么全部失败
+// - 如果任何一个组织删除失败，整个批量操作回滚
+// - 孤儿域名清理失败也会导致整个操作回滚
+//
+// 注意事项：
+// - 必须确保所有传入的组织ID都存在，否则返回错误
+// - 返回被删除的组织列表，供前端确认
 func (s *OrganizationService) BatchDeleteOrganizations(organizationIDs []uint) ([]models.Organization, error) {
 
 	if len(organizationIDs) == 0 {
@@ -233,9 +285,9 @@ func (s *OrganizationService) BatchDeleteOrganizations(organizationIDs []uint) (
 
 	var deletedOrgs []models.Organization
 
-	// 使用事务确保原子性
+	// 使用事务确保批量删除的原子性
 	err := s.db.Transaction(func(tx *gorm.DB) error {
-		// 1. 验证并预加载所有组织及其域名
+		// 步骤1: 验证所有组织是否存在，并预加载关联的域名
 		if err := tx.Preload("Domains").Where("id IN ?", organizationIDs).Find(&deletedOrgs).Error; err != nil {
 			log.Error().Err(err).Msg("Failed to query organizations for batch deletion")
 			return err
@@ -245,7 +297,8 @@ func (s *OrganizationService) BatchDeleteOrganizations(organizationIDs []uint) (
 			return fmt.Errorf("some organization IDs do not exist")
 		}
 
-		// 2. 收集所有关联的域名ID
+		// 步骤2: 收集所有组织关联的域名ID
+		// 这些域名在所有组织删除后可能成为孤儿域名
 		var allDomainIDs []uint
 		for _, org := range deletedOrgs {
 			for _, domain := range org.Domains {
@@ -253,7 +306,8 @@ func (s *OrganizationService) BatchDeleteOrganizations(organizationIDs []uint) (
 			}
 		}
 
-		// 3. 批量删除组织（使用 Select(clause.Associations) 自动清理所有的关联）
+		// 步骤3: 逐个删除组织（使用 Select(clause.Associations) 自动清理所有关联）
+		// 注意：这里无法直接批量删除，因为需要为每个组织清理关联
 		for _, org := range deletedOrgs {
 			if err := tx.Select(clause.Associations).Delete(&org).Error; err != nil {
 				log.Error().Err(err).Uint("org_id", org.ID).Msg("Failed to delete organization")
@@ -261,7 +315,8 @@ func (s *OrganizationService) BatchDeleteOrganizations(organizationIDs []uint) (
 			}
 		}
 
-		// 4. 批量查询并删除孤儿域名（没有任何组织关联的域名）
+		// 步骤4: 批量查询孤儿域名（没有任何组织关联的域名）
+		// 收集了所有被删除组织的域名ID，统一检查哪些成为了孤儿域名
 		if len(allDomainIDs) > 0 {
 			var orphanDomainIDs []uint
 			err := tx.Raw(`
