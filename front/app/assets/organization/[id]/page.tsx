@@ -2,6 +2,7 @@
 
 import React, { useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { LoadingState } from "@/components/ui/loading-spinner"
 
 /**
  * 组织详情页面
@@ -20,10 +21,5 @@ export default function OrganizationDetailPage({
     router.replace(`/assets/organization/${resolvedParams.id}/main-assets`)
   }, [resolvedParams.id, router])
 
-  return (
-    <div className="flex items-center justify-center py-12">
-      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-      <span className="ml-2 text-muted-foreground">正在跳转...</span>
-    </div>
-  )
+  return <LoadingState message="正在跳转..." />
 }
