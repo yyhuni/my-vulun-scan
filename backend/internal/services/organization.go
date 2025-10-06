@@ -3,6 +3,7 @@ package services
 import (
 	"fmt"
 
+	"vulun-scan-backend/internal/errors"
 	"vulun-scan-backend/internal/models"
 	"vulun-scan-backend/pkg/database"
 
@@ -88,7 +89,7 @@ func (s *OrganizationService) GetOrganizationByID(id uint) (*models.Organization
 	result := s.db.First(&org, "id = ?", id)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
-			return nil, fmt.Errorf("organization not found")
+			return nil, errors.ErrOrganizationNotFound
 		}
 		log.Error().Err(result.Error).Msg("Failed to query organization")
 		return nil, result.Error
@@ -129,7 +130,7 @@ func (s *OrganizationService) UpdateOrganization(req models.UpdateOrganizationRe
 	result := s.db.First(&org, "id = ?", req.ID)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
-			return nil, fmt.Errorf("organization not found")
+			return nil, errors.ErrOrganizationNotFound
 		}
 		log.Error().Err(result.Error).Msg("Failed to query organization for update")
 		return nil, result.Error
@@ -191,7 +192,7 @@ func (s *OrganizationService) DeleteOrganization(organizationID uint) error {
 		// 步骤1: 预加载关联的域名，以便后续检查孤儿域名
 		if err := tx.Preload("Domains").First(&org, "id = ?", organizationID).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
-				return fmt.Errorf("organization not found")
+				return errors.ErrOrganizationNotFound
 			}
 			log.Error().Err(err).Msg("Failed to query organization for deletion")
 			return err
@@ -294,7 +295,7 @@ func (s *OrganizationService) BatchDeleteOrganizations(organizationIDs []uint) (
 		}
 
 		if len(deletedOrgs) != len(organizationIDs) {
-			return fmt.Errorf("some organization IDs do not exist")
+			return errors.ErrSomeOrganizationsNotExist
 		}
 
 		// 步骤2: 收集所有组织关联的域名ID

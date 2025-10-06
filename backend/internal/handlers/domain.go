@@ -1,6 +1,9 @@
 package handlers
 
 import (
+	"errors"
+
+	customErrors "vulun-scan-backend/internal/errors"
 	"vulun-scan-backend/internal/models"
 	"vulun-scan-backend/internal/services"
 	"vulun-scan-backend/internal/utils"
@@ -15,9 +18,9 @@ import (
 // @Accept json
 // @Produce json
 // @Param request body models.CreateDomainsRequest true "域名创建请求"
-// @Success 200 {object} map[string]interface{} "创建成功"
-// @Failure 400 {object} map[string]interface{} "请求参数错误"
-// @Failure 500 {object} map[string]interface{} "服务器内部错误"
+// @Success 200 {object} models.APIResponse{data=[]models.Domain} "创建成功"
+// @Failure 400 {object} models.APIResponse "请求参数错误"
+// @Failure 500 {object} models.APIResponse "服务器内部错误"
 // @Router /domains/create [post]
 func CreateDomains(c *gin.Context) {
 	var req models.CreateDomainsRequest
@@ -53,10 +56,11 @@ func CreateDomains(c *gin.Context) {
 // @Param page_size query int false "每页数量" default(10)
 // @Param sort_by query string false "排序字段" default(updated_at) Enums(name, created_at, updated_at)
 // @Param sort_order query string false "排序方向" default(desc) Enums(asc, desc)
-// @Success 200 {object} map[string]interface{} "获取成功"
-// @Failure 400 {object} map[string]interface{} "请求参数错误"
-// @Failure 404 {object} map[string]interface{} "域名不存在"
-// @Failure 500 {object} map[string]interface{} "服务器内部错误"
+// @Success 200 {object} models.APIResponse{data=models.Domain} "获取单个域名成功"
+// @Success 200 {object} models.APIResponse{data=models.GetOrganizationDomainsResponse} "获取域名列表成功"
+// @Failure 400 {object} models.APIResponse "请求参数错误"
+// @Failure 404 {object} models.APIResponse "域名不存在"
+// @Failure 500 {object} models.APIResponse "服务器内部错误"
 // @Router /domains [get]
 func GetDomains(c *gin.Context) {
 	service := services.NewDomainService()
@@ -71,7 +75,7 @@ func GetDomains(c *gin.Context) {
 		
 		domain, err := service.GetDomainByID(id)
 		if err != nil {
-			if err.Error() == "domain not found" {
+			if errors.Is(err, customErrors.ErrDomainNotFound) {
 				utils.NotFoundResponse(c, "域名不存在")
 				return
 			}
@@ -106,10 +110,10 @@ func GetDomains(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body models.RemoveOrganizationDomainRequest true "解除关联请求"
-// @Success 200 {object} map[string]interface{} "解除关联成功"
-// @Failure 400 {object} map[string]interface{} "请求参数错误"
-// @Failure 404 {object} map[string]interface{} "组织、域名或关联不存在"
-// @Failure 500 {object} map[string]interface{} "服务器内部错误"
+// @Success 200 {object} models.APIResponse{data=models.RemoveOrganizationDomainResponseData} "解除关联成功"
+// @Failure 400 {object} models.APIResponse "请求参数错误"
+// @Failure 404 {object} models.APIResponse "组织、域名或关联不存在"
+// @Failure 500 {object} models.APIResponse "服务器内部错误"
 // @Router /domains/remove-from-organization [post]
 func RemoveOrganizationDomain(c *gin.Context) {
 	var req models.RemoveOrganizationDomainRequest

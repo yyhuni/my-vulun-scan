@@ -1,7 +1,10 @@
 package handlers
 
 import (
+	"errors"
 	"strconv"
+
+	customErrors "vulun-scan-backend/internal/errors"
 	"vulun-scan-backend/internal/models"
 	"vulun-scan-backend/internal/services"
 	"vulun-scan-backend/internal/utils"
@@ -19,10 +22,11 @@ import (
 // @Param page_size query int false "每页数量,默认10"
 // @Param sort_by query string false "排序字段: id, name, created_at, updated_at,默认updated_at"
 // @Param sort_order query string false "排序方向: asc, desc,默认desc"
-// @Success 200 {object} map[string]interface{} "成功返回数据"
-// @Failure 400 {object} map[string]interface{} "请求参数错误"
-// @Failure 404 {object} map[string]interface{} "组织不存在"
-// @Failure 500 {object} map[string]interface{} "服务器内部错误"
+// @Success 200 {object} models.APIResponse{data=models.Organization} "获取单个组织成功"
+// @Success 200 {object} models.APIResponse{data=models.GetOrganizationsResponse} "获取组织列表成功"
+// @Failure 400 {object} models.APIResponse "请求参数错误"
+// @Failure 404 {object} models.APIResponse "组织不存在"
+// @Failure 500 {object} models.APIResponse "服务器内部错误"
 // @Router /organizations [get]
 func GetOrganizations(c *gin.Context) {
 	service := services.NewOrganizationService()
@@ -37,7 +41,7 @@ func GetOrganizations(c *gin.Context) {
 
 		organization, err := service.GetOrganizationByID(id)
 		if err != nil {
-			if err.Error() == "organization not found" {
+			if errors.Is(err, customErrors.ErrOrganizationNotFound) {
 				utils.NotFoundResponse(c, "组织不存在")
 				return
 			}
@@ -73,22 +77,21 @@ func GetOrganizations(c *gin.Context) {
 	response, err := service.GetOrganizations(req)
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "获取组织列表失败: "+err.Error())
-		return
 	}
 
 	utils.SuccessResponse(c, response)
 }
 
-// CreateOrganization 创建新组织
+// CreateOrganization 创建组织
 // @Summary 创建组织
-// @Description 根据请求体创建一个新组织
+// @Description 创建新的组织
 // @Tags 组织管理
 // @Accept json
 // @Produce json
 // @Param request body models.CreateOrganizationRequest true "组织信息"
-// @Success 200 {object} map[string]interface{} "创建成功"
-// @Failure 400 {object} map[string]interface{} "请求参数错误"
-// @Failure 500 {object} map[string]interface{} "服务器内部错误"
+// @Success 200 {object} models.APIResponse{data=models.Organization} "创建成功"
+// @Failure 400 {object} models.APIResponse "请求参数错误"
+// @Failure 500 {object} models.APIResponse "服务器内部错误"
 // @Router /organizations/create [post]
 func CreateOrganization(c *gin.Context) {
 	var req models.CreateOrganizationRequest
@@ -104,20 +107,22 @@ func CreateOrganization(c *gin.Context) {
 		return
 	}
 
-	utils.SuccessResponse(c, organization)
+	utils.SuccessResponse(c, models.APIResponse{
+		Data: organization,
+	})
 }
 
-// UpdateOrganization 更新组织信息
+// UpdateOrganization 更新组织
 // @Summary 更新组织
-// @Description 更新指定组织的名称和描述信息
+// @Description 更新组织信息
 // @Tags 组织管理
 // @Accept json
 // @Produce json
 // @Param request body models.UpdateOrganizationRequest true "更新信息"
-// @Success 200 {object} map[string]interface{} "更新成功"
-// @Failure 400 {object} map[string]interface{} "请求参数错误"
-// @Failure 404 {object} map[string]interface{} "组织不存在"
-// @Failure 500 {object} map[string]interface{} "服务器内部错误"
+// @Success 200 {object} models.APIResponse{data=models.Organization} "更新成功"
+// @Failure 400 {object} models.APIResponse "请求参数错误"
+// @Failure 404 {object} models.APIResponse "组织不存在"
+// @Failure 500 {object} models.APIResponse "服务器内部错误"
 // @Router /organizations/update [post]
 func UpdateOrganization(c *gin.Context) {
 	var req models.UpdateOrganizationRequest
@@ -130,7 +135,7 @@ func UpdateOrganization(c *gin.Context) {
 	service := services.NewOrganizationService()
 	organization, err := service.UpdateOrganization(req)
 	if err != nil {
-		if err.Error() == "organization not found" {
+		if errors.Is(err, customErrors.ErrOrganizationNotFound) {
 			utils.NotFoundResponse(c, "组织不存在")
 			return
 		}
@@ -138,20 +143,22 @@ func UpdateOrganization(c *gin.Context) {
 		return
 	}
 
-	utils.SuccessResponse(c, organization)
+	utils.SuccessResponse(c, models.APIResponse{
+		Data: organization,
+	})
 }
 
 // DeleteOrganization 删除组织
 // @Summary 删除组织
-// @Description 删除指定组织及其关联数据
+// @Description 删除指定的组织（级联删除关联的域名和孤儿域名）
 // @Tags 组织管理
 // @Accept json
 // @Produce json
 // @Param request body models.DeleteOrganizationRequest true "删除请求"
-// @Success 200 {object} map[string]interface{} "删除成功"
-// @Failure 400 {object} map[string]interface{} "请求参数错误"
-// @Failure 404 {object} map[string]interface{} "组织不存在"
-// @Failure 500 {object} map[string]interface{} "服务器内部错误"
+// @Success 200 {object} models.APIResponse{data=models.DeleteOrganizationResponseData} "删除成功"
+// @Failure 400 {object} models.APIResponse "请求参数错误"
+// @Failure 404 {object} models.APIResponse "组织不存在"
+// @Failure 500 {object} models.APIResponse "服务器内部错误"
 // @Router /organizations/delete [post]
 func DeleteOrganization(c *gin.Context) {
 	var req models.DeleteOrganizationRequest
@@ -164,7 +171,7 @@ func DeleteOrganization(c *gin.Context) {
 	service := services.NewOrganizationService()
 	err := service.DeleteOrganization(req.ID)
 	if err != nil {
-		if err.Error() == "organization not found" {
+		if errors.Is(err, customErrors.ErrOrganizationNotFound) {
 			utils.NotFoundResponse(c, "组织不存在")
 			return
 		}
@@ -172,27 +179,26 @@ func DeleteOrganization(c *gin.Context) {
 		return
 	}
 
-	utils.SuccessResponse(c, models.DeleteOrganizationResponseData{
-		Message: "组织删除成功",
+	utils.SuccessResponse(c, models.APIResponse{
+		Data: models.DeleteOrganizationResponseData{
+			Message: "组织删除成功",
+		},
 	})
 }
 
 // BatchDeleteOrganizations 批量删除组织
 // @Summary 批量删除组织
-// @Description 批量删除多个组织及其关联数据，如果组织下有孤儿域名，将一并删除
+// @Description 批量删除组织（级联删除关联的域名和孤儿域名）
 // @Tags 组织管理
 // @Accept json
 // @Produce json
-// @Param request body object{organization_ids=[]uint} true "组织ID列表"
-// @Success 200 {object} map[string]interface{} "批量删除成功"
-// @Failure 400 {object} map[string]interface{} "请求参数错误"
-// @Failure 500 {object} map[string]interface{} "服务器内部错误"
+// @Param request body models.BatchDeleteOrganizationsRequest true "组组ID列表"
+// @Success 200 {object} models.APIResponse{data=models.BatchDeleteOrganizationsResponseData} "批量删除成功"
+// @Failure 400 {object} models.APIResponse "请求参数错误"
+// @Failure 500 {object} models.APIResponse "服务器内部错误"
 // @Router /organizations/batch-delete [post]
 func BatchDeleteOrganizations(c *gin.Context) {
-	var req struct {
-		OrganizationIDs []uint `json:"organization_ids" binding:"required"`
-	}
-
+	var req models.BatchDeleteOrganizationsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
 		return
@@ -206,11 +212,11 @@ func BatchDeleteOrganizations(c *gin.Context) {
 	service := services.NewOrganizationService()
 	organizations, err := service.BatchDeleteOrganizations(req.OrganizationIDs)
 	if err != nil {
-		if err.Error() == "some organization IDs do not exist" {
+		if errors.Is(err, customErrors.ErrSomeOrganizationsNotExist) {
 			utils.BadRequestResponse(c, "部分组织ID不存在")
 			return
 		}
-		utils.InternalServerErrorResponse(c, "删除组织失败: "+err.Error())
+		utils.InternalServerErrorResponse(c, "批量删除组织失败: "+err.Error())
 		return
 	}
 

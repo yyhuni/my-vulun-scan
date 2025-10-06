@@ -78,31 +78,39 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "获取成功",
+                        "description": "获取域名列表成功",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/models.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.GetOrganizationDomainsResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "404": {
                         "description": "域名不存在",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -128,7 +136,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.CreateDomainsRequest"
+                            "$ref": "#/definitions/models.CreateDomainsRequest"
                         }
                     }
                 ],
@@ -136,22 +144,34 @@ const docTemplate = `{
                     "200": {
                         "description": "创建成功",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/models.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.Domain"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -177,7 +197,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.RemoveOrganizationDomainRequest"
+                            "$ref": "#/definitions/models.RemoveOrganizationDomainRequest"
                         }
                     }
                 ],
@@ -185,29 +205,37 @@ const docTemplate = `{
                     "200": {
                         "description": "解除关联成功",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/models.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.RemoveOrganizationDomainResponseData"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "404": {
                         "description": "组织、域名或关联不存在",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -257,31 +285,39 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功返回数据",
+                        "description": "获取组织列表成功",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/models.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.GetOrganizationsResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "404": {
                         "description": "组织不存在",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -289,7 +325,7 @@ const docTemplate = `{
         },
         "/organizations/batch-delete": {
             "post": {
-                "description": "批量删除多个组织及其关联数据，如果组织下有孤儿域名，将一并删除",
+                "description": "批量删除组织（级联删除关联的域名和孤儿域名）",
                 "consumes": [
                     "application/json"
                 ],
@@ -302,20 +338,12 @@ const docTemplate = `{
                 "summary": "批量删除组织",
                 "parameters": [
                     {
-                        "description": "组织ID列表",
+                        "description": "组组ID列表",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "object",
-                            "properties": {
-                                "organization_ids": {
-                                    "type": "array",
-                                    "items": {
-                                        "type": "integer"
-                                    }
-                                }
-                            }
+                            "$ref": "#/definitions/models.BatchDeleteOrganizationsRequest"
                         }
                     }
                 ],
@@ -323,22 +351,31 @@ const docTemplate = `{
                     "200": {
                         "description": "批量删除成功",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/models.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.BatchDeleteOrganizationsResponseData"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -346,7 +383,7 @@ const docTemplate = `{
         },
         "/organizations/create": {
             "post": {
-                "description": "根据请求体创建一个新组织",
+                "description": "创建新的组织",
                 "consumes": [
                     "application/json"
                 ],
@@ -364,7 +401,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.CreateOrganizationRequest"
+                            "$ref": "#/definitions/models.CreateOrganizationRequest"
                         }
                     }
                 ],
@@ -372,22 +409,31 @@ const docTemplate = `{
                     "200": {
                         "description": "创建成功",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/models.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.Organization"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -395,7 +441,7 @@ const docTemplate = `{
         },
         "/organizations/delete": {
             "post": {
-                "description": "删除指定组织及其关联数据",
+                "description": "删除指定的组织（级联删除关联的域名和孤儿域名）",
                 "consumes": [
                     "application/json"
                 ],
@@ -413,7 +459,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.DeleteOrganizationRequest"
+                            "$ref": "#/definitions/models.DeleteOrganizationRequest"
                         }
                     }
                 ],
@@ -421,29 +467,37 @@ const docTemplate = `{
                     "200": {
                         "description": "删除成功",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/models.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.DeleteOrganizationResponseData"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "404": {
                         "description": "组织不存在",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -451,7 +505,7 @@ const docTemplate = `{
         },
         "/organizations/update": {
             "post": {
-                "description": "更新指定组织的名称和描述信息",
+                "description": "更新组织信息",
                 "consumes": [
                     "application/json"
                 ],
@@ -469,7 +523,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.UpdateOrganizationRequest"
+                            "$ref": "#/definitions/models.UpdateOrganizationRequest"
                         }
                     }
                 ],
@@ -477,29 +531,37 @@ const docTemplate = `{
                     "200": {
                         "description": "更新成功",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/models.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.Organization"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "404": {
                         "description": "组织不存在",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -524,14 +586,8 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "域名ID,用于筛选特定域名下的子域名",
+                        "description": "域名ID(筛选指定域名下的子域名)",
                         "name": "domain_id",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "组织ID,用于筛选特定组织下的子域名",
-                        "name": "organization_id",
                         "in": "query"
                     },
                     {
@@ -561,31 +617,39 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功返回数据",
+                        "description": "获取子域名列表成功",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/models.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.GetSubDomainsResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "404": {
                         "description": "子域名不存在",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -611,7 +675,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.CreateSubDomainsRequest"
+                            "$ref": "#/definitions/models.CreateSubDomainsRequest"
                         }
                     }
                 ],
@@ -619,22 +683,31 @@ const docTemplate = `{
                     "200": {
                         "description": "创建成功",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/models.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.CreateSubDomainsResponseData"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -642,7 +715,58 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "vulun-scan-backend_internal_models.CreateDomainsRequest": {
+        "models.APIResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "HTTP状态码，如 \"200\", \"400\", \"500\"",
+                    "type": "string"
+                },
+                "data": {
+                    "description": "响应数据"
+                },
+                "message": {
+                    "description": "响应消息",
+                    "type": "string"
+                },
+                "state": {
+                    "description": "业务状态，如 \"success\", \"error\"",
+                    "type": "string"
+                }
+            }
+        },
+        "models.BatchDeleteOrganizationsRequest": {
+            "type": "object",
+            "required": [
+                "organization_ids"
+            ],
+            "properties": {
+                "organization_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "models.BatchDeleteOrganizationsResponseData": {
+            "type": "object",
+            "properties": {
+                "deleted_count": {
+                    "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "organizations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Organization"
+                    }
+                }
+            }
+        },
+        "models.CreateDomainsRequest": {
             "type": "object",
             "required": [
                 "domains",
@@ -652,7 +776,7 @@ const docTemplate = `{
                 "domains": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/vulun-scan-backend_internal_models.DomainDetail"
+                        "$ref": "#/definitions/models.DomainDetail"
                     }
                 },
                 "organization_id": {
@@ -660,7 +784,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.CreateOrganizationRequest": {
+        "models.CreateOrganizationRequest": {
             "type": "object",
             "required": [
                 "name"
@@ -674,7 +798,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.CreateSubDomainsRequest": {
+        "models.CreateSubDomainsRequest": {
             "type": "object",
             "required": [
                 "domain_id",
@@ -692,7 +816,27 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.DeleteOrganizationRequest": {
+        "models.CreateSubDomainsResponseData": {
+            "type": "object",
+            "properties": {
+                "existing_domains": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "message": {
+                    "type": "string"
+                },
+                "success_count": {
+                    "type": "integer"
+                },
+                "total_requested": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.DeleteOrganizationRequest": {
             "type": "object",
             "required": [
                 "id"
@@ -703,7 +847,51 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.DomainDetail": {
+        "models.DeleteOrganizationResponseData": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Domain": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "description": "数据库基础字段",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "核心业务字段",
+                    "type": "string"
+                },
+                "organizations": {
+                    "description": "关联关系 - 级联删除配置在 OrganizationDomain 中间表定义",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Organization"
+                    }
+                },
+                "sub_domains": {
+                    "description": "SubDomain 的级联删除：删除 Domain 时自动删除其所有子域名",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SubDomain"
+                    }
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.DomainDetail": {
             "type": "object",
             "required": [
                 "name"
@@ -717,7 +905,102 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.RemoveOrganizationDomainRequest": {
+        "models.GetOrganizationDomainsResponse": {
+            "type": "object",
+            "properties": {
+                "domains": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Domain"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "page_size": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "total_pages": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.GetOrganizationsResponse": {
+            "type": "object",
+            "properties": {
+                "organizations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Organization"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "page_size": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "total_pages": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.GetSubDomainsResponse": {
+            "type": "object",
+            "properties": {
+                "page": {
+                    "type": "integer"
+                },
+                "page_size": {
+                    "type": "integer"
+                },
+                "sub_domains": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SubDomain"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.Organization": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "domains": {
+                    "description": "关联关系 - 级联删除配置在 OrganizationDomain 中间表定义",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Domain"
+                    }
+                },
+                "id": {
+                    "description": "数据库基础字段",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "核心业务字段",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.RemoveOrganizationDomainRequest": {
             "type": "object",
             "required": [
                 "domain_id",
@@ -732,7 +1015,45 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.UpdateOrganizationRequest": {
+        "models.RemoveOrganizationDomainResponseData": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SubDomain": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "domain": {
+                    "description": "关联关系",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Domain"
+                        }
+                    ]
+                },
+                "domain_id": {
+                    "type": "integer"
+                },
+                "id": {
+                    "description": "数据库基础字段",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "核心业务字段",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.UpdateOrganizationRequest": {
             "type": "object",
             "required": [
                 "id"

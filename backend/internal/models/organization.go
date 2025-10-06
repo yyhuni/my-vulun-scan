@@ -37,6 +37,11 @@ type DeleteOrganizationRequest struct {
 	ID uint `json:"id" binding:"required"`
 }
 
+// BatchDeleteOrganizationsRequest 批量删除组织请求
+type BatchDeleteOrganizationsRequest struct {
+	OrganizationIDs []uint `json:"organization_ids" binding:"required"`
+}
+
 // GetOrganizationsRequest 获取组织列表请求
 type GetOrganizationsRequest struct {
 	Page      int    `json:"page,omitempty"`

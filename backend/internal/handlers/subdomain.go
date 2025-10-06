@@ -1,8 +1,11 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
+
+	customErrors "vulun-scan-backend/internal/errors"
 	"vulun-scan-backend/internal/models"
 	"vulun-scan-backend/internal/services"
 	"vulun-scan-backend/internal/utils"
@@ -16,16 +19,16 @@ import (
 // @Tags 子域名管理
 // @Produce json
 // @Param id query uint false "子域名ID(查询单个子域名时使用)"
-// @Param domain_id query int false "域名ID,用于筛选特定域名下的子域名"
-// @Param organization_id query int false "组织ID,用于筛选特定组织下的子域名"
+// @Param domain_id query uint false "域名ID(筛选指定域名下的子域名)"
 // @Param page query int false "页码,默认1"
 // @Param page_size query int false "每页数量,默认10"
 // @Param sort_by query string false "排序字段: id, name, created_at, updated_at,默认updated_at"
 // @Param sort_order query string false "排序方向: asc, desc,默认desc"
-// @Success 200 {object} map[string]interface{} "成功返回数据"
-// @Failure 400 {object} map[string]interface{} "请求参数错误"
-// @Failure 404 {object} map[string]interface{} "子域名不存在"
-// @Failure 500 {object} map[string]interface{} "服务器内部错误"
+// @Success 200 {object} models.APIResponse{data=models.SubDomain} "获取单个子域名成功"
+// @Success 200 {object} models.APIResponse{data=models.GetSubDomainsResponse} "获取子域名列表成功"
+// @Failure 400 {object} models.APIResponse "请求参数错误"
+// @Failure 404 {object} models.APIResponse "子域名不存在"
+// @Failure 500 {object} models.APIResponse "服务器内部错误"
 // @Router /subdomains [get]
 func GetSubDomains(c *gin.Context) {
 	service := services.NewSubDomainService()
@@ -40,7 +43,7 @@ func GetSubDomains(c *gin.Context) {
 		
 		subDomain, err := service.GetSubDomainByID(id)
 		if err != nil {
-			if err.Error() == "subdomain not found" {
+			if errors.Is(err, customErrors.ErrSubDomainNotFound) {
 				utils.NotFoundResponse(c, "子域名不存在")
 				return
 			}
@@ -114,9 +117,9 @@ func GetSubDomains(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body models.CreateSubDomainsRequest true "子域名创建请求"
-// @Success 200 {object} map[string]interface{} "创建成功"
-// @Failure 400 {object} map[string]interface{} "请求参数错误"
-// @Failure 500 {object} map[string]interface{} "服务器内部错误"
+// @Success 200 {object} models.APIResponse{data=models.CreateSubDomainsResponseData} "创建成功"
+// @Failure 400 {object} models.APIResponse "请求参数错误"
+// @Failure 500 {object} models.APIResponse "服务器内部错误"
 // @Router /subdomains/create [post]
 func CreateSubDomains(c *gin.Context) {
 	// 解析请求体

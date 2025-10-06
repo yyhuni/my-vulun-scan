@@ -3,6 +3,7 @@ package services
 import (
 	"fmt"
 
+	"vulun-scan-backend/internal/errors"
 	"vulun-scan-backend/internal/models"
 	"vulun-scan-backend/pkg/database"
 
@@ -145,7 +146,7 @@ func (s *DomainService) GetDomainByID(id uint) (*models.Domain, error) {
 	result := s.db.Preload("SubDomains").First(&domain, "id = ?", id)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
-			return nil, fmt.Errorf("domain not found")
+			return nil, errors.ErrDomainNotFound
 		}
 		log.Error().Err(result.Error).Msg("Failed to query domain")
 		return nil, result.Error
@@ -314,7 +315,7 @@ func (s *DomainService) RemoveOrganizationDomain(req models.RemoveOrganizationDo
 		if err := tx.First(&org, "id = ?", req.OrganizationID).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
 				log.Error().Uint("organization_id", req.OrganizationID).Msg("Organization not found")
-				return fmt.Errorf("organization not found")
+				return errors.ErrOrganizationNotFound
 			}
 			log.Error().Err(err).Msg("Failed to query organization")
 			return err
@@ -325,7 +326,7 @@ func (s *DomainService) RemoveOrganizationDomain(req models.RemoveOrganizationDo
 		if err := tx.First(&domain, "id = ?", req.DomainID).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
 				log.Error().Uint("domain_id", req.DomainID).Msg("Domain not found")
-				return fmt.Errorf("domain not found")
+				return errors.ErrDomainNotFound
 			}
 			log.Error().Err(err).Msg("Failed to query domain")
 			return err
@@ -346,7 +347,7 @@ func (s *DomainService) RemoveOrganizationDomain(req models.RemoveOrganizationDo
 				Uint("organization_id", req.OrganizationID).
 				Uint("domain_id", req.DomainID).
 				Msg("Association not found")
-			return fmt.Errorf("association not found")
+			return errors.ErrAssociationNotFound
 		}
 
 		// 步骤4: 使用 GORM 的 Association 方法删除关联

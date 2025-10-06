@@ -3,6 +3,7 @@ package services
 import (
 	"fmt"
 
+	"vulun-scan-backend/internal/errors"
 	"vulun-scan-backend/internal/models"
 	"vulun-scan-backend/pkg/database"
 
@@ -232,7 +233,7 @@ func (s *SubDomainService) GetSubDomainByID(id uint) (*models.SubDomain, error) 
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
 			log.Warn().Uint("id", id).Msg("Sub domain not found")
-			return nil, fmt.Errorf("subdomain not found")
+			return nil, errors.ErrSubDomainNotFound
 		}
 		log.Error().Err(result.Error).Uint("id", id).Msg("Failed to get sub domain by ID")
 		return nil, result.Error
