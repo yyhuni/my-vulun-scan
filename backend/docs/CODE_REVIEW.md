@@ -157,7 +157,7 @@ r.Use(RequestSizeLimit(10 * 1024 * 1024)) // 10MB 限制
 
 ---
 
-### 5. 数据库初始化缺少并发控制
+### 5. 数据库初始化缺少并发控制 ✅已修复
 
 **文件**: `backend/pkg/database/database.go`  
 **行号**: 15, 100
@@ -178,27 +178,49 @@ func GetDB() *gorm.DB {
 - `GetDB()` 可能返回 nil
 - 不符合 Go 最佳实践
 
-**建议修复**:
+**已修复**:
+1. ✅ 使用 `sync.Once` 确保数据库只初始化一次
+2. ✅ 将全局变量 `DB` 改为私有变量 `db`，不直接暴露
+3. ✅ 在 `GetDB()` 中添加空指针检查
+4. ✅ 添加 `initErr` 记录初始化错误
+5. ✅ 在所有函数中添加空指针检查
+
+**修复后代码**:
 ```go
 var (
-    db   *gorm.DB
+    // db 数据库连接实例（使用小写，不直接暴露）
+    db *gorm.DB
+    // once 确保数据库只初始化一次
     once sync.Once
+    // initErr 记录初始化时的错误
+    initErr error
 )
 
 func InitDB() {
     once.Do(func() {
-        // 初始化逻辑
-        db = // ...
+        // 初始化逻辑...
+        db, err = gorm.Open(...)
+        if err != nil {
+            initErr = fmt.Errorf("failed to connect: %w", err)
+            log.Fatal().Err(err).Msg("...")
+            return
+        }
+        // ...
     })
 }
 
 func GetDB() *gorm.DB {
     if db == nil {
-        log.Fatal().Msg("Database not initialized")
+        log.Fatal().Msg("Database not initialized. Please call InitDB() first.")
     }
     return db
 }
 ```
+
+**并发安全保证**:
+- `sync.Once` 确保 InitDB 只执行一次，即使多个 goroutine 同时调用
+- GetDB 在返回前检查 db 是否为 nil
+- 所有函数（HealthCheck, AutoMigrate, WithTx）都有 nil 检查
 
 ---
 
