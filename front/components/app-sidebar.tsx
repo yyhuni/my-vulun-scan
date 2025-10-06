@@ -28,8 +28,8 @@ import { usePathname } from "next/navigation"
 import { NavDocuments } from "@/components/nav-documents"
 import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
-// 导入导航 hook
-import { useNavigation } from "@/hooks/use-navigation"
+// 导入 Next.js 路由 hook
+import { useRouter } from "next/navigation"
 // 导入侧边栏 UI 组件
 import {
   Sidebar,
@@ -141,7 +141,12 @@ const data = {
  */
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname()
-  const { navigate } = useNavigation()
+  const router = useRouter()
+  
+  // 简单的导航函数，直接使用 Next.js router
+  const navigate = (href: string) => {
+    router.push(href)
+  }
 
   return (
     // collapsible="offcanvas" 表示侧边栏可以折叠为画布外模式

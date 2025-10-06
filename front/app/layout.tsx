@@ -8,7 +8,7 @@ import { GeistMono } from "geist/font/mono"
 // 导入全局样式文件
 import "./globals.css"
 import { Suspense } from "react"
-import NavigationProvider from "@/components/providers/navigation-provider"
+import { QueryProvider } from "@/components/providers/query-provider"
 
 // 导入公共布局组件
 import { AppSidebar } from "@/components/app-sidebar"
@@ -44,10 +44,10 @@ export default function RootLayout({
         - GeistMono.variable: Geist 等宽字体的 CSS 变量
       */}
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
-        {/* 使用 NavigationProvider 包裹整个应用 */}
-        <NavigationProvider>
-          {/* 使用 Suspense 包裹页面内容 */}
-          <Suspense fallback={<div>Loading...</div>}>
+        {/* 使用 QueryProvider 提供 React Query 功能 */}
+        <QueryProvider>
+            {/* 使用 Suspense 包裹页面内容 */}
+            <Suspense fallback={<div>Loading...</div>}>
             {/* SidebarProvider 提供侧边栏的上下文状态管理 */}
             <SidebarProvider
               // 自定义 CSS 变量,设置侧边栏宽度和头部高度
@@ -81,8 +81,8 @@ export default function RootLayout({
                 </div>
               </SidebarInset>
             </SidebarProvider>
-          </Suspense>
-        </NavigationProvider>
+            </Suspense>
+        </QueryProvider>
       </body>
     </html>
   )

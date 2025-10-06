@@ -1,14 +1,14 @@
-"use client" // 标记为客户端组件，可以使用浏览器 API 和交互功能
+"use client"
 
-// 导入 React 核心库
 import React, { useState, useEffect } from "react"
-// 导入提示组件
-import { toast } from "sonner"
-// 导入图标组件
 import { Edit, Building2 } from "lucide-react"
 
 // 导入 UI 组件
 import { Button } from "@/components/ui/button"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
+
+// 导入 React Query Hook
+import { useUpdateOrganization } from "@/hooks/use-organizations"
 import {
   Dialog,
   DialogContent,
@@ -23,8 +23,6 @@ import { Textarea } from "@/components/ui/textarea"
 
 // 导入类型定义
 import type { Organization } from "@/types/organization.types"
-// 导入 API 服务
-import { OrganizationService } from "@/services/organization.service"
 
 // 组件属性类型定义
 interface EditOrganizationDialogProps {
@@ -51,13 +49,14 @@ export function EditOrganizationDialog({
   onOpenChange, 
   onEdit 
 }: EditOrganizationDialogProps) {
-  // 提交加载状态
-  const [isSubmitting, setIsSubmitting] = useState(false)
   // 表单数据状态
   const [formData, setFormData] = useState({
     name: "",
     description: "",
   })
+
+  // 使用 React Query 的更新组织 mutation
+  const updateOrganization = useUpdateOrganization()
 
   // 当组织数据变化时更新表单
   useEffect(() => {
@@ -83,59 +82,43 @@ export function EditOrganizationDialog({
 
     // 表单验证
     if (!formData.name.trim()) {
-      toast.error("请输入组织名称")
       return
     }
 
     if (formData.name.trim().length < 2) {
-      toast.error("组织名称至少需要2个字符")
       return
     }
 
     if (formData.name.trim().length > 50) {
-      toast.error("组织名称不能超过50个字符")
       return
     }
 
     // 检查是否有变更
     if (!hasChanges()) {
-      toast.info("没有检测到任何变更")
       return
     }
 
-    setIsSubmitting(true)
-
-    try {
-      // 调用真实的 API 服务更新组织
-      const response = await OrganizationService.updateOrganization({
-        id: organization.id,
-        name: formData.name.trim(),
-        description: formData.description.trim(),
-      })
-      
-      // 检查响应状态
-      if (response.state === "success" && response.data) {
-        // 使用后端返回的更新后数据
-        const updatedOrganization: Organization = response.data
-
-        // 调用成功回调
-        onEdit(updatedOrganization)
-        
-        // 显示成功提示
-        toast.success(`组织 "${updatedOrganization.name}" 更新成功`)
-        
-        // 关闭对话框
-        onOpenChange(false)
-      } else {
-        throw new Error(response.message || "更新失败")
+    // 使用 React Query mutation
+    updateOrganization.mutate(
+      {
+        id: Number(organization.id),
+        data: {
+          name: formData.name.trim(),
+          description: formData.description.trim(),
+        }
+      },
+      {
+        onSuccess: (response) => {
+          if (response.state === "success" && response.data) {
+            // 调用成功回调
+            onEdit(response.data)
+            
+            // 关闭对话框
+            onOpenChange(false)
+          }
+        }
       }
-      
-    } catch (error: any) {
-      console.error("更新组织失败:", error)
-      toast.error(`更新组织失败: ${error.message || "未知错误"}`)
-    } finally {
-      setIsSubmitting(false)
-    }
+    )
   }
 
   // 处理输入框变化
@@ -148,7 +131,7 @@ export function EditOrganizationDialog({
 
   // 处理对话框关闭
   const handleOpenChange = (newOpen: boolean) => {
-    if (!isSubmitting) {
+    if (!updateOrganization.isPending) {
       onOpenChange(newOpen)
     }
   }
@@ -188,7 +171,7 @@ export function EditOrganizationDialog({
                 value={formData.name}
                 onChange={(e) => handleInputChange("name", e.target.value)}
                 placeholder="请输入组织名称"
-                disabled={isSubmitting}
+                disabled={updateOrganization.isPending}
                 maxLength={50}
                 required
               />
@@ -205,7 +188,7 @@ export function EditOrganizationDialog({
                 value={formData.description}
                 onChange={(e) => handleInputChange("description", e.target.value)}
                 placeholder="请输入组织描述（可选）"
-                disabled={isSubmitting}
+                disabled={updateOrganization.isPending}
                 rows={3}
                 maxLength={200}
               />
@@ -228,7 +211,7 @@ export function EditOrganizationDialog({
               type="button" 
               variant="outline" 
               onClick={() => handleOpenChange(false)}
-              disabled={isSubmitting}
+              disabled={updateOrganization.isPending}
             >
               取消
             </Button>
@@ -238,7 +221,7 @@ export function EditOrganizationDialog({
                 type="button" 
                 variant="ghost" 
                 onClick={handleReset}
-                disabled={isSubmitting}
+                disabled={updateOrganization.isPending}
               >
                 重置
               </Button>
@@ -246,11 +229,11 @@ export function EditOrganizationDialog({
             
             <Button 
               type="submit" 
-              disabled={isSubmitting || !formData.name.trim() || !hasChanges()}
+              disabled={updateOrganization.isPending || !formData.name.trim() || !hasChanges()}
             >
-              {isSubmitting ? (
+              {updateOrganization.isPending ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  <LoadingSpinner size="sm" className="mr-2" />
                   更新中...
                 </>
               ) : (

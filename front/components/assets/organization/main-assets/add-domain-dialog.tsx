@@ -1,16 +1,14 @@
-"use client" // 标记为客户端组件，可以使用浏览器 API 和交互功能
+"use client"
 
-// 导入 React 核心库
 import React, { useState } from "react"
-// 导入提示组件
-import { toast } from "sonner"
-// 导入图标组件
 import { Plus, Globe } from "lucide-react"
 
 // 导入 UI 组件
 import { Button } from "@/components/ui/button"
-// 导入API服务
-import { DomainService } from "@/services/domain.service"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
+
+// 导入 React Query Hook
+import { useCreateDomain } from "@/hooks/use-domains"
 import {
   Dialog,
   DialogContent,
@@ -55,10 +53,12 @@ export function AddDomainDialog({
   const [internalOpen, setInternalOpen] = useState(false)
   const open = externalOpen !== undefined ? externalOpen : internalOpen
   const setOpen = externalOnOpenChange || setInternalOpen
-  // 提交加载状态
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  
   // 域名文本输入
   const [domainsText, setDomainsText] = useState("")
+
+  // 使用 React Query 的创建域名 mutation
+  const createDomain = useCreateDomain()
 
   // 验证域名格式
   const validateDomainName = (name: string): boolean => {
@@ -78,7 +78,6 @@ export function AddDomainDialog({
       .filter(line => line.length > 0)
     
     if (domainLines.length === 0) {
-      toast.error("请至少输入一个域名")
       return
     }
 
@@ -91,49 +90,38 @@ export function AddDomainDialog({
     }
 
     if (invalidDomains.length > 0) {
-      toast.error(`以下域名格式不正确: ${invalidDomains.join(', ')}`)
       return
     }
 
-    setIsSubmitting(true)
-
-    try {
-      // 创建域名
-      const response = await DomainService.createDomains({
+    // 使用 React Query mutation
+    createDomain.mutate(
+      {
         domains: domainLines.map(name => ({
           name: name,
           description: "",
         })),
         organizationId: parseInt(organizationId)
-      })
-      
-      if (response.state === "success" && response.data) {
-        // 调用成功回调
-        onAdd(response.data)
-        
-        // 重置表单
-        setDomainsText("")
-        
-        // 关闭对话框
-        setOpen(false)
-        
-        // 显示成功提示
-        toast.success(`成功添加 ${response.data.length} 个域名`)
-      } else {
-        throw new Error(response.message || "创建域名失败")
+      },
+      {
+        onSuccess: (response) => {
+          if (response.state === "success" && response.data) {
+            // 调用成功回调
+            onAdd(response.data)
+            
+            // 重置表单
+            setDomainsText("")
+            
+            // 关闭对话框
+            setOpen(false)
+          }
+        }
       }
-      
-    } catch (error: any) {
-      console.error("创建域名失败:", error)
-      toast.error(`创建域名失败: ${error.message || "未知错误"}`)
-    } finally {
-      setIsSubmitting(false)
-    }
+    )
   }
 
   // 处理对话框关闭
   const handleOpenChange = (newOpen: boolean) => {
-    if (!isSubmitting) {
+    if (!createDomain.isPending) {
       setOpen(newOpen)
       if (!newOpen) {
         // 关闭时重置表单
@@ -179,7 +167,7 @@ export function AddDomainDialog({
                 value={domainsText}
                 onChange={(e) => setDomainsText(e.target.value)}
                 placeholder={"example.com\napi.example.com\ntest.example.com\nwww.example.com\napp.example.com"}
-                disabled={isSubmitting}
+                disabled={createDomain.isPending}
                 rows={15}
                 className="font-mono text-sm"
               />
@@ -195,17 +183,17 @@ export function AddDomainDialog({
               type="button" 
               variant="outline" 
               onClick={() => handleOpenChange(false)}
-              disabled={isSubmitting}
+              disabled={createDomain.isPending}
             >
               取消
             </Button>
             <Button 
               type="submit" 
-              disabled={isSubmitting || !domainsText.trim()}
+              disabled={createDomain.isPending || !domainsText.trim()}
             >
-              {isSubmitting ? (
+              {createDomain.isPending ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  <LoadingSpinner size="sm" className="mr-2" />
                   创建中...
                 </>
               ) : (

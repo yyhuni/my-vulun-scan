@@ -1,11 +1,7 @@
-"use client" // 标记为客户端组件，可以使用浏览器 API 和交互功能
+"use client"
 
-// 导入 React 核心库和 Hooks
-import React, { useState, useEffect, useMemo } from "react"
-// 导入图标组件
+import React, { useState, useMemo } from "react"
 import { Trash2, Plus, Building2 } from "lucide-react"
-// 导入提示组件
-import { toast } from "sonner"
 
 // 导入 UI 组件
 import { Button } from "@/components/ui/button"
@@ -19,6 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { LoadingState, LoadingSpinner } from "@/components/ui/loading-spinner"
 
 // 导入数据表格组件
 import { OrganizationDataTable } from "./organization-data-table"
@@ -27,50 +24,61 @@ import { createOrganizationColumns } from "./organization-columns"
 // 导入业务组件
 import { AddOrganizationDialog } from "./add-organization-dialog"
 import { EditOrganizationDialog } from "./edit-organization-dialog"
-// 导入API服务
-import { OrganizationService } from "@/services/organization.service"
+
+// 导入 React Query Hooks
+import {
+  useOrganizations,
+  useDeleteOrganization,
+  useBatchDeleteOrganizations,
+  useUpdateOrganization,
+} from "@/hooks/use-organizations"
 
 // 导入类型定义
-import type { Organization, OrganizationsResponse } from "@/types/organization.types"
-import type { PaginationInfo } from "@/types/common.types"
-
-type ViewState = "loading" | "data" | "empty" | "error"
+import type { Organization } from "@/types/organization.types"
 
 /**
- * 组织列表组件
- * 显示组织数据表格，支持增删改查操作
+ * 组织列表组件（使用 React Query）
  * 
  * 功能特性：
- * 1. 组织数据的展示和管理
- * 2. 支持添加、编辑、删除组织
- * 3. 支持批量操作
- * 4. 响应式设计
- * 5. 错误处理和加载状态
+ * 1. 统一的 Loading 状态管理
+ * 2. 自动缓存和重新验证
+ * 3. 乐观更新
+ * 4. 自动错误处理
+ * 5. 更好的用户体验
  */
 export function OrganizationList() {
   // 状态管理
-  const [viewState, setViewState] = useState<ViewState>("loading")
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [organizationToDelete, setOrganizationToDelete] = useState<Organization | null>(null)
   const [organizationToEdit, setOrganizationToEdit] = useState<Organization | null>(null)
-  const [organizations, setOrganizations] = useState<Organization[]>([])
-  const [error, setError] = useState<string | null>(null)
   const [selectedOrganizations, setSelectedOrganizations] = useState<Organization[]>([])
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
   
-  // 添加分页状态
+  // 分页状态
   const [pagination, setPagination] = useState({
     pageIndex: 0,  // 0-based for react-table
     pageSize: 10,
   })
-  const [paginationInfo, setPaginationInfo] = useState<PaginationInfo>({
-    total: 0,
-    page: 1,
-    pageSize: 10,
-    totalPages: 0,
+
+  // 使用 React Query 获取组织数据
+  const {
+    data,
+    isLoading,
+    error,
+    refetch
+  } = useOrganizations({
+    page: pagination.pageIndex + 1, // 转换为 1-based
+    pageSize: pagination.pageSize,
+    sortBy: "updatedAt",
+    sortOrder: "desc"
   })
+
+  // Mutations
+  const deleteOrganization = useDeleteOrganization()
+  const batchDeleteOrganizations = useBatchDeleteOrganizations()
+  const updateOrganization = useUpdateOrganization()
 
   // 辅助函数 - 格式化日期
   const formatDate = (dateString: string): string => {
@@ -99,128 +107,37 @@ export function OrganizationList() {
 
   // 导航到详情页面
   const navigate = (path: string) => {
-    // 这里可以使用 Next.js 的路由或自定义导航逻辑
     window.location.href = path
   }
 
   // 创建列定义
   const columns = useMemo(() =>
     createOrganizationColumns({ formatDate, navigate, handleEdit, handleDelete }),
-    []
+    [formatDate, navigate, handleEdit, handleDelete]
   )
 
-  // 初始化时加载组织数据
-  useEffect(() => {
-    fetchOrganizations()
-  }, [])
-
-  // 获取组织数据 - 修改为支持分页参数
-  const fetchOrganizations = async (page?: number, pageSize?: number) => {
-    try {
-      setViewState("loading")
-      setError(null)
-
-      // 使用传入的参数或当前分页状态
-      const currentPage = page ?? pagination.pageIndex + 1  // 转换为1-based
-      const currentPageSize = pageSize ?? pagination.pageSize
-
-      // 调用真实API获取组织列表，传递分页和排序参数
-      const response = await OrganizationService.getOrganizations({
-        page: currentPage,
-        pageSize: currentPageSize,
-        sortBy: "updatedAt",    // ✅ 使用驼峰命名，拦截器会自动转换为 updated_at
-        sortOrder: "desc"       // 默认降序，最新的在前
-      })
-      
-      if (response.state === "success" && response.data) {
-        // 类型守卫：检查是否为 OrganizationsResponse 类型
-        if ('organizations' in response.data) {
-          // 列表响应
-          const listResponse = response.data as OrganizationsResponse<Organization>
-          setOrganizations(listResponse.organizations || [])
-          
-          // 更新分页信息
-          setPaginationInfo({
-            total: listResponse.total || 0,
-            page: listResponse.page || 1,
-            pageSize: listResponse.pageSize || 10,
-            totalPages: listResponse.totalPages || 0,
-          })
-          
-          setViewState(listResponse.organizations.length > 0 ? "data" : "empty")
-        } else {
-          // 单个组织响应（不应该在列表查询中出现，但做容错处理）
-          const singleOrg = response.data as Organization
-          setOrganizations([singleOrg])
-          setPaginationInfo({
-            total: 1,
-            page: 1,
-            pageSize: 10,
-            totalPages: 1,
-          })
-          setViewState("data")
-        }
-      } else {
-        throw new Error(response.message || "获取组织列表失败")
-      }
-    } catch (err: any) {
-      console.error('Error fetching organizations:', err)
-      const errorMessage = err.message || "获取组织列表失败"
-      setError(errorMessage)
-      setViewState("error")
-      toast.error(`获取组织列表失败: ${errorMessage}`)
-    }
-  }
-
-  // 确认删除组织 - 使用乐观更新策略
+  // 确认删除组织
   const confirmDelete = async () => {
     if (!organizationToDelete) return
 
-    const orgToDelete = organizationToDelete
-    const orgName = orgToDelete.name
-    
-    // 1. 立即关闭对话框,提升响应速度
     setDeleteDialogOpen(false)
     setOrganizationToDelete(null)
     
-    // 2. 乐观更新: 立即从 UI 中移除该组织
-    const previousOrganizations = organizations
-    setOrganizations((prev) => prev.filter((org) => org.id !== orgToDelete.id))
-    
-    toast.loading(`正在删除组织 "${orgName}"...`, { id: 'delete-org' })
-
-    try {
-      const response = await OrganizationService.deleteOrganization(Number(orgToDelete.id))
-      
-      if (response.state === "success") {
-        toast.success(`组织 "${orgName}" 已成功删除`, { id: 'delete-org' })
-      } else {
-        throw new Error(response.message || "删除组织失败")
-      }
-    } catch (err: any) {
-      console.error('Error deleting organization:', err)
-      
-      // 删除失败,回滚 UI 状态
-      setOrganizations(previousOrganizations)
-      toast.error(`删除组织失败: ${err.message || "未知错误"}`, { id: 'delete-org' })
-    }
-  }
-
-  // 添加组织成功回调
-  const handleOrganizationAdded = (newOrganization: Organization) => {
-    // 重新获取组织列表以确保数据同步
-    fetchOrganizations()
-    toast.success(`组织 "${newOrganization.name}" 已成功添加`)
+    // 使用 React Query 的删除 mutation（自动乐观更新）
+    deleteOrganization.mutate(Number(organizationToDelete.id))
   }
 
   // 编辑组织成功回调
   const handleOrganizationEdited = (updatedOrganization: Organization) => {
-    setOrganizations((prev) =>
-      prev.map((org) =>
-        org.id === updatedOrganization.id ? updatedOrganization : org
-      )
-    )
-    toast.success(`组织 "${updatedOrganization.name}" 已成功更新`)
+    // 使用 React Query 的更新 mutation
+    updateOrganization.mutate({
+      id: Number(updatedOrganization.id),
+      data: {
+        name: updatedOrganization.name,
+        description: updatedOrganization.description
+      }
+    })
+    
     setEditDialogOpen(false)
     setOrganizationToEdit(null)
   }
@@ -228,111 +145,87 @@ export function OrganizationList() {
   // 批量删除处理函数
   const handleBulkDelete = () => {
     if (selectedOrganizations.length === 0) {
-      toast.error("请先选择要删除的组织")
       return
     }
     setBulkDeleteDialogOpen(true)
   }
 
-  // 确认批量删除（乐观更新）
+  // 确认批量删除
   const confirmBulkDelete = async () => {
     if (selectedOrganizations.length === 0) return
 
-    const deletedIds = selectedOrganizations.map(org => org.id)
-    const deletedNames = selectedOrganizations.map(org => org.name)
-    const previousOrganizations = [...organizations] // 备份数据用于回滚
-
-    try {
-      // 1. 立即显示 loading toast
-      toast.loading(`正在删除 ${selectedOrganizations.length} 个组织...`, { id: 'bulk-delete' })
-      
-      // 2. 立即更新 UI（乐观更新）
-      setOrganizations((prev) => prev.filter((org) => !deletedIds.includes(org.id)))
-      setBulkDeleteDialogOpen(false)
-      setSelectedOrganizations([])
-      
-      // 3. 调用 API
-      await OrganizationService.batchDeleteOrganizations(deletedIds)
-      
-      // 4. API 成功，更新 toast
-      toast.success(`成功删除 ${deletedNames.length} 个组织: ${deletedNames.join(", ")}`, { id: 'bulk-delete' })
-      
-    } catch (err: any) {
-      // 5. API 失败，回滚 UI
-      console.error('Error bulk deleting organizations:', err)
-      setOrganizations(previousOrganizations)
-      toast.error(`批量删除组织失败: ${err.message || "未知错误"}`, { id: 'bulk-delete' })
-    }
+    const deletedIds = selectedOrganizations.map(org => Number(org.id))
+    
+    setBulkDeleteDialogOpen(false)
+    setSelectedOrganizations([])
+    
+    // 使用 React Query 的批量删除 mutation（自动乐观更新）
+    batchDeleteOrganizations.mutate(deletedIds)
   }
 
-  // 根据状态渲染内容
-  const renderContent = () => {
-    if (viewState === "loading") {
-      return (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-          <span className="ml-2 text-muted-foreground">加载组织数据中...</span>
-        </div>
-      )
-    }
+  // 处理分页变化
+  const handlePaginationChange = (newPagination: { pageIndex: number; pageSize: number }) => {
+    setPagination(newPagination)
+  }
 
-    if (viewState === "error") {
-      return (
-        <div className="flex flex-col items-center justify-center py-12">
-          <div className="rounded-full bg-destructive/10 p-3 mb-4">
-            <Trash2 className="h-6 w-6 text-destructive" />
-          </div>
-          <h3 className="text-lg font-semibold mb-2">加载失败</h3>
-          <p className="text-muted-foreground text-center mb-4">
-            {error || "加载组织数据时出现错误，请重试"}
-          </p>
-          <Button variant="outline" onClick={() => fetchOrganizations()}>
-            重新加载
-          </Button>
-        </div>
-      )
-    }
-
-    if (viewState === "empty") {
-      return (
-        <div className="flex flex-col items-center justify-center py-12">
-          <div className="rounded-full bg-muted p-3 mb-4">
-            <Building2 className="h-6 w-6 text-muted-foreground" />
-          </div>
-          <h3 className="text-lg font-semibold mb-2">暂无组织</h3>
-          <p className="text-muted-foreground text-center mb-4">
-            系统中还没有任何组织，点击下方按钮添加第一个组织
-          </p>
-          <AddOrganizationDialog onAdd={handleOrganizationAdded} />
-        </div>
-      )
-    }
-
+  // 错误状态
+  if (error) {
     return (
-      <OrganizationDataTable
-        data={organizations}
-        columns={columns}
-        onAddNew={() => setAddDialogOpen(true)}
-        onBulkDelete={handleBulkDelete}
-        onSelectionChange={setSelectedOrganizations}
-        searchPlaceholder="搜索组织名称或描述..."
-        searchColumn="name"
-        // 添加分页相关属性
-        pagination={pagination}
-        setPagination={setPagination}
-        paginationInfo={paginationInfo}
-        onPaginationChange={(newPagination: { pageIndex: number; pageSize: number }) => {
-          setPagination(newPagination)
-          fetchOrganizations(newPagination.pageIndex + 1, newPagination.pageSize)
-        }}
-      />
+      <div className="flex flex-col items-center justify-center py-12">
+        <div className="rounded-full bg-destructive/10 p-3 mb-4">
+          <Trash2 className="h-6 w-6 text-destructive" />
+        </div>
+        <h3 className="text-lg font-semibold mb-2">加载失败</h3>
+        <p className="text-muted-foreground text-center mb-4">
+          {error.message || "加载组织数据时出现错误，请重试"}
+        </p>
+        <Button variant="outline" onClick={() => refetch()}>
+          重新加载
+        </Button>
+      </div>
+    )
+  }
+
+  // 加载状态
+  if (isLoading) {
+    return <LoadingState message="加载组织数据中..." />
+  }
+
+  // 空数据状态
+  if (!data?.organizations || data.organizations.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <div className="rounded-full bg-muted p-3 mb-4">
+          <Building2 className="h-6 w-6 text-muted-foreground" />
+        </div>
+        <h3 className="text-lg font-semibold mb-2">暂无组织</h3>
+        <p className="text-muted-foreground text-center mb-4">
+          系统中还没有任何组织，点击下方按钮添加第一个组织
+        </p>
+        <Button onClick={() => setAddDialogOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          添加组织
+        </Button>
+      </div>
     )
   }
 
   return (
     <div className="space-y-4">
       {/* 主要内容 */}
-      {renderContent()}
+      <OrganizationDataTable
+        data={data.organizations}
+        columns={columns}
+        onAddNew={() => setAddDialogOpen(true)}
+        onBulkDelete={handleBulkDelete}
+        onSelectionChange={setSelectedOrganizations}
+        searchPlaceholder="搜索组织名称或描述..."
+        searchColumn="name"
+        pagination={pagination}
+        setPagination={setPagination}
+        paginationInfo={data.pagination}
+        onPaginationChange={handlePaginationChange}
+      />
 
       {/* 删除确认对话框 */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -345,8 +238,19 @@ export function OrganizationList() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              删除
+            <AlertDialogAction 
+              onClick={confirmDelete} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteOrganization.isPending}
+            >
+              {deleteOrganization.isPending ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  删除中...
+                </>
+              ) : (
+                "删除"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -388,8 +292,16 @@ export function OrganizationList() {
             <AlertDialogAction 
               onClick={confirmBulkDelete} 
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={batchDeleteOrganizations.isPending}
             >
-              删除 {selectedOrganizations.length} 个组织
+              {batchDeleteOrganizations.isPending ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  删除中...
+                </>
+              ) : (
+                `删除 ${selectedOrganizations.length} 个组织`
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -399,7 +311,10 @@ export function OrganizationList() {
       <AddOrganizationDialog 
         open={addDialogOpen}
         onOpenChange={setAddDialogOpen}
-        onAdd={handleOrganizationAdded} 
+        onAdd={() => {
+          // React Query 会自动刷新数据，不需要手动处理
+          setAddDialogOpen(false)
+        }} 
       />
     </div>
   )

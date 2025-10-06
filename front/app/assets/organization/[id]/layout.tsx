@@ -1,14 +1,13 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Building2 } from "lucide-react"
-import { toast } from "sonner"
+import { LoadingState } from "@/components/ui/loading-spinner"
+import { useOrganization } from "@/hooks/use-organizations"
 import type { Organization } from "@/types/organization.types"
-import { OrganizationService } from "@/services/organization.service"
-import { Skeleton } from "@/components/ui/skeleton"
 
 /**
  * 组织详情布局
@@ -25,8 +24,12 @@ export default function OrganizationLayout({
   const router = useRouter()
   const pathname = usePathname()
 
-  const [organization, setOrganization] = useState<Organization | null>(null)
-  const [loading, setLoading] = useState(true)
+  // 使用 React Query 获取组织数据
+  const {
+    data: organization,
+    isLoading,
+    error
+  } = useOrganization(Number(resolvedParams.id))
 
   // 获取当前激活的 Tab
   const getActiveTab = () => {
@@ -52,39 +55,27 @@ export default function OrganizationLayout({
     }
   }
 
-  // 获取组织数据
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true)
+  // 加载状态
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+        <LoadingState message="加载组织数据中..." />
+      </div>
+    )
+  }
 
-        const response = await OrganizationService.getOrganizations({
-          id: resolvedParams.id
-        })
-        if (response.state === "success" && response.data) {
-          // 当查询单个组织时，返回的是 Organization 对象
-          setOrganization(response.data as Organization)
-        } else {
-          toast.error(response.message || "获取组织信息失败")
-          setOrganization(null)
-        }
-      } catch (error) {
-        console.error("获取组织数据失败:", error)
-        toast.error("获取组织数据失败")
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchData()
-  }, [resolvedParams.id])
-
-  if (loading) {
+  // 错误状态
+  if (error) {
     return (
       <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-          <span className="ml-2 text-muted-foreground">加载组织数据中...</span>
+          <div className="text-center">
+            <Building2 className="h-12 w-12 mx-auto text-destructive mb-4" />
+            <h3 className="text-lg font-semibold mb-2">加载失败</h3>
+            <p className="text-muted-foreground">
+              {error.message || "获取组织数据时出现错误"}
+            </p>
+          </div>
         </div>
       </div>
     )

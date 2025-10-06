@@ -22,6 +22,18 @@ export interface OrganizationsResponse<T> {
 }
 
 
+// 创建组织请求类型
+export interface CreateOrganizationRequest {
+  name: string
+  description: string
+}
+
+// 更新组织请求类型
+export interface UpdateOrganizationRequest {
+  name: string
+  description: string
+}
+
 // 组织数据表格组件属性类型定义
 export interface OrganizationDataTableProps {
   data: Organization[]                           // 组织数据数组

@@ -1,34 +1,39 @@
 "use client"
 
-import React, { useState, useEffect, useMemo } from "react"
-import { toast } from "sonner"
+import React, { useState, useMemo } from "react"
 import { MainAssetsDataTable } from "./main-assets-data-table"
 import { createMainAssetColumns } from "./main-assets-columns"
 import { AddDomainDialog } from "./add-domain-dialog"
-import { DomainService } from "@/services/domain.service"
+import { LoadingState } from "@/components/ui/loading-spinner"
+import { useDomains, useCreateDomain } from "@/hooks/use-domains"
 import type { Asset } from "@/types/asset.types"
-import type { PaginationInfo } from "@/types/common.types"
 
 /**
  * 主资产列表组件
  * 用于显示和管理主资产列表
  */
 export function MainAssetsList({ organizationId }: { organizationId: string }) {
-  const [mainAssets, setMainAssets] = useState<Asset[]>([])
   const [selectedAssets, setSelectedAssets] = useState<Asset[]>([])
-  const [loading, setLoading] = useState(true)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   
-  // 添加分页状态
+  // 分页状态
   const [pagination, setPagination] = useState({
     pageIndex: 0,  // 0-based for react-table
     pageSize: 10,
   })
-  const [paginationInfo, setPaginationInfo] = useState<PaginationInfo>({
-    total: 0,
-    page: 1,
-    pageSize: 10,
-    totalPages: 0,
+
+  // 使用 React Query 获取域名数据
+  const {
+    data,
+    isLoading,
+    error,
+    refetch
+  } = useDomains({
+    organizationId,
+    page: pagination.pageIndex + 1, // 转换为 1-based
+    pageSize: pagination.pageSize,
+    sortBy: "updatedAt",
+    sortOrder: "desc"
   })
 
   // 辅助函数 - 格式化日期
@@ -51,55 +56,23 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
 
   // 处理编辑资产
   const handleEditAsset = (asset: Asset) => {
-    toast.info(`编辑资产功能开发中: ${asset.name}`)
+    // TODO: 实现编辑功能
+    console.info(`编辑资产功能开发中: ${asset.name}`)
   }
 
   // 处理删除资产
   const handleDeleteAsset = (asset: Asset) => {
-    toast.info(`删除资产功能开发中: ${asset.name}`)
+    // TODO: 实现删除功能
+    console.info(`删除资产功能开发中: ${asset.name}`)
   }
 
   // 处理批量删除
   const handleBulkDelete = () => {
     if (selectedAssets.length === 0) {
-      toast.error("请先选择要删除的资产")
       return
     }
-    toast.info(`批量删除功能开发中，选中 ${selectedAssets.length} 个资产`)
-  }
-
-  // 刷新数据
-  const refreshData = async (page?: number, pageSize?: number) => {
-    try {
-      // 使用传入的参数或当前分页状态
-      const currentPage = page ?? pagination.pageIndex + 1  // 转换为1-based
-      const currentPageSize = pageSize ?? pagination.pageSize
-      
-      const response = await DomainService.getDomains({
-        organizationId: parseInt(organizationId),
-        page: currentPage,
-        pageSize: currentPageSize,
-        sortBy: "updatedAt",  // ✅ 使用驼峰命名，拦截器会自动转换为 updated_at
-        sortOrder: "desc"
-      })
-      
-      if (response.state === "success" && response.data) {
-        // 当按组织ID查询时，返回的是 GetDomainsResponse 对象
-        const responseData = response.data as any
-        setMainAssets(responseData.domains || [])
-        
-        // 更新分页信息
-        setPaginationInfo({
-          total: responseData.total || 0,
-          page: responseData.page || currentPage,
-          pageSize: responseData.pageSize || currentPageSize,  // ✅ 使用驼峰命名
-          totalPages: responseData.totalPages || 0,  // ✅ 使用驼峰命名
-        })
-      }
-    } catch (error: any) {
-      console.error("刷新数据失败:", error)
-      toast.error(`刷新数据失败: ${error.message || "未知错误"}`)
-    }
+    // TODO: 实现批量删除功能
+    console.info(`批量删除功能开发中，选中 ${selectedAssets.length} 个资产`)
   }
 
   // 处理添加主资产
@@ -109,8 +82,13 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
 
   // 处理添加成功
   const handleAddSuccess = async (newDomains: Asset[]) => {
-    // 等待响应方案：重新获取数据（不使用乐观更新）
-    await refreshData()
+    // React Query 会自动刷新数据，不需要手动处理
+    setIsAddDialogOpen(false)
+  }
+
+  // 处理分页变化
+  const handlePaginationChange = (newPagination: { pageIndex: number; pageSize: number }) => {
+    setPagination(newPagination)
   }
 
   // 创建列定义
@@ -122,55 +100,52 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
         handleEdit: handleEditAsset,
         handleDelete: handleDeleteAsset,
       }),
-    []
+    [formatDate, navigate, handleEditAsset, handleDeleteAsset]
   )
 
-  // 获取主资产数据
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true)
-
-        // 调用后端 API 获取域名列表
-        const response = await DomainService.getDomains({
-          organizationId: parseInt(organizationId),
-          page: 1,
-          pageSize: 10,
-          sortBy: "updatedAt",  // ✅ 使用驼峰命名，拦截器会自动转换为 updated_at
-          sortOrder: "desc"
-        })
-        
-        if (response.state === "success" && response.data) {
-          // 当按组织ID查询时，返回的是 GetDomainsResponse 对象
-          const responseData = response.data as any
-          setMainAssets(responseData.domains || [])
-          
-          // 更新分页信息
-          setPaginationInfo({
-            total: responseData.total || 0,
-            page: responseData.page || 1,
-            pageSize: responseData.pageSize || 10,  // ✅ 使用驼峰命名
-            totalPages: responseData.totalPages || 0,  // ✅ 使用驼峰命名
-          })
-        } else {
-          throw new Error(response.message || "获取域名列表失败")
-        }
-      } catch (error: any) {
-        console.error("获取主资产数据失败:", error)
-        toast.error(`获取主资产数据失败: ${error.message || "未知错误"}`)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchData()
-  }, [organizationId])
-
-  if (loading) {
+  // 错误状态
+  if (error) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-        <span className="ml-2 text-muted-foreground">加载主资产数据中...</span>
+      <div className="flex flex-col items-center justify-center py-12">
+        <div className="rounded-full bg-destructive/10 p-3 mb-4">
+          <span className="text-destructive">⚠️</span>
+        </div>
+        <h3 className="text-lg font-semibold mb-2">加载失败</h3>
+        <p className="text-muted-foreground text-center mb-4">
+          {error.message || "加载主资产数据时出现错误，请重试"}
+        </p>
+        <button 
+          onClick={() => refetch()}
+          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+        >
+          重新加载
+        </button>
+      </div>
+    )
+  }
+
+  // 加载状态
+  if (isLoading) {
+    return <LoadingState message="加载主资产数据中..." />
+  }
+
+  // 空数据状态
+  if (!data?.domains || data.domains.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <div className="rounded-full bg-muted p-3 mb-4">
+          <span className="text-muted-foreground">📁</span>
+        </div>
+        <h3 className="text-lg font-semibold mb-2">暂无主资产</h3>
+        <p className="text-muted-foreground text-center mb-4">
+          该组织还没有任何主资产，点击下方按钮添加第一个主资产
+        </p>
+        <button 
+          onClick={handleAddMainAsset}
+          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+        >
+          添加主资产
+        </button>
       </div>
     )
   }
@@ -178,7 +153,7 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
   return (
     <>
       <MainAssetsDataTable
-        data={mainAssets}
+        data={data.domains}
         columns={mainAssetColumns}
         onAddNew={handleAddMainAsset}
         onBulkDelete={handleBulkDelete}
@@ -186,14 +161,16 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
         searchPlaceholder="搜索主资产..."
         searchColumn="name"
         addButtonText="添加主资产"
-        // 添加分页相关属性
+        // 分页相关属性
         pagination={pagination}
         setPagination={setPagination}
-        paginationInfo={paginationInfo}
-        onPaginationChange={(newPagination: { pageIndex: number; pageSize: number }) => {
-          setPagination(newPagination)
-          refreshData(newPagination.pageIndex + 1, newPagination.pageSize)
+        paginationInfo={{
+          total: data.total || 0,
+          page: data.page || 1,
+          pageSize: data.pageSize || 10,
+          totalPages: data.totalPages || 0,
         }}
+        onPaginationChange={handlePaginationChange}
       />
       
       {/* 添加域名对话框 */}

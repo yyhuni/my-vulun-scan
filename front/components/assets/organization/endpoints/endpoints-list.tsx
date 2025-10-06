@@ -1,19 +1,66 @@
 "use client"
 
-import React, { useState, useEffect, useMemo } from "react"
-import { toast } from "sonner"
+import React, { useState, useMemo } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { EndpointsDataTable } from "./endpoints-data-table"
 import { createEndpointColumns } from "./endpoints-columns"
+import { LoadingState } from "@/components/ui/loading-spinner"
 import type { Asset } from "@/types/asset.types"
 
 /**
- * Endpoint 列表组件
+ * Endpoint 列表组件（使用 React Query）
  * 用于显示和管理 Endpoint 列表
  */
 export function EndpointsList({ organizationId }: { organizationId: string }) {
-  const [endpoints, setEndpoints] = useState<Asset[]>([])
   const [selectedAssets, setSelectedAssets] = useState<Asset[]>([])
-  const [loading, setLoading] = useState(true)
+
+  // 使用 React Query 获取模拟的 Endpoint 数据
+  const {
+    data: endpoints,
+    isLoading,
+    error,
+    refetch
+  } = useQuery({
+    queryKey: ['endpoints', organizationId],
+    queryFn: async (): Promise<Asset[]> => {
+      // 模拟获取 Endpoint 数据
+      const mockEndpoints: Asset[] = [
+        {
+          id: 7,
+          name: "/api/v1/users",
+          description: "用户管理API端点",
+          createdAt: "2024-01-21T10:15:00Z",
+          updatedAt: "2024-03-14T15:30:00Z",
+        },
+        {
+          id: 8,
+          name: "/api/v1/auth",
+          description: "认证API端点",
+          createdAt: "2024-01-22T12:45:00Z",
+          updatedAt: "2024-03-13T11:20:00Z",
+        },
+        {
+          id: 9,
+          name: "/admin/login",
+          description: "管理员登录页面",
+          createdAt: "2024-01-23T09:30:00Z",
+          updatedAt: "2024-03-12T14:15:00Z",
+        },
+        {
+          id: 10,
+          name: "/admin/dashboard",
+          description: "管理员仪表板",
+          createdAt: "2024-01-24T11:20:00Z",
+          updatedAt: "2024-03-11T16:45:00Z",
+        },
+      ]
+
+      // 模拟API延迟
+      await new Promise((resolve) => setTimeout(resolve, 500))
+      return mockEndpoints
+    },
+    staleTime: 5 * 60 * 1000, // 5分钟
+  })
 
   // 辅助函数 - 格式化日期
   const formatDate = (dateString: string): string => {
@@ -35,26 +82,29 @@ export function EndpointsList({ organizationId }: { organizationId: string }) {
 
   // 处理编辑资产
   const handleEditAsset = (asset: Asset) => {
-    toast.info(`编辑资产功能开发中: ${asset.name}`)
+    // TODO: 实现编辑功能
+    console.info(`编辑端点功能开发中: ${asset.name}`)
   }
 
   // 处理删除资产
   const handleDeleteAsset = (asset: Asset) => {
-    toast.info(`删除资产功能开发中: ${asset.name}`)
+    // TODO: 实现删除功能
+    console.info(`删除端点功能开发中: ${asset.name}`)
   }
 
   // 处理批量删除
   const handleBulkDelete = () => {
     if (selectedAssets.length === 0) {
-      toast.error("请先选择要删除的资产")
       return
     }
-    toast.info(`批量删除功能开发中，选中 ${selectedAssets.length} 个资产`)
+    // TODO: 实现批量删除功能
+    console.info(`批量删除功能开发中，选中 ${selectedAssets.length} 个端点`)
   }
 
   // 处理添加 Endpoint
   const handleAddEndpoint = () => {
-    toast.info("添加 Endpoint 功能开发中")
+    // TODO: 实现添加功能
+    console.info("添加 Endpoint 功能开发中")
   }
 
   // 创建列定义
@@ -66,79 +116,46 @@ export function EndpointsList({ organizationId }: { organizationId: string }) {
         handleEdit: handleEditAsset,
         handleDelete: handleDeleteAsset,
       }),
-    []
+    [formatDate, navigate, handleEditAsset, handleDeleteAsset]
   )
 
-  // 获取 Endpoint 数据
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true)
-
-        // 模拟获取 Endpoint 数据
-        const mockEndpoints: Asset[] = [
-          {
-            id: 7,
-            name: "/api/v1/users",
-            type: "端点",
-            status: "活跃",
-            domain: "api.example.com",
-            port: 443,
-            createdAt: "2024-01-21T10:15:00Z",
-            updatedAt: "2024-03-14T15:30:00Z",
-          },
-          {
-            id: 8,
-            name: "/api/v1/auth",
-            type: "端点",
-            status: "存在漏洞",
-            domain: "api.example.com",
-            port: 443,
-            createdAt: "2024-01-22T12:45:00Z",
-            updatedAt: "2024-03-13T11:20:00Z",
-          },
-          {
-            id: 9,
-            name: "/admin/login",
-            type: "端点",
-            status: "安全",
-            domain: "admin.example.com",
-            port: 443,
-            createdAt: "2024-01-23T09:30:00Z",
-            updatedAt: "2024-03-12T14:15:00Z",
-          },
-          {
-            id: 10,
-            name: "/admin/dashboard",
-            type: "端点",
-            status: "活跃",
-            domain: "admin.example.com",
-            port: 443,
-            createdAt: "2024-01-24T11:20:00Z",
-            updatedAt: "2024-03-11T16:45:00Z",
-          },
-        ]
-
-        // 模拟API延迟
-        await new Promise((resolve) => setTimeout(resolve, 500))
-
-        setEndpoints(mockEndpoints)
-      } catch (error) {
-        console.error("获取 Endpoint 数据失败:", error)
-        toast.error("获取 Endpoint 数据失败")
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchData()
-  }, [organizationId])
-
-  if (loading) {
+  // 错误状态
+  if (error) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-        <span className="ml-2 text-muted-foreground">加载 Endpoint 数据中...</span>
+      <div className="flex flex-col items-center justify-center py-12">
+        <div className="rounded-full bg-destructive/10 p-3 mb-4">
+          <span className="text-destructive">⚠️</span>
+        </div>
+        <h3 className="text-lg font-semibold mb-2">加载失败</h3>
+        <p className="text-muted-foreground text-center mb-4">
+          {error.message || "加载端点数据时出现错误，请重试"}
+        </p>
+        <button 
+          onClick={() => refetch()}
+          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+        >
+          重新加载
+        </button>
+      </div>
+    )
+  }
+
+  // 加载状态
+  if (isLoading) {
+    return <LoadingState message="加载端点数据中..." />
+  }
+
+  // 空数据状态
+  if (!endpoints || endpoints.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <div className="rounded-full bg-muted p-3 mb-4">
+          <span className="text-muted-foreground">🔗</span>
+        </div>
+        <h3 className="text-lg font-semibold mb-2">暂无端点</h3>
+        <p className="text-muted-foreground text-center mb-4">
+          该组织还没有任何端点数据
+        </p>
       </div>
     )
   }
