@@ -138,5 +138,7 @@ func RemoveOrganizationDomain(c *gin.Context) {
 		}
 	}
 
-	utils.SuccessResponse(c, gin.H{"message": "解除关联成功，孤儿域名已自动删除"})
+	utils.SuccessResponse(c, models.RemoveOrganizationDomainResponseData{
+		Message: "解除关联成功，孤儿域名已自动删除",
+	})
 }

@@ -13,46 +13,16 @@ export class SubDomainService {
    * @param params.organizationId - 组织ID(按组织筛选时使用)
    * @param params.page - 当前页码，1-based
    * @param params.pageSize - 分页大小
-   * @param params.sortBy - 排序字段: id, name, created_at, updated_at
-   * @param params.sortOrder - 排序方向: asc, desc
+   * @param params.sortBy - 排序字段：id, name, createdAt, updatedAt（使用驼峰命名）
+   * @param params.sortOrder - 排序方向：asc, desc
    * @returns Promise<ApiResponse<SubDomain | GetSubDomainsResponse>> - 子域名信息或列表
    */
   static async getSubDomains(params?: GetSubDomainsParams): Promise<ApiResponse<SubDomain | GetSubDomainsResponse>> {
-    const queryParams = new URLSearchParams()
-    
-    if (params?.id !== undefined) {
-      queryParams.append('id', params.id.toString())
-    }
-    if (params?.domainId !== undefined) {
-      queryParams.append('domain_id', params.domainId.toString())
-    }
-    if (params?.organizationId !== undefined) {
-      queryParams.append('organization_id', params.organizationId.toString())
-    }
-    if (params?.page !== undefined) {
-      queryParams.append('page', params.page.toString())
-    }
-    if (params?.pageSize !== undefined) {
-      queryParams.append('page_size', params.pageSize.toString())
-    }
-    if (params?.sortBy !== undefined) {
-      // 将驼峰命名转换为下划线命名
-      const sortByMap: Record<string, string> = {
-        'id': 'id',
-        'name': 'name',
-        'createdAt': 'created_at',
-        'updatedAt': 'updated_at'
-      }
-      queryParams.append('sort_by', sortByMap[params.sortBy] || params.sortBy)
-    }
-    if (params?.sortOrder !== undefined) {
-      queryParams.append('sort_order', params.sortOrder)
-    }
-    
-    const queryString = queryParams.toString()
-    const url = `/subdomains${queryString ? `?${queryString}` : ''}`
-    
-    const response = await api.get<ApiResponse<SubDomain | GetSubDomainsResponse>>(url)
+    // ✅ 使用 params 对象，拦截器会自动将驼峰转换为下划线
+    const response = await api.get<ApiResponse<SubDomain | GetSubDomainsResponse>>(
+      '/subdomains',
+      { params }
+    )
     return response.data
   }
 
@@ -69,8 +39,8 @@ export class SubDomainService {
     domainId: number
   }): Promise<ApiResponse<any>> {
     const response = await api.post<ApiResponse<any>>('/subdomains/create', {
-      sub_domains: data.subDomains,
-      domain_id: data.domainId
+      subDomains: data.subDomains,  // ✅ 使用驼峰命名，拦截器会自动转换为 sub_domains
+      domainId: data.domainId       // ✅ 使用驼峰命名，拦截器会自动转换为 domain_id
     })
     return response.data
   }

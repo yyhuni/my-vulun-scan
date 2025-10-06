@@ -43,8 +43,16 @@ type GetSubDomainsResponse struct {
 	PageSize   int         `json:"page_size"`
 }
 
-// CreateSubDomainsResponse 创建子域名响应
+// CreateSubDomainsResponse 创建子域名响应（service 层使用）
 type CreateSubDomainsResponse struct {
+	SuccessCount    int      `json:"success_count"`
+	ExistingDomains []string `json:"existing_domains"`
+	TotalRequested  int      `json:"total_requested"`
+}
+
+// CreateSubDomainsResponseData 创建子域名响应数据（handler 层返回给前端）
+type CreateSubDomainsResponseData struct {
+	Message         string   `json:"message"`
 	SuccessCount    int      `json:"success_count"`
 	ExistingDomains []string `json:"existing_domains"`
 	TotalRequested  int      `json:"total_requested"`

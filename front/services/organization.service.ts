@@ -13,8 +13,8 @@ export class OrganizationService {
    * @param params - 查询参数对象
    * @param params.id - 组织ID(查询单个组织时使用)
    * @param params.page - 当前页码，1-based
-   * @param params.pageSize - 分页大小，1-based
-   * @param params.sortBy - 排序字段：id, name, created_at, updated_at
+   * @param params.pageSize - 分页大小
+   * @param params.sortBy - 排序字段：id, name, createdAt, updatedAt（使用驼峰命名）
    * @param params.sortOrder - 排序方向：asc, desc
    * @returns Promise<ApiResponse<Organization | OrganizationsResponse<Organization>>>
    */
@@ -25,28 +25,11 @@ export class OrganizationService {
     sortBy?: string
     sortOrder?: 'asc' | 'desc'
   }): Promise<ApiResponse<Organization | OrganizationsResponse<Organization>>> {
-    const queryParams = new URLSearchParams()
-    
-    if (params?.id !== undefined) {
-      queryParams.append('id', params.id.toString())
-    }
-    if (params?.page !== undefined) {
-      queryParams.append('page', params.page.toString())
-    }
-    if (params?.pageSize !== undefined) {
-      queryParams.append('page_size', params.pageSize.toString())
-    }
-    if (params?.sortBy !== undefined) {
-      queryParams.append('sort_by', params.sortBy)
-    }
-    if (params?.sortOrder !== undefined) {
-      queryParams.append('sort_order', params.sortOrder)
-    }
-    
-    const queryString = queryParams.toString()
-    const url = `/organizations${queryString ? `?${queryString}` : ''}`
-    
-    const response = await api.get<ApiResponse<Organization | OrganizationsResponse<Organization>>>(url)
+    // ✅ 使用 params 对象，拦截器会自动将驼峰转换为下划线
+    const response = await api.get<ApiResponse<Organization | OrganizationsResponse<Organization>>>(
+      '/organizations',
+      { params }
+    )
     return response.data
   }
 
@@ -105,7 +88,7 @@ export class OrganizationService {
    */
   static async batchDeleteOrganizations(organizationIds: number[]): Promise<ApiResponse> {
     const response = await api.post<ApiResponse>('/organizations/batch-delete', {
-      organization_ids: organizationIds  // 后端期望字段名为 organization_ids
+      organizationIds  // ✅ 使用驼峰命名，拦截器会自动转换为 organization_ids
     })
     return response.data
   }

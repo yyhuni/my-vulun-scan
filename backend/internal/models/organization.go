@@ -53,3 +53,15 @@ type GetOrganizationsResponse struct {
 	PageSize      int            `json:"page_size"`
 	TotalPages    int            `json:"total_pages"`
 }
+
+// DeleteOrganizationResponseData 删除组织响应数据
+type DeleteOrganizationResponseData struct {
+	Message string `json:"message"`
+}
+
+// BatchDeleteOrganizationsResponseData 批量删除组织响应数据
+type BatchDeleteOrganizationsResponseData struct {
+	Message        string         `json:"message"`
+	DeletedCount   int            `json:"deleted_count"`
+	Organizations  []Organization `json:"organizations"`
+}

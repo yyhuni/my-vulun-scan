@@ -21,6 +21,6 @@ export interface GetDomainsResponse {
   domains: Domain[]
   total: number
   page: number
-  page_size: number
-  total_pages: number
+  pageSize: number      // ✅ 使用驼峰命名
+  totalPages: number    // ✅ 使用驼峰命名
 }

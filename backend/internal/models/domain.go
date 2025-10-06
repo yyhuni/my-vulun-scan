@@ -56,3 +56,8 @@ type GetOrganizationDomainsResponse struct {
 	PageSize   int      `json:"page_size"`
 	TotalPages int      `json:"total_pages"`
 }
+
+// RemoveOrganizationDomainResponseData 解除组织域名关联响应数据
+type RemoveOrganizationDomainResponseData struct {
+	Message string `json:"message"`
+}

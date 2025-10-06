@@ -2,7 +2,6 @@ package services
 
 import (
 	"fmt"
-	"time"
 
 	"vulun-scan-backend/internal/models"
 	"vulun-scan-backend/pkg/database"
@@ -25,7 +24,6 @@ func NewDomainService() *DomainService {
 
 // CreateDomains 批量创建域名并关联到组织
 func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models.Domain, error) {
-	time.Sleep(2 * time.Second) // 模拟延迟
 
 	var createdDomains []models.Domain
 
@@ -119,7 +117,7 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 
 // GetDomainByID 根据ID获取域名
 func (s *DomainService) GetDomainByID(id uint) (*models.Domain, error) {
-	time.Sleep(2 * time.Second) // 模拟延迟
+
 	var domain models.Domain
 
 	result := s.db.Preload("SubDomains").First(&domain, "id = ?", id)
@@ -137,7 +135,6 @@ func (s *DomainService) GetDomainByID(id uint) (*models.Domain, error) {
 
 // GetDomainsByOrgID 根据组织ID获取域名列表(支持分页和排序)
 func (s *DomainService) GetDomainsByOrgID(req models.GetOrganizationDomainsRequest) (*models.GetOrganizationDomainsResponse, error) {
-	time.Sleep(2 * time.Second) // 模拟延迟
 
 	// 设置默认值
 	if req.Page <= 0 {
@@ -239,7 +236,6 @@ func (s *DomainService) buildOrderClause(sortBy, sortOrder string) string {
 
 // RemoveOrganizationDomain 解除组织与域名的关联，如果域名成为孤儿则删除
 func (s *DomainService) RemoveOrganizationDomain(req models.RemoveOrganizationDomainRequest) error {
-	time.Sleep(2 * time.Second) // 模拟延迟
 
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		// 1. 验证组织是否存在

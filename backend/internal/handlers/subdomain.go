@@ -146,11 +146,11 @@ func CreateSubDomains(c *gin.Context) {
 		message += fmt.Sprintf("，%d 个子域名已存在", len(response.ExistingDomains))
 	}
 
-	// 返回统一格式的成功响应
-	utils.SuccessResponse(c, gin.H{
-		"message":          message,
-		"success_count":    response.SuccessCount,
-		"existing_domains": response.ExistingDomains,
-		"total_requested":  response.TotalRequested,
+	// 返回统一格式的成功响应，使用结构化的响应类型
+	utils.SuccessResponse(c, models.CreateSubDomainsResponseData{
+		Message:         message,
+		SuccessCount:    response.SuccessCount,
+		ExistingDomains: response.ExistingDomains,
+		TotalRequested:  response.TotalRequested,
 	})
 }

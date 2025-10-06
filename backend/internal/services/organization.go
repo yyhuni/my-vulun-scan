@@ -2,7 +2,6 @@ package services
 
 import (
 	"fmt"
-	"time"
 
 	"vulun-scan-backend/internal/models"
 	"vulun-scan-backend/pkg/database"
@@ -26,7 +25,7 @@ func NewOrganizationService() *OrganizationService {
 
 // GetOrganizations 获取组织列表(支持分页和排序)
 func (s *OrganizationService) GetOrganizations(req models.GetOrganizationsRequest) (*models.GetOrganizationsResponse, error) {
-	time.Sleep(2 * time.Second) // 模拟延迟
+
 	// 设置默认值
 	if req.Page <= 0 {
 		req.Page = 1
@@ -83,7 +82,7 @@ func (s *OrganizationService) GetOrganizations(req models.GetOrganizationsReques
 
 // GetOrganizationByID 根据ID获取组织详细信息
 func (s *OrganizationService) GetOrganizationByID(id uint) (*models.Organization, error) {
-	time.Sleep(2 * time.Second) // 模拟延迟
+
 	var org models.Organization
 
 	result := s.db.First(&org, "id = ?", id)
@@ -101,7 +100,7 @@ func (s *OrganizationService) GetOrganizationByID(id uint) (*models.Organization
 
 // CreateOrganization 创建组织
 func (s *OrganizationService) CreateOrganization(req models.CreateOrganizationRequest) (*models.Organization, error) {
-	time.Sleep(2 * time.Second) // 模拟延迟
+
 	org := models.Organization{
 		Name:        req.Name,
 		Description: req.Description,
@@ -123,7 +122,7 @@ func (s *OrganizationService) CreateOrganization(req models.CreateOrganizationRe
 
 // UpdateOrganization 更新组织
 func (s *OrganizationService) UpdateOrganization(req models.UpdateOrganizationRequest) (*models.Organization, error) {
-	time.Sleep(2 * time.Second) // 模拟延迟
+
 	var org models.Organization
 
 	// 先查询是否存在
@@ -161,7 +160,7 @@ func (s *OrganizationService) UpdateOrganization(req models.UpdateOrganizationRe
 
 // DeleteOrganization 删除组织
 func (s *OrganizationService) DeleteOrganization(organizationID uint) error {
-	time.Sleep(2 * time.Second) // 模拟延迟
+
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		var org models.Organization
 
@@ -227,7 +226,7 @@ func (s *OrganizationService) DeleteOrganization(organizationID uint) error {
 
 // BatchDeleteOrganizations 批量删除组织
 func (s *OrganizationService) BatchDeleteOrganizations(organizationIDs []uint) ([]models.Organization, error) {
-	time.Sleep(2 * time.Second) // 模拟延迟
+
 	if len(organizationIDs) == 0 {
 		return nil, fmt.Errorf("no organization IDs provided")
 	}

@@ -21,7 +21,7 @@ export class DomainService {
   }): Promise<ApiResponse<Domain[]>> {
     const response = await api.post<ApiResponse<Domain[]>>('/domains/create', {
       domains: data.domains,
-      organization_id: data.organizationId
+      organizationId: data.organizationId  // ✅ 使用驼峰命名，拦截器会自动转换为 organization_id
     })
     return response.data
   }
@@ -33,8 +33,8 @@ export class DomainService {
    * @param params.organizationId - 组织ID(按组织筛选时使用)
    * @param params.page - 当前页码，1-based
    * @param params.pageSize - 分页大小
-   * @param params.sortBy - 排序字段: name, created_at, updated_at
-   * @param params.sortOrder - 排序方向: asc, desc
+   * @param params.sortBy - 排序字段：id, name, createdAt, updatedAt（使用驼峰命名）
+   * @param params.sortOrder - 排序方向：asc, desc
    * @returns Promise<ApiResponse<Domain | GetDomainsResponse>> - 域名信息或列表
    */
   static async getDomains(params?: {
@@ -45,31 +45,11 @@ export class DomainService {
     sortBy?: string
     sortOrder?: 'asc' | 'desc'
   }): Promise<ApiResponse<Domain | GetDomainsResponse>> {
-    const queryParams = new URLSearchParams()
-    
-    if (params?.id !== undefined) {
-      queryParams.append('id', params.id.toString())
-    }
-    if (params?.organizationId !== undefined) {
-      queryParams.append('organization_id', params.organizationId.toString())
-    }
-    if (params?.page !== undefined) {
-      queryParams.append('page', params.page.toString())
-    }
-    if (params?.pageSize !== undefined) {
-      queryParams.append('page_size', params.pageSize.toString())
-    }
-    if (params?.sortBy !== undefined) {
-      queryParams.append('sort_by', params.sortBy)
-    }
-    if (params?.sortOrder !== undefined) {
-      queryParams.append('sort_order', params.sortOrder)
-    }
-    
-    const queryString = queryParams.toString()
-    const url = `/domains${queryString ? `?${queryString}` : ''}`
-    
-    const response = await api.get<ApiResponse<Domain | GetDomainsResponse>>(url)
+    // ✅ 使用 params 对象，拦截器会自动将驼峰转换为下划线
+    const response = await api.get<ApiResponse<Domain | GetDomainsResponse>>(
+      '/domains',
+      { params }
+    )
     return response.data
   }
 

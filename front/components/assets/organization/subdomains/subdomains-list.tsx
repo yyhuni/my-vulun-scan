@@ -179,8 +179,8 @@ export function SubdomainsList({ organizationId }: { organizationId: string }) {
           setPaginationInfo({
             total: responseData.total || validSubdomains.length,
             page: responseData.page || currentPage,
-            pageSize: responseData.page_size || responseData.pageSize || currentPageSize,
-            totalPages: responseData.total_pages || responseData.totalPages || Math.ceil((responseData.total || validSubdomains.length) / currentPageSize),
+            pageSize: responseData.pageSize || currentPageSize,  // ✅ 只使用驼峰命名
+            totalPages: responseData.totalPages || Math.ceil((responseData.total || validSubdomains.length) / currentPageSize),  // ✅ 只使用驼峰命名
           })
         } else if (response.data.id) {
           console.log('获取到单个子域名:', response.data)

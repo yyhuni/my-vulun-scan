@@ -79,7 +79,7 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
         organizationId: parseInt(organizationId),
         page: currentPage,
         pageSize: currentPageSize,
-        sortBy: "updated_at",
+        sortBy: "updatedAt",  // ✅ 使用驼峰命名，拦截器会自动转换为 updated_at
         sortOrder: "desc"
       })
       
@@ -92,8 +92,8 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
         setPaginationInfo({
           total: responseData.total || 0,
           page: responseData.page || currentPage,
-          pageSize: responseData.page_size || currentPageSize,
-          totalPages: responseData.total_pages || 0,
+          pageSize: responseData.pageSize || currentPageSize,  // ✅ 使用驼峰命名
+          totalPages: responseData.totalPages || 0,  // ✅ 使用驼峰命名
         })
       }
     } catch (error: any) {
@@ -136,7 +136,7 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
           organizationId: parseInt(organizationId),
           page: 1,
           pageSize: 10,
-          sortBy: "updated_at",
+          sortBy: "updatedAt",  // ✅ 使用驼峰命名，拦截器会自动转换为 updated_at
           sortOrder: "desc"
         })
         
@@ -149,8 +149,8 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
           setPaginationInfo({
             total: responseData.total || 0,
             page: responseData.page || 1,
-            pageSize: responseData.page_size || 10,
-            totalPages: responseData.total_pages || 0,
+            pageSize: responseData.pageSize || 10,  // ✅ 使用驼峰命名
+            totalPages: responseData.totalPages || 0,  // ✅ 使用驼峰命名
           })
         } else {
           throw new Error(response.message || "获取域名列表失败")

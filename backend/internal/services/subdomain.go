@@ -2,7 +2,6 @@ package services
 
 import (
 	"fmt"
-	"time"
 
 	"vulun-scan-backend/internal/models"
 	"vulun-scan-backend/pkg/database"
@@ -25,7 +24,6 @@ func NewSubDomainService() *SubDomainService {
 
 // GetSubDomains 获取子域名列表
 func (s *SubDomainService) GetSubDomains(req models.GetSubDomainsRequest) (*models.GetSubDomainsResponse, error) {
-	time.Sleep(2 * time.Second) // 模拟延迟
 
 	// 设置默认值
 	if req.Page <= 0 {
@@ -100,7 +98,7 @@ func (s *SubDomainService) GetSubDomains(req models.GetSubDomainsRequest) (*mode
 
 // CreateSubDomains 创建子域名
 func (s *SubDomainService) CreateSubDomains(req models.CreateSubDomainsRequest) (*models.CreateSubDomainsResponse, error) {
-	time.Sleep(2 * time.Second) // 模拟延迟
+
 	var createdCount int
 	var existingDomains []string
 
@@ -171,7 +169,6 @@ func (s *SubDomainService) GetSubDomainsByDomain(domainID uint) ([]models.SubDom
 
 // GetSubDomainByID 根据ID获取子域名详情
 func (s *SubDomainService) GetSubDomainByID(id uint) (*models.SubDomain, error) {
-	time.Sleep(2 * time.Second) // 模拟延迟
 
 	var subDomain models.SubDomain
 	result := s.db.Preload("Domain").First(&subDomain, id)

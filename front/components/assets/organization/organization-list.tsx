@@ -31,7 +31,7 @@ import { EditOrganizationDialog } from "./edit-organization-dialog"
 import { OrganizationService } from "@/services/organization.service"
 
 // 导入类型定义
-import type { Organization } from "@/types/organization.types"
+import type { Organization, OrganizationsResponse } from "@/types/organization.types"
 import type { PaginationInfo } from "@/types/common.types"
 
 type ViewState = "loading" | "data" | "empty" | "error"
@@ -128,23 +128,38 @@ export function OrganizationList() {
       const response = await OrganizationService.getOrganizations({
         page: currentPage,
         pageSize: currentPageSize,
-        sortBy: "updated_at",    // 默认按更新时间排序
-        sortOrder: "desc"        // 默认降序，最新的在前
+        sortBy: "updatedAt",    // ✅ 使用驼峰命名，拦截器会自动转换为 updated_at
+        sortOrder: "desc"       // 默认降序，最新的在前
       })
       
       if (response.state === "success" && response.data) {
-        const organizations = response.data.organizations || []
-        setOrganizations(organizations)
-        
-        // 更新分页信息
-        setPaginationInfo({
-          total: response.data.total || 0,
-          page: response.data.page || 1,
-          pageSize: (response.data as any).page_size || response.data.pageSize || 10,
-          totalPages: (response.data as any).total_pages || response.data.totalPages || 0,
-        })
-        
-        setViewState(organizations.length > 0 ? "data" : "empty")
+        // 类型守卫：检查是否为 OrganizationsResponse 类型
+        if ('organizations' in response.data) {
+          // 列表响应
+          const listResponse = response.data as OrganizationsResponse<Organization>
+          setOrganizations(listResponse.organizations || [])
+          
+          // 更新分页信息
+          setPaginationInfo({
+            total: listResponse.total || 0,
+            page: listResponse.page || 1,
+            pageSize: listResponse.pageSize || 10,
+            totalPages: listResponse.totalPages || 0,
+          })
+          
+          setViewState(listResponse.organizations.length > 0 ? "data" : "empty")
+        } else {
+          // 单个组织响应（不应该在列表查询中出现，但做容错处理）
+          const singleOrg = response.data as Organization
+          setOrganizations([singleOrg])
+          setPaginationInfo({
+            total: 1,
+            page: 1,
+            pageSize: 10,
+            totalPages: 1,
+          })
+          setViewState("data")
+        }
       } else {
         throw new Error(response.message || "获取组织列表失败")
       }
