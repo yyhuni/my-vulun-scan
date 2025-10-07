@@ -33,7 +33,10 @@ func GetSubDomains(c *gin.Context) {
 	
 	// 绑定查询参数（包含 id、domain_id、page 等）
 	var req models.GetSubDomainsRequest
-	c.ShouldBindQuery(&req)
+	if err := c.ShouldBindQuery(&req); err != nil {
+		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		return
+	}
 	
 	// 设置默认值
 	if req.Page <= 0 {

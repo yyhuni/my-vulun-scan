@@ -103,6 +103,11 @@ func GetDomains(c *gin.Context) {
 	}
 	
 	// 否则查询域名列表
+	// 查询列表时，organization_id 是必需的
+	if req.OrganizationID == 0 {
+		utils.BadRequestResponse(c, "查询域名列表时 organization_id 参数不能为空")
+		return
+	}
 
 	response, err := service.GetDomainsByOrgID(req)
 	if err != nil {

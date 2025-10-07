@@ -243,42 +243,59 @@ const docTemplate = `{
         },
         "/organizations": {
             "get": {
-                "description": "支持按ID查询单个组织、获取组织列表、分页和排序等",
+                "description": "支持两种查询模式：1) 通过id查询单个组织详情 2) 获取组织列表(支持分页和排序)",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "组织管理"
                 ],
-                "summary": "获取组织信息(支持多种查询方式)",
+                "summary": "获取组织信息",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "组织ID(查询单个组织时使用)",
+                        "example": 1,
+                        "description": "组织ID",
                         "name": "id",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "页码,默认1",
+                        "default": 1,
+                        "example": 1,
+                        "description": "页码",
                         "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "每页数量,默认10",
+                        "default": 10,
+                        "example": 10,
+                        "description": "每页数量",
                         "name": "page_size",
                         "in": "query"
                     },
                     {
+                        "enum": [
+                            "id",
+                            "name",
+                            "created_at",
+                            "updated_at"
+                        ],
                         "type": "string",
-                        "description": "排序字段: id, name, created_at, updated_at,默认updated_at",
+                        "default": "updated_at",
+                        "description": "排序字段",
                         "name": "sort_by",
                         "in": "query"
                     },
                     {
+                        "enum": [
+                            "asc",
+                            "desc"
+                        ],
                         "type": "string",
-                        "description": "排序方向: asc, desc,默认desc",
+                        "default": "desc",
+                        "description": "排序方向",
                         "name": "sort_order",
                         "in": "query"
                     }

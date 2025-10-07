@@ -12,15 +12,15 @@ import (
 )
 
 // GetOrganizations 获取组织信息
-// @Summary 获取组织信息(支持多种查询方式)
-// @Description 支持按ID查询单个组织、获取组织列表、分页和排序等
+// @Summary 获取组织信息
+// @Description 支持两种查询模式：1) 通过id查询单个组织详情 2) 获取组织列表(支持分页和排序)
 // @Tags 组织管理
 // @Produce json
-// @Param id query uint false "组织ID(查询单个组织时使用)"
-// @Param page query int false "页码,默认1"
-// @Param page_size query int false "每页数量,默认10"
-// @Param sort_by query string false "排序字段: id, name, created_at, updated_at,默认updated_at"
-// @Param sort_order query string false "排序方向: asc, desc,默认desc"
+// @Param id query uint false "组织ID" example(1)
+// @Param page query int false "页码" default(1) example(1)
+// @Param page_size query int false "每页数量" default(10) example(10)
+// @Param sort_by query string false "排序字段" default(updated_at) Enums(id, name, created_at, updated_at)
+// @Param sort_order query string false "排序方向" default(desc) Enums(asc, desc)
 // @Success 200 {object} models.APIResponse{data=models.Organization} "获取单个组织成功"
 // @Success 200 {object} models.APIResponse{data=models.GetOrganizationsResponse} "获取组织列表成功"
 // @Failure 400 {object} models.APIResponse "请求参数错误"
@@ -32,8 +32,11 @@ func GetOrganizations(c *gin.Context) {
 
 	// 绑定查询参数（包含 id、page、page_size 等）
 	var req models.GetOrganizationsRequest
-	c.ShouldBindQuery(&req)
-	
+	if err := c.ShouldBindQuery(&req); err != nil {
+		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		return
+	}
+
 	// 设置默认值
 	if req.Page <= 0 {
 		req.Page = 1
@@ -47,8 +50,8 @@ func GetOrganizations(c *gin.Context) {
 	if req.SortOrder == "" {
 		req.SortOrder = "desc"
 	}
-	
-	// 如果有 id 参数，查询单个组织
+
+	// 如果有 id 参数，查询单个组织的详情
 	if req.ID > 0 {
 		organization, err := service.GetOrganizationByID(req.ID)
 		if err != nil {
@@ -64,8 +67,7 @@ func GetOrganizations(c *gin.Context) {
 		return
 	}
 
-	// 否则查询组织列表
-
+	// 否则查询组织列表，返回多个组织组成的列表
 	response, err := service.GetOrganizations(req)
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "获取组织列表失败: "+err.Error())
@@ -214,8 +216,8 @@ func BatchDeleteOrganizations(c *gin.Context) {
 	}
 
 	utils.SuccessResponse(c, models.BatchDeleteOrganizationsResponseData{
-		Message:        "批量删除组织成功",
-		DeletedCount:   len(req.OrganizationIDs),
-		Organizations:  organizations,
+		Message:       "批量删除组织成功",
+		DeletedCount:  len(req.OrganizationIDs),
+		Organizations: organizations,
 	})
 }
