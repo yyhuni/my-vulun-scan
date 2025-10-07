@@ -23,7 +23,7 @@ import (
 // @Param sort_order query string false "排序方向" default(desc) Enums(asc, desc)
 // @Success 200 {object} models.APIResponse{data=models.Organization} "获取单个组织成功"
 // @Success 200 {object} models.APIResponse{data=models.GetOrganizationsResponse} "获取组织列表成功"
-// @Failure 400 {object} models.APIResponse "请求参数错误"
+// @Failure 422 {object} models.APIResponse "请求参数验证失败"
 // @Failure 404 {object} models.APIResponse "组织不存在"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
 // @Router /organizations [get]
@@ -113,7 +113,7 @@ func CreateOrganization(c *gin.Context) {
 // @Produce json
 // @Param request body models.UpdateOrganizationRequest true "更新信息"
 // @Success 200 {object} models.APIResponse{data=models.Organization} "更新成功"
-// @Failure 400 {object} models.APIResponse "请求参数错误"
+// @Failure 422 {object} models.APIResponse "请求参数验证失败"
 // @Failure 404 {object} models.APIResponse "组织不存在"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
 // @Router /organizations/update [post]
@@ -147,7 +147,7 @@ func UpdateOrganization(c *gin.Context) {
 // @Produce json
 // @Param request body models.DeleteOrganizationRequest true "删除请求"
 // @Success 200 {object} models.APIResponse{data=models.DeleteOrganizationResponseData} "删除成功"
-// @Failure 400 {object} models.APIResponse "请求参数错误"
+// @Failure 422 {object} models.APIResponse "请求参数验证失败"
 // @Failure 404 {object} models.APIResponse "组织不存在"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
 // @Router /organizations/delete [post]
@@ -181,9 +181,10 @@ func DeleteOrganization(c *gin.Context) {
 // @Tags 组织管理
 // @Accept json
 // @Produce json
-// @Param request body models.BatchDeleteOrganizationsRequest true "组组ID列表"
+// @Param request body models.BatchDeleteOrganizationsRequest true "组织ID列表"
 // @Success 200 {object} models.APIResponse{data=models.BatchDeleteOrganizationsResponseData} "批量删除成功"
-// @Failure 400 {object} models.APIResponse "请求参数错误"
+// @Failure 400 {object} models.APIResponse "业务逻辑错误"
+// @Failure 422 {object} models.APIResponse "请求参数验证失败"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
 // @Router /organizations/batch-delete [post]
 func BatchDeleteOrganizations(c *gin.Context) {
