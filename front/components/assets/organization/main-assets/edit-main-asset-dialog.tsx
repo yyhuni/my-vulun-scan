@@ -6,6 +6,9 @@ import { Edit, Globe } from "lucide-react"
 // 导入 UI 组件
 import { Button } from "@/components/ui/button"
 import { LoadingSpinner } from "@/components/loading-spinner"
+
+// 导入 React Query Hook
+import { useUpdateDomain } from "@/hooks/use-domains"
 import {
   Dialog,
   DialogContent,
@@ -53,8 +56,8 @@ export function EditMainAssetDialog({
     description: "",
   })
 
-  // 加载状态（暂时模拟，后续接入API时使用真实的mutation）
-  const [isLoading, setIsLoading] = useState(false)
+  // 使用 React Query 的更新域名 mutation
+  const updateDomain = useUpdateDomain()
 
   // 表单验证错误状态
   const [errors, setErrors] = useState({
@@ -145,31 +148,27 @@ export function EditMainAssetDialog({
       return
     }
 
-    setIsLoading(true)
-
-    try {
-      // 模拟API调用延迟
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // 创建更新后的资产对象
-      const updatedAsset: Asset = {
-        ...asset,
-        name: formData.name.trim(),
-        description: formData.description.trim(),
-        updatedAt: new Date().toISOString(),
+    // 使用 React Query mutation
+    updateDomain.mutate(
+      {
+        id: Number(asset.id),
+        data: {
+          name: formData.name.trim(),
+          description: formData.description.trim(),
+        }
+      },
+      {
+        onSuccess: (response) => {
+          if (response.state === "success" && response.data) {
+            // 调用成功回调
+            onEdit(response.data)
+            
+            // 关闭对话框
+            onOpenChange(false)
+          }
+        }
       }
-      
-      // 调用成功回调
-      onEdit(updatedAsset)
-      
-      // 关闭对话框
-      onOpenChange(false)
-      
-    } catch (error) {
-      console.error('更新主资产失败:', error)
-    } finally {
-      setIsLoading(false)
-    }
+    )
   }
 
   // 处理输入框变化
@@ -191,7 +190,7 @@ export function EditMainAssetDialog({
 
   // 处理对话框关闭
   const handleOpenChange = (newOpen: boolean) => {
-    if (!isLoading) {
+    if (!updateDomain.isPending) {
       onOpenChange(newOpen)
     }
   }
@@ -235,7 +234,7 @@ export function EditMainAssetDialog({
                 value={formData.name}
                 onChange={(e) => handleInputChange("name", e.target.value)}
                 placeholder="请输入域名（如：example.com）"
-                disabled={isLoading}
+                disabled={updateDomain.isPending}
                 maxLength={100}
                 required
                 className={errors.name ? "border-destructive" : ""}
@@ -258,7 +257,7 @@ export function EditMainAssetDialog({
                 value={formData.description}
                 onChange={(e) => handleInputChange("description", e.target.value)}
                 placeholder="请输入域名描述（可选）"
-                disabled={isLoading}
+                disabled={updateDomain.isPending}
                 rows={3}
                 maxLength={500}
                 className={errors.description ? "border-destructive" : ""}
@@ -287,7 +286,7 @@ export function EditMainAssetDialog({
               type="button" 
               variant="outline" 
               onClick={() => handleOpenChange(false)}
-              disabled={isLoading}
+              disabled={updateDomain.isPending}
             >
               取消
             </Button>
@@ -297,7 +296,7 @@ export function EditMainAssetDialog({
                 type="button" 
                 variant="ghost" 
                 onClick={handleReset}
-                disabled={isLoading}
+                disabled={updateDomain.isPending}
               >
                 重置
               </Button>
@@ -305,9 +304,9 @@ export function EditMainAssetDialog({
             
             <Button 
               type="submit" 
-              disabled={isLoading || !formData.name.trim() || !hasChanges() || !!errors.name || !!errors.description}
+              disabled={updateDomain.isPending || !formData.name.trim() || !hasChanges() || !!errors.name || !!errors.description}
             >
-              {isLoading ? (
+              {updateDomain.isPending ? (
                 <>
                   <LoadingSpinner size="sm" className="mr-2" />
                   更新中...

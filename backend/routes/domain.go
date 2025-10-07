@@ -26,7 +26,10 @@ func SetupDomainRoutes(api *gin.RouterGroup) {
 		// 示例：GET /domains/1
 		domains.GET("/:id", handlers.GetDomainByID)
 
-		// （待实现完善）
+		// 更新域名信息 - 支持更新名称和描述
+		// 请求体示例：{"id": 1, "name": "new-domain.com", "description": "新描述"}
+		domains.POST("/update", handlers.UpdateDomain)
+
 		// 解除组织与域名的关联 - 从组织中移除指定域名
 		// 请求体示例：{"organization_id": 1, "domain_id": 2}
 		domains.POST("/remove-from-organization", handlers.RemoveOrganizationDomain)

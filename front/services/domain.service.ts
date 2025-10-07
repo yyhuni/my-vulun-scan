@@ -37,6 +37,27 @@ export class DomainService {
   }
 
   /**
+   * 更新域名信息
+   * @param data - 更新请求对象
+   * @param data.id - 域名ID
+   * @param data.name - 域名名称
+   * @param data.description - 域名描述
+   * @returns Promise<ApiResponse<Domain>>
+   */
+  static async updateDomain(data: {
+    id: number
+    name: string
+    description?: string
+  }): Promise<ApiResponse<Domain>> {
+    const response = await api.post<ApiResponse<Domain>>('/domains/update', {
+      id: data.id,
+      name: data.name,
+      description: data.description || ''
+    })
+    return response.data
+  }
+
+  /**
    * 解除组织与域名的关联
    * @param data - 解除关联请求对象
    * @param data.organizationId - 组织ID

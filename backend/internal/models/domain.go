@@ -33,6 +33,13 @@ type DomainDetail struct {
 	Description string `json:"description,omitempty"`
 }
 
+// UpdateDomainRequest 更新域名请求
+type UpdateDomainRequest struct {
+	ID          uint   `json:"id" binding:"required"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
 // RemoveOrgDomainRequest 移除组织域名关联请求
 type RemoveOrgDomainRequest struct {
 	OrgID    uint `json:"organization_id" binding:"required"`

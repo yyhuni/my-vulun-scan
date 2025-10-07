@@ -79,6 +79,40 @@ func GetDomainByID(c *gin.Context) {
 	utils.SuccessResponse(c, domain)
 }
 
+// UpdateDomain 更新域名
+// @Summary 更新域名
+// @Description 更新域名信息（名称和描述）
+// @Tags 域名管理
+// @Accept json
+// @Produce json
+// @Param request body models.UpdateDomainRequest true "更新信息"
+// @Success 200 {object} models.APIResponse{data=models.Domain} "更新成功"
+// @Failure 400 {object} models.APIResponse "请求参数错误"
+// @Failure 404 {object} models.APIResponse "域名不存在"
+// @Failure 500 {object} models.APIResponse "服务器内部错误"
+// @Router /domains/update [post]
+func UpdateDomain(c *gin.Context) {
+	var req models.UpdateDomainRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	service := services.NewDomainService()
+	domain, err := service.UpdateDomain(req)
+	if err != nil {
+		if errors.Is(err, customErrors.ErrDomainNotFound) {
+			utils.NotFoundResponse(c, "域名不存在")
+			return
+		}
+		utils.InternalServerErrorResponse(c, "更新域名失败: "+err.Error())
+		return
+	}
+
+	utils.SuccessResponse(c, domain)
+}
+
 // GetDomainsByOrgID 获取组织的域名列表
 // @Summary 获取组织的域名列表
 // @Description 获取指定组织的所有域名，支持分页和排序。注意：返回的域名不包含子域名信息

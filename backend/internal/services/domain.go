@@ -189,6 +189,65 @@ func (s *DomainService) GetDomainByID(id uint) (*models.Domain, error) {
 	return &domain, nil
 }
 
+// UpdateDomain 更新域名信息
+//
+// 业务逻辑说明：
+// 1. 验证域名是否存在
+// 2. 更新域名的名称和描述
+// 3. 返回更新后的域名信息
+//
+// 注意事项：
+// - 只能更新名称和描述，不能修改ID和时间戳
+// - 名称修改后需要保证唯一性
+// - 更新操作会自动更新 updated_at 字段
+func (s *DomainService) UpdateDomain(req models.UpdateDomainRequest) (*models.Domain, error) {
+	// 步骤1: 验证域名是否存在
+	var domain models.Domain
+	if err := s.db.First(&domain, "id = ?", req.ID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			log.Error().Uint("domain_id", req.ID).Msg("Domain not found")
+			return nil, errors.ErrDomainNotFound
+		}
+		log.Error().Err(err).Msg("Failed to query domain")
+		return nil, err
+	}
+
+	// 步骤2: 更新域名信息
+	// 只更新非空字段，保持灵活性
+	updateData := make(map[string]interface{})
+	if req.Name != "" {
+		updateData["name"] = req.Name
+	}
+	if req.Description != "" {
+		updateData["description"] = req.Description
+	}
+
+	// 如果没有任何更新字段，直接返回原域名
+	if len(updateData) == 0 {
+		log.Info().Uint("domain_id", req.ID).Msg("No fields to update")
+		return &domain, nil
+	}
+
+	// 执行更新操作
+	if err := s.db.Model(&domain).Updates(updateData).Error; err != nil {
+		log.Error().Err(err).Uint("domain_id", req.ID).Msg("Failed to update domain")
+		return nil, err
+	}
+
+	// 重新查询获取更新后的数据（包括自动更新的 updated_at）
+	if err := s.db.First(&domain, "id = ?", req.ID).Error; err != nil {
+		log.Error().Err(err).Msg("Failed to query updated domain")
+		return nil, err
+	}
+
+	log.Info().
+		Uint("domain_id", req.ID).
+		Str("name", domain.Name).
+		Msg("Domain updated successfully")
+
+	return &domain, nil
+}
+
 // GetDomainsByOrgID 根据组织ID获取域名列表(支持分页和排序)
 //
 // 业务逻辑说明：

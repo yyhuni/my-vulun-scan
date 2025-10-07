@@ -223,6 +223,17 @@ definitions:
       updated_at:
         type: string
     type: object
+  vulun-scan-backend_internal_models.UpdateDomainRequest:
+    properties:
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+    required:
+    - id
+    type: object
   vulun-scan-backend_internal_models.UpdateOrgRequest:
     properties:
       description:
@@ -347,6 +358,45 @@ paths:
           schema:
             $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
       summary: 解除组织与域名的关联（待实现完善）
+      tags:
+      - 域名管理
+  /domains/update:
+    post:
+      consumes:
+      - application/json
+      description: 更新域名信息（名称和描述）
+      parameters:
+      - description: 更新信息
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/vulun-scan-backend_internal_models.UpdateDomainRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 更新成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.Domain'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+        "404":
+          description: 域名不存在
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+      summary: 更新域名
       tags:
       - 域名管理
   /organizations:

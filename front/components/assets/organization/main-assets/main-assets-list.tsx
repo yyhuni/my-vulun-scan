@@ -91,13 +91,9 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
 
   // 处理编辑成功
   const handleEditSuccess = async (updatedAsset: Asset) => {
-    // TODO: 后续接入API时，这里会自动刷新数据
-    console.info('主资产编辑成功:', updatedAsset)
+    // React Query 会自动刷新数据，不需要手动处理
     setIsEditDialogOpen(false)
     setEditingAsset(null)
-    
-    // 手动刷新数据（临时方案）
-    refetch()
   }
 
   // 处理分页变化

@@ -117,10 +117,6 @@ export function useRemoveDomainFromOrganization() {
   })
 }
 
-// 注意：域名的更新和删除功能需要后端 API 支持
-// 当后端实现相应接口后，可以取消注释以下代码：
-
-/*
 // 更新域名
 export function useUpdateDomain() {
   const queryClient = useQueryClient()
@@ -138,6 +134,11 @@ export function useUpdateDomain() {
         toast.success('更新成功')
         queryClient.invalidateQueries({ queryKey: domainKeys.lists() })
         queryClient.invalidateQueries({ queryKey: domainKeys.detail(id) })
+        
+        // 刷新所有组织的域名列表
+        queryClient.invalidateQueries({ 
+          queryKey: ['organizations'] 
+        })
       } else {
         throw new Error(response.message || '更新域名失败')
       }
@@ -152,6 +153,8 @@ export function useUpdateDomain() {
   })
 }
 
+// 注意：以下删除功能需要后端 API 支持，目前后端还没有实现
+/*
 // 删除域名
 export function useDeleteDomain() {
   const queryClient = useQueryClient()
