@@ -105,7 +105,7 @@ export function AddDomainDialog({
       {
         onSuccess: (response) => {
           if (response.state === "success" && response.data) {
-            // 调用成功回调
+            // 调用成功回调 - 只用于 UI 状态更新，不重复调用 API
             onAdd(response.data)
             
             // 重置表单

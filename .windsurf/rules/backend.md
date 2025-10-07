@@ -15,3 +15,4 @@ trigger: always_on
 14.注意前端的驼峰命名，后端的下划线命名，这之间会自动的转换，通过front/lib/api-client.ts文件进行的
 15.注意：api-client.ts 的 snakecaseKeys 只转换请求体（body）和查询参数对象（params），不转换手动构建的 URL 查询字符串中的值，所以需要在写代码过程中不要手动构建 url，而是要使用 params 对象，params 是对象，拦截器可以转换
 16.所有 API 响应必须使用结构化类型，禁止使用 gin.H 或 map[string]interface{}。在 models 包中定义专门的响应结构体（如 XxxResponseData），确保类型安全和 API 文档完整性
+17.所有业务操作的 toast 都放在 hook 中

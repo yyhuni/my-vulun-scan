@@ -65,8 +65,11 @@ export function useCreateDomain() {
       toast.loading('正在创建域名...', { id: 'create-domain' })
     },
     onSuccess: (response, variables) => {
+      // 关闭加载提示
+      toast.dismiss('create-domain')
+      
       if (response.state === 'success') {
-        toast.success('域名创建成功', { id: 'create-domain' })
+        toast.success('创建成功')
         
         // 刷新相关查询
         queryClient.invalidateQueries({ queryKey: domainKeys.lists() })
@@ -82,11 +85,107 @@ export function useCreateDomain() {
       }
     },
     onError: (error: any) => {
-      const errorMessage = error.message || '创建域名失败'
-      toast.error(errorMessage, { id: 'create-domain' })
+      // 关闭加载提示
+      toast.dismiss('create-domain')
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.error('创建域名失败:', error)
+      }
+      toast.error('创建失败')
     },
   })
 }
 
-// 注意：域名服务目前只支持创建和查询，更新和删除功能尚未实现
-// 如果需要这些功能，请先在后端实现相应的 API 接口
+// 注意：域名的更新和删除功能需要后端 API 支持
+// 当后端实现相应接口后，可以取消注释以下代码：
+
+/*
+// 更新域名
+export function useUpdateDomain() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: { name: string; description?: string } }) =>
+      DomainService.updateDomain({ id, ...data }),
+    onMutate: ({ id }) => {
+      toast.loading('正在更新域名...', { id: `update-domain-${id}` })
+    },
+    onSuccess: (response: any, { id }) => {
+      toast.dismiss(`update-domain-${id}`)
+      
+      if (response.state === 'success') {
+        toast.success('更新成功')
+        queryClient.invalidateQueries({ queryKey: domainKeys.lists() })
+        queryClient.invalidateQueries({ queryKey: domainKeys.detail(id) })
+      } else {
+        throw new Error(response.message || '更新域名失败')
+      }
+    },
+    onError: (error: any, { id }) => {
+      toast.dismiss(`update-domain-${id}`)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('更新域名失败:', error)
+      }
+      toast.error('更新失败')
+    },
+  })
+}
+
+// 删除域名
+export function useDeleteDomain() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: number) => DomainService.deleteDomain(id),
+    onMutate: (id) => {
+      toast.loading('正在删除域名...', { id: `delete-domain-${id}` })
+    },
+    onSuccess: (response: any, id) => {
+      toast.dismiss(`delete-domain-${id}`)
+      
+      if (response.state === 'success') {
+        toast.success('删除成功')
+        queryClient.invalidateQueries({ queryKey: domainKeys.lists() })
+      } else {
+        throw new Error(response.message || '删除域名失败')
+      }
+    },
+    onError: (error: any, id) => {
+      toast.dismiss(`delete-domain-${id}`)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('删除域名失败:', error)
+      }
+      toast.error('删除失败')
+    },
+  })
+}
+
+// 批量删除域名
+export function useBatchDeleteDomains() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (ids: number[]) => DomainService.batchDeleteDomains(ids),
+    onMutate: () => {
+      toast.loading('正在批量删除域名...', { id: 'batch-delete-domains' })
+    },
+    onSuccess: (response: any) => {
+      toast.dismiss('batch-delete-domains')
+      
+      if (response.state === 'success') {
+        toast.success('批量删除成功')
+        queryClient.invalidateQueries({ queryKey: domainKeys.lists() })
+      } else {
+        throw new Error(response.message || '批量删除域名失败')
+      }
+    },
+    onError: (error: any) => {
+      toast.dismiss('batch-delete-domains')
+      if (process.env.NODE_ENV === 'development') {
+        console.error('批量删除域名失败:', error)
+      }
+      toast.error('批量删除失败')
+    },
+  })
+}
+*/

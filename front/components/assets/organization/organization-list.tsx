@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { LoadingState, LoadingSpinner } from "@/components/loading-spinner"
+import { LoadingState, LoadingSpinner, LoadingOverlay } from "@/components/loading-spinner"
 
 // 导入数据表格组件
 import { OrganizationDataTable } from "./organization-data-table"
@@ -129,15 +129,7 @@ export function OrganizationList() {
 
   // 编辑组织成功回调
   const handleOrganizationEdited = (updatedOrganization: Organization) => {
-    // 使用 React Query 的更新 mutation
-    updateOrganization.mutate({
-      id: Number(updatedOrganization.id),
-      data: {
-        name: updatedOrganization.name,
-        description: updatedOrganization.description
-      }
-    })
-    
+    // 只需要关闭对话框，React Query 已经在 dialog 中处理了更新
     setEditDialogOpen(false)
     setOrganizationToEdit(null)
   }

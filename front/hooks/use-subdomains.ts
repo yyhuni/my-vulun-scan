@@ -62,8 +62,11 @@ export function useCreateSubdomain() {
       toast.loading('正在创建子域名...', { id: 'create-subdomain' })
     },
     onSuccess: (response) => {
+      // 关闭加载提示
+      toast.dismiss('create-subdomain')
+      
       if (response.state === 'success') {
-        toast.success('子域名创建成功', { id: 'create-subdomain' })
+        toast.success('创建成功')
         
         // 刷新相关查询
         queryClient.invalidateQueries({ queryKey: subdomainKeys.lists() })
@@ -72,11 +75,107 @@ export function useCreateSubdomain() {
       }
     },
     onError: (error: any) => {
-      const errorMessage = error.message || '创建子域名失败'
-      toast.error(errorMessage, { id: 'create-subdomain' })
+      // 关闭加载提示
+      toast.dismiss('create-subdomain')
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.error('创建子域名失败:', error)
+      }
+      toast.error('创建失败')
     },
   })
 }
 
-// 注意：子域名服务目前只支持创建和查询，更新和删除功能尚未实现
-// 如果需要这些功能，请先在后端实现相应的 API 接口
+// 注意：子域名的更新和删除功能需要后端 API 支持
+// 当后端实现相应接口后，可以取消注释以下代码：
+
+/*
+// 更新子域名
+export function useUpdateSubdomain() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: { name: string; description?: string } }) =>
+      SubDomainService.updateSubDomain({ id, ...data }),
+    onMutate: ({ id }) => {
+      toast.loading('正在更新子域名...', { id: `update-subdomain-${id}` })
+    },
+    onSuccess: (response: any, { id }) => {
+      toast.dismiss(`update-subdomain-${id}`)
+      
+      if (response.state === 'success') {
+        toast.success('更新成功')
+        queryClient.invalidateQueries({ queryKey: subdomainKeys.lists() })
+        queryClient.invalidateQueries({ queryKey: subdomainKeys.detail(id) })
+      } else {
+        throw new Error(response.message || '更新子域名失败')
+      }
+    },
+    onError: (error: any, { id }) => {
+      toast.dismiss(`update-subdomain-${id}`)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('更新子域名失败:', error)
+      }
+      toast.error('更新失败')
+    },
+  })
+}
+
+// 删除子域名
+export function useDeleteSubdomain() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: number) => SubDomainService.deleteSubDomain(id),
+    onMutate: (id) => {
+      toast.loading('正在删除子域名...', { id: `delete-subdomain-${id}` })
+    },
+    onSuccess: (response: any, id) => {
+      toast.dismiss(`delete-subdomain-${id}`)
+      
+      if (response.state === 'success') {
+        toast.success('删除成功')
+        queryClient.invalidateQueries({ queryKey: subdomainKeys.lists() })
+      } else {
+        throw new Error(response.message || '删除子域名失败')
+      }
+    },
+    onError: (error: any, id) => {
+      toast.dismiss(`delete-subdomain-${id}`)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('删除子域名失败:', error)
+      }
+      toast.error('删除失败')
+    },
+  })
+}
+
+// 批量删除子域名
+export function useBatchDeleteSubdomains() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (ids: number[]) => SubDomainService.batchDeleteSubDomains(ids),
+    onMutate: () => {
+      toast.loading('正在批量删除子域名...', { id: 'batch-delete-subdomains' })
+    },
+    onSuccess: (response: any) => {
+      toast.dismiss('batch-delete-subdomains')
+      
+      if (response.state === 'success') {
+        toast.success('批量删除成功')
+        queryClient.invalidateQueries({ queryKey: subdomainKeys.lists() })
+      } else {
+        throw new Error(response.message || '批量删除子域名失败')
+      }
+    },
+    onError: (error: any) => {
+      toast.dismiss('batch-delete-subdomains')
+      if (process.env.NODE_ENV === 'development') {
+        console.error('批量删除子域名失败:', error)
+      }
+      toast.error('批量删除失败')
+    },
+  })
+}
+*/
