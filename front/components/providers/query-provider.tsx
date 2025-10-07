@@ -8,10 +8,10 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // 数据保持新鲜的时间（5分钟）
-      staleTime: 5 * 60 * 1000,
-      // 缓存时间（10分钟）
-      gcTime: 10 * 60 * 1000,
+      // 数据保持新鲜的时间（30分钟）- 对于大数据量，延长刷新间隔
+      staleTime: 30 * 60 * 1000,
+      // 缓存时间（1小时）- 延长缓存时间减少重复请求
+      gcTime: 60 * 60 * 1000,
       // 重试配置
       retry: (failureCount, error: any) => {
         // 4xx 错误不重试
@@ -23,10 +23,10 @@ const queryClient = new QueryClient({
       },
       // 重试延迟（指数退避）
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-      // 窗口重新获得焦点时重新获取数据
+      // 窗口重新获得焦点时不自动刷新 - 避免意外的大数据量请求
       refetchOnWindowFocus: false,
-      // 网络重连时重新获取数据
-      refetchOnReconnect: true,
+      // 网络重连时不自动刷新 - 避免网络波动导致的大量请求
+      refetchOnReconnect: false,
     },
     mutations: {
       // 变更操作重试配置
