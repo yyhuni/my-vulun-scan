@@ -1,13 +1,11 @@
 "use client"
 
 import React from "react"
-import { useRouter, usePathname } from "next/navigation"
-import { Badge } from "@/components/ui/badge"
+import { useRouter, usePathname, useParams } from "next/navigation"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Building2 } from "lucide-react"
-import { LoadingState } from "@/components/loading-spinner"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useOrganization } from "@/hooks/use-organizations"
-import type { Organization } from "@/types/organization.types"
 
 /**
  * 组织详情布局
@@ -15,12 +13,10 @@ import type { Organization } from "@/types/organization.types"
  */
 export default function OrganizationLayout({
   children,
-  params,
 }: {
   children: React.ReactNode
-  params: Promise<{ id: string }>
 }) {
-  const resolvedParams = React.use(params)
+  const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const pathname = usePathname()
 
@@ -29,7 +25,7 @@ export default function OrganizationLayout({
     data: organization,
     isLoading,
     error
-  } = useOrganization(Number(resolvedParams.id))
+  } = useOrganization(Number(id))
 
   // 获取当前激活的 Tab
   const getActiveTab = () => {
@@ -41,7 +37,7 @@ export default function OrganizationLayout({
 
   // 处理 Tab 切换
   const handleTabChange = (value: string) => {
-    const basePath = `/assets/organization/${resolvedParams.id}`
+    const basePath = `/assets/organization/${id}`
     switch (value) {
       case "main-assets":
         router.push(`${basePath}/main-assets`)
@@ -59,7 +55,26 @@ export default function OrganizationLayout({
   if (isLoading) {
     return (
       <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-        <LoadingState message="加载组织数据中..." />
+        {/* 页面头部骨架 */}
+        <div className="flex items-center justify-between px-4 lg:px-6">
+          <div className="w-full max-w-xl space-y-2">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-6 w-6 rounded-md" />
+              <Skeleton className="h-7 w-48" />
+            </div>
+            <Skeleton className="h-4 w-72" />
+          </div>
+        </div>
+
+        {/* Tabs 导航骨架 */}
+        <div className="flex items-center justify-between px-4 lg:px-6">
+          <div className="flex gap-2">
+            <Skeleton className="h-9 w-16" />
+            <Skeleton className="h-9 w-20" />
+            <Skeleton className="h-9 w-24" />
+          </div>
+        </div>
+
       </div>
     )
   }
@@ -89,7 +104,7 @@ export default function OrganizationLayout({
             <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">组织不存在</h3>
             <p className="text-muted-foreground">
-              未找到ID为 {resolvedParams.id} 的组织
+              未找到ID为 {id} 的组织
             </p>
           </div>
         </div>
