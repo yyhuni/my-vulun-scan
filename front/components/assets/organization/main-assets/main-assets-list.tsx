@@ -139,26 +139,7 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
     return <LoadingState message="加载主资产数据中..." />
   }
 
-  // 空数据状态
-  if (!data?.domains || data.domains.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <div className="rounded-full bg-muted p-3 mb-4">
-          <span className="text-muted-foreground">📁</span>
-        </div>
-        <h3 className="text-lg font-semibold mb-2">暂无主资产</h3>
-        <p className="text-muted-foreground text-center mb-4">
-          该组织还没有任何主资产，点击下方按钮添加第一个主资产
-        </p>
-        <button 
-          onClick={handleAddMainAsset}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-        >
-          添加主资产
-        </button>
-      </div>
-    )
-  }
+
 
   return (
     <>

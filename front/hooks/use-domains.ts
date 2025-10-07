@@ -57,10 +57,10 @@ export function useCreateDomain() {
         // 刷新相关查询
         queryClient.invalidateQueries({ queryKey: domainKeys.lists() })
         
-        // 如果有组织ID，也刷新该组织的域名列表
+        // 刷新该组织的域名列表（使用 organizationKeys）
         if (variables.organizationId) {
           queryClient.invalidateQueries({ 
-            queryKey: domainKeys.list({ organizationId: variables.organizationId.toString() }) 
+            queryKey: ['organizations', 'detail', variables.organizationId, 'domains']
           })
         }
       } else {
@@ -135,9 +135,12 @@ export function useUpdateDomain() {
         queryClient.invalidateQueries({ queryKey: domainKeys.lists() })
         queryClient.invalidateQueries({ queryKey: domainKeys.detail(id) })
         
-        // 刷新所有组织的域名列表
+        // 刷新所有组织的域名列表（更精确的匹配）
         queryClient.invalidateQueries({ 
-          queryKey: ['organizations'] 
+          predicate: (query) => {
+            const key = query.queryKey as string[]
+            return key[0] === 'organizations' && key[2] === 'domains'
+          }
         })
       } else {
         throw new Error(response.message || '更新域名失败')
