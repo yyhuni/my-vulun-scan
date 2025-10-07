@@ -171,12 +171,12 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 	return resultDomains, nil
 }
 
-// GetDomainByID 根据ID获取域名
+// GetDomainByID 根据ID获取域名信息（不包含子域名）
 func (s *DomainService) GetDomainByID(id uint) (*models.Domain, error) {
 
 	var domain models.Domain
 
-	result := s.db.Preload("SubDomains").First(&domain, "id = ?", id)
+	result := s.db.First(&domain, "id = ?", id)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
 			return nil, errors.ErrDomainNotFound

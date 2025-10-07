@@ -44,11 +44,11 @@ type BatchDeleteOrganizationsRequest struct {
 
 // GetOrganizationsRequest 获取组织列表请求
 type GetOrganizationsRequest struct {
-	ID        uint   `json:"id,omitempty" form:"id"`                 // 组织ID，如果提供则查询单个组织
-	Page      int    `json:"page,omitempty" form:"page"`
-	PageSize  int    `json:"page_size,omitempty" form:"page_size"`
-	SortBy    string `json:"sort_by,omitempty" form:"sort_by"`       // 排序字段：id, name, created_at, updated_at
-	SortOrder string `json:"sort_order,omitempty" form:"sort_order"` // 排序方向：asc, desc
+	OrganizationID uint   `json:"organization_id,omitempty" form:"organization_id"` // 组织ID，如果提供则查询单个组织
+	Page           int    `json:"page,omitempty" form:"page"`
+	PageSize       int    `json:"page_size,omitempty" form:"page_size"`
+	SortBy         string `json:"sort_by,omitempty" form:"sort_by"`       // 排序字段：id, name, created_at, updated_at
+	SortOrder      string `json:"sort_order,omitempty" form:"sort_order"` // 排序方向：asc, desc
 }
 
 // GetOrganizationsResponse 获取组织列表响应

@@ -13,10 +13,10 @@ import (
 
 // GetOrganizations 获取组织信息
 // @Summary 获取组织信息
-// @Description 支持两种查询模式：1) 通过id查询单个组织详情 2) 获取组织列表(支持分页和排序)
+// @Description 支持两种查询模式：1) 通过organization_id查询单个组织详情 2) 获取组织列表(支持分页和排序)
 // @Tags 组织管理
 // @Produce json
-// @Param id query uint false "组织ID" example(1)
+// @Param organization_id query uint false "组织ID" example(1)
 // @Param page query int false "页码" default(1) example(1)
 // @Param page_size query int false "每页数量" default(10) example(10)
 // @Param sort_by query string false "排序字段" default(updated_at) Enums(id, name, created_at, updated_at)
@@ -51,9 +51,9 @@ func GetOrganizations(c *gin.Context) {
 		req.SortOrder = "desc"
 	}
 
-	// 如果有 id 参数，查询单个组织的详情
-	if req.ID > 0 {
-		organization, err := service.GetOrganizationByID(req.ID)
+	// 如果有 organization_id 参数，查询单个组织的详情
+	if req.OrganizationID > 0 {
+		organization, err := service.GetOrganizationByID(req.OrganizationID)
 		if err != nil {
 			if errors.Is(err, customErrors.ErrOrganizationNotFound) {
 				utils.NotFoundResponse(c, "组织不存在")

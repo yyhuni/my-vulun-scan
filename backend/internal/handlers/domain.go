@@ -46,10 +46,10 @@ func CreateDomains(c *gin.Context) {
 
 // GetDomains 获取域名信息
 // @Summary 获取域名信息(支持多种查询方式)
-// @Description 支持按ID查询单个域名、按组织ID查询域名列表、分页和排序等
+// @Description 支持按域名ID查询单个域名、按组织ID查询域名列表、分页和排序等。注意：返回的域名不包含子域名信息
 // @Tags 域名管理
 // @Produce json
-// @Param id query uint false "域名ID(查询单个域名时使用)"
+// @Param domain_id query uint false "域名ID(查询单个域名时使用)"
 // @Param organization_id query uint false "组织ID(查询组织下域名列表时使用)"
 // @Param page query int false "页码" default(1)
 // @Param page_size query int false "每页数量" default(10)
@@ -85,9 +85,9 @@ func GetDomains(c *gin.Context) {
 		req.SortOrder = "desc"
 	}
 
-	// 如果有 id 参数，查询单个域名
-	if req.ID > 0 {
-		domain, err := service.GetDomainByID(req.ID)
+	// 如果有 domain_id 参数，查询单个域名
+	if req.DomainID > 0 {
+		domain, err := service.GetDomainByID(req.DomainID)
 		if err != nil {
 			if errors.Is(err, customErrors.ErrDomainNotFound) {
 				utils.NotFoundResponse(c, "域名不存在")
@@ -101,20 +101,20 @@ func GetDomains(c *gin.Context) {
 		return
 	}
 
-	// 否则查询域名列表
-	// 查询列表时，organization_id 是必需的
-	if req.OrganizationID == 0 {
-		utils.BadRequestResponse(c, "查询域名列表时 organization_id 参数不能为空")
+	// 如果有 organization_id 参数，查询组织的域名列表
+	if req.OrganizationID > 0 {
+		response, err := service.GetDomainsByOrgID(req)
+		if err != nil {
+			utils.InternalServerErrorResponse(c, "获取域名列表失败: "+err.Error())
+			return
+		}
+
+		utils.SuccessResponse(c, response)
 		return
 	}
 
-	response, err := service.GetDomainsByOrgID(req)
-	if err != nil {
-		utils.InternalServerErrorResponse(c, "获取域名列表失败: "+err.Error())
-		return
-	}
-
-	utils.SuccessResponse(c, response)
+	// 两个参数都没有，返回错误
+	utils.BadRequestResponse(c, "请提供 domain_id 或 organization_id 参数")
 }
 
 // RemoveOrganizationDomain 解除组织与域名的关联

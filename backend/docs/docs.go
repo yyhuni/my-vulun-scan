@@ -17,7 +17,7 @@ const docTemplate = `{
     "paths": {
         "/domains": {
             "get": {
-                "description": "支持按ID查询单个域名、按组织ID查询域名列表、分页和排序等",
+                "description": "支持按ID查询单个域名、按组织ID查询域名列表、分页和排序等。注意：返回的域名不包含子域名信息",
                 "produces": [
                     "application/json"
                 ],
@@ -29,7 +29,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "域名ID(查询单个域名时使用)",
-                        "name": "id",
+                        "name": "domain_id",
                         "in": "query"
                     },
                     {
@@ -118,7 +118,7 @@ const docTemplate = `{
         },
         "/domains/create": {
             "post": {
-                "description": "批量创建域名并自动关联到指定组织。如果域名已存在，会复用现有域名并建立关联关系",
+                "description": "批量创建域名并自动关联到指定组织（支持单个或多个域名）。如果域名已存在，会复用现有域名并建立关联关系",
                 "consumes": [
                     "application/json"
                 ],
@@ -142,7 +142,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "创建成功，返回创建的域名列表（包含关联的组织信息）",
+                        "description": "创建成功，返回创建的域名列表",
                         "schema": {
                             "allOf": [
                                 {
