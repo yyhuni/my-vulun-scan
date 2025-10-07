@@ -32,8 +32,8 @@ export interface CreateSubDomainsRequest {
 }
 
 export interface CreateSubDomainsResponse {
+  message: string
   successCount: number
   existingDomains: string[]
   totalRequested: number
-  message: string
 }

@@ -284,6 +284,59 @@ paths:
       summary: 获取单个域名详情
       tags:
       - 域名管理
+  /domains/{id}/subdomains:
+    get:
+      description: 根据域名ID获取该域名下的所有子域名（支持分页和排序）
+      parameters:
+      - description: 域名ID
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 页码,默认1
+        in: query
+        name: page
+        type: integer
+      - description: 每页数量,默认10
+        in: query
+        name: page_size
+        type: integer
+      - description: '排序字段: id, name, created_at, updated_at,默认updated_at'
+        in: query
+        name: sort_by
+        type: string
+      - description: '排序方向: asc, desc,默认desc'
+        in: query
+        name: sort_order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 获取成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.GetSubDomainsResponse'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+        "404":
+          description: 域名不存在
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+      summary: 获取域名的子域名列表
+      tags:
+      - 域名管理
   /domains/create:
     post:
       consumes:
@@ -549,6 +602,59 @@ paths:
       summary: 获取组织的域名列表
       tags:
       - 域名管理
+  /organizations/{id}/subdomains:
+    get:
+      description: 根据组织ID获取该组织所有域名下的子域名（支持分页和排序）
+      parameters:
+      - description: 组织ID
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 页码,默认1
+        in: query
+        name: page
+        type: integer
+      - description: 每页数量,默认10
+        in: query
+        name: page_size
+        type: integer
+      - description: '排序字段: id, name, created_at, updated_at,默认updated_at'
+        in: query
+        name: sort_by
+        type: string
+      - description: '排序方向: asc, desc,默认desc'
+        in: query
+        name: sort_order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 获取成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.GetSubDomainsResponse'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+        "404":
+          description: 组织不存在
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+      summary: 获取组织的子域名列表
+      tags:
+      - 组织管理
   /organizations/batch-delete:
     post:
       consumes:
@@ -703,16 +809,8 @@ paths:
       - 组织管理
   /subdomains:
     get:
-      description: 支持按ID查询单个子域名、按域名ID筛选、分页查询和排序等
+      description: 获取所有子域名，支持分页和排序
       parameters:
-      - description: 子域名ID(查询单个子域名时使用)
-        in: query
-        name: id
-        type: integer
-      - description: 域名ID(筛选指定域名下的子域名)
-        in: query
-        name: domain_id
-        type: integer
       - description: 页码,默认1
         in: query
         name: page
@@ -745,11 +843,48 @@ paths:
           description: 请求参数错误
           schema:
             $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+      summary: 获取所有子域名列表
+      tags:
+      - 子域名管理
+  /subdomains/{id}:
+    get:
+      description: 根据子域名ID获取子域名的详细信息
+      parameters:
+      - description: 子域名ID
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 获取成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.SubDomain'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "404":
           description: 子域名不存在
           schema:
             $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
-      summary: 获取子域名信息(支持多种查询方式)
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+      summary: 获取单个子域名详情
       tags:
       - 子域名管理
   /subdomains/create:

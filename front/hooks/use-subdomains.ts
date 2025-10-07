@@ -10,21 +10,50 @@ import type { PaginationParams } from "@/types/common.types"
 export const subdomainKeys = {
   all: ['subdomains'] as const,
   lists: () => [...subdomainKeys.all, 'list'] as const,
-  list: (params: PaginationParams & { organizationId?: string }) => 
+  list: (params: PaginationParams & { organizationId?: string; domainId?: string }) => 
     [...subdomainKeys.lists(), params] as const,
   details: () => [...subdomainKeys.all, 'detail'] as const,
   detail: (id: number) => [...subdomainKeys.details(), id] as const,
 }
 
-// 获取子域名列表
-export function useSubdomains(params: PaginationParams & { organizationId?: string }) {
+// 获取子域名列表（根据参数自动选择API端点）
+export function useSubdomains(params: PaginationParams & { organizationId?: string; domainId?: string }) {
   return useQuery({
     queryKey: subdomainKeys.list(params),
-    queryFn: () => SubDomainService.getSubDomains({
-      ...params,
-      organizationId: params.organizationId ? parseInt(params.organizationId) : undefined,
-      sortBy: params.sortBy as "id" | "name" | "createdAt" | "updatedAt" | undefined
-    }),
+    queryFn: async () => {
+      // 根据参数选择不同的API端点
+      if (params.organizationId) {
+        // 获取组织的子域名
+        return SubDomainService.getSubDomainsByOrganization(
+          parseInt(params.organizationId),
+          {
+            page: params.page,
+            pageSize: params.pageSize,
+            sortBy: params.sortBy,
+            sortOrder: params.sortOrder
+          }
+        )
+      } else if (params.domainId) {
+        // 获取域名的子域名
+        return SubDomainService.getSubDomainsByDomain(
+          parseInt(params.domainId),
+          {
+            page: params.page,
+            pageSize: params.pageSize,
+            sortBy: params.sortBy,
+            sortOrder: params.sortOrder
+          }
+        )
+      } else {
+        // 获取所有子域名
+        return SubDomainService.getSubDomains({
+          page: params.page,
+          pageSize: params.pageSize,
+          sortBy: params.sortBy,
+          sortOrder: params.sortOrder
+        })
+      }
+    },
     select: (response) => {
       if (response.state === 'success' && response.data) {
         return response.data as GetSubDomainsResponse
@@ -38,7 +67,7 @@ export function useSubdomains(params: PaginationParams & { organizationId?: stri
 export function useSubdomain(id: number) {
   return useQuery({
     queryKey: subdomainKeys.detail(id),
-    queryFn: () => SubDomainService.getSubDomains({ id }),
+    queryFn: () => SubDomainService.getSubDomainById(id),
     select: (response) => {
       if (response.state === 'success' && response.data) {
         return response.data as SubDomain

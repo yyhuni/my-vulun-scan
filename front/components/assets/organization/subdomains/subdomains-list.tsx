@@ -36,7 +36,7 @@ export function SubdomainsList({ organizationId }: { organizationId: string }) {
     organizationId,
     page: pagination.pageIndex + 1, // 转换为 1-based
     pageSize: pagination.pageSize,
-    sortBy: "updatedAt",
+    sortBy: "updated_at", // 直接使用数据库字段名，避免混淆
     sortOrder: "desc"
   })
 

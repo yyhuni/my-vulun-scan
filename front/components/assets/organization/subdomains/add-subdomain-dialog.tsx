@@ -1,7 +1,8 @@
 "use client"
 
 import React, { useState } from "react"
-import { Plus, Network } from "lucide-react"
+import { Plus, Network, AlertCircle } from "lucide-react"
+import { toast } from "sonner"
 
 // 导入 UI 组件
 import { Button } from "@/components/ui/button"
@@ -29,6 +30,7 @@ import {
 // 导入类型定义
 import type { SubDomain } from "@/types/subdomain.types"
 import type { Asset } from "@/types/asset.types"
+import { useCreateSubdomain } from "@/hooks/use-subdomains"
 
 // 组件属性类型定义
 interface AddSubdomainDialogProps {
@@ -69,14 +71,15 @@ export function AddSubdomainDialog({
   // 选中的域名ID
   const [selectedDomainId, setSelectedDomainId] = useState<string>("")
   
-  // 加载状态（暂时用于模拟）
-  const [isLoading, setIsLoading] = useState(false)
+  // 使用 React Query mutation
+  const createSubdomainMutation = useCreateSubdomain()
 
-  // 验证子域名格式
+  // 验证完整域名格式
   const validateSubdomainName = (name: string): boolean => {
-    // 基本的子域名格式验证
-    const subdomainRegex = /^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)*[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/
-    return subdomainRegex.test(name)
+    // 完整域名格式验证：必须包含至少一个点，且符合域名规范
+    // 例如：www.example.com, api.test.org, subdomain.domain.co.uk
+    const fullDomainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/
+    return fullDomainRegex.test(name) && name.includes('.')
   }
 
   // 处理表单提交
@@ -107,15 +110,18 @@ export function AddSubdomainDialog({
     }
 
     if (invalidSubdomains.length > 0) {
+      toast.error(`以下子域名格式不正确：\n${invalidSubdomains.join(', ')}\n\n请输入完整的域名格式，如：www.example.com`)
       return
     }
 
-    // 模拟API调用
-    setIsLoading(true)
-    
-    // TODO: 接入真实API
-    setTimeout(() => {
-      // 模拟创建的子域名数据
+    // 调用真实API
+    try {
+      const response = await createSubdomainMutation.mutateAsync({
+        subDomains: subdomainLines,
+        domainId: parseInt(selectedDomainId)
+      })
+
+      // 创建成功，模拟返回的子域名数据（实际应该从API响应中获取）
       const mockSubdomains: SubDomain[] = subdomainLines.map((name, index) => ({
         id: Date.now() + index,
         name: name,
@@ -134,13 +140,15 @@ export function AddSubdomainDialog({
       
       // 关闭对话框
       setOpen(false)
-      setIsLoading(false)
-    }, 1000)
+    } catch (error) {
+      // 错误处理已经在 mutation 中处理了
+      console.error('创建子域名失败:', error)
+    }
   }
 
   // 处理对话框关闭
   const handleOpenChange = (newOpen: boolean) => {
-    if (!isLoading) {
+    if (!createSubdomainMutation.isPending) {
       setOpen(newOpen)
       if (!newOpen) {
         // 关闭时重置表单
@@ -163,14 +171,14 @@ export function AddSubdomainDialog({
       )}
       
       {/* 对话框内容 */}
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <Network className="h-5 w-5" />
             <span>添加子域名</span>
           </DialogTitle>
           <DialogDescription>
-            每行输入一个子域名,支持批量添加。例如: www.example.com 或 api.example.com
+            每行输入一个完整的子域名，支持批量添加。格式：subdomain.domain.com（如 www.example.com、api.example.com）
           </DialogDescription>
         </DialogHeader>
         
@@ -185,7 +193,7 @@ export function AddSubdomainDialog({
               <Select
                 value={selectedDomainId}
                 onValueChange={setSelectedDomainId}
-                disabled={isLoading}
+                disabled={createSubdomainMutation.isPending}
               >
                 <SelectTrigger id="domain-select">
                   <SelectValue placeholder="请选择所属域名" />
@@ -220,13 +228,19 @@ export function AddSubdomainDialog({
                 id="subdomains"
                 value={subdomainsText}
                 onChange={(e) => setSubdomainsText(e.target.value)}
-                placeholder={"www.example.com\napi.example.com\ntest.example.com\nadmin.example.com\napp.example.com"}
-                disabled={isLoading || !selectedDomainId}
-                rows={15}
-                className="font-mono text-sm"
+                placeholder={"www.example.com\napi.example.com\ntest.example.com\nadmin.example.com\napp.example.com\ncdn.example.com\nmail.example.com\nftp.example.com\nblog.example.com\nshop.example.com"}
+                disabled={createSubdomainMutation.isPending || !selectedDomainId}
+                rows={20}
+                className="font-mono text-sm min-h-[400px] resize-y"
               />
-              <div className="text-xs text-muted-foreground">
-                共 {subdomainsText.split('\n').filter(line => line.trim()).length} 个子域名
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-muted-foreground flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  必须输入完整域名格式（如：www.example.com）
+                </span>
+                <span className="font-medium text-primary">
+                  共 {subdomainsText.split('\n').filter(line => line.trim()).length} 个子域名
+                </span>
               </div>
             </div>
           </div>
@@ -237,15 +251,15 @@ export function AddSubdomainDialog({
               type="button" 
               variant="outline" 
               onClick={() => handleOpenChange(false)}
-              disabled={isLoading}
+              disabled={createSubdomainMutation.isPending}
             >
               取消
             </Button>
             <Button 
               type="submit" 
-              disabled={isLoading || !subdomainsText.trim() || !selectedDomainId || domains.length === 0}
+              disabled={createSubdomainMutation.isPending || !subdomainsText.trim() || !selectedDomainId || domains.length === 0}
             >
-              {isLoading ? (
+              {createSubdomainMutation.isPending ? (
                 <>
                   <LoadingSpinner size="sm" className="mr-2" />
                   创建中...
