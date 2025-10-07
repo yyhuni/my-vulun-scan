@@ -15,6 +15,7 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/sonner"
+import { LoadingState } from "@/components/loading-spinner"
 
 // 定义页面的元数据信息,用于 SEO 优化
 export const metadata: Metadata = {
@@ -73,7 +74,7 @@ export default function RootLayout({
                 */}
                 <div className="@container/main flex flex-1 flex-col gap-2">
                   {/* 使用 Suspense 只包裹页面内容,避免影响侧边栏和头部 */}
-                  <Suspense fallback={<div className="flex items-center justify-center py-12 text-muted-foreground">Loading...</div>}>
+                  <Suspense fallback={<LoadingState message="页面加载中..." />}>
                     {children}
                   </Suspense>
                   <Toaster />
