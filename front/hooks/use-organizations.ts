@@ -133,7 +133,10 @@ export function useCreateOrganization() {
       if (process.env.NODE_ENV === 'development') {
         console.error('创建组织失败:', error)
       }
-      toast.error('创建失败')
+      
+      // 显示具体的错误信息
+      const errorMessage = error?.response?.data?.message || error?.message || '创建失败'
+      toast.error(errorMessage)
     },
   })
 }
@@ -180,7 +183,9 @@ export function useUpdateOrganization() {
       if (process.env.NODE_ENV === 'development') {
         console.error('更新组织失败:', error)
       }
-      toast.error('更新失败')
+      
+      const errorMessage = error?.response?.data?.message || error?.message || '更新失败'
+      toast.error(errorMessage)
     },
   })
 }
@@ -244,7 +249,9 @@ export function useDeleteOrganization() {
       if (process.env.NODE_ENV === 'development') {
         console.error('删除组织失败:', error)
       }
-      toast.error('删除失败')
+      
+      const errorMessage = error?.response?.data?.message || error?.message || '删除失败'
+      toast.error(errorMessage)
     },
     onSettled: () => {
       // 无论成功失败都刷新数据
@@ -315,7 +322,9 @@ export function useBatchDeleteOrganizations() {
       if (process.env.NODE_ENV === 'development') {
         console.error('批量删除组织失败:', error)
       }
-      toast.error('批量删除失败')
+      
+      const errorMessage = error?.response?.data?.message || error?.message || '批量删除失败'
+      toast.error(errorMessage)
     },
     onSettled: () => {
       // 无论成功失败都刷新数据

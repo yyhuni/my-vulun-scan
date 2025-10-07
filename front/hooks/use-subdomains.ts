@@ -58,7 +58,9 @@ export function useSubdomains(params: PaginationParams & { organizationId?: stri
       if (response.state === 'success' && response.data) {
         return response.data as GetSubDomainsResponse
       }
-      throw new Error(response.message || '获取子域名列表失败')
+      // 抛出包含后端错误信息的错误
+      const errorMessage = response.message || '获取子域名列表失败'
+      throw new Error(errorMessage)
     },
   })
 }
@@ -72,7 +74,9 @@ export function useSubdomain(id: number) {
       if (response.state === 'success' && response.data) {
         return response.data as SubDomain
       }
-      throw new Error(response.message || '获取子域名详情失败')
+      // 抛出包含后端错误信息的错误
+      const errorMessage = response.message || '获取子域名详情失败'
+      throw new Error(errorMessage)
     },
     enabled: !!id,
   })
@@ -100,7 +104,8 @@ export function useCreateSubdomain() {
         // 刷新相关查询
         queryClient.invalidateQueries({ queryKey: subdomainKeys.lists() })
       } else {
-        throw new Error(response.message || '创建子域名失败')
+        // 后端返回了错误状态，直接显示后端的 message
+        toast.error(response.message || '创建子域名失败')
       }
     },
     onError: (error: any) => {
@@ -110,7 +115,10 @@ export function useCreateSubdomain() {
       if (process.env.NODE_ENV === 'development') {
         console.error('创建子域名失败:', error)
       }
-      toast.error('创建失败')
+      
+      // 显示具体的错误信息
+      const errorMessage = error?.response?.data?.message || error?.message || '创建失败'
+      toast.error(errorMessage)
     },
   })
 }

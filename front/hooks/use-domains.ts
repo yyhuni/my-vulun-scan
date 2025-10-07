@@ -74,7 +74,9 @@ export function useCreateDomain() {
       if (process.env.NODE_ENV === 'development') {
         console.error('创建域名失败:', error)
       }
-      toast.error('创建失败')
+      
+      const errorMessage = error?.response?.data?.message || error?.message || '创建失败'
+      toast.error(errorMessage)
     },
   })
 }
@@ -112,7 +114,9 @@ export function useRemoveDomainFromOrganization() {
       if (process.env.NODE_ENV === 'development') {
         console.error('解除关联失败:', error)
       }
-      toast.error('解除关联失败')
+      
+      const errorMessage = error?.response?.data?.message || error?.message || '解除关联失败'
+      toast.error(errorMessage)
     },
   })
 }
@@ -151,7 +155,9 @@ export function useUpdateDomain() {
       if (process.env.NODE_ENV === 'development') {
         console.error('更新域名失败:', error)
       }
-      toast.error('更新失败')
+      
+      const errorMessage = error?.response?.data?.message || error?.message || '更新失败'
+      toast.error(errorMessage)
     },
   })
 }
@@ -182,7 +188,9 @@ export function useDeleteDomain() {
       if (process.env.NODE_ENV === 'development') {
         console.error('删除域名失败:', error)
       }
-      toast.error('删除失败')
+      
+      const errorMessage = error?.response?.data?.message || error?.message || '删除失败'
+      toast.error(errorMessage)
     },
   })
 }
@@ -211,7 +219,9 @@ export function useBatchDeleteDomains() {
       if (process.env.NODE_ENV === 'development') {
         console.error('批量删除域名失败:', error)
       }
-      toast.error('批量删除失败')
+      
+      const errorMessage = error?.response?.data?.message || error?.message || '批量删除失败'
+      toast.error(errorMessage)
     },
   })
 }
