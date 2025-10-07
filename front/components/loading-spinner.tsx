@@ -14,7 +14,7 @@ interface LoadingSpinnerProps {
  * - 支持自定义样式
  * - 使用 Tailwind CSS 动画
  */
-export function LoadingSpinner({ size = "md", className }: LoadingSpinnerProps) {
+export function LoadingSpinner({ size = "sm", className }: LoadingSpinnerProps) {
   const sizeClasses = {
     sm: "h-4 w-4",
     md: "h-6 w-6", 
@@ -52,10 +52,29 @@ export function LoadingState({
   size = "md", 
   className 
 }: LoadingStateProps) {
+  const dotSizes = {
+    sm: "w-2 h-2",
+    md: "w-3 h-3", 
+    lg: "w-4 h-4"
+  }
+
   return (
-    <div className={cn("flex items-center justify-center py-8", className)}>
-      <div className="flex flex-col items-center space-y-2">
-        <LoadingSpinner size={size} />
+    <div className={cn("flex items-center justify-center min-h-[200px] w-full", className)}>
+      <div className="flex flex-col items-center space-y-4">
+        <div className="flex space-x-2">
+          <div className={cn(
+            "bg-primary rounded-full animate-pulse",
+            dotSizes[size]
+          )} style={{ animationDelay: "0ms" }} />
+          <div className={cn(
+            "bg-primary rounded-full animate-pulse",
+            dotSizes[size]
+          )} style={{ animationDelay: "150ms" }} />
+          <div className={cn(
+            "bg-primary rounded-full animate-pulse",
+            dotSizes[size]
+          )} style={{ animationDelay: "300ms" }} />
+        </div>
         <p className="text-sm text-muted-foreground">{message}</p>
       </div>
     </div>
