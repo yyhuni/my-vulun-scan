@@ -84,7 +84,7 @@ func GetDomainByID(c *gin.Context) {
 // @Description 获取指定组织的所有域名，支持分页和排序。注意：返回的域名不包含子域名信息
 // @Tags 域名管理
 // @Produce json
-// @Param organization_id path uint true "组织ID" example(1)
+// @Param id path uint true "组织ID" example(1)
 // @Param page query int false "页码" default(1)
 // @Param page_size query int false "每页数量" default(10)
 // @Param sort_by query string false "排序字段" default(updated_at) Enums(name, created_at, updated_at)
@@ -92,7 +92,7 @@ func GetDomainByID(c *gin.Context) {
 // @Success 200 {object} models.APIResponse{data=models.GetOrgDomainsResponse} "获取成功"
 // @Failure 400 {object} models.APIResponse "请求参数错误"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
-// @Router /organizations/{organization_id}/domains [get]
+// @Router /organizations/{id}/domains [get]
 func GetDomainsByOrgID(c *gin.Context) {
 	service := services.NewDomainService()
 
@@ -131,7 +131,7 @@ func GetDomainsByOrgID(c *gin.Context) {
 }
 
 // RemoveOrganizationDomain 解除组织与域名的关联
-// @Summary 解除组织与域名的关联
+// @Summary 解除组织与域名的关联（待实现完善）
 // @Description 解除指定组织与域名的关联关系，如果域名成为孤儿（没有任何组织关联）则自动删除该域名
 // @Tags 域名管理
 // @Accept json

@@ -38,6 +38,6 @@ func SetupOrganizationRoutes(api *gin.RouterGroup) {
 
 		// 获取组织的域名列表
 		// 示例：GET /organizations/1/domains?page=1&page_size=10&sort_by=name&sort_order=asc
-		organizations.GET("/:organization_id/domains", handlers.GetDomainsByOrgID)
+		organizations.GET("/:id/domains", handlers.GetDomainsByOrgID)
 	}
 }

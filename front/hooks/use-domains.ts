@@ -17,28 +17,32 @@ export const domainKeys = {
   detail: (id: number) => [...domainKeys.details(), id] as const,
 }
 
-// 获取域名列表
-export function useDomains(params: PaginationParams & { organizationId?: string }) {
-  return useQuery({
-    queryKey: domainKeys.list(params),
-    queryFn: () => DomainService.getDomains({
-      ...params,
-      organizationId: params.organizationId ? parseInt(params.organizationId) : undefined
-    }),
-    select: (response) => {
-      if (response.state === 'success' && response.data) {
-        return response.data as GetDomainsResponse
-      }
-      throw new Error(response.message || '获取域名列表失败')
-    },
-  })
+// 注意：后端没有通用的 GET /domains 接口，只有 GET /organizations/:id/domains
+// 如果需要获取域名列表，请使用 useOrganizationDomains Hook
+// 或者请后端添加 GET /domains 接口
+
+// 为了向后兼容，提供一个别名函数，指向 useOrganizationDomains
+// 这样如果有组件使用了 useDomains，可以更容易迁移
+export function useDomains(params: { organizationId: string } & PaginationParams) {
+  // 这里可以返回一个提示错误，指导用户使用正确的 Hook
+  throw new Error(`
+    useDomains 已被弃用。
+    请使用 useOrganizationDomains(organizationId, params) 代替。
+    
+    示例：
+    // 旧的用法
+    useDomains({ organizationId: "1", page: 1, pageSize: 10 })
+    
+    // 新的用法
+    useOrganizationDomains(1, { page: 1, pageSize: 10 })
+  `)
 }
 
 // 获取单个域名详情
 export function useDomain(id: number) {
   return useQuery({
     queryKey: domainKeys.detail(id),
-    queryFn: () => DomainService.getDomains({ id }),
+    queryFn: () => DomainService.getDomainById(id),
     select: (response) => {
       if (response.state === 'success' && response.data) {
         return response.data as Domain
@@ -92,6 +96,44 @@ export function useCreateDomain() {
         console.error('创建域名失败:', error)
       }
       toast.error('创建失败')
+    },
+  })
+}
+
+// 解除组织与域名的关联
+export function useRemoveDomainFromOrganization() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (data: { organizationId: number; domainId: number }) => 
+      DomainService.removeFromOrganization(data),
+    onMutate: ({ organizationId, domainId }) => {
+      toast.loading('正在解除关联...', { id: `remove-${organizationId}-${domainId}` })
+    },
+    onSuccess: (response, { organizationId, domainId }) => {
+      toast.dismiss(`remove-${organizationId}-${domainId}`)
+      
+      if (response.state === 'success') {
+        toast.success('解除关联成功')
+        
+        // 刷新相关查询
+        queryClient.invalidateQueries({ queryKey: domainKeys.lists() })
+        
+        // 刷新组织的域名列表
+        queryClient.invalidateQueries({ 
+          queryKey: ['organizations', 'detail', organizationId, 'domains'] 
+        })
+      } else {
+        throw new Error(response.message || '解除关联失败')
+      }
+    },
+    onError: (error: any, { organizationId, domainId }) => {
+      toast.dismiss(`remove-${organizationId}-${domainId}`)
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.error('解除关联失败:', error)
+      }
+      toast.error('解除关联失败')
     },
   })
 }

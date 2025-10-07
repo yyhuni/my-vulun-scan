@@ -41,7 +41,7 @@ type RemoveOrgDomainRequest struct {
 
 // GetDomainsByOrgIDRequest 获取组织域名请求(支持分页和排序)
 type GetDomainsByOrgIDRequest struct {
-	OrgID     uint   `uri:"organization_id" binding:"required"` // 组织ID（路径参数）
+	OrgID     uint   `uri:"id" binding:"required"` // 组织ID（路径参数）
 	Page      int    `form:"page"`
 	PageSize  int    `form:"page_size"`
 	SortBy    string `form:"sort_by"`    // 排序字段: name, created_at, updated_at

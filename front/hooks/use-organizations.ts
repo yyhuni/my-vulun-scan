@@ -57,7 +57,7 @@ export function useOrganizations(params?: {
 export function useOrganization(id: number) {
   return useQuery({
     queryKey: organizationKeys.detail(id),
-    queryFn: () => OrganizationService.getOrganizations({ id }),
+    queryFn: () => OrganizationService.getOrganizationById(id),
     select: (response) => {
       if (response.state === 'success' && response.data) {
         return response.data as Organization
@@ -65,6 +65,29 @@ export function useOrganization(id: number) {
       throw new Error(response.message || '获取组织详情失败')
     },
     enabled: !!id, // 只有当 id 存在时才执行查询
+    throwOnError: true,
+  })
+}
+
+/**
+ * 获取组织的域名列表 Hook
+ */
+export function useOrganizationDomains(id: number, params?: {
+  page?: number
+  pageSize?: number
+  sortBy?: string
+  sortOrder?: 'asc' | 'desc'
+}) {
+  return useQuery({
+    queryKey: [...organizationKeys.detail(id), 'domains', params],
+    queryFn: () => OrganizationService.getOrganizationDomains(id, params),
+    select: (response) => {
+      if (response.state === 'success' && response.data) {
+        return response.data
+      }
+      throw new Error(response.message || '获取组织域名列表失败')
+    },
+    enabled: !!id,
     throwOnError: true,
   })
 }

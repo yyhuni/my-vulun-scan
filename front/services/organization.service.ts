@@ -9,25 +9,52 @@ export class OrganizationService {
   // ========== 组织基础操作 ==========
 
   /**
-   * 获取组织信息(支持多种查询方式)
+   * 获取组织列表(支持分页和排序)
    * @param params - 查询参数对象
-   * @param params.id - 组织ID(查询单个组织时使用)
    * @param params.page - 当前页码，1-based
    * @param params.pageSize - 分页大小
    * @param params.sortBy - 排序字段：id, name, createdAt, updatedAt（使用驼峰命名）
    * @param params.sortOrder - 排序方向：asc, desc
-   * @returns Promise<ApiResponse<Organization | OrganizationsResponse<Organization>>>
+   * @returns Promise<ApiResponse<OrganizationsResponse<Organization>>>
    */
   static async getOrganizations(params?: {
-    id?: string | number
     page?: number
     pageSize?: number
     sortBy?: string
     sortOrder?: 'asc' | 'desc'
-  }): Promise<ApiResponse<Organization | OrganizationsResponse<Organization>>> {
+  }): Promise<ApiResponse<OrganizationsResponse<Organization>>> {
     // ✅ 使用 params 对象，拦截器会自动将驼峰转换为下划线
-    const response = await api.get<ApiResponse<Organization | OrganizationsResponse<Organization>>>(
+    const response = await api.get<ApiResponse<OrganizationsResponse<Organization>>>(
       '/organizations',
+      { params }
+    )
+    return response.data
+  }
+
+  /**
+   * 获取单个组织详情
+   * @param id - 组织ID
+   * @returns Promise<ApiResponse<Organization>>
+   */
+  static async getOrganizationById(id: string | number): Promise<ApiResponse<Organization>> {
+    const response = await api.get<ApiResponse<Organization>>(`/organizations/${id}`)
+    return response.data
+  }
+
+  /**
+   * 获取组织的域名列表
+   * @param id - 组织ID
+   * @param params - 查询参数
+   * @returns Promise<ApiResponse<any>>
+   */
+  static async getOrganizationDomains(id: string | number, params?: {
+    page?: number
+    pageSize?: number
+    sortBy?: string
+    sortOrder?: 'asc' | 'desc'
+  }): Promise<ApiResponse<any>> {
+    const response = await api.get<ApiResponse<any>>(
+      `/organizations/${id}/domains`,
       { params }
     )
     return response.data

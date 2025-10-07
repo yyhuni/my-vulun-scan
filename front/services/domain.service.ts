@@ -27,29 +27,30 @@ export class DomainService {
   }
 
   /**
-   * 获取域名信息(支持多种查询方式)
-   * @param params - 查询参数对象
-   * @param params.id - 域名ID(查询单个域名时使用)
-   * @param params.organizationId - 组织ID(按组织筛选时使用)
-   * @param params.page - 当前页码，1-based
-   * @param params.pageSize - 分页大小
-   * @param params.sortBy - 排序字段：id, name, createdAt, updatedAt（使用驼峰命名）
-   * @param params.sortOrder - 排序方向：asc, desc
-   * @returns Promise<ApiResponse<Domain | GetDomainsResponse>> - 域名信息或列表
+   * 获取单个域名详情
+   * @param id - 域名ID
+   * @returns Promise<ApiResponse<Domain>>
    */
-  static async getDomains(params?: {
-    id?: string | number
-    organizationId?: number
-    page?: number
-    pageSize?: number
-    sortBy?: string
-    sortOrder?: 'asc' | 'desc'
-  }): Promise<ApiResponse<Domain | GetDomainsResponse>> {
-    // ✅ 使用 params 对象，拦截器会自动将驼峰转换为下划线
-    const response = await api.get<ApiResponse<Domain | GetDomainsResponse>>(
-      '/domains',
-      { params }
-    )
+  static async getDomainById(id: string | number): Promise<ApiResponse<Domain>> {
+    const response = await api.get<ApiResponse<Domain>>(`/domains/${id}`)
+    return response.data
+  }
+
+  /**
+   * 解除组织与域名的关联
+   * @param data - 解除关联请求对象
+   * @param data.organizationId - 组织ID
+   * @param data.domainId - 域名ID
+   * @returns Promise<ApiResponse<any>>
+   */
+  static async removeFromOrganization(data: {
+    organizationId: number
+    domainId: number
+  }): Promise<ApiResponse<any>> {
+    const response = await api.post<ApiResponse<any>>('/domains/remove-from-organization', {
+      organizationId: data.organizationId,  // ✅ 使用驼峰命名，拦截器会自动转换为 organization_id
+      domainId: data.domainId  // ✅ 使用驼峰命名，拦截器会自动转换为 domain_id
+    })
     return response.data
   }
 

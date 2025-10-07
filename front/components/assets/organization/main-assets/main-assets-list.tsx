@@ -5,7 +5,8 @@ import { MainAssetsDataTable } from "./main-assets-data-table"
 import { createMainAssetColumns } from "./main-assets-columns"
 import { AddDomainDialog } from "./add-domain-dialog"
 import { LoadingState } from "@/components/loading-spinner"
-import { useDomains, useCreateDomain } from "@/hooks/use-domains"
+import { useCreateDomain } from "@/hooks/use-domains"
+import { useOrganizationDomains } from "@/hooks/use-organizations"
 import type { Asset } from "@/types/asset.types"
 
 /**
@@ -22,14 +23,13 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
     pageSize: 10,
   })
 
-  // 使用 React Query 获取域名数据
+  // 使用 React Query 获取组织的域名数据
   const {
     data,
     isLoading,
     error,
     refetch
-  } = useDomains({
-    organizationId,
+  } = useOrganizationDomains(parseInt(organizationId), {
     page: pagination.pageIndex + 1, // 转换为 1-based
     pageSize: pagination.pageSize,
     sortBy: "updatedAt",
