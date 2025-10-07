@@ -17,27 +17,6 @@ export const domainKeys = {
   detail: (id: number) => [...domainKeys.details(), id] as const,
 }
 
-// 注意：后端没有通用的 GET /domains 接口，只有 GET /organizations/:id/domains
-// 如果需要获取域名列表，请使用 useOrganizationDomains Hook
-// 或者请后端添加 GET /domains 接口
-
-// 为了向后兼容，提供一个别名函数，指向 useOrganizationDomains
-// 这样如果有组件使用了 useDomains，可以更容易迁移
-export function useDomains(params: { organizationId: string } & PaginationParams) {
-  // 这里可以返回一个提示错误，指导用户使用正确的 Hook
-  throw new Error(`
-    useDomains 已被弃用。
-    请使用 useOrganizationDomains(organizationId, params) 代替。
-    
-    示例：
-    // 旧的用法
-    useDomains({ organizationId: "1", page: 1, pageSize: 10 })
-    
-    // 新的用法
-    useOrganizationDomains(1, { page: 1, pageSize: 10 })
-  `)
-}
-
 // 获取单个域名详情
 export function useDomain(id: number) {
   return useQuery({

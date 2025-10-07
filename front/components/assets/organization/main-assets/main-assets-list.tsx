@@ -4,6 +4,7 @@ import React, { useState, useMemo } from "react"
 import { MainAssetsDataTable } from "./main-assets-data-table"
 import { createMainAssetColumns } from "./main-assets-columns"
 import { AddDomainDialog } from "./add-domain-dialog"
+import { EditMainAssetDialog } from "./edit-main-asset-dialog"
 import { LoadingState } from "@/components/loading-spinner"
 import { useCreateDomain } from "@/hooks/use-domains"
 import { useOrganizationDomains } from "@/hooks/use-organizations"
@@ -16,6 +17,8 @@ import type { Asset } from "@/types/asset.types"
 export function MainAssetsList({ organizationId }: { organizationId: string }) {
   const [selectedAssets, setSelectedAssets] = useState<Asset[]>([])
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [editingAsset, setEditingAsset] = useState<Asset | null>(null)
   
   // 分页状态
   const [pagination, setPagination] = useState({
@@ -56,8 +59,8 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
 
   // 处理编辑资产
   const handleEditAsset = (asset: Asset) => {
-    // TODO: 实现编辑功能
-    console.info(`编辑资产功能开发中: ${asset.name}`)
+    setEditingAsset(asset)
+    setIsEditDialogOpen(true)
   }
 
   // 处理删除资产
@@ -84,6 +87,17 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
   const handleAddSuccess = async (newDomains: Asset[]) => {
     // React Query 会自动刷新数据，不需要手动处理
     setIsAddDialogOpen(false)
+  }
+
+  // 处理编辑成功
+  const handleEditSuccess = async (updatedAsset: Asset) => {
+    // TODO: 后续接入API时，这里会自动刷新数据
+    console.info('主资产编辑成功:', updatedAsset)
+    setIsEditDialogOpen(false)
+    setEditingAsset(null)
+    
+    // 手动刷新数据（临时方案）
+    refetch()
   }
 
   // 处理分页变化
@@ -180,6 +194,16 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
         open={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
       />
+      
+      {/* 编辑主资产对话框 */}
+      {editingAsset && (
+        <EditMainAssetDialog
+          asset={editingAsset}
+          open={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+          onEdit={handleEditSuccess}
+        />
+      )}
     </>
   )
 }
