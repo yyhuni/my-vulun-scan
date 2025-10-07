@@ -27,24 +27,25 @@ func NewDomainService() *DomainService {
 //
 // 业务逻辑说明：
 // 1. 验证目标组织是否存在（避免无效关联）
-// 2. 对于每个域名：
-//    a. 检查域名是否已存在于系统中（基于 name 字段去重）
-//    b. 如果不存在，则创建新域名
-//    c. 检查该域名是否已关联到目标组织（避免重复关联）
-//    d. 如果未关联，则创建关联关系
-// 3. 返回所有处理过的域名列表（包括新创建和已存在的）
+// 2. 批量查询已存在的域名（1次查询代替N次）
+// 3. 批量创建新域名（1次插入代替N次）
+// 4. 批量查询已存在的关联关系（1次查询代替N次）
+// 5. 批量创建新关联关系（1次插入代替N次）
+// 6. 返回所有处理过的域名列表（包括新创建和已存在的）
 //
 // 设计考虑：
 // - 使用事务确保数据一致性：要么全部成功，要么全部回滚
 // - 支持幂等性：重复提交相同域名不会报错，只会跳过
 // - 域名可以被多个组织共享，通过中间表 organization_domains 实现多对多关系
+// - 使用 map 结构快速查找，避免嵌套循环
 //
 // 注意事项：
 // - 如果组织不存在会立即返回错误
 // - 事务失败会自动回滚，不会产生脏数据
 func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models.Domain, error) {
 
-	var createdDomains []models.Domain
+	var resultDomains []models.Domain
+	var newDomainsCount int // 用于统计新创建的域名数量
 
 	// 步骤1: 验证组织是否存在
 	var org models.Organization
@@ -58,71 +59,102 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 	}
 
 	// 步骤2: 使用事务处理批量创建和关联
-	// 事务的作用：确保所有域名的创建和关联操作要么全部成功，要么全部回滚
-	// 避免出现部分域名创建成功、部分失败的不一致状态
 	err := s.db.Transaction(func(tx *gorm.DB) error {
+		// 步骤2.1: 收集所有域名名称并构建映射
+		domainNames := make([]string, 0, len(req.Domains))
+		domainDetailMap := make(map[string]models.DomainDetail)
 		for _, detail := range req.Domains {
-			var domain models.Domain
-
-			// 步骤2.1: 检查域名是否已存在于系统中
-			// 域名的唯一性基于 name 字段，不同组织可以共享同一个域名
-			result := tx.Where("name = ?", detail.Name).First(&domain)
-			if result.Error != nil {
-				if result.Error == gorm.ErrRecordNotFound {
-					// 步骤2.2: 域名不存在，创建新的域名记录
-					domain = models.Domain{
-						Name:        detail.Name,
-						Description: detail.Description,
-					}
-					if err := tx.Create(&domain).Error; err != nil {
-						log.Error().Err(err).
-							Str("domain_name", detail.Name).
-							Msg("Failed to create domain")
-						return err
-					}
-					log.Info().
-						Uint("id", domain.ID).
-						Str("name", domain.Name).
-						Msg("Domain created successfully")
-				} else {
-					log.Error().Err(result.Error).Msg("Failed to query domain")
-					return result.Error
-				}
-			}
-
-			// 步骤2.3: 检查该域名是否已关联到目标组织
-			// 这是幂等性的关键：避免重复关联同一个域名到同一个组织
-			var existingAssoc models.OrganizationDomain
-			assocResult := tx.Where("organization_id = ? AND domain_id = ?", req.OrganizationID, domain.ID).
-				First(&existingAssoc)
-
-			if assocResult.Error != nil {
-				if assocResult.Error == gorm.ErrRecordNotFound {
-					// 步骤2.4: 未关联，创建新的关联关系
-					newAssociation := models.OrganizationDomain{
-						OrganizationID: req.OrganizationID,
-						DomainID:       domain.ID,
-					}
-					if err := tx.Create(&newAssociation).Error; err != nil {
-						log.Error().Err(err).
-							Uint("organization_id", req.OrganizationID).
-							Uint("domain_id", domain.ID).
-							Msg("Failed to associate domain with organization")
-						return err
-					}
-					log.Info().
-						Uint("organization_id", req.OrganizationID).
-						Uint("domain_id", domain.ID).
-						Msg("Domain associated with organization successfully")
-				} else {
-					log.Error().Err(assocResult.Error).Msg("Failed to query association")
-					return assocResult.Error
-				}
-			}
-
-			// 步骤2.5: 将域名添加到结果列表（包括新创建和已存在的域名）
-			createdDomains = append(createdDomains, domain)
+			domainNames = append(domainNames, detail.Name)
+			domainDetailMap[detail.Name] = detail
 		}
+
+		// 步骤2.2: 批量查询已存在的域名（1次查询）
+		var existingDomains []models.Domain
+		if err := tx.Where("name IN ?", domainNames).Find(&existingDomains).Error; err != nil {
+			log.Error().Err(err).Msg("Failed to query existing domains")
+			return err
+		}
+
+		// 步骤2.3: 构建已存在域名的映射（name -> Domain）
+		existingDomainMap := make(map[string]models.Domain)
+		existingDomainIDs := make([]uint, 0, len(existingDomains))
+		for _, domain := range existingDomains {
+			existingDomainMap[domain.Name] = domain
+			existingDomainIDs = append(existingDomainIDs, domain.ID)
+		}
+
+		// 步骤2.4: 找出需要创建的新域名
+		var newDomains []models.Domain
+		for _, detail := range req.Domains {
+			if _, exists := existingDomainMap[detail.Name]; !exists {
+				newDomains = append(newDomains, models.Domain{
+					Name:        detail.Name,
+					Description: detail.Description,
+				})
+			}
+		}
+
+		// 步骤2.5: 批量创建新域名（1次插入）
+		if len(newDomains) > 0 {
+			if err := tx.Create(&newDomains).Error; err != nil {
+				log.Error().Err(err).Int("count", len(newDomains)).Msg("Failed to batch create domains")
+				return err
+			}
+			newDomainsCount = len(newDomains) // 记录新创建的域名数量
+			log.Info().Int("count", len(newDomains)).Msg("Domains created successfully")
+
+			// 将新创建的域名也加入映射
+			for _, domain := range newDomains {
+				existingDomainMap[domain.Name] = domain
+				existingDomainIDs = append(existingDomainIDs, domain.ID)
+			}
+		}
+
+		// 步骤2.6: 批量查询已存在的关联关系（1次查询）
+		var existingAssocs []models.OrganizationDomain
+		if len(existingDomainIDs) > 0 {
+			if err := tx.Where("organization_id = ? AND domain_id IN ?", req.OrganizationID, existingDomainIDs).
+				Find(&existingAssocs).Error; err != nil {
+				log.Error().Err(err).Msg("Failed to query existing associations")
+				return err
+			}
+		}
+
+		// 步骤2.7: 构建已存在关联的映射（domain_id -> bool）
+		existingAssocMap := make(map[uint]bool)
+		for _, assoc := range existingAssocs {
+			existingAssocMap[assoc.DomainID] = true
+		}
+
+		// 步骤2.8: 找出需要创建的新关联并构建结果列表
+		var newAssocs []models.OrganizationDomain
+		for _, detail := range req.Domains {
+			domain := existingDomainMap[detail.Name]
+
+			// 如果该域名未关联到组织，添加到待创建列表
+			if !existingAssocMap[domain.ID] {
+				newAssocs = append(newAssocs, models.OrganizationDomain{
+					OrganizationID: req.OrganizationID,
+					DomainID:       domain.ID,
+				})
+			}
+
+			// 添加到结果列表（保持请求顺序）
+			resultDomains = append(resultDomains, domain)
+		}
+
+		// 步骤2.9: 批量创建新关联（1次插入）
+		if len(newAssocs) > 0 {
+			if err := tx.Create(&newAssocs).Error; err != nil {
+				log.Error().Err(err).Int("count", len(newAssocs)).Msg("Failed to batch create associations")
+				return err
+			}
+			log.Info().
+				Uint("organization_id", req.OrganizationID).
+				Int("count", len(newAssocs)).
+				Msg("Associations created successfully")
+		}
+
 		return nil
 	})
 
@@ -132,10 +164,11 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 
 	log.Info().
 		Uint("organization_id", req.OrganizationID).
-		Int("total_domains", len(createdDomains)).
+		Int("total_domains", len(resultDomains)).
+		Int("new_domains", newDomainsCount).
 		Msg("Domains created and associated successfully")
 
-	return createdDomains, nil
+	return resultDomains, nil
 }
 
 // GetDomainByID 根据ID获取域名

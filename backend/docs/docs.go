@@ -118,7 +118,7 @@ const docTemplate = `{
         },
         "/domains/create": {
             "post": {
-                "description": "批量创建域名并关联到指定组织",
+                "description": "批量创建域名并自动关联到指定组织。如果域名已存在，会复用现有域名并建立关联关系",
                 "consumes": [
                     "application/json"
                 ],
@@ -131,7 +131,7 @@ const docTemplate = `{
                 "summary": "批量创建域名",
                 "parameters": [
                     {
-                        "description": "域名创建请求",
+                        "description": "域名创建请求，包含域名列表和组织ID",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -142,7 +142,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "创建成功",
+                        "description": "创建成功，返回创建的域名列表（包含关联的组织信息）",
                         "schema": {
                             "allOf": [
                                 {
@@ -163,7 +163,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "请求参数错误",
+                        "description": "请求参数错误（如域名列表为空、参数格式错误等）",
                         "schema": {
                             "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
                         }
@@ -319,14 +319,14 @@ const docTemplate = `{
                             ]
                         }
                     },
-                    "400": {
-                        "description": "请求参数错误",
+                    "404": {
+                        "description": "组织不存在",
                         "schema": {
                             "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
                         }
                     },
-                    "404": {
-                        "description": "组织不存在",
+                    "422": {
+                        "description": "请求参数验证失败",
                         "schema": {
                             "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
                         }
@@ -352,10 +352,10 @@ const docTemplate = `{
                 "tags": [
                     "组织管理"
                 ],
-                "summary": "批量删除组织",
+                "summary": "批量删除组织（待实现完善）",
                 "parameters": [
                     {
-                        "description": "组组ID列表",
+                        "description": "组织ID列表",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -384,7 +384,13 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "请求参数错误",
+                        "description": "业务逻辑错误",
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "请求参数验证失败",
                         "schema": {
                             "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
                         }
@@ -423,7 +429,7 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "201": {
+                    "200": {
                         "description": "创建成功",
                         "schema": {
                             "allOf": [
@@ -468,7 +474,7 @@ const docTemplate = `{
                 "tags": [
                     "组织管理"
                 ],
-                "summary": "删除组织",
+                "summary": "删除组织（待实现完善）",
                 "parameters": [
                     {
                         "description": "删除请求",
@@ -499,14 +505,14 @@ const docTemplate = `{
                             ]
                         }
                     },
-                    "400": {
-                        "description": "请求参数错误",
+                    "404": {
+                        "description": "组织不存在",
                         "schema": {
                             "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
                         }
                     },
-                    "404": {
-                        "description": "组织不存在",
+                    "422": {
+                        "description": "请求参数验证失败",
                         "schema": {
                             "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
                         }
@@ -563,14 +569,14 @@ const docTemplate = `{
                             ]
                         }
                     },
-                    "400": {
-                        "description": "请求参数错误",
+                    "404": {
+                        "description": "组织不存在",
                         "schema": {
                             "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
                         }
                     },
-                    "404": {
-                        "description": "组织不存在",
+                    "422": {
+                        "description": "请求参数验证失败",
                         "schema": {
                             "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
                         }

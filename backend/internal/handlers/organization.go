@@ -84,7 +84,7 @@ func GetOrganizations(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body models.CreateOrganizationRequest true "组织信息"
-// @Success 201 {object} models.APIResponse{data=models.Organization} "创建成功"
+// @Success 200 {object} models.APIResponse{data=models.Organization} "创建成功"
 // @Failure 422 {object} models.APIResponse "请求参数验证失败"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
 // @Router /organizations/create [post]
@@ -102,7 +102,7 @@ func CreateOrganization(c *gin.Context) {
 		return
 	}
 
-	utils.CreatedResponse(c, organization)
+	utils.SuccessResponse(c, organization)
 }
 
 // UpdateOrganization 更新组织
@@ -139,8 +139,9 @@ func UpdateOrganization(c *gin.Context) {
 	utils.SuccessResponse(c, organization)
 }
 
+// TODO: 待实现完善
 // DeleteOrganization 删除组织
-// @Summary 删除组织
+// @Summary 删除组织（待实现完善）
 // @Description 删除指定的组织（级联删除关联的域名和孤儿域名）
 // @Tags 组织管理
 // @Accept json
@@ -175,8 +176,9 @@ func DeleteOrganization(c *gin.Context) {
 	})
 }
 
+// TODO: 待实现完善
 // BatchDeleteOrganizations 批量删除组织
-// @Summary 批量删除组织
+// @Summary 批量删除组织（待实现完善）
 // @Description 批量删除组织（级联删除关联的域名和孤儿域名）
 // @Tags 组织管理
 // @Accept json

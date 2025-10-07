@@ -310,9 +310,9 @@ paths:
     post:
       consumes:
       - application/json
-      description: 批量创建域名并关联到指定组织
+      description: 批量创建域名并自动关联到指定组织。如果域名已存在，会复用现有域名并建立关联关系
       parameters:
-      - description: 域名创建请求
+      - description: 域名创建请求，包含域名列表和组织ID
         in: body
         name: request
         required: true
@@ -322,7 +322,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 创建成功
+          description: 创建成功，返回创建的域名列表（包含关联的组织信息）
           schema:
             allOf:
             - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
@@ -333,7 +333,7 @@ paths:
                   type: array
               type: object
         "400":
-          description: 请求参数错误
+          description: 请求参数错误（如域名列表为空、参数格式错误等）
           schema:
             $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "500":
@@ -433,12 +433,12 @@ paths:
                 data:
                   $ref: '#/definitions/vulun-scan-backend_internal_models.GetOrganizationsResponse'
               type: object
-        "400":
-          description: 请求参数错误
-          schema:
-            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "404":
           description: 组织不存在
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+        "422":
+          description: 请求参数验证失败
           schema:
             $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "500":
@@ -454,7 +454,7 @@ paths:
       - application/json
       description: 批量删除组织（级联删除关联的域名和孤儿域名）
       parameters:
-      - description: 组组ID列表
+      - description: 组织ID列表
         in: body
         name: request
         required: true
@@ -473,14 +473,18 @@ paths:
                   $ref: '#/definitions/vulun-scan-backend_internal_models.BatchDeleteOrganizationsResponseData'
               type: object
         "400":
-          description: 请求参数错误
+          description: 业务逻辑错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+        "422":
+          description: 请求参数验证失败
           schema:
             $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "500":
           description: 服务器内部错误
           schema:
             $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
-      summary: 批量删除组织
+      summary: 批量删除组织（待实现完善）
       tags:
       - 组织管理
   /organizations/create:
@@ -498,7 +502,7 @@ paths:
       produces:
       - application/json
       responses:
-        "201":
+        "200":
           description: 创建成功
           schema:
             allOf:
@@ -542,19 +546,19 @@ paths:
                 data:
                   $ref: '#/definitions/vulun-scan-backend_internal_models.DeleteOrganizationResponseData'
               type: object
-        "400":
-          description: 请求参数错误
-          schema:
-            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "404":
           description: 组织不存在
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+        "422":
+          description: 请求参数验证失败
           schema:
             $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "500":
           description: 服务器内部错误
           schema:
             $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
-      summary: 删除组织
+      summary: 删除组织（待实现完善）
       tags:
       - 组织管理
   /organizations/update:
@@ -581,12 +585,12 @@ paths:
                 data:
                   $ref: '#/definitions/vulun-scan-backend_internal_models.Organization'
               type: object
-        "400":
-          description: 请求参数错误
-          schema:
-            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "404":
           description: 组织不存在
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+        "422":
+          description: 请求参数验证失败
           schema:
             $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "500":

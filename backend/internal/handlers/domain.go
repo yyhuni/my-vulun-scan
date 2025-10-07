@@ -11,15 +11,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// CreateDomains 创建域名
+// CreateDomains 批量创建域名
 // @Summary 批量创建域名
-// @Description 批量创建域名并关联到指定组织
+// @Description 批量创建域名并自动关联到指定组织（支持单个或多个域名）。如果域名已存在，会复用现有域名并建立关联关系
 // @Tags 域名管理
 // @Accept json
 // @Produce json
-// @Param request body models.CreateDomainsRequest true "域名创建请求"
-// @Success 200 {object} models.APIResponse{data=[]models.Domain} "创建成功"
-// @Failure 400 {object} models.APIResponse "请求参数错误"
+// @Param request body models.CreateDomainsRequest true "域名创建请求，包含域名列表和组织ID"
+// @Success 200 {object} models.APIResponse{data=[]models.Domain} "创建成功，返回创建的域名列表"
+// @Failure 400 {object} models.APIResponse "请求参数错误（如域名列表为空、参数格式错误等）"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
 // @Router /domains/create [post]
 func CreateDomains(c *gin.Context) {
@@ -41,7 +41,6 @@ func CreateDomains(c *gin.Context) {
 		return
 	}
 
-	// 使用统一的成功响应格式
 	utils.SuccessResponse(c, domains)
 }
 
@@ -64,14 +63,14 @@ func CreateDomains(c *gin.Context) {
 // @Router /domains [get]
 func GetDomains(c *gin.Context) {
 	service := services.NewDomainService()
-	
+
 	// 绑定查询参数（包含 id、organization_id、page 等）
 	var req models.GetOrganizationDomainsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
 		return
 	}
-	
+
 	// 设置默认值
 	if req.Page <= 0 {
 		req.Page = 1
@@ -85,7 +84,7 @@ func GetDomains(c *gin.Context) {
 	if req.SortOrder == "" {
 		req.SortOrder = "desc"
 	}
-	
+
 	// 如果有 id 参数，查询单个域名
 	if req.ID > 0 {
 		domain, err := service.GetDomainByID(req.ID)
@@ -97,11 +96,11 @@ func GetDomains(c *gin.Context) {
 			utils.InternalServerErrorResponse(c, "获取域名失败: "+err.Error())
 			return
 		}
-		
+
 		utils.SuccessResponse(c, domain)
 		return
 	}
-	
+
 	// 否则查询域名列表
 	// 查询列表时，organization_id 是必需的
 	if req.OrganizationID == 0 {
