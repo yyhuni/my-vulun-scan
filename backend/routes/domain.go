@@ -22,15 +22,11 @@ func SetupDomainRoutes(api *gin.RouterGroup) {
 		// }
 		domains.POST("/create", handlers.CreateDomains)
 
-		// 获取域名信息 - 支持多种查询方式：
-		// 1. 获取所有域名：GET /domains
-		// 2. 按ID查询单个域名：GET /domains?id=1
-		// 3. 按组织筛选：GET /domains?organization_id=1
-		// 4. 分页查询：GET /domains?page=1&page_size=10
-		// 5. 排序查询：GET /domains?sort_by=name&sort_order=asc
-		// 6. 组合查询：GET /domains?organization_id=1&page=1&page_size=5&sort_by=created_at&sort_order=desc
-		domains.GET("", handlers.GetDomains)
+		// 获取单个域名详情
+		// 示例：GET /domains/1
+		domains.GET("/:id", handlers.GetDomainByID)
 
+		// （待实现完善）
 		// 解除组织与域名的关联 - 从组织中移除指定域名
 		// 请求体示例：{"organization_id": 1, "domain_id": 2}
 		domains.POST("/remove-from-organization", handlers.RemoveOrganizationDomain)

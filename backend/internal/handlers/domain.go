@@ -44,28 +44,64 @@ func CreateDomains(c *gin.Context) {
 	utils.SuccessResponse(c, domains)
 }
 
-// GetDomains 获取域名信息
-// @Summary 获取域名信息(支持多种查询方式)
-// @Description 支持按域名ID查询单个域名、按组织ID查询域名列表、分页和排序等。注意：返回的域名不包含子域名信息
+// GetDomainByID 获取单个域名详情
+// @Summary 获取单个域名详情
+// @Description 根据域名ID获取域名的详细信息（不包含子域名）
 // @Tags 域名管理
 // @Produce json
-// @Param domain_id query uint false "域名ID(查询单个域名时使用)"
-// @Param organization_id query uint false "组织ID(查询组织下域名列表时使用)"
+// @Param id path uint true "域名ID" example(1)
+// @Success 200 {object} models.APIResponse{data=models.Domain} "获取成功"
+// @Failure 404 {object} models.APIResponse "域名不存在"
+// @Failure 500 {object} models.APIResponse "服务器内部错误"
+// @Router /domains/{id} [get]
+func GetDomainByID(c *gin.Context) {
+	service := services.NewDomainService()
+
+	// 获取路径参数 id
+	var uri struct {
+		ID uint `uri:"id" binding:"required"`
+	}
+	if err := c.ShouldBindUri(&uri); err != nil {
+		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	domain, err := service.GetDomainByID(uri.ID)
+	if err != nil {
+		if errors.Is(err, customErrors.ErrDomainNotFound) {
+			utils.NotFoundResponse(c, "域名不存在")
+			return
+		}
+		utils.InternalServerErrorResponse(c, "获取域名失败: "+err.Error())
+		return
+	}
+
+	utils.SuccessResponse(c, domain)
+}
+
+// GetDomainsByOrgID 获取组织的域名列表
+// @Summary 获取组织的域名列表
+// @Description 获取指定组织的所有域名，支持分页和排序。注意：返回的域名不包含子域名信息
+// @Tags 域名管理
+// @Produce json
+// @Param organization_id path uint true "组织ID" example(1)
 // @Param page query int false "页码" default(1)
 // @Param page_size query int false "每页数量" default(10)
 // @Param sort_by query string false "排序字段" default(updated_at) Enums(name, created_at, updated_at)
 // @Param sort_order query string false "排序方向" default(desc) Enums(asc, desc)
-// @Success 200 {object} models.APIResponse{data=models.Domain} "获取单个域名成功"
-// @Success 200 {object} models.APIResponse{data=models.GetOrganizationDomainsResponse} "获取域名列表成功"
+// @Success 200 {object} models.APIResponse{data=models.GetOrgDomainsResponse} "获取成功"
 // @Failure 400 {object} models.APIResponse "请求参数错误"
-// @Failure 404 {object} models.APIResponse "域名不存在"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
-// @Router /domains [get]
-func GetDomains(c *gin.Context) {
+// @Router /organizations/{organization_id}/domains [get]
+func GetDomainsByOrgID(c *gin.Context) {
 	service := services.NewDomainService()
 
-	// 绑定查询参数（包含 id、organization_id、page 等）
-	var req models.GetOrganizationDomainsRequest
+	// 绑定路径参数和查询参数
+	var req models.GetDomainsByOrgIDRequest
+	if err := c.ShouldBindUri(&req); err != nil {
+		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		return
+	}
 	if err := c.ShouldBindQuery(&req); err != nil {
 		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
 		return
@@ -85,36 +121,13 @@ func GetDomains(c *gin.Context) {
 		req.SortOrder = "desc"
 	}
 
-	// 如果有 domain_id 参数，查询单个域名
-	if req.DomainID > 0 {
-		domain, err := service.GetDomainByID(req.DomainID)
-		if err != nil {
-			if errors.Is(err, customErrors.ErrDomainNotFound) {
-				utils.NotFoundResponse(c, "域名不存在")
-				return
-			}
-			utils.InternalServerErrorResponse(c, "获取域名失败: "+err.Error())
-			return
-		}
-
-		utils.SuccessResponse(c, domain)
+	response, err := service.GetDomainsByOrgID(req)
+	if err != nil {
+		utils.InternalServerErrorResponse(c, "获取域名列表失败: "+err.Error())
 		return
 	}
 
-	// 如果有 organization_id 参数，查询组织的域名列表
-	if req.OrganizationID > 0 {
-		response, err := service.GetDomainsByOrgID(req)
-		if err != nil {
-			utils.InternalServerErrorResponse(c, "获取域名列表失败: "+err.Error())
-			return
-		}
-
-		utils.SuccessResponse(c, response)
-		return
-	}
-
-	// 两个参数都没有，返回错误
-	utils.BadRequestResponse(c, "请提供 domain_id 或 organization_id 参数")
+	utils.SuccessResponse(c, response)
 }
 
 // RemoveOrganizationDomain 解除组织与域名的关联
@@ -123,14 +136,14 @@ func GetDomains(c *gin.Context) {
 // @Tags 域名管理
 // @Accept json
 // @Produce json
-// @Param request body models.RemoveOrganizationDomainRequest true "解除关联请求"
-// @Success 200 {object} models.APIResponse{data=models.RemoveOrganizationDomainResponseData} "解除关联成功"
+// @Param request body models.RemoveOrgDomainRequest true "解除关联请求"
+// @Success 200 {object} models.APIResponse{data=models.RemoveOrgDomainResponseData} "解除关联成功"
 // @Failure 400 {object} models.APIResponse "请求参数错误"
 // @Failure 404 {object} models.APIResponse "组织、域名或关联不存在"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
 // @Router /domains/remove-from-organization [post]
 func RemoveOrganizationDomain(c *gin.Context) {
-	var req models.RemoveOrganizationDomainRequest
+	var req models.RemoveOrgDomainRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
@@ -156,7 +169,7 @@ func RemoveOrganizationDomain(c *gin.Context) {
 		}
 	}
 
-	utils.SuccessResponse(c, models.RemoveOrganizationDomainResponseData{
+	utils.SuccessResponse(c, models.RemoveOrgDomainResponseData{
 		Message: "解除关联成功，孤儿域名已自动删除",
 	})
 }

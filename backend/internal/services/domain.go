@@ -49,9 +49,9 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 
 	// 步骤1: 验证组织是否存在
 	var org models.Organization
-	if err := s.db.First(&org, "id = ?", req.OrganizationID).Error; err != nil {
+	if err := s.db.First(&org, "id = ?", req.OrgID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			log.Error().Uint("organization_id", req.OrganizationID).Msg("Organization not found")
+			log.Error().Uint("organization_id", req.OrgID).Msg("Organization not found")
 			return nil, fmt.Errorf("组织不存在")
 		}
 		log.Error().Err(err).Msg("Failed to query organization")
@@ -113,7 +113,7 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 		// 步骤2.6: 批量查询已存在的关联关系（1次查询）
 		var existingAssocs []models.OrganizationDomain
 		if len(existingDomainIDs) > 0 {
-			if err := tx.Where("organization_id = ? AND domain_id IN ?", req.OrganizationID, existingDomainIDs).
+			if err := tx.Where("organization_id = ? AND domain_id IN ?", req.OrgID, existingDomainIDs).
 				Find(&existingAssocs).Error; err != nil {
 				log.Error().Err(err).Msg("Failed to query existing associations")
 				return err
@@ -134,7 +134,7 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 			// 如果该域名未关联到组织，添加到待创建列表
 			if !existingAssocMap[domain.ID] {
 				newAssocs = append(newAssocs, models.OrganizationDomain{
-					OrganizationID: req.OrganizationID,
+					OrganizationID: req.OrgID,
 					DomainID:       domain.ID,
 				})
 			}
@@ -150,7 +150,7 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 				return err
 			}
 			log.Info().
-				Uint("organization_id", req.OrganizationID).
+				Uint("organization_id", req.OrgID).
 				Int("count", len(newAssocs)).
 				Msg("Associations created successfully")
 		}
@@ -163,7 +163,7 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 	}
 
 	log.Info().
-		Uint("organization_id", req.OrganizationID).
+		Uint("organization_id", req.OrgID).
 		Int("total_domains", len(resultDomains)).
 		Int("new_domains", newDomainsCount).
 		Msg("Domains created and associated successfully")
@@ -204,12 +204,12 @@ func (s *DomainService) GetDomainByID(id uint) (*models.Domain, error) {
 //
 // 安全考虑：
 // - 排序字段和方向会经过 buildOrderClause 验证，防止 SQL 注入
-func (s *DomainService) GetDomainsByOrgID(req models.GetOrganizationDomainsRequest) (*models.GetOrganizationDomainsResponse, error) {
+func (s *DomainService) GetDomainsByOrgID(req models.GetDomainsByOrgIDRequest) (*models.GetOrgDomainsResponse, error) {
 	// 验证组织是否存在
 	var org models.Organization
-	if err := s.db.First(&org, "id = ?", req.OrganizationID).Error; err != nil {
+	if err := s.db.First(&org, "id = ?", req.OrgID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			log.Error().Uint("organization_id", req.OrganizationID).Msg("Organization not found")
+			log.Error().Uint("organization_id", req.OrgID).Msg("Organization not found")
 			return nil, fmt.Errorf("组织不存在")
 		}
 		log.Error().Err(err).Msg("Failed to query organization")
@@ -223,7 +223,7 @@ func (s *DomainService) GetDomainsByOrgID(req models.GetOrganizationDomainsReque
 	// JOIN 的作用：从 domains 表中筛选出与该组织关联的所有域名
 	if err := s.db.Model(&models.Domain{}).
 		Joins("JOIN organization_domains ON organization_domains.domain_id = domains.id").
-		Where("organization_domains.organization_id = ?", req.OrganizationID).
+		Where("organization_domains.organization_id = ?", req.OrgID).
 		Count(&total).Error; err != nil {
 		log.Error().Err(err).Msg("Failed to count domains")
 		return nil, err
@@ -240,7 +240,7 @@ func (s *DomainService) GetDomainsByOrgID(req models.GetOrganizationDomainsReque
 	offset := (req.Page - 1) * req.PageSize
 	result := s.db.
 		Joins("JOIN organization_domains ON organization_domains.domain_id = domains.id").
-		Where("organization_domains.organization_id = ?", req.OrganizationID).
+		Where("organization_domains.organization_id = ?", req.OrgID).
 		Order(orderClause).
 		Offset(offset).
 		Limit(req.PageSize).
@@ -248,20 +248,19 @@ func (s *DomainService) GetDomainsByOrgID(req models.GetOrganizationDomainsReque
 
 	if result.Error != nil {
 		log.Error().Err(result.Error).
-			Uint("organization_id", req.OrganizationID).
+			Uint("organization_id", req.OrgID).
 			Msg("Failed to query domains by organization ID")
-		return nil, result.Error
 	}
 
 	log.Info().
-		Uint("organization_id", req.OrganizationID).
+		Uint("organization_id", req.OrgID).
 		Int("page", req.Page).
 		Int("page_size", req.PageSize).
 		Int64("total", total).
 		Int("count", len(domains)).
 		Msg("Domains retrieved successfully")
 
-	return &models.GetOrganizationDomainsResponse{
+	return &models.GetOrgDomainsResponse{
 		Domains:    domains,
 		Total:      total,
 		Page:       req.Page,
@@ -321,15 +320,15 @@ func (s *DomainService) buildOrderClause(sortBy, sortOrder string) string {
 // 使用场景：
 // - 前端用户从组织中移除某个域名时调用
 // - 如果这是最后一个使用该域名的组织，域名会被自动删除
-func (s *DomainService) RemoveOrganizationDomain(req models.RemoveOrganizationDomainRequest) error {
+func (s *DomainService) RemoveOrganizationDomain(req models.RemoveOrgDomainRequest) error {
 
 	// 使用事务确保数据一致性：关联解除和孤儿域名删除要么全部成功，要么全部回滚
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		// 步骤1: 验证组织是否存在
 		var org models.Organization
-		if err := tx.First(&org, "id = ?", req.OrganizationID).Error; err != nil {
+		if err := tx.First(&org, "id = ?", req.OrgID).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
-				log.Error().Uint("organization_id", req.OrganizationID).Msg("Organization not found")
+				log.Error().Uint("organization_id", req.OrgID).Msg("Organization not found")
 				return errors.ErrOrganizationNotFound
 			}
 			log.Error().Err(err).Msg("Failed to query organization")
@@ -351,7 +350,7 @@ func (s *DomainService) RemoveOrganizationDomain(req models.RemoveOrganizationDo
 		// 如果关联不存在，说明操作无效，应该返回错误
 		var count int64
 		if err := tx.Model(&models.OrganizationDomain{}).
-			Where("organization_id = ? AND domain_id = ?", req.OrganizationID, req.DomainID).
+			Where("organization_id = ? AND domain_id = ?", req.OrgID, req.DomainID).
 			Count(&count).Error; err != nil {
 			log.Error().Err(err).Msg("Failed to query association")
 			return err
@@ -359,7 +358,7 @@ func (s *DomainService) RemoveOrganizationDomain(req models.RemoveOrganizationDo
 
 		if count == 0 {
 			log.Error().
-				Uint("organization_id", req.OrganizationID).
+				Uint("organization_id", req.OrgID).
 				Uint("domain_id", req.DomainID).
 				Msg("Association not found")
 			return errors.ErrAssociationNotFound
@@ -373,7 +372,7 @@ func (s *DomainService) RemoveOrganizationDomain(req models.RemoveOrganizationDo
 		}
 
 		log.Info().
-			Uint("organization_id", req.OrganizationID).
+			Uint("organization_id", req.OrgID).
 			Uint("domain_id", req.DomainID).
 			Msg("Association removed successfully")
 

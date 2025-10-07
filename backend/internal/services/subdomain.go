@@ -59,10 +59,10 @@ func (s *SubDomainService) GetSubDomains(req models.GetSubDomainsRequest) (*mode
 	// 如果指定了组织ID，需要通过多表JOIN筛选
 	// 查询逻辑：找出组织的所有主域名，再找出这些主域名的所有子域名
 	// 性能提示：这个查询涉及多表JOIN，建议为关联字段添加索引
-	if req.OrganizationID > 0 {
+	if req.OrgID > 0 {
 		query = query.Joins("JOIN domains ON sub_domains.domain_id = domains.id").
 			Joins("JOIN organization_domains ON domains.id = organization_domains.domain_id").
-			Where("organization_domains.organization_id = ?", req.OrganizationID)
+			Where("organization_domains.organization_id = ?", req.OrgID)
 	}
 
 	// 计算总数

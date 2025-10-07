@@ -12,29 +12,32 @@ import (
 func SetupOrganizationRoutes(api *gin.RouterGroup) {
 	organizations := api.Group("/organizations")
 	{
-		// 获取组织列表 - 支持多种查询方式：
-		// 1. 获取所有组织：GET /organizations
-		// 2. 按ID查询单个组织：GET /organizations?id=1
-		// 3. 分页查询：GET /organizations?page=1&page_size=10
-		// 4. 排序查询：GET /organizations?sort_by=name&sort_order=asc
-		// 5. 组合查询：GET /organizations?page=1&page_size=5&sort_by=created_at&sort_order=desc
-		organizations.GET("", handlers.GetOrganizations)
+		// 获取组织列表 - 支持分页和排序
+		// 示例：GET /organizations?page=1&page_size=10&sort_by=name&sort_order=asc
+		organizations.GET("", handlers.GetOrgs)
+
+		// 获取单个组织详情
+		// 示例：GET /organizations/1
+		organizations.GET("/:id", handlers.GetOrgByID)
 
 		// 创建单个组织
 		// 请求体示例：{"name": "测试组织", "description": "组织描述"}
-		organizations.POST("/create", handlers.CreateOrganization)
+		organizations.POST("/create", handlers.CreateOrg)
 
 		// 更新组织信息 - 支持更新名称和描述
 		// 请求体示例：{"id": 1, "name": "新名称", "description": "新描述"}
-		organizations.POST("/update", handlers.UpdateOrganization)
+		organizations.POST("/update", handlers.UpdateOrg)
 
-		// 删除单个组织 - 会级联删除相关的域名关联
+		// 删除单个组织 - 会级联删除相关的域名关联（待实现完善）
 		// 请求体示例：{"id": 1}
 		organizations.POST("/delete", handlers.DeleteOrganization)
 
-		// 批量删除组织 - 支持一次删除多个组织
+		// 批量删除组织 - 支持一次删除多个组织（待实现完善）
 		// 请求体示例：{"organization_ids": [1, 2, 3]}
 		organizations.POST("/batch-delete", handlers.BatchDeleteOrganizations)
 
+		// 获取组织的域名列表
+		// 示例：GET /organizations/1/domains?page=1&page_size=10&sort_by=name&sort_order=asc
+		organizations.GET("/:organization_id/domains", handlers.GetDomainsByOrgID)
 	}
 }

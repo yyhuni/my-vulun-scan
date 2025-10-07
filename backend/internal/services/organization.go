@@ -24,8 +24,8 @@ func NewOrganizationService() *OrganizationService {
 	}
 }
 
-// GetOrganizations 获取组织列表(支持分页和排序)
-func (s *OrganizationService) GetOrganizations(req models.GetOrganizationsRequest) (*models.GetOrganizationsResponse, error) {
+// GetOrgs 获取组织列表(支持分页和排序)
+func (s *OrganizationService) GetOrgs(req models.GetOrgsRequest) (*models.GetOrgsResponse, error) {
 	var organizations []models.Organization
 	var total int64
 
@@ -56,7 +56,7 @@ func (s *OrganizationService) GetOrganizations(req models.GetOrganizationsReques
 		Int("count", len(organizations)).
 		Msg("Organizations retrieved successfully")
 
-	return &models.GetOrganizationsResponse{
+	return &models.GetOrgsResponse{
 		Organizations: organizations,
 		Total:         total,
 		Page:          req.Page,
@@ -65,8 +65,8 @@ func (s *OrganizationService) GetOrganizations(req models.GetOrganizationsReques
 	}, nil
 }
 
-// GetOrganizationByID 根据ID获取组织详细信息
-func (s *OrganizationService) GetOrganizationByID(id uint) (*models.Organization, error) {
+// GetOrgByID 根据ID获取组织详细信息
+func (s *OrganizationService) GetOrgByID(id uint) (*models.Organization, error) {
 
 	var org models.Organization
 
@@ -83,8 +83,8 @@ func (s *OrganizationService) GetOrganizationByID(id uint) (*models.Organization
 	return &org, nil
 }
 
-// CreateOrganization 创建组织
-func (s *OrganizationService) CreateOrganization(req models.CreateOrganizationRequest) (*models.Organization, error) {
+// CreateOrg 创建组织
+func (s *OrganizationService) CreateOrg(req models.CreateOrgRequest) (*models.Organization, error) {
 
 	org := models.Organization{
 		Name:        req.Name,
@@ -105,8 +105,8 @@ func (s *OrganizationService) CreateOrganization(req models.CreateOrganizationRe
 	return &org, nil
 }
 
-// UpdateOrganization 更新组织
-func (s *OrganizationService) UpdateOrganization(req models.UpdateOrganizationRequest) (*models.Organization, error) {
+// UpdateOrg 更新组织
+func (s *OrganizationService) UpdateOrg(req models.UpdateOrgRequest) (*models.Organization, error) {
 
 	var org models.Organization
 

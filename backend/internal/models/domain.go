@@ -23,8 +23,8 @@ type Domain struct {
 
 // CreateDomainsRequest 创建域名请求
 type CreateDomainsRequest struct {
-	Domains        []DomainDetail `json:"domains" binding:"required"`
-	OrganizationID uint           `json:"organization_id" binding:"required"`
+	Domains []DomainDetail `json:"domains" binding:"required"`
+	OrgID   uint           `json:"organization_id" binding:"required"`
 }
 
 // DomainDetail 域名详细信息
@@ -33,24 +33,23 @@ type DomainDetail struct {
 	Description string `json:"description,omitempty"`
 }
 
-// RemoveOrganizationDomainRequest 移除组织域名关联请求
-type RemoveOrganizationDomainRequest struct {
-	OrganizationID uint `json:"organization_id" binding:"required"`
-	DomainID       uint `json:"domain_id" binding:"required"`
+// RemoveOrgDomainRequest 移除组织域名关联请求
+type RemoveOrgDomainRequest struct {
+	OrgID    uint `json:"organization_id" binding:"required"`
+	DomainID uint `json:"domain_id" binding:"required"`
 }
 
-// GetOrganizationDomainsRequest 获取组织域名请求(支持分页和排序)
-type GetOrganizationDomainsRequest struct {
-	DomainID       uint   `form:"domain_id"`       // 域名ID，如果提供则查询单个域名
-	OrganizationID uint   `form:"organization_id"` // 组织ID，查询列表时必需
-	Page           int    `form:"page"`
-	PageSize       int    `form:"page_size"`
-	SortBy         string `form:"sort_by"`    // 排序字段: name, created_at, updated_at
-	SortOrder      string `form:"sort_order"` // 排序方向: asc, desc
+// GetDomainsByOrgIDRequest 获取组织域名请求(支持分页和排序)
+type GetDomainsByOrgIDRequest struct {
+	OrgID     uint   `uri:"organization_id" binding:"required"` // 组织ID（路径参数）
+	Page      int    `form:"page"`
+	PageSize  int    `form:"page_size"`
+	SortBy    string `form:"sort_by"`    // 排序字段: name, created_at, updated_at
+	SortOrder string `form:"sort_order"` // 排序方向: asc, desc
 }
 
-// GetOrganizationDomainsResponse 获取组织域名响应
-type GetOrganizationDomainsResponse struct {
+// GetOrgDomainsResponse 获取组织域名响应
+type GetOrgDomainsResponse struct {
 	Domains    []Domain `json:"domains"`
 	Total      int64    `json:"total"`
 	Page       int      `json:"page"`
@@ -58,7 +57,7 @@ type GetOrganizationDomainsResponse struct {
 	TotalPages int      `json:"total_pages"`
 }
 
-// RemoveOrganizationDomainResponseData 解除组织域名关联响应数据
-type RemoveOrganizationDomainResponseData struct {
+// RemoveOrgDomainResponseData 解除组织域名关联响应数据
+type RemoveOrgDomainResponseData struct {
 	Message string `json:"message"`
 }

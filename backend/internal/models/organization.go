@@ -19,40 +19,39 @@ type Organization struct {
 	Domains []Domain `json:"domains,omitempty" gorm:"many2many:organization_domains"`
 }
 
-// CreateOrganizationRequest 创建组织请求
-type CreateOrganizationRequest struct {
+// CreateOrgRequest 创建组织请求
+type CreateOrgRequest struct {
 	Name        string `json:"name" binding:"required"`
 	Description string `json:"description"`
 }
 
-// UpdateOrganizationRequest 更新组织请求
-type UpdateOrganizationRequest struct {
+// UpdateOrgRequest 更新组织请求
+type UpdateOrgRequest struct {
 	ID          uint   `json:"id" binding:"required"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
 }
 
-// DeleteOrganizationRequest 删除组织请求
-type DeleteOrganizationRequest struct {
+// DeleteOrgRequest 删除组织请求
+type DeleteOrgRequest struct {
 	ID uint `json:"id" binding:"required"`
 }
 
-// BatchDeleteOrganizationsRequest 批量删除组织请求
-type BatchDeleteOrganizationsRequest struct {
-	OrganizationIDs []uint `json:"organization_ids" binding:"required"`
+// BatchDeleteOrgsRequest 批量删除组织请求
+type BatchDeleteOrgsRequest struct {
+	OrgIDs []uint `json:"organization_ids" binding:"required"`
 }
 
-// GetOrganizationsRequest 获取组织列表请求
-type GetOrganizationsRequest struct {
-	OrganizationID uint   `json:"organization_id,omitempty" form:"organization_id"` // 组织ID，如果提供则查询单个组织
-	Page           int    `json:"page,omitempty" form:"page"`
-	PageSize       int    `json:"page_size,omitempty" form:"page_size"`
-	SortBy         string `json:"sort_by,omitempty" form:"sort_by"`       // 排序字段：id, name, created_at, updated_at
-	SortOrder      string `json:"sort_order,omitempty" form:"sort_order"` // 排序方向：asc, desc
+// GetOrgsRequest 获取组织列表请求
+type GetOrgsRequest struct {
+	Page      int    `json:"page,omitempty" form:"page"`
+	PageSize  int    `json:"page_size,omitempty" form:"page_size"`
+	SortBy    string `json:"sort_by,omitempty" form:"sort_by"`       // 排序字段：id, name, created_at, updated_at
+	SortOrder string `json:"sort_order,omitempty" form:"sort_order"` // 排序方向：asc, desc
 }
 
-// GetOrganizationsResponse 获取组织列表响应
-type GetOrganizationsResponse struct {
+// GetOrgsResponse 获取组织列表响应
+type GetOrgsResponse struct {
 	Organizations []Organization `json:"organizations"`
 	Total         int64          `json:"total"`
 	Page          int            `json:"page"`
@@ -60,19 +59,19 @@ type GetOrganizationsResponse struct {
 	TotalPages    int            `json:"total_pages"`
 }
 
-// OrganizationResponseData 组织响应数据（用于创建、更新、获取单个组织）
-type OrganizationResponseData struct {
+// OrgResponseData 组织响应数据（用于创建、更新、获取单个组织）
+type OrgResponseData struct {
 	Organization *Organization `json:"organization"`
 }
 
-// DeleteOrganizationResponseData 删除组织响应数据
-type DeleteOrganizationResponseData struct {
+// DeleteOrgResponseData 删除组织响应数据
+type DeleteOrgResponseData struct {
 	Message string `json:"message"`
 }
 
-// BatchDeleteOrganizationsResponseData 批量删除组织响应数据
-type BatchDeleteOrganizationsResponseData struct {
-	Message        string         `json:"message"`
-	DeletedCount   int            `json:"deleted_count"`
-	Organizations  []Organization `json:"organizations"`
+// BatchDeleteOrgsResponseData 批量删除组织响应数据
+type BatchDeleteOrgsResponseData struct {
+	Message       string         `json:"message"`
+	DeletedCount  int            `json:"deleted_count"`
+	Organizations []Organization `json:"organizations"`
 }
