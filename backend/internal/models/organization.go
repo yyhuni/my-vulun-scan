@@ -16,7 +16,7 @@ type Organization struct {
 	Description string `json:"description" gorm:"size:1000"`
 
 	// 关联关系 - 级联删除配置在 OrganizationDomain 中间表定义
-	Domains []Domain `json:"domains,omitempty" gorm:"many2many:organization_domains"`
+	Domains []Domain `json:"domains" gorm:"many2many:organization_domains"`
 }
 
 // CreateOrgRequest 创建组织请求
@@ -44,10 +44,10 @@ type BatchDeleteOrgsRequest struct {
 
 // GetOrgsRequest 获取组织列表请求
 type GetOrgsRequest struct {
-	Page      int    `json:"page,omitempty" form:"page"`
-	PageSize  int    `json:"page_size,omitempty" form:"page_size"`
-	SortBy    string `json:"sort_by,omitempty" form:"sort_by"`       // 排序字段：id, name, created_at, updated_at
-	SortOrder string `json:"sort_order,omitempty" form:"sort_order"` // 排序方向：asc, desc
+	Page      int    `json:"page" form:"page"`
+	PageSize  int    `json:"page_size" form:"page_size"`
+	SortBy    string `json:"sort_by" form:"sort_by"`       // 排序字段：id, name, created_at, updated_at
+	SortOrder string `json:"sort_order" form:"sort_order"` // 排序方向：asc, desc
 }
 
 // GetOrgsResponse 获取组织列表响应

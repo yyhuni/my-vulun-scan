@@ -34,4 +34,12 @@ func SetupDomainRoutes(api *gin.RouterGroup) {
 		// 请求体示例：{"organization_id": 1, "domain_id": 2}
 		domains.POST("/remove-from-organization", handlers.RemoveOrganizationDomain)
 	}
+
+	// 组织相关的域名路由
+	organizations := api.Group("/organizations")
+	{
+		// 获取组织的域名列表
+		// 示例：GET /organizations/1/domains?page=1&page_size=10&sort_by=name&sort_order=asc
+		organizations.GET("/:id/domains", handlers.GetDomainsByOrgID)
+	}
 }

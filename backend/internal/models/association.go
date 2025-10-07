@@ -7,6 +7,6 @@ type OrganizationDomain struct {
 	DomainID       uint `json:"domain_id" gorm:"primaryKey"`
 
 	// 关联关系 - 定义外键级联删除约束
-	Organization *Organization `json:"organization,omitempty" gorm:"foreignKey:OrganizationID;constraint:OnDelete:CASCADE"`
-	Domain       *Domain       `json:"domain,omitempty" gorm:"foreignKey:DomainID;constraint:OnDelete:CASCADE"`
+	Organization *Organization `json:"organization" gorm:"foreignKey:OrganizationID;constraint:OnDelete:CASCADE"`
+	Domain       *Domain       `json:"domain" gorm:"foreignKey:DomainID;constraint:OnDelete:CASCADE"`
 }

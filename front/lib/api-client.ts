@@ -286,13 +286,22 @@ apiClient.interceptors.response.use(
   (error) => {
     // 只在开发环境输出错误日志
     if (process.env.NODE_ENV === 'development') {
-      console.error('❌ API Error:', {
+      const errorInfo = {
         status: error.response?.status,
         statusText: error.response?.statusText,
         url: error.config?.url,
+        method: error.config?.method,
         data: error.response?.data,
-        message: error.message
-      });
+        message: error.message,
+        code: error.code
+      }
+      
+      // 只有当至少有一个有效属性时才输出
+      if (Object.values(errorInfo).some(v => v !== undefined)) {
+        console.error('❌ API Error:', errorInfo);
+      } else {
+        console.error('❌ API Error: Unknown error', error);
+      }
     }
     
     // 错误响应也进行命名转换

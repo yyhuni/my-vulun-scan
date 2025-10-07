@@ -23,62 +23,24 @@ func NewSubDomainService() *SubDomainService {
 	}
 }
 
-// GetSubDomains 获取子域名列表
-//
-// 业务逻辑说明：
-// 1. 根据请求参数构建动态查询条件
-// 2. 支持三种查询模式：
-//    a. 查询所有子域名（不指定任何ID）
-//    b. 查询指定主域名的子域名（指定 domainID）
-//    c. 查询指定组织的所有子域名（指定 organizationID，需要多表JOIN）
-// 3. 执行分页查询并返回结果
-//
-// 查询逻辑详解：
-// - 基础查询：sub_domains 表
-// - 按域名筛选：直接通过 domain_id 字段
-// - 按组织筛选：需要 JOIN domains 和 organization_domains 两张表
-//   查询路径：sub_domains -> domains -> organization_domains -> organizations
-//
-// 性能考虑：
-// - 使用 Preload 预加载关联数据，避免 N+1 查询问题
-// - 组织级别查询会涉及多表JOIN，性能相对较低，建议添加索引
-//
-// 使用场景：
-// - 主域名详情页：显示该域名下的所有子域名
-// - 组织详情页：显示该组织所有主域名的子域名
-func (s *SubDomainService) GetSubDomains(req models.GetSubDomainsRequest) (*models.GetSubDomainsResponse, error) {
-	// 构建动态查询
+// GetSubDomains 获取所有子域名列表
+func (s *SubDomainService) GetSubDomains(page, pageSize int, sortBy, sortOrder string) (*models.GetSubDomainsResponse, error) {
 	query := s.db.Model(&models.SubDomain{})
-
-	// 如果指定了主域名ID，直接通过 domain_id 筛选
-	// 这是最常见的查询场景，性能最好
-	if req.DomainID > 0 {
-		query = query.Where("domain_id = ?", req.DomainID)
-	}
-
-	// 如果指定了组织ID，需要通过多表JOIN筛选
-	// 查询逻辑：找出组织的所有主域名，再找出这些主域名的所有子域名
-	// 性能提示：这个查询涉及多表JOIN，建议为关联字段添加索引
-	if req.OrgID > 0 {
-		query = query.Joins("JOIN domains ON sub_domains.domain_id = domains.id").
-			Joins("JOIN organization_domains ON domains.id = organization_domains.domain_id").
-			Where("organization_domains.organization_id = ?", req.OrgID)
-	}
 
 	// 计算总数
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
-		log.Error().Err(err).Msg("Failed to count sub domains")
+		log.Error().Err(err).Msg("Failed to count all sub domains")
 		return nil, err
 	}
 
 	// 排序
-	orderClause := fmt.Sprintf("%s %s", req.SortBy, req.SortOrder)
+	orderClause := fmt.Sprintf("%s %s", sortBy, sortOrder)
 	query = query.Order(orderClause)
 
 	// 分页
-	offset := (req.Page - 1) * req.PageSize
-	query = query.Offset(offset).Limit(req.PageSize)
+	offset := (page - 1) * pageSize
+	query = query.Offset(offset).Limit(pageSize)
 
 	// 预加载关联数据
 	query = query.Preload("Domain")
@@ -86,23 +48,121 @@ func (s *SubDomainService) GetSubDomains(req models.GetSubDomainsRequest) (*mode
 	// 执行查询
 	var subDomains []models.SubDomain
 	if err := query.Find(&subDomains).Error; err != nil {
-		log.Error().Err(err).Msg("Failed to query sub domains")
+		log.Error().Err(err).Msg("Failed to query all sub domains")
 		return nil, err
 	}
 
 	response := &models.GetSubDomainsResponse{
 		SubDomains: subDomains,
 		Total:      total,
-		Page:       req.Page,
-		PageSize:   req.PageSize,
+		Page:       page,
+		PageSize:   pageSize,
 	}
 
 	log.Info().
-		Int("page", req.Page).
-		Int("page_size", req.PageSize).
+		Int("page", page).
+		Int("page_size", pageSize).
 		Int64("total", total).
 		Int("count", len(subDomains)).
-		Msg("Sub domains retrieved successfully")
+		Msg("All sub domains retrieved successfully")
+
+	return response, nil
+}
+
+// GetSubDomainsByDomainID 根据域名ID获取子域名列表
+func (s *SubDomainService) GetSubDomainsByDomainID(domainID uint, page, pageSize int, sortBy, sortOrder string) (*models.GetSubDomainsResponse, error) {
+	query := s.db.Model(&models.SubDomain{}).Where("domain_id = ?", domainID)
+
+	// 计算总数
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		log.Error().Err(err).Uint("domain_id", domainID).Msg("Failed to count sub domains by domain")
+		return nil, err
+	}
+
+	// 排序
+	orderClause := fmt.Sprintf("%s %s", sortBy, sortOrder)
+	query = query.Order(orderClause)
+
+	// 分页
+	offset := (page - 1) * pageSize
+	query = query.Offset(offset).Limit(pageSize)
+
+	// 预加载关联数据
+	query = query.Preload("Domain")
+
+	// 执行查询
+	var subDomains []models.SubDomain
+	if err := query.Find(&subDomains).Error; err != nil {
+		log.Error().Err(err).Uint("domain_id", domainID).Msg("Failed to query sub domains by domain")
+		return nil, err
+	}
+
+	response := &models.GetSubDomainsResponse{
+		SubDomains: subDomains,
+		Total:      total,
+		Page:       page,
+		PageSize:   pageSize,
+	}
+
+	log.Info().
+		Uint("domain_id", domainID).
+		Int("page", page).
+		Int("page_size", pageSize).
+		Int64("total", total).
+		Int("count", len(subDomains)).
+		Msg("Sub domains by domain retrieved successfully")
+
+	return response, nil
+}
+
+// GetSubDomainsByOrgID 根据组织ID获取子域名列表
+func (s *SubDomainService) GetSubDomainsByOrgID(orgID uint, page, pageSize int, sortBy, sortOrder string) (*models.GetSubDomainsResponse, error) {
+	// 通过多表JOIN查询组织的所有子域名
+	query := s.db.Model(&models.SubDomain{}).
+		Joins("JOIN domains ON sub_domains.domain_id = domains.id").
+		Joins("JOIN organization_domains ON domains.id = organization_domains.domain_id").
+		Where("organization_domains.organization_id = ?", orgID)
+
+	// 计算总数
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		log.Error().Err(err).Uint("org_id", orgID).Msg("Failed to count sub domains by organization")
+		return nil, err
+	}
+
+	// 排序
+	orderClause := fmt.Sprintf("sub_domains.%s %s", sortBy, sortOrder)
+	query = query.Order(orderClause)
+
+	// 分页
+	offset := (page - 1) * pageSize
+	query = query.Offset(offset).Limit(pageSize)
+
+	// 预加载关联数据
+	query = query.Preload("Domain")
+
+	// 执行查询
+	var subDomains []models.SubDomain
+	if err := query.Find(&subDomains).Error; err != nil {
+		log.Error().Err(err).Uint("org_id", orgID).Msg("Failed to query sub domains by organization")
+		return nil, err
+	}
+
+	response := &models.GetSubDomainsResponse{
+		SubDomains: subDomains,
+		Total:      total,
+		Page:       page,
+		PageSize:   pageSize,
+	}
+
+	log.Info().
+		Uint("org_id", orgID).
+		Int("page", page).
+		Int("page_size", pageSize).
+		Int64("total", total).
+		Int("count", len(subDomains)).
+		Msg("Sub domains by organization retrieved successfully")
 
 	return response, nil
 }
@@ -142,33 +202,41 @@ func (s *SubDomainService) CreateSubDomains(req models.CreateSubDomainsRequest) 
 
 	// 使用事务确保批量创建的原子性
 	err := s.db.Transaction(func(tx *gorm.DB) error {
-		for _, subDomainName := range req.SubDomains {
-			// 步骤1: 检查子域名是否已存在于该主域名下
-			// 注意：同一个子域名名称可以属于不同的主域名
-			// 所以查询条件必须包含 name + domain_id
-			var existingSubDomain models.SubDomain
-			result := tx.Where("name = ? AND domain_id = ?", subDomainName, req.DomainID).First(&existingSubDomain)
+		// 步骤1: 一次性查询所有已存在的子域名（批量查询，避免 N+1 问题）
+		var existingSubDomains []models.SubDomain
+		if err := tx.Where("name IN ? AND domain_id = ?", req.SubDomains, req.DomainID).
+			Find(&existingSubDomains).Error; err != nil {
+			log.Error().Err(err).Msg("Failed to query existing sub domains")
+			return err
+		}
 
-			if result.Error == gorm.ErrRecordNotFound {
-				// 步骤2: 子域名不存在，创建新的子域名记录
-				newSubDomain := models.SubDomain{
-					Name:     subDomainName,
+		// 步骤2: 构建已存在子域名的 map（O(1) 查找性能）
+		existingMap := make(map[string]bool)
+		for _, sd := range existingSubDomains {
+			existingMap[sd.Name] = true
+			existingDomains = append(existingDomains, sd.Name)
+		}
+
+		// 步骤3: 过滤出需要创建的子域名
+		var newSubDomains []models.SubDomain
+		for _, name := range req.SubDomains {
+			if !existingMap[name] {
+				newSubDomains = append(newSubDomains, models.SubDomain{
+					Name:     name,
 					DomainID: req.DomainID,
-				}
-				if err := tx.Create(&newSubDomain).Error; err != nil {
-					log.Error().Err(err).Msg("Failed to create sub domain")
-					return err
-				}
-				createdCount++
-			} else if result.Error != nil {
-				log.Error().Err(result.Error).Msg("Failed to check existing sub domain")
-				return result.Error
-			} else {
-				// 步骤3: 子域名已存在，记录到 existingDomains 列表
-				// 这是幂等性的体现：已存在的子域名会被跳过而不是报错
-				existingDomains = append(existingDomains, subDomainName)
+				})
 			}
 		}
+
+		// 步骤4: 批量插入新子域名
+		if len(newSubDomains) > 0 {
+			if err := tx.Create(&newSubDomains).Error; err != nil {
+				log.Error().Err(err).Msg("Failed to batch create sub domains")
+				return err
+			}
+			createdCount = len(newSubDomains)
+		}
+
 		return nil
 	})
 

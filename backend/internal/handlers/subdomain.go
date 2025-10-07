@@ -12,32 +12,26 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GetSubDomains 获取子域名信息
-// @Summary 获取子域名信息(支持多种查询方式)
-// @Description 支持按ID查询单个子域名、按域名ID筛选、分页查询和排序等
+// GetSubDomains 获取所有子域名列表
+// @Summary 获取所有子域名列表
+// @Description 获取所有子域名，支持分页和排序
 // @Tags 子域名管理
 // @Produce json
-// @Param id query uint false "子域名ID(查询单个子域名时使用)"
-// @Param domain_id query uint false "域名ID(筛选指定域名下的子域名)"
 // @Param page query int false "页码,默认1"
 // @Param page_size query int false "每页数量,默认10"
 // @Param sort_by query string false "排序字段: id, name, created_at, updated_at,默认updated_at"
 // @Param sort_order query string false "排序方向: asc, desc,默认desc"
-// @Success 200 {object} models.APIResponse{data=models.SubDomain} "获取单个子域名成功"
 // @Success 200 {object} models.APIResponse{data=models.GetSubDomainsResponse} "获取子域名列表成功"
 // @Failure 400 {object} models.APIResponse "请求参数错误"
-// @Failure 404 {object} models.APIResponse "子域名不存在"
+// @Failure 500 {object} models.APIResponse "服务器内部错误"
 // @Router /subdomains [get]
 func GetSubDomains(c *gin.Context) {
-	service := services.NewSubDomainService()
-	
-	// 绑定查询参数（包含 id、domain_id、page 等）
 	var req models.GetSubDomainsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
 		return
 	}
-	
+
 	// 设置默认值
 	if req.Page <= 0 {
 		req.Page = 1
@@ -51,34 +45,55 @@ func GetSubDomains(c *gin.Context) {
 	if req.SortOrder == "" {
 		req.SortOrder = "desc"
 	}
-	
-	// 如果有 id 参数，查询单个子域名
-	if req.ID > 0 {
-		subDomain, err := service.GetSubDomainByID(req.ID)
-		if err != nil {
-			if errors.Is(err, customErrors.ErrSubDomainNotFound) {
-				utils.NotFoundResponse(c, "子域名不存在")
-				return
-			}
-			utils.InternalServerErrorResponse(c, fmt.Sprintf("获取子域名详情失败: %v", err))
-			return
-		}
-		
-		utils.SuccessResponse(c, subDomain)
-		return
-	}
 
-	// 否则查询子域名列表
-
-	// 调用服务层获取子域名列表
-	response, err := service.GetSubDomains(req)
+	response, err := services.NewSubDomainService().GetSubDomains(
+		req.Page,
+		req.PageSize,
+		req.SortBy,
+		req.SortOrder,
+	)
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "获取子域名列表失败: "+err.Error())
 		return
 	}
 
-	// 返回查询结果，包含分页信息和子域名数据
 	utils.SuccessResponse(c, response)
+}
+
+// GetSubDomainByID 获取单个子域名详情
+// @Summary 获取单个子域名详情
+// @Description 根据子域名ID获取子域名的详细信息
+// @Tags 子域名管理
+// @Produce json
+// @Param id path uint true "子域名ID" example(1)
+// @Success 200 {object} models.APIResponse{data=models.SubDomain} "获取成功"
+// @Failure 400 {object} models.APIResponse "请求参数错误"
+// @Failure 404 {object} models.APIResponse "子域名不存在"
+// @Failure 500 {object} models.APIResponse "服务器内部错误"
+// @Router /subdomains/{id} [get]
+func GetSubDomainByID(c *gin.Context) {
+	service := services.NewSubDomainService()
+
+	// 获取路径参数 id
+	var uri struct {
+		ID uint `uri:"id" binding:"required"`
+	}
+	if err := c.ShouldBindUri(&uri); err != nil {
+		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	subDomain, err := service.GetSubDomainByID(uri.ID)
+	if err != nil {
+		if errors.Is(err, customErrors.ErrSubDomainNotFound) {
+			utils.NotFoundResponse(c, "子域名不存在")
+			return
+		}
+		utils.InternalServerErrorResponse(c, fmt.Sprintf("获取子域名详情失败: %v", err))
+		return
+	}
+
+	utils.SuccessResponse(c, subDomain)
 }
 
 // CreateSubDomains 创建子域名
@@ -127,4 +142,142 @@ func CreateSubDomains(c *gin.Context) {
 		ExistingDomains: response.ExistingDomains,
 		TotalRequested:  response.TotalRequested,
 	})
+}
+
+// GetSubDomainsByDomainID 获取域名的所有子域名
+// @Summary 获取域名的子域名列表
+// @Description 根据域名ID获取该域名下的所有子域名（支持分页和排序）
+// @Tags 域名管理
+// @Produce json
+// @Param id path uint true "域名ID" example(1)
+// @Param page query int false "页码,默认1"
+// @Param page_size query int false "每页数量,默认10"
+// @Param sort_by query string false "排序字段: id, name, created_at, updated_at,默认updated_at"
+// @Param sort_order query string false "排序方向: asc, desc,默认desc"
+// @Success 200 {object} models.APIResponse{data=models.GetSubDomainsResponse} "获取成功"
+// @Failure 400 {object} models.APIResponse "请求参数错误"
+// @Failure 404 {object} models.APIResponse "域名不存在"
+// @Failure 500 {object} models.APIResponse "服务器内部错误"
+// @Router /domains/{id}/subdomains [get]
+func GetSubDomainsByDomainID(c *gin.Context) {
+	service := services.NewSubDomainService()
+
+	// 获取路径参数 id
+	var uri struct {
+		ID uint `uri:"id" binding:"required"`
+	}
+	if err := c.ShouldBindUri(&uri); err != nil {
+		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	// 绑定查询参数（分页、排序）
+	var queryParams struct {
+		Page      int    `form:"page"`
+		PageSize  int    `form:"page_size"`
+		SortBy    string `form:"sort_by"`
+		SortOrder string `form:"sort_order"`
+	}
+	if err := c.ShouldBindQuery(&queryParams); err != nil {
+		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	// 设置默认值
+	if queryParams.Page <= 0 {
+		queryParams.Page = 1
+	}
+	if queryParams.PageSize <= 0 {
+		queryParams.PageSize = 10
+	}
+	if queryParams.SortBy == "" {
+		queryParams.SortBy = "updated_at"
+	}
+	if queryParams.SortOrder == "" {
+		queryParams.SortOrder = "desc"
+	}
+
+	// 调用服务层获取子域名列表
+	response, err := service.GetSubDomainsByDomainID(
+		uri.ID,
+		queryParams.Page,
+		queryParams.PageSize,
+		queryParams.SortBy,
+		queryParams.SortOrder,
+	)
+	if err != nil {
+		utils.InternalServerErrorResponse(c, "获取域名子域名列表失败: "+err.Error())
+		return
+	}
+
+	utils.SuccessResponse(c, response)
+}
+
+// GetSubDomainsByOrgID 获取组织的所有子域名
+// @Summary 获取组织的子域名列表
+// @Description 根据组织ID获取该组织所有域名下的子域名（支持分页和排序）
+// @Tags 组织管理
+// @Produce json
+// @Param id path uint true "组织ID" example(1)
+// @Param page query int false "页码,默认1"
+// @Param page_size query int false "每页数量,默认10"
+// @Param sort_by query string false "排序字段: id, name, created_at, updated_at,默认updated_at"
+// @Param sort_order query string false "排序方向: asc, desc,默认desc"
+// @Success 200 {object} models.APIResponse{data=models.GetSubDomainsResponse} "获取成功"
+// @Failure 400 {object} models.APIResponse "请求参数错误"
+// @Failure 404 {object} models.APIResponse "组织不存在"
+// @Failure 500 {object} models.APIResponse "服务器内部错误"
+// @Router /organizations/{id}/subdomains [get]
+func GetSubDomainsByOrgID(c *gin.Context) {
+	service := services.NewSubDomainService()
+
+	// 获取路径参数 id
+	var uri struct {
+		ID uint `uri:"id" binding:"required"`
+	}
+	if err := c.ShouldBindUri(&uri); err != nil {
+		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	// 绑定查询参数（分页、排序）
+	var queryParams struct {
+		Page      int    `form:"page"`
+		PageSize  int    `form:"page_size"`
+		SortBy    string `form:"sort_by"`
+		SortOrder string `form:"sort_order"`
+	}
+	if err := c.ShouldBindQuery(&queryParams); err != nil {
+		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	// 设置默认值
+	if queryParams.Page <= 0 {
+		queryParams.Page = 1
+	}
+	if queryParams.PageSize <= 0 {
+		queryParams.PageSize = 10
+	}
+	if queryParams.SortBy == "" {
+		queryParams.SortBy = "updated_at"
+	}
+	if queryParams.SortOrder == "" {
+		queryParams.SortOrder = "desc"
+	}
+
+	// 调用服务层获取子域名列表
+	response, err := service.GetSubDomainsByOrgID(
+		uri.ID,
+		queryParams.Page,
+		queryParams.PageSize,
+		queryParams.SortBy,
+		queryParams.SortOrder,
+	)
+	if err != nil {
+		utils.InternalServerErrorResponse(c, "获取组织子域名列表失败: "+err.Error())
+		return
+	}
+
+	utils.SuccessResponse(c, response)
 }

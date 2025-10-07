@@ -16,7 +16,7 @@ type SubDomain struct {
 	DomainID uint   `json:"domain_id" gorm:"not null;index"`
 
 	// 关联关系
-	Domain *Domain `json:"domain,omitempty" gorm:"foreignKey:DomainID;constraint:OnDelete:CASCADE"`
+	Domain *Domain `json:"domain" gorm:"foreignKey:DomainID;constraint:OnDelete:CASCADE"`
 }
 
 // CreateSubDomainsRequest 创建子域名请求
@@ -25,15 +25,12 @@ type CreateSubDomainsRequest struct {
 	DomainID   uint     `json:"domain_id" binding:"required"`
 }
 
-// GetSubDomainsRequest 获取子域名列表请求
+// GetSubDomainsRequest 获取所有子域名列表请求
 type GetSubDomainsRequest struct {
-	ID       uint   `json:"id,omitempty" form:"id"`                 // 子域名ID，如果提供则查询单个子域名
-	DomainID uint   `json:"domain_id,omitempty" form:"domain_id"`   // 可选，按域名ID筛选
-	OrgID    uint   `json:"organization_id,omitempty" form:"organization_id"` // 可选，按组织ID筛选
-	Page     int    `json:"page,omitempty" form:"page"`
-	PageSize int    `json:"page_size,omitempty" form:"page_size"`
-	SortBy   string `json:"sort_by,omitempty" form:"sort_by"`       // 排序字段：id, name, created_at, updated_at
-	SortOrder string `json:"sort_order,omitempty" form:"sort_order"` // 排序方向：asc, desc
+	Page      int    `json:"page" form:"page"`
+	PageSize  int    `json:"page_size" form:"page_size"`
+	SortBy    string `json:"sort_by" form:"sort_by"`       // 排序字段：id, name, created_at, updated_at
+	SortOrder string `json:"sort_order" form:"sort_order"` // 排序方向：asc, desc
 }
 
 // GetSubDomainsResponse 获取子域名列表响应

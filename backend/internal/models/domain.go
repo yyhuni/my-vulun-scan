@@ -16,9 +16,9 @@ type Domain struct {
 	Description string `json:"description" gorm:"size:1000"`
 
 	// 关联关系 - 级联删除配置在 OrganizationDomain 中间表定义
-	Organizations []Organization `json:"organizations,omitempty" gorm:"many2many:organization_domains"`
+	Organizations []Organization `json:"organizations" gorm:"many2many:organization_domains"`
 	// SubDomain 的级联删除：删除 Domain 时自动删除其所有子域名
-	SubDomains []SubDomain `json:"sub_domains,omitempty" gorm:"foreignKey:DomainID;constraint:OnDelete:CASCADE"`
+	SubDomains []SubDomain `json:"sub_domains" gorm:"foreignKey:DomainID;constraint:OnDelete:CASCADE"`
 }
 
 // CreateDomainsRequest 创建域名请求
@@ -30,7 +30,7 @@ type CreateDomainsRequest struct {
 // DomainDetail 域名详细信息
 type DomainDetail struct {
 	Name        string `json:"name" binding:"required"`
-	Description string `json:"description,omitempty"`
+	Description string `json:"description"`
 }
 
 // UpdateDomainRequest 更新域名请求

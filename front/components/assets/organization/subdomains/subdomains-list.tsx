@@ -3,8 +3,11 @@
 import React, { useState, useMemo } from "react"
 import { SubdomainsDataTable } from "./subdomains-data-table"
 import { createSubdomainColumns } from "./subdomains-columns"
+import { AddSubdomainDialog } from "./add-subdomain-dialog"
+import { EditSubdomainDialog } from "./edit-subdomain-dialog"
 import { LoadingState } from "@/components/loading-spinner"
 import { useSubdomains } from "@/hooks/use-subdomains"
+import { useOrganizationDomains } from "@/hooks/use-organizations"
 import type { SubDomain } from "@/types/subdomain.types"
 
 /**
@@ -13,6 +16,9 @@ import type { SubDomain } from "@/types/subdomain.types"
  */
 export function SubdomainsList({ organizationId }: { organizationId: string }) {
   const [selectedSubdomains, setSelectedSubdomains] = useState<SubDomain[]>([])
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [editingSubdomain, setEditingSubdomain] = useState<SubDomain | null>(null)
   
   // 分页状态
   const [pagination, setPagination] = useState({
@@ -32,6 +38,14 @@ export function SubdomainsList({ organizationId }: { organizationId: string }) {
     pageSize: pagination.pageSize,
     sortBy: "updatedAt",
     sortOrder: "desc"
+  })
+
+  // 获取组织的域名列表（用于添加/编辑子域名时选择所属域名）
+  const { data: domainsData } = useOrganizationDomains(parseInt(organizationId), {
+    page: 1,
+    pageSize: 1000, // 获取所有域名
+    sortBy: "name",
+    sortOrder: "asc"
   })
 
   // 辅助函数 - 格式化日期
@@ -54,8 +68,8 @@ export function SubdomainsList({ organizationId }: { organizationId: string }) {
 
   // 处理编辑子域名
   const handleEditSubdomain = (subdomain: SubDomain) => {
-    // TODO: 实现编辑功能
-    console.info(`编辑子域名功能开发中: ${subdomain.name}`)
+    setEditingSubdomain(subdomain)
+    setIsEditDialogOpen(true)
   }
 
   // 处理删除子域名
@@ -71,6 +85,24 @@ export function SubdomainsList({ organizationId }: { organizationId: string }) {
     }
     // TODO: 实现批量删除功能
     console.info(`批量删除功能开发中，选中 ${selectedSubdomains.length} 个子域名`)
+  }
+
+  // 处理添加子域名
+  const handleAddSubdomain = () => {
+    setIsAddDialogOpen(true)
+  }
+
+  // 处理添加成功
+  const handleAddSuccess = async (newSubdomains: SubDomain[]) => {
+    // React Query 会自动刷新数据，不需要手动处理
+    setIsAddDialogOpen(false)
+  }
+
+  // 处理编辑成功
+  const handleEditSuccess = async (updatedSubdomain: SubDomain) => {
+    // React Query 会自动刷新数据，不需要手动处理
+    setIsEditDialogOpen(false)
+    setEditingSubdomain(null)
   }
 
   // 处理分页变化
@@ -116,38 +148,47 @@ export function SubdomainsList({ organizationId }: { organizationId: string }) {
     return <LoadingState message="加载子域名数据中..." />
   }
 
-  // 空数据状态
-  if (!data?.subDomains || data.subDomains.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <div className="rounded-full bg-muted p-3 mb-4">
-          <span className="text-muted-foreground">🌐</span>
-        </div>
-        <h3 className="text-lg font-semibold mb-2">暂无子域名</h3>
-        <p className="text-muted-foreground text-center mb-4">
-          该组织还没有任何子域名数据
-        </p>
-      </div>
-    )
-  }
-
   return (
-    <SubdomainsDataTable
-      data={data.subDomains}
-      columns={subdomainColumns}
-      onBulkDelete={handleBulkDelete}
-      onSelectionChange={setSelectedSubdomains}
-      searchPlaceholder="搜索子域名..."
-      searchColumn="name"
-      pagination={pagination}
-      setPagination={setPagination}
-      paginationInfo={{
-        total: data.total || 0,
-        page: data.page || 1,
-        pageSize: data.pageSize || 10,
-        totalPages: Math.ceil((data.total || 0) / (data.pageSize || 10)),
-      }}
-      onPaginationChange={handlePaginationChange}
-    />
+    <>
+      <SubdomainsDataTable
+        data={data?.subDomains || []}
+        columns={subdomainColumns}
+        onAddNew={handleAddSubdomain}
+        onBulkDelete={handleBulkDelete}
+        onSelectionChange={setSelectedSubdomains}
+        searchPlaceholder="搜索子域名..."
+        searchColumn="name"
+        addButtonText="添加子域名"
+        pagination={pagination}
+        setPagination={setPagination}
+        paginationInfo={{
+          total: data?.total || 0,
+          page: data?.page || 1,
+          pageSize: data?.pageSize || 10,
+          totalPages: Math.ceil((data?.total || 0) / (data?.pageSize || 10)),
+        }}
+        onPaginationChange={handlePaginationChange}
+      />
+      
+      {/* 添加子域名对话框 */}
+      <AddSubdomainDialog
+        organizationId={organizationId}
+        domains={domainsData?.domains || []}
+        onAdd={handleAddSuccess}
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+      />
+      
+      {/* 编辑子域名对话框 */}
+      {editingSubdomain && (
+        <EditSubdomainDialog
+          subdomain={editingSubdomain}
+          domains={domainsData?.domains || []}
+          open={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+          onEdit={handleEditSuccess}
+        />
+      )}
+    </>
   )
 }

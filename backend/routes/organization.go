@@ -35,9 +35,5 @@ func SetupOrganizationRoutes(api *gin.RouterGroup) {
 		// 批量删除组织 - 支持一次删除多个组织（待实现完善）
 		// 请求体示例：{"organization_ids": [1, 2, 3]}
 		organizations.POST("/batch-delete", handlers.BatchDeleteOrganizations)
-
-		// 获取组织的域名列表
-		// 示例：GET /organizations/1/domains?page=1&page_size=10&sort_by=name&sort_order=asc
-		organizations.GET("/:id/domains", handlers.GetDomainsByOrgID)
 	}
 }
