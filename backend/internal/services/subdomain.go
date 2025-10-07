@@ -5,7 +5,6 @@ import (
 
 	"vulun-scan-backend/internal/errors"
 	"vulun-scan-backend/internal/models"
-	"vulun-scan-backend/internal/utils"
 	"vulun-scan-backend/pkg/database"
 
 	"github.com/rs/zerolog/log"
@@ -237,19 +236,12 @@ func (s *SubDomainService) GetSubDomainsByOrgID(orgID uint, page, pageSize int, 
 // - 导入功能：从文件批量导入子域名
 func (s *SubDomainService) CreateSubDomains(req models.CreateSubDomainsRequest) (*models.CreateSubDomainsResponse, error) {
 
-	// 步骤1: 验证子域名格式
-	if validationErrors := utils.ValidateSubdomains(req.SubDomains); len(validationErrors) > 0 {
-		// 记录第一个验证错误
-		log.Error().Err(validationErrors[0]).Msg("Subdomain validation failed")
-		return nil, fmt.Errorf("子域名格式验证失败: %v", validationErrors[0])
-	}
-
 	var createdCount int
 	var existingDomains []string
 
-	// 步骤2: 使用事务确保批量创建的原子性
+	// 步骤1: 使用事务确保批量创建的原子性
 	err := s.db.Transaction(func(tx *gorm.DB) error {
-		// 步骤2.1: 一次性查询所有已存在的子域名（批量查询，避免 N+1 问题）
+		// 步骤1.1: 一次性查询所有已存在的子域名（批量查询，避免 N+1 问题）
 		var existingSubDomains []models.SubDomain
 		if err := tx.Where("name IN ? AND domain_id = ?", req.SubDomains, req.DomainID).
 			Find(&existingSubDomains).Error; err != nil {
@@ -257,14 +249,14 @@ func (s *SubDomainService) CreateSubDomains(req models.CreateSubDomainsRequest) 
 			return err
 		}
 
-		// 步骤2.2: 构建已存在子域名的 map（O(1) 查找性能）
+		// 步骤1.2: 构建已存在子域名的 map（O(1) 查找性能）
 		existingMap := make(map[string]bool)
 		for _, sd := range existingSubDomains {
 			existingMap[sd.Name] = true
 			existingDomains = append(existingDomains, sd.Name)
 		}
 
-		// 步骤2.3: 过滤出需要创建的子域名
+		// 步骤1.3: 过滤出需要创建的子域名
 		var newSubDomains []models.SubDomain
 		for _, name := range req.SubDomains {
 			if !existingMap[name] {
@@ -275,7 +267,7 @@ func (s *SubDomainService) CreateSubDomains(req models.CreateSubDomainsRequest) 
 			}
 		}
 
-		// 步骤2.4: 批量插入新子域名
+		// 步骤1.4: 批量插入新子域名
 		if len(newSubDomains) > 0 {
 			if err := tx.Create(&newSubDomains).Error; err != nil {
 				log.Error().Err(err).Msg("Failed to batch create sub domains")

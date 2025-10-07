@@ -5,6 +5,7 @@ import (
 
 	customErrors "vulun-scan-backend/internal/errors"
 	"vulun-scan-backend/internal/models"
+	"vulun-scan-backend/internal/response"
 	"vulun-scan-backend/internal/services"
 	"vulun-scan-backend/internal/utils"
 
@@ -25,23 +26,35 @@ import (
 func CreateDomains(c *gin.Context) {
 	var req models.CreateDomainsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
 		return
 	}
 
 	if len(req.Domains) == 0 {
-		utils.BadRequestResponse(c, "域名列表不能为空")
+		response.BadRequestResponse(c, "域名列表不能为空")
+		return
+	}
+
+	// 验证域名格式
+	var domainNames []string
+	for _, detail := range req.Domains {
+		domainNames = append(domainNames, detail.Name)
+	}
+
+	// 批量验证域名格式
+	if validationErrors := utils.ValidateDomains(domainNames); len(validationErrors) > 0 {
+		response.ValidationErrorResponse(c, "域名格式验证失败: "+validationErrors[0].Error())
 		return
 	}
 
 	service := services.NewDomainService()
 	domains, err := service.CreateDomains(req)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "创建域名失败: "+err.Error())
+		response.InternalServerErrorResponse(c, "创建域名失败: "+err.Error())
 		return
 	}
 
-	utils.SuccessResponse(c, domains)
+	response.SuccessResponse(c, domains)
 }
 
 // GetDomainByID 获取单个域名详情
@@ -62,21 +75,21 @@ func GetDomainByID(c *gin.Context) {
 		ID uint `uri:"id" binding:"required"`
 	}
 	if err := c.ShouldBindUri(&uri); err != nil {
-		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
 		return
 	}
 
 	domain, err := service.GetDomainByID(uri.ID)
 	if err != nil {
 		if errors.Is(err, customErrors.ErrDomainNotFound) {
-			utils.NotFoundResponse(c, "域名不存在")
+			response.NotFoundResponse(c, "域名不存在")
 			return
 		}
-		utils.InternalServerErrorResponse(c, "获取域名失败: "+err.Error())
+		response.InternalServerErrorResponse(c, "获取域名失败: "+err.Error())
 		return
 	}
 
-	utils.SuccessResponse(c, domain)
+	response.SuccessResponse(c, domain)
 }
 
 // UpdateDomain 更新域名
@@ -95,22 +108,30 @@ func UpdateDomain(c *gin.Context) {
 	var req models.UpdateDomainRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
 		return
+	}
+
+	// 验证新域名格式（如果提供了新名称）
+	if req.Name != "" {
+		if err := utils.ValidateDomain(req.Name); err != nil {
+			response.ValidationErrorResponse(c, "域名格式验证失败: "+err.Error())
+			return
+		}
 	}
 
 	service := services.NewDomainService()
 	domain, err := service.UpdateDomain(req)
 	if err != nil {
 		if errors.Is(err, customErrors.ErrDomainNotFound) {
-			utils.NotFoundResponse(c, "域名不存在")
+			response.NotFoundResponse(c, "域名不存在")
 			return
 		}
-		utils.InternalServerErrorResponse(c, "更新域名失败: "+err.Error())
+		response.InternalServerErrorResponse(c, "更新域名失败: "+err.Error())
 		return
 	}
 
-	utils.SuccessResponse(c, domain)
+	response.SuccessResponse(c, domain)
 }
 
 // GetDomainsByOrgID 获取组织的域名列表
@@ -133,11 +154,11 @@ func GetDomainsByOrgID(c *gin.Context) {
 	// 绑定路径参数和查询参数
 	var req models.GetDomainsByOrgIDRequest
 	if err := c.ShouldBindUri(&req); err != nil {
-		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
 		return
 	}
 	if err := c.ShouldBindQuery(&req); err != nil {
-		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
 		return
 	}
 
@@ -155,13 +176,13 @@ func GetDomainsByOrgID(c *gin.Context) {
 		req.SortOrder = "desc"
 	}
 
-	response, err := service.GetDomainsByOrgID(req)
+	result, err := service.GetDomainsByOrgID(req)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "获取域名列表失败: "+err.Error())
+		response.InternalServerErrorResponse(c, "获取域名列表失败: "+err.Error())
 		return
 	}
 
-	utils.SuccessResponse(c, response)
+	response.SuccessResponse(c, result)
 }
 
 // RemoveOrganizationDomain 解除组织与域名的关联
@@ -180,7 +201,7 @@ func RemoveOrganizationDomain(c *gin.Context) {
 	var req models.RemoveOrgDomainRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
 		return
 	}
 
@@ -189,21 +210,21 @@ func RemoveOrganizationDomain(c *gin.Context) {
 	if err != nil {
 		switch err.Error() {
 		case "organization not found":
-			utils.NotFoundResponse(c, "组织不存在")
+			response.NotFoundResponse(c, "组织不存在")
 			return
 		case "domain not found":
-			utils.NotFoundResponse(c, "域名不存在")
+			response.NotFoundResponse(c, "域名不存在")
 			return
 		case "association not found":
-			utils.NotFoundResponse(c, "关联关系不存在")
+			response.NotFoundResponse(c, "关联关系不存在")
 			return
 		default:
-			utils.InternalServerErrorResponse(c, "解除关联失败: "+err.Error())
+			response.InternalServerErrorResponse(c, "解除关联失败: "+err.Error())
 			return
 		}
 	}
 
-	utils.SuccessResponse(c, models.RemoveOrgDomainResponseData{
+	response.SuccessResponse(c, models.RemoveOrgDomainResponseData{
 		Message: "解除关联成功，孤儿域名已自动删除",
 	})
 }

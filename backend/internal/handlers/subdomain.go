@@ -6,6 +6,7 @@ import (
 
 	customErrors "vulun-scan-backend/internal/errors"
 	"vulun-scan-backend/internal/models"
+	"vulun-scan-backend/internal/response"
 	"vulun-scan-backend/internal/services"
 	"vulun-scan-backend/internal/utils"
 
@@ -28,7 +29,7 @@ import (
 func GetSubDomains(c *gin.Context) {
 	var req models.GetSubDomainsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
 		return
 	}
 
@@ -46,18 +47,18 @@ func GetSubDomains(c *gin.Context) {
 		req.SortOrder = "desc"
 	}
 
-	response, err := services.NewSubDomainService().GetSubDomains(
+	result, err := services.NewSubDomainService().GetSubDomains(
 		req.Page,
 		req.PageSize,
 		req.SortBy,
 		req.SortOrder,
 	)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "获取子域名列表失败: "+err.Error())
+		response.InternalServerErrorResponse(c, "获取子域名列表失败: "+err.Error())
 		return
 	}
 
-	utils.SuccessResponse(c, response)
+	response.SuccessResponse(c, result)
 }
 
 // GetSubDomainByID 获取单个子域名详情
@@ -79,21 +80,21 @@ func GetSubDomainByID(c *gin.Context) {
 		ID uint `uri:"id" binding:"required"`
 	}
 	if err := c.ShouldBindUri(&uri); err != nil {
-		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
 		return
 	}
 
 	subDomain, err := service.GetSubDomainByID(uri.ID)
 	if err != nil {
 		if errors.Is(err, customErrors.ErrSubDomainNotFound) {
-			utils.NotFoundResponse(c, "子域名不存在")
+			response.NotFoundResponse(c, "子域名不存在")
 			return
 		}
-		utils.InternalServerErrorResponse(c, fmt.Sprintf("获取子域名详情失败: %v", err))
+		response.InternalServerErrorResponse(c, fmt.Sprintf("获取子域名详情失败: %v", err))
 		return
 	}
 
-	utils.SuccessResponse(c, subDomain)
+	response.SuccessResponse(c, subDomain)
 }
 
 // CreateSubDomains 创建子域名
@@ -111,36 +112,42 @@ func CreateSubDomains(c *gin.Context) {
 	// 解析请求体
 	var req models.CreateSubDomainsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
 		return
 	}
 
 	// 验证子域名列表不能为空
 	if len(req.SubDomains) == 0 {
-		utils.BadRequestResponse(c, "子域名列表不能为空")
+		response.BadRequestResponse(c, "子域名列表不能为空")
+		return
+	}
+
+	// 验证子域名格式
+	if validationErrors := utils.ValidateSubdomains(req.SubDomains); len(validationErrors) > 0 {
+		response.ValidationErrorResponse(c, "子域名格式验证失败: "+validationErrors[0].Error())
 		return
 	}
 
 	// 调用服务层创建子域名
 	service := services.NewSubDomainService()
-	response, err := service.CreateSubDomains(req)
+	result, err := service.CreateSubDomains(req)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "创建子域名失败: "+err.Error())
+		response.InternalServerErrorResponse(c, "创建子域名失败: "+err.Error())
 		return
 	}
 
 	// 构建响应消息，包含成功创建数量和已存在的域名信息
-	message := fmt.Sprintf("成功创建 %d 个子域名", response.SuccessCount)
-	if len(response.ExistingDomains) > 0 {
-		message += fmt.Sprintf("，%d 个子域名已存在", len(response.ExistingDomains))
+	message := fmt.Sprintf("成功创建 %d 个子域名", result.SuccessCount)
+	if len(result.ExistingDomains) > 0 {
+		message += fmt.Sprintf("，%d 个子域名已存在", len(result.ExistingDomains))
 	}
 
 	// 返回统一格式的成功响应，使用结构化的响应类型
-	utils.SuccessResponse(c, models.CreateSubDomainsResponseData{
+	response.SuccessResponse(c, models.CreateSubDomainsResponseData{
 		Message:         message,
-		SuccessCount:    response.SuccessCount,
-		ExistingDomains: response.ExistingDomains,
-		TotalRequested:  response.TotalRequested,
+		SuccessCount:    result.SuccessCount,
+		ExistingDomains: result.ExistingDomains,
+		TotalRequested:  result.TotalRequested,
 	})
 }
 
@@ -167,7 +174,7 @@ func GetSubDomainsByDomainID(c *gin.Context) {
 		ID uint `uri:"id" binding:"required"`
 	}
 	if err := c.ShouldBindUri(&uri); err != nil {
-		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
 		return
 	}
 
@@ -179,7 +186,7 @@ func GetSubDomainsByDomainID(c *gin.Context) {
 		SortOrder string `form:"sort_order"`
 	}
 	if err := c.ShouldBindQuery(&queryParams); err != nil {
-		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
 		return
 	}
 
@@ -198,7 +205,7 @@ func GetSubDomainsByDomainID(c *gin.Context) {
 	}
 
 	// 调用服务层获取子域名列表
-	response, err := service.GetSubDomainsByDomainID(
+	result, err := service.GetSubDomainsByDomainID(
 		uri.ID,
 		queryParams.Page,
 		queryParams.PageSize,
@@ -206,11 +213,11 @@ func GetSubDomainsByDomainID(c *gin.Context) {
 		queryParams.SortOrder,
 	)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "获取域名子域名列表失败: "+err.Error())
+		response.InternalServerErrorResponse(c, "获取域名子域名列表失败: "+err.Error())
 		return
 	}
 
-	utils.SuccessResponse(c, response)
+	response.SuccessResponse(c, result)
 }
 
 // GetSubDomainsByOrgID 获取组织的所有子域名
@@ -236,7 +243,7 @@ func GetSubDomainsByOrgID(c *gin.Context) {
 		ID uint `uri:"id" binding:"required"`
 	}
 	if err := c.ShouldBindUri(&uri); err != nil {
-		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
 		return
 	}
 
@@ -248,7 +255,7 @@ func GetSubDomainsByOrgID(c *gin.Context) {
 		SortOrder string `form:"sort_order"`
 	}
 	if err := c.ShouldBindQuery(&queryParams); err != nil {
-		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
 		return
 	}
 
@@ -267,7 +274,7 @@ func GetSubDomainsByOrgID(c *gin.Context) {
 	}
 
 	// 调用服务层获取子域名列表
-	response, err := service.GetSubDomainsByOrgID(
+	result, err := service.GetSubDomainsByOrgID(
 		uri.ID,
 		queryParams.Page,
 		queryParams.PageSize,
@@ -275,9 +282,9 @@ func GetSubDomainsByOrgID(c *gin.Context) {
 		queryParams.SortOrder,
 	)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "获取组织子域名列表失败: "+err.Error())
+		response.InternalServerErrorResponse(c, "获取组织子域名列表失败: "+err.Error())
 		return
 	}
 
-	utils.SuccessResponse(c, response)
+	response.SuccessResponse(c, result)
 }

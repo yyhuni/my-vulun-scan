@@ -5,8 +5,8 @@ import (
 
 	customErrors "vulun-scan-backend/internal/errors"
 	"vulun-scan-backend/internal/models"
+	"vulun-scan-backend/internal/response"
 	"vulun-scan-backend/internal/services"
-	"vulun-scan-backend/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -29,21 +29,21 @@ func GetOrgByID(c *gin.Context) {
 		ID uint `uri:"id" binding:"required"`
 	}
 	if err := c.ShouldBindUri(&uri); err != nil {
-		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
 		return
 	}
 
 	organization, err := service.GetOrgByID(uri.ID)
 	if err != nil {
 		if errors.Is(err, customErrors.ErrOrganizationNotFound) {
-			utils.NotFoundResponse(c, "组织不存在")
+			response.NotFoundResponse(c, "组织不存在")
 			return
 		}
-		utils.InternalServerErrorResponse(c, "获取组织详情失败: "+err.Error())
+		response.InternalServerErrorResponse(c, "获取组织详情失败: "+err.Error())
 		return
 	}
 
-	utils.SuccessResponse(c, organization)
+	response.SuccessResponse(c, organization)
 }
 
 // GetOrgs 获取组织列表
@@ -65,7 +65,7 @@ func GetOrgs(c *gin.Context) {
 	// 绑定查询参数
 	var req models.GetOrgsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
 		return
 	}
 
@@ -83,13 +83,13 @@ func GetOrgs(c *gin.Context) {
 		req.SortOrder = "desc"
 	}
 
-	response, err := service.GetOrgs(req)
+	result, err := service.GetOrgs(req)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "获取组织列表失败: "+err.Error())
+		response.InternalServerErrorResponse(c, "获取组织列表失败: "+err.Error())
 		return
 	}
 
-	utils.SuccessResponse(c, response)
+	response.SuccessResponse(c, result)
 }
 
 // CreateOrg 创建组织
@@ -106,18 +106,18 @@ func GetOrgs(c *gin.Context) {
 func CreateOrg(c *gin.Context) {
 	var req models.CreateOrgRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
 		return
 	}
 
 	service := services.NewOrganizationService()
 	organization, err := service.CreateOrg(req)
 	if err != nil {
-		utils.InternalServerErrorResponse(c, "创建组织失败: "+err.Error())
+		response.InternalServerErrorResponse(c, "创建组织失败: "+err.Error())
 		return
 	}
 
-	utils.SuccessResponse(c, organization)
+	response.SuccessResponse(c, organization)
 }
 
 // UpdateOrg 更新组织
@@ -136,7 +136,7 @@ func UpdateOrg(c *gin.Context) {
 	var req models.UpdateOrgRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
 		return
 	}
 
@@ -144,14 +144,14 @@ func UpdateOrg(c *gin.Context) {
 	organization, err := service.UpdateOrg(req)
 	if err != nil {
 		if errors.Is(err, customErrors.ErrOrganizationNotFound) {
-			utils.NotFoundResponse(c, "组织不存在")
+			response.NotFoundResponse(c, "组织不存在")
 			return
 		}
-		utils.InternalServerErrorResponse(c, "更新组织失败: "+err.Error())
+		response.InternalServerErrorResponse(c, "更新组织失败: "+err.Error())
 		return
 	}
 
-	utils.SuccessResponse(c, organization)
+	response.SuccessResponse(c, organization)
 }
 
 // TODO: 待实现完善
@@ -171,7 +171,7 @@ func DeleteOrganization(c *gin.Context) {
 	var req models.DeleteOrgRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
 		return
 	}
 
@@ -179,14 +179,14 @@ func DeleteOrganization(c *gin.Context) {
 	err := service.DeleteOrganization(req.ID)
 	if err != nil {
 		if errors.Is(err, customErrors.ErrOrganizationNotFound) {
-			utils.NotFoundResponse(c, "组织不存在")
+			response.NotFoundResponse(c, "组织不存在")
 			return
 		}
-		utils.InternalServerErrorResponse(c, "删除组织失败: "+err.Error())
+		response.InternalServerErrorResponse(c, "删除组织失败: "+err.Error())
 		return
 	}
 
-	utils.SuccessResponse(c, models.DeleteOrgResponseData{
+	response.SuccessResponse(c, models.DeleteOrgResponseData{
 		Message: "组织删除成功",
 	})
 }
@@ -207,12 +207,12 @@ func DeleteOrganization(c *gin.Context) {
 func BatchDeleteOrganizations(c *gin.Context) {
 	var req models.BatchDeleteOrgsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
 		return
 	}
 
 	if len(req.OrgIDs) == 0 {
-		utils.BadRequestResponse(c, "组织ID列表不能为空")
+		response.BadRequestResponse(c, "组织ID列表不能为空")
 		return
 	}
 
@@ -220,14 +220,14 @@ func BatchDeleteOrganizations(c *gin.Context) {
 	organizations, err := service.BatchDeleteOrganizations(req.OrgIDs)
 	if err != nil {
 		if errors.Is(err, customErrors.ErrSomeOrganizationsNotExist) {
-			utils.BadRequestResponse(c, "部分组织ID不存在")
+			response.BadRequestResponse(c, "部分组织ID不存在")
 			return
 		}
-		utils.InternalServerErrorResponse(c, "批量删除组织失败: "+err.Error())
+		response.InternalServerErrorResponse(c, "批量删除组织失败: "+err.Error())
 		return
 	}
 
-	utils.SuccessResponse(c, models.BatchDeleteOrgsResponseData{
+	response.SuccessResponse(c, models.BatchDeleteOrgsResponseData{
 		Message:       "批量删除组织成功",
 		DeletedCount:  len(req.OrgIDs),
 		Organizations: organizations,

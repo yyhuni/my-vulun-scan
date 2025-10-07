@@ -5,7 +5,6 @@ import (
 
 	"vulun-scan-backend/internal/errors"
 	"vulun-scan-backend/internal/models"
-	"vulun-scan-backend/internal/utils"
 	"vulun-scan-backend/pkg/database"
 
 	"github.com/rs/zerolog/log"
@@ -48,20 +47,7 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 	var resultDomains []models.Domain
 	var newDomainsCount int // 用于统计新创建的域名数量
 
-	// 步骤1: 验证域名格式
-	var domainNames []string
-	for _, detail := range req.Domains {
-		domainNames = append(domainNames, detail.Name)
-	}
-
-	// 批量验证域名格式
-	if validationErrors := utils.ValidateDomains(domainNames); len(validationErrors) > 0 {
-		// 记录第一个验证错误
-		log.Error().Err(validationErrors[0]).Msg("Domain validation failed")
-		return nil, fmt.Errorf("域名格式验证失败: %v", validationErrors[0])
-	}
-
-	// 步骤2: 验证组织是否存在
+	// 步骤1: 验证组织是否存在
 	var org models.Organization
 	if err := s.db.First(&org, "id = ?", req.OrgID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -72,9 +58,9 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 		return nil, err
 	}
 
-	// 步骤3: 使用事务处理批量创建和关联
+	// 步骤2: 使用事务处理批量创建和关联
 	err := s.db.Transaction(func(tx *gorm.DB) error {
-		// 步骤3.1: 收集所有域名名称并构建映射
+		// 步骤2.1: 收集所有域名名称并构建映射
 		domainNames := make([]string, 0, len(req.Domains))
 		domainDetailMap := make(map[string]models.DomainDetail)
 		for _, detail := range req.Domains {
@@ -82,14 +68,14 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 			domainDetailMap[detail.Name] = detail
 		}
 
-		// 步骤3.2: 批量查询已存在的域名（1次查询）
+		// 步骤2.2: 批量查询已存在的域名（1次查询）
 		var existingDomains []models.Domain
 		if err := tx.Where("name IN ?", domainNames).Find(&existingDomains).Error; err != nil {
 			log.Error().Err(err).Msg("Failed to query existing domains")
 			return err
 		}
 
-		// 步骤3.3: 构建已存在域名的映射（name -> Domain）
+		// 步骤2.3: 构建已存在域名的映射（name -> Domain）
 		existingDomainMap := make(map[string]models.Domain)
 		existingDomainIDs := make([]uint, 0, len(existingDomains))
 		for _, domain := range existingDomains {
@@ -97,7 +83,7 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 			existingDomainIDs = append(existingDomainIDs, domain.ID)
 		}
 
-		// 步骤3.4: 找出需要创建的新域名
+		// 步骤2.4: 找出需要创建的新域名
 		var newDomains []models.Domain
 		for _, detail := range req.Domains {
 			if _, exists := existingDomainMap[detail.Name]; !exists {
@@ -108,7 +94,7 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 			}
 		}
 
-		// 步骤3.5: 批量创建新域名（1次插入）
+		// 步骤2.5: 批量创建新域名（1次插入）
 		if len(newDomains) > 0 {
 			if err := tx.Create(&newDomains).Error; err != nil {
 				log.Error().Err(err).Int("count", len(newDomains)).Msg("Failed to batch create domains")
@@ -124,7 +110,7 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 			}
 		}
 
-		// 步骤3.6: 批量查询已存在的关联关系（1次查询）
+		// 步骤2.6: 批量查询已存在的关联关系（1次查询）
 		var existingAssocs []models.OrganizationDomain
 		if len(existingDomainIDs) > 0 {
 			if err := tx.Where("organization_id = ? AND domain_id IN ?", req.OrgID, existingDomainIDs).
@@ -134,13 +120,13 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 			}
 		}
 
-		// 步骤3.7: 构建已存在关联的映射（domain_id -> bool）
+		// 步骤2.7: 构建已存在关联的映射（domain_id -> bool）
 		existingAssocMap := make(map[uint]bool)
 		for _, assoc := range existingAssocs {
 			existingAssocMap[assoc.DomainID] = true
 		}
 
-		// 步骤3.8: 批量创建新关联关系（1次插入）2.8: 找出需要创建的新关联并构建结果列表
+		// 步骤2.8: 找出需要创建的新关联并构建结果列表
 		var newAssocs []models.OrganizationDomain
 		for _, detail := range req.Domains {
 			domain := existingDomainMap[detail.Name]
@@ -157,7 +143,7 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 			resultDomains = append(resultDomains, domain)
 		}
 
-		// 步骤3.9: 批量创建新关联（1次插入）
+		// 步骤2.9: 批量创建新关联（1次插入）
 		if len(newAssocs) > 0 {
 			if err := tx.Create(&newAssocs).Error; err != nil {
 				log.Error().Err(err).Int("count", len(newAssocs)).Msg("Failed to batch create associations")
@@ -215,15 +201,7 @@ func (s *DomainService) GetDomainByID(id uint) (*models.Domain, error) {
 // - 名称修改后需要保证唯一性
 // - 更新操作会自动更新 updated_at 字段
 func (s *DomainService) UpdateDomain(req models.UpdateDomainRequest) (*models.Domain, error) {
-	// 步骤1: 验证新域名格式（如果提供了新名称）
-	if req.Name != "" {
-		if err := utils.ValidateDomain(req.Name); err != nil {
-			log.Error().Err(err).Str("domain_name", req.Name).Msg("Domain validation failed")
-			return nil, fmt.Errorf("域名格式验证失败: %v", err)
-		}
-	}
-
-	// 步骤2: 验证域名是否存在
+	// 步骤1: 验证域名是否存在
 	var domain models.Domain
 	if err := s.db.First(&domain, "id = ?", req.ID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -234,7 +212,7 @@ func (s *DomainService) UpdateDomain(req models.UpdateDomainRequest) (*models.Do
 		return nil, err
 	}
 
-	// 步骤3: 更新域名信息
+	// 步骤2: 更新域名信息
 	// 只更新非空字段，保持灵活性
 	updateData := make(map[string]interface{})
 	if req.Name != "" {
