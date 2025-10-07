@@ -41,6 +41,7 @@ type RemoveOrganizationDomainRequest struct {
 
 // GetOrganizationDomainsRequest 获取组织域名请求(支持分页和排序)
 type GetOrganizationDomainsRequest struct {
+	ID             uint   `form:"id"`                                     // 域名ID，如果提供则查询单个域名
 	OrganizationID uint   `form:"organization_id" binding:"required"`
 	Page           int    `form:"page"`
 	PageSize       int    `form:"page_size"`

@@ -645,12 +645,6 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
                         }
-                    },
-                    "500": {
-                        "description": "服务器内部错误",
-                        "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
-                        }
                     }
                 }
             }

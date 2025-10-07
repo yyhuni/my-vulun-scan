@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"errors"
-	"strconv"
 
 	customErrors "vulun-scan-backend/internal/errors"
 	"vulun-scan-backend/internal/models"
@@ -31,15 +30,27 @@ import (
 func GetOrganizations(c *gin.Context) {
 	service := services.NewOrganizationService()
 
+	// 绑定查询参数（包含 id、page、page_size 等）
+	var req models.GetOrganizationsRequest
+	c.ShouldBindQuery(&req)
+	
+	// 设置默认值
+	if req.Page <= 0 {
+		req.Page = 1
+	}
+	if req.PageSize <= 0 {
+		req.PageSize = 10
+	}
+	if req.SortBy == "" {
+		req.SortBy = "updated_at"
+	}
+	if req.SortOrder == "" {
+		req.SortOrder = "desc"
+	}
+	
 	// 如果有 id 参数，查询单个组织
-	if idStr := c.Query("id"); idStr != "" {
-		id, err := ParseUintFromString(idStr)
-		if err != nil {
-			utils.BadRequestResponse(c, "组织ID格式错误")
-			return
-		}
-
-		organization, err := service.GetOrganizationByID(id)
+	if req.ID > 0 {
+		organization, err := service.GetOrganizationByID(req.ID)
 		if err != nil {
 			if errors.Is(err, customErrors.ErrOrganizationNotFound) {
 				utils.NotFoundResponse(c, "组织不存在")
@@ -54,29 +65,11 @@ func GetOrganizations(c *gin.Context) {
 	}
 
 	// 否则查询组织列表
-	// 解析分页和排序参数
-	var req models.GetOrganizationsRequest
-	if pageStr := c.Query("page"); pageStr != "" {
-		if page, err := strconv.Atoi(pageStr); err == nil && page > 0 {
-			req.Page = page
-		}
-	}
-	if pageSizeStr := c.Query("page_size"); pageSizeStr != "" {
-		if pageSize, err := strconv.Atoi(pageSizeStr); err == nil && pageSize > 0 {
-			req.PageSize = pageSize
-		}
-	}
-	// 解析排序参数
-	if sortBy := c.Query("sort_by"); sortBy != "" {
-		req.SortBy = sortBy
-	}
-	if sortOrder := c.Query("sort_order"); sortOrder != "" {
-		req.SortOrder = sortOrder
-	}
 
 	response, err := service.GetOrganizations(req)
 	if err != nil {
 		utils.InternalServerErrorResponse(c, "获取组织列表失败: "+err.Error())
+		return
 	}
 
 	utils.SuccessResponse(c, response)

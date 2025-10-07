@@ -27,12 +27,13 @@ type CreateSubDomainsRequest struct {
 
 // GetSubDomainsRequest 获取子域名列表请求
 type GetSubDomainsRequest struct {
-	DomainID       uint   `json:"domain_id,omitempty"`       // 可选，按域名ID筛选
-	OrganizationID uint   `json:"organization_id,omitempty"` // 可选，按组织ID筛选
-	Page           int    `json:"page,omitempty"`
-	PageSize       int    `json:"page_size,omitempty"`
-	SortBy         string `json:"sort_by,omitempty"`    // 排序字段：id, name, created_at, updated_at
-	SortOrder      string `json:"sort_order,omitempty"` // 排序方向：asc, desc
+	ID             uint   `json:"id,omitempty" form:"id"`                           // 子域名ID，如果提供则查询单个子域名
+	DomainID       uint   `json:"domain_id,omitempty" form:"domain_id"`             // 可选，按域名ID筛选
+	OrganizationID uint   `json:"organization_id,omitempty" form:"organization_id"` // 可选，按组织ID筛选
+	Page           int    `json:"page,omitempty" form:"page"`
+	PageSize       int    `json:"page_size,omitempty" form:"page_size"`
+	SortBy         string `json:"sort_by,omitempty" form:"sort_by"`       // 排序字段：id, name, created_at, updated_at
+	SortOrder      string `json:"sort_order,omitempty" form:"sort_order"` // 排序方向：asc, desc
 }
 
 // GetSubDomainsResponse 获取子域名列表响应

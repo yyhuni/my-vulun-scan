@@ -26,22 +26,6 @@ func NewOrganizationService() *OrganizationService {
 
 // GetOrganizations 获取组织列表(支持分页和排序)
 func (s *OrganizationService) GetOrganizations(req models.GetOrganizationsRequest) (*models.GetOrganizationsResponse, error) {
-
-	// 设置默认值
-	if req.Page <= 0 {
-		req.Page = 1
-	}
-	if req.PageSize <= 0 {
-		req.PageSize = 10
-	}
-	// 设置默认排序
-	if req.SortBy == "" {
-		req.SortBy = "updated_at"
-	}
-	if req.SortOrder == "" {
-		req.SortOrder = "desc"
-	}
-
 	var organizations []models.Organization
 	var total int64
 

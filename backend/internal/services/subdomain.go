@@ -26,13 +26,12 @@ func NewSubDomainService() *SubDomainService {
 // GetSubDomains 获取子域名列表
 //
 // 业务逻辑说明：
-// 1. 设置分页和排序的默认值
-// 2. 根据请求参数构建动态查询条件
-// 3. 支持三种查询模式：
+// 1. 根据请求参数构建动态查询条件
+// 2. 支持三种查询模式：
 //    a. 查询所有子域名（不指定任何ID）
 //    b. 查询指定主域名的子域名（指定 domainID）
 //    c. 查询指定组织的所有子域名（指定 organizationID，需要多表JOIN）
-// 4. 执行分页查询并返回结果
+// 3. 执行分页查询并返回结果
 //
 // 查询逻辑详解：
 // - 基础查询：sub_domains 表
@@ -48,31 +47,16 @@ func NewSubDomainService() *SubDomainService {
 // - 主域名详情页：显示该域名下的所有子域名
 // - 组织详情页：显示该组织所有主域名的子域名
 func (s *SubDomainService) GetSubDomains(req models.GetSubDomainsRequest) (*models.GetSubDomainsResponse, error) {
-
-	// 步骤1: 设置默认值，避免无效的分页和排序参数
-	if req.Page <= 0 {
-		req.Page = 1
-	}
-	if req.PageSize <= 0 {
-		req.PageSize = 10
-	}
-	if req.SortBy == "" {
-		req.SortBy = "updated_at"
-	}
-	if req.SortOrder == "" {
-		req.SortOrder = "desc"
-	}
-
-	// 步骤2: 构建动态查询
+	// 构建动态查询
 	query := s.db.Model(&models.SubDomain{})
 
-	// 步骤3a: 如果指定了主域名ID，直接通过 domain_id 筛选
+	// 如果指定了主域名ID，直接通过 domain_id 筛选
 	// 这是最常见的查询场景，性能最好
 	if req.DomainID > 0 {
 		query = query.Where("domain_id = ?", req.DomainID)
 	}
 
-	// 步骤3b: 如果指定了组织ID，需要通过多表JOIN筛选
+	// 如果指定了组织ID，需要通过多表JOIN筛选
 	// 查询逻辑：找出组织的所有主域名，再找出这些主域名的所有子域名
 	// 性能提示：这个查询涉及多表JOIN，建议为关联字段添加索引
 	if req.OrganizationID > 0 {

@@ -65,15 +65,30 @@ func CreateDomains(c *gin.Context) {
 func GetDomains(c *gin.Context) {
 	service := services.NewDomainService()
 	
+	// 绑定查询参数（包含 id、organization_id、page 等）
+	var req models.GetOrganizationDomainsRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		return
+	}
+	
+	// 设置默认值
+	if req.Page <= 0 {
+		req.Page = 1
+	}
+	if req.PageSize <= 0 {
+		req.PageSize = 10
+	}
+	if req.SortBy == "" {
+		req.SortBy = "updated_at"
+	}
+	if req.SortOrder == "" {
+		req.SortOrder = "desc"
+	}
+	
 	// 如果有 id 参数，查询单个域名
-	if idStr := c.Query("id"); idStr != "" {
-		id, err := ParseUintFromString(idStr)
-		if err != nil {
-			utils.BadRequestResponse(c, "域名ID格式错误")
-			return
-		}
-		
-		domain, err := service.GetDomainByID(id)
+	if req.ID > 0 {
+		domain, err := service.GetDomainByID(req.ID)
 		if err != nil {
 			if errors.Is(err, customErrors.ErrDomainNotFound) {
 				utils.NotFoundResponse(c, "域名不存在")
@@ -88,11 +103,6 @@ func GetDomains(c *gin.Context) {
 	}
 	
 	// 否则查询域名列表
-	var req models.GetOrganizationDomainsRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
-		utils.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
-		return
-	}
 
 	response, err := service.GetDomainsByOrgID(req)
 	if err != nil {

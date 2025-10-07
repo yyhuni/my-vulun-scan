@@ -3,7 +3,6 @@ package handlers
 import (
 	"errors"
 	"fmt"
-	"strconv"
 
 	customErrors "vulun-scan-backend/internal/errors"
 	"vulun-scan-backend/internal/models"
@@ -28,26 +27,37 @@ import (
 // @Success 200 {object} models.APIResponse{data=models.GetSubDomainsResponse} "获取子域名列表成功"
 // @Failure 400 {object} models.APIResponse "请求参数错误"
 // @Failure 404 {object} models.APIResponse "子域名不存在"
-// @Failure 500 {object} models.APIResponse "服务器内部错误"
 // @Router /subdomains [get]
 func GetSubDomains(c *gin.Context) {
 	service := services.NewSubDomainService()
 	
+	// 绑定查询参数（包含 id、domain_id、page 等）
+	var req models.GetSubDomainsRequest
+	c.ShouldBindQuery(&req)
+	
+	// 设置默认值
+	if req.Page <= 0 {
+		req.Page = 1
+	}
+	if req.PageSize <= 0 {
+		req.PageSize = 10
+	}
+	if req.SortBy == "" {
+		req.SortBy = "updated_at"
+	}
+	if req.SortOrder == "" {
+		req.SortOrder = "desc"
+	}
+	
 	// 如果有 id 参数，查询单个子域名
-	if idStr := c.Query("id"); idStr != "" {
-		id, err := ParseUintFromString(idStr)
-		if err != nil {
-			utils.BadRequestResponse(c, "子域名ID格式错误")
-			return
-		}
-		
-		subDomain, err := service.GetSubDomainByID(id)
+	if req.ID > 0 {
+		subDomain, err := service.GetSubDomainByID(req.ID)
 		if err != nil {
 			if errors.Is(err, customErrors.ErrSubDomainNotFound) {
 				utils.NotFoundResponse(c, "子域名不存在")
 				return
 			}
-			utils.InternalServerErrorResponse(c, "获取子域名失败: "+err.Error())
+			utils.InternalServerErrorResponse(c, fmt.Sprintf("获取子域名详情失败: %v", err))
 			return
 		}
 		
@@ -56,48 +66,6 @@ func GetSubDomains(c *gin.Context) {
 	}
 
 	// 否则查询子域名列表
-	// 初始化查询请求结构体
-	var req models.GetSubDomainsRequest
-	
-	// 解析可选的域名ID参数，用于筛选特定域名下的子域名
-	if domainIDStr := c.Query("domain_id"); domainIDStr != "" {
-		if domainID, err := strconv.ParseUint(domainIDStr, 10, 32); err == nil {
-			req.DomainID = uint(domainID)
-		} else {
-			utils.BadRequestResponse(c, "域名ID参数格式错误")
-			return
-		}
-	}
-	
-	// 解析可选的组织ID参数，用于筛选特定组织下的子域名
-	if organizationIDStr := c.Query("organization_id"); organizationIDStr != "" {
-		if organizationID, err := strconv.ParseUint(organizationIDStr, 10, 32); err == nil {
-			req.OrganizationID = uint(organizationID)
-		} else {
-			utils.BadRequestResponse(c, "组织ID参数格式错误")
-			return
-		}
-	}
-	
-	// 解析分页参数，支持自定义页码和每页数量
-	if pageStr := c.Query("page"); pageStr != "" {
-		if page, err := strconv.Atoi(pageStr); err == nil && page > 0 {
-			req.Page = page
-		}
-	}
-	if pageSizeStr := c.Query("page_size"); pageSizeStr != "" {
-		if pageSize, err := strconv.Atoi(pageSizeStr); err == nil && pageSize > 0 {
-			req.PageSize = pageSize
-		}
-	}
-	
-	// 解析排序参数，支持多字段排序和升降序
-	if sortBy := c.Query("sort_by"); sortBy != "" {
-		req.SortBy = sortBy
-	}
-	if sortOrder := c.Query("sort_order"); sortOrder != "" {
-		req.SortOrder = sortOrder
-	}
 
 	// 调用服务层获取子域名列表
 	response, err := service.GetSubDomains(req)

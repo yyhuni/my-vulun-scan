@@ -159,11 +159,10 @@ func (s *DomainService) GetDomainByID(id uint) (*models.Domain, error) {
 // GetDomainsByOrgID 根据组织ID获取域名列表(支持分页和排序)
 //
 // 业务逻辑说明：
-// 1. 验证并设置分页和排序的默认值
-// 2. 验证组织是否存在
-// 3. 通过 JOIN organization_domains 中间表查询该组织的所有域名
-// 4. 统计总数并计算总页数
-// 5. 应用排序、分页查询域名列表
+// 1. 验证组织是否存在
+// 2. 通过 JOIN organization_domains 中间表查询该组织的所有域名
+// 3. 统计总数并计算总页数
+// 4. 应用排序、分页查询域名列表
 //
 // 查询原理：
 // - domains 表存储所有域名
@@ -172,24 +171,7 @@ func (s *DomainService) GetDomainByID(id uint) (*models.Domain, error) {
 //
 // 安全考虑：
 // - 排序字段和方向会经过 buildOrderClause 验证，防止 SQL 注入
-// - 分页参数有默认值，避免查询全表
 func (s *DomainService) GetDomainsByOrgID(req models.GetOrganizationDomainsRequest) (*models.GetOrganizationDomainsResponse, error) {
-
-	// 步骤1: 设置默认值，避免无效的分页和排序参数
-	if req.Page <= 0 {
-		req.Page = 1
-	}
-	if req.PageSize <= 0 {
-		req.PageSize = 10
-	}
-	// 设置默认排序
-	if req.SortBy == "" {
-		req.SortBy = "updated_at"
-	}
-	if req.SortOrder == "" {
-		req.SortOrder = "desc"
-	}
-
 	// 验证组织是否存在
 	var org models.Organization
 	if err := s.db.First(&org, "id = ?", req.OrganizationID).Error; err != nil {
@@ -204,7 +186,7 @@ func (s *DomainService) GetDomainsByOrgID(req models.GetOrganizationDomainsReque
 	var domains []models.Domain
 	var total int64
 
-	// 步骤3: 通过 JOIN 中间表查询该组织的域名总数
+	// 通过 JOIN 中间表查询该组织的域名总数
 	// JOIN 的作用：从 domains 表中筛选出与该组织关联的所有域名
 	if err := s.db.Model(&models.Domain{}).
 		Joins("JOIN organization_domains ON organization_domains.domain_id = domains.id").
@@ -214,14 +196,14 @@ func (s *DomainService) GetDomainsByOrgID(req models.GetOrganizationDomainsReque
 		return nil, err
 	}
 
-	// 步骤4: 计算总页数（向上取整）
+	// 计算总页数（向上取整）
 	// 例如：total=25, pageSize=10 => totalPages=3
 	totalPages := int((total + int64(req.PageSize) - 1) / int64(req.PageSize))
 
-	// 步骤5: 构建安全的排序子句（防止 SQL 注入）
+	// 构建安全的排序子句（防止 SQL 注入）
 	orderClause := s.buildOrderClause(req.SortBy, req.SortOrder)
 
-	// 步骤6: 执行分页查询，支持动态排序
+	// 执行分页查询，支持动态排序
 	offset := (req.Page - 1) * req.PageSize
 	result := s.db.
 		Joins("JOIN organization_domains ON organization_domains.domain_id = domains.id").
@@ -266,7 +248,7 @@ func (s *DomainService) GetDomainsByOrgID(req models.GetOrganizationDomainsReque
 // - 合法输入: sortBy="name", sortOrder="asc" => "domains.name asc"
 // - 非法输入: sortBy="id; DROP TABLE", sortOrder="asc" => "domains.updated_at desc"（使用默认值）
 func (s *DomainService) buildOrderClause(sortBy, sortOrder string) string {
-	// 步骤1: 验证排序字段（白名单机制）
+	// 验证排序字段（白名单机制）
 	validSortFields := map[string]bool{
 		"name":       true,
 		"created_at": true,
@@ -276,12 +258,12 @@ func (s *DomainService) buildOrderClause(sortBy, sortOrder string) string {
 		sortBy = "updated_at"
 	}
 
-	// 步骤2: 验证排序方向（只允许 asc 或 desc）
+	// 验证排序方向（只允许 asc 或 desc）
 	if sortOrder != "asc" && sortOrder != "desc" {
 		sortOrder = "desc" // 默认降序
 	}
 
-	// 步骤3: 拼接排序子句（需要加表名前缀避免歧义）
+	// 拼接排序子句（需要加表名前缀避免歧义）
 	return fmt.Sprintf("domains.%s %s", sortBy, sortOrder)
 }
 
