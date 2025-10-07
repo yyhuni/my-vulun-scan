@@ -498,7 +498,7 @@ paths:
       produces:
       - application/json
       responses:
-        "200":
+        "201":
           description: 创建成功
           schema:
             allOf:
@@ -507,8 +507,8 @@ paths:
                 data:
                   $ref: '#/definitions/vulun-scan-backend_internal_models.Organization'
               type: object
-        "400":
-          description: 请求参数错误
+        "422":
+          description: 请求参数验证失败
           schema:
             $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "500":

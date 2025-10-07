@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// SuccessResponse 成功响应
+// SuccessResponse 成功响应 (200)
 func SuccessResponse(c *gin.Context, data interface{}) {
 	response := models.APIResponse{
 		Code:    "200",
@@ -17,6 +17,17 @@ func SuccessResponse(c *gin.Context, data interface{}) {
 		Data:    data,
 	}
 	c.JSON(http.StatusOK, response)
+}
+
+// CreatedResponse 创建成功响应 (201)
+func CreatedResponse(c *gin.Context, data interface{}) {
+	response := models.APIResponse{
+		Code:    "201",
+		State:   "success",
+		Message: "创建成功",
+		Data:    data,
+	}
+	c.JSON(http.StatusCreated, response)
 }
 
 // ErrorResponse 错误响应

@@ -60,6 +60,11 @@ type GetOrganizationsResponse struct {
 	TotalPages    int            `json:"total_pages"`
 }
 
+// OrganizationResponseData 组织响应数据（用于创建、更新、获取单个组织）
+type OrganizationResponseData struct {
+	Organization *Organization `json:"organization"`
+}
+
 // DeleteOrganizationResponseData 删除组织响应数据
 type DeleteOrganizationResponseData struct {
 	Message string `json:"message"`

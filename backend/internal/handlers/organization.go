@@ -84,8 +84,8 @@ func GetOrganizations(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body models.CreateOrganizationRequest true "组织信息"
-// @Success 200 {object} models.APIResponse{data=models.Organization} "创建成功"
-// @Failure 400 {object} models.APIResponse "请求参数错误"
+// @Success 201 {object} models.APIResponse{data=models.Organization} "创建成功"
+// @Failure 422 {object} models.APIResponse "请求参数验证失败"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
 // @Router /organizations/create [post]
 func CreateOrganization(c *gin.Context) {
@@ -102,9 +102,7 @@ func CreateOrganization(c *gin.Context) {
 		return
 	}
 
-	utils.SuccessResponse(c, models.APIResponse{
-		Data: organization,
-	})
+	utils.CreatedResponse(c, organization)
 }
 
 // UpdateOrganization 更新组织
@@ -138,9 +136,7 @@ func UpdateOrganization(c *gin.Context) {
 		return
 	}
 
-	utils.SuccessResponse(c, models.APIResponse{
-		Data: organization,
-	})
+	utils.SuccessResponse(c, organization)
 }
 
 // DeleteOrganization 删除组织
@@ -174,10 +170,8 @@ func DeleteOrganization(c *gin.Context) {
 		return
 	}
 
-	utils.SuccessResponse(c, models.APIResponse{
-		Data: models.DeleteOrganizationResponseData{
-			Message: "组织删除成功",
-		},
+	utils.SuccessResponse(c, models.DeleteOrganizationResponseData{
+		Message: "组织删除成功",
 	})
 }
 

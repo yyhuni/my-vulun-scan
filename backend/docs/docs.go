@@ -423,7 +423,7 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "创建成功",
                         "schema": {
                             "allOf": [
@@ -441,8 +441,8 @@ const docTemplate = `{
                             ]
                         }
                     },
-                    "400": {
-                        "description": "请求参数错误",
+                    "422": {
+                        "description": "请求参数验证失败",
                         "schema": {
                             "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
                         }
