@@ -228,3 +228,42 @@ func RemoveOrganizationDomain(c *gin.Context) {
 		Message: "解除关联成功，孤儿域名已自动删除",
 	})
 }
+
+// DeleteDomain 删除域名
+// @Summary 删除域名
+// @Description 根据ID删除域名，会级联删除所有关联的子域名、端点和漏洞数据
+// @Tags 域名管理
+// @Accept json
+// @Produce json
+// @Param id path uint true "域名ID"
+// @Success 200 {object} models.APIResponse{data=models.DeleteDomainResponseData} "删除成功"
+// @Failure 400 {object} models.APIResponse "请求参数错误"
+// @Failure 404 {object} models.APIResponse "域名不存在"
+// @Failure 500 {object} models.APIResponse "服务器内部错误"
+// @Router /domains/{id} [delete]
+func DeleteDomain(c *gin.Context) {
+	var req models.DeleteDomainRequest
+
+	// 绑定路径参数
+	if err := c.ShouldBindUri(&req); err != nil {
+		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	service := services.NewDomainService()
+
+	// 执行删除操作
+	if err := service.DeleteDomain(req.ID); err != nil {
+		// 根据错误类型返回不同的响应
+		if errors.Is(err, customErrors.ErrDomainNotFound) {
+			response.NotFoundResponse(c, "域名不存在")
+			return
+		}
+		response.InternalServerErrorResponse(c, "删除域名失败: "+err.Error())
+		return
+	}
+
+	response.SuccessResponse(c, models.DeleteDomainResponseData{
+		Message: "域名删除成功，所有关联数据已清理",
+	})
+}

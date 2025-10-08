@@ -19,6 +19,10 @@ type Domain struct {
 	Organizations []Organization `json:"organizations" gorm:"many2many:organization_domains"`
 	// SubDomain 的级联删除：删除 Domain 时自动删除其所有子域名
 	SubDomains []SubDomain `json:"sub_domains" gorm:"foreignKey:DomainID;constraint:OnDelete:CASCADE"`
+	// Endpoint 的级联删除：删除 Domain 时自动删除其所有端点
+	Endpoints []Endpoint `json:"endpoints" gorm:"foreignKey:DomainID;constraint:OnDelete:CASCADE"`
+	// Vulnerability 的级联删除：删除 Domain 时自动删除其所有漏洞
+	Vulnerabilities []Vulnerability `json:"vulnerabilities" gorm:"foreignKey:DomainID;constraint:OnDelete:CASCADE"`
 }
 
 // CreateDomainsRequest 创建域名请求
@@ -66,5 +70,15 @@ type GetOrgDomainsResponse struct {
 
 // RemoveOrgDomainResponseData 解除组织域名关联响应数据
 type RemoveOrgDomainResponseData struct {
+	Message string `json:"message"`
+}
+
+// DeleteDomainRequest 删除域名请求
+type DeleteDomainRequest struct {
+	ID uint `uri:"id" binding:"required"` // 域名ID（路径参数）
+}
+
+// DeleteDomainResponseData 删除域名响应数据
+type DeleteDomainResponseData struct {
 	Message string `json:"message"`
 }

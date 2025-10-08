@@ -256,6 +256,66 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "delete": {
+                "description": "根据ID删除域名，会级联删除所有关联的子域名、端点和漏洞数据",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "域名管理"
+                ],
+                "summary": "删除域名",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "域名ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "删除成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.DeleteDomainResponseData"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "域名不存在",
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                        }
+                    }
+                }
             }
         },
         "/domains/{id}/subdomains": {
@@ -1218,6 +1278,14 @@ const docTemplate = `{
                 }
             }
         },
+        "vulun-scan-backend_internal_models.DeleteDomainResponseData": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
         "vulun-scan-backend_internal_models.DeleteOrgRequest": {
             "type": "object",
             "required": [
@@ -1246,6 +1314,13 @@ const docTemplate = `{
                 "description": {
                     "type": "string"
                 },
+                "endpoints": {
+                    "description": "Endpoint 的级联删除：删除 Domain 时自动删除其所有端点",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/vulun-scan-backend_internal_models.Endpoint"
+                    }
+                },
                 "id": {
                     "description": "数据库基础字段",
                     "type": "integer"
@@ -1270,6 +1345,13 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "string"
+                },
+                "vulnerabilities": {
+                    "description": "Vulnerability 的级联删除：删除 Domain 时自动删除其所有漏洞",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/vulun-scan-backend_internal_models.Vulnerability"
+                    }
                 }
             }
         },
@@ -1284,6 +1366,60 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "vulun-scan-backend_internal_models.Endpoint": {
+            "type": "object",
+            "properties": {
+                "content_length": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "domain": {
+                    "description": "关联关系",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.Domain"
+                        }
+                    ]
+                },
+                "domain_id": {
+                    "type": "integer"
+                },
+                "id": {
+                    "description": "数据库基础字段",
+                    "type": "integer"
+                },
+                "method": {
+                    "type": "string"
+                },
+                "status_code": {
+                    "type": "integer"
+                },
+                "subdomain": {
+                    "$ref": "#/definitions/vulun-scan-backend_internal_models.SubDomain"
+                },
+                "subdomain_id": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "url": {
+                    "description": "核心业务字段",
+                    "type": "string"
+                },
+                "vulnerabilities": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/vulun-scan-backend_internal_models.Vulnerability"
+                    }
                 }
             }
         },
@@ -1422,6 +1558,13 @@ const docTemplate = `{
                 "domain_id": {
                     "type": "integer"
                 },
+                "endpoints": {
+                    "description": "Endpoint 的级联删除：删除 SubDomain 时自动删除其所有端点",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/vulun-scan-backend_internal_models.Endpoint"
+                    }
+                },
                 "id": {
                     "description": "数据库基础字段",
                     "type": "integer"
@@ -1432,6 +1575,13 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "string"
+                },
+                "vulnerabilities": {
+                    "description": "Vulnerability 的级联删除：删除 SubDomain 时自动删除其所有漏洞",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/vulun-scan-backend_internal_models.Vulnerability"
+                    }
                 }
             }
         },
@@ -1465,6 +1615,147 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "vulun-scan-backend_internal_models.Vulnerability": {
+            "type": "object",
+            "properties": {
+                "affected_url": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "curl_command": {
+                    "type": "string"
+                },
+                "cve": {
+                    "type": "string"
+                },
+                "cvss": {
+                    "type": "number"
+                },
+                "cvss_metrics": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "discovered_date": {
+                    "description": "发现和状态信息",
+                    "type": "string"
+                },
+                "domain_id": {
+                    "type": "integer"
+                },
+                "domain_name": {
+                    "description": "优化字段 - 冗余域名名称减少联表查询",
+                    "type": "string"
+                },
+                "domain_relation": {
+                    "description": "关联关系",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.Domain"
+                        }
+                    ]
+                },
+                "endpoint_id": {
+                    "type": "integer"
+                },
+                "endpoint_relation": {
+                    "$ref": "#/definitions/vulun-scan-backend_internal_models.Endpoint"
+                },
+                "extracted_results": {
+                    "description": "扫描结果",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "hackerone_report_id": {
+                    "description": "外部集成",
+                    "type": "string"
+                },
+                "http_url": {
+                    "type": "string"
+                },
+                "id": {
+                    "description": "数据库基础字段",
+                    "type": "integer"
+                },
+                "impact": {
+                    "type": "string"
+                },
+                "is_gpt_used": {
+                    "type": "boolean"
+                },
+                "open_status": {
+                    "type": "boolean"
+                },
+                "organization": {
+                    "description": "组织信息",
+                    "type": "string"
+                },
+                "organization_id": {
+                    "type": "string"
+                },
+                "poc": {
+                    "description": "技术细节",
+                    "type": "string"
+                },
+                "port": {
+                    "type": "integer"
+                },
+                "remediation": {
+                    "type": "string"
+                },
+                "request": {
+                    "type": "string"
+                },
+                "response": {
+                    "type": "string"
+                },
+                "risk_score": {
+                    "type": "integer"
+                },
+                "scan_history_id": {
+                    "description": "扫描历史",
+                    "type": "integer"
+                },
+                "service": {
+                    "type": "string"
+                },
+                "severity": {
+                    "description": "-1:unknown, 0:info, 1:low, 2:medium, 3:high, 4:critical",
+                    "type": "integer"
+                },
+                "solution": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "subdomain_id": {
+                    "description": "关联关系 - 灵活归属",
+                    "type": "integer"
+                },
+                "subdomain_relation": {
+                    "$ref": "#/definitions/vulun-scan-backend_internal_models.SubDomain"
+                },
+                "target_domain": {
+                    "type": "string"
+                },
+                "title": {
+                    "description": "核心漏洞信息",
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "updated_at": {
                     "type": "string"
                 }
             }

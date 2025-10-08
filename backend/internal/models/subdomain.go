@@ -17,6 +17,10 @@ type SubDomain struct {
 
 	// 关联关系
 	Domain *Domain `json:"domain" gorm:"foreignKey:DomainID;constraint:OnDelete:CASCADE"`
+	// Endpoint 的级联删除：删除 SubDomain 时自动删除其所有端点
+	Endpoints []Endpoint `json:"endpoints" gorm:"foreignKey:SubdomainID;constraint:OnDelete:CASCADE"`
+	// Vulnerability 的级联删除：删除 SubDomain 时自动删除其所有漏洞
+	Vulnerabilities []Vulnerability `json:"vulnerabilities" gorm:"foreignKey:SubdomainID;constraint:OnDelete:CASCADE"`
 }
 
 // CreateSubDomainsRequest 创建子域名请求
