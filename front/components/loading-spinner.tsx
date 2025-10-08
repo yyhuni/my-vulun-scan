@@ -1,5 +1,6 @@
 import React from "react"
 import { cn } from "@/lib/utils"
+import { Spinner } from "@/components/ui/spinner"
 
 interface LoadingSpinnerProps {
   size?: "sm" | "md" | "lg"
@@ -15,25 +16,13 @@ interface LoadingSpinnerProps {
  * - 使用 Tailwind CSS 动画
  */
 export function LoadingSpinner({ size = "sm", className }: LoadingSpinnerProps) {
-  const sizeClasses = {
-    sm: "h-4 w-4",
-    md: "h-6 w-6", 
-    lg: "h-8 w-8"
+  const sizeMap = {
+    sm: "size-4",
+    md: "size-6", 
+    lg: "size-8"
   }
 
-  return (
-    <div
-      className={cn(
-        "animate-spin rounded-full border-2 border-current border-t-transparent",
-        sizeClasses[size],
-        className
-      )}
-      role="status"
-      aria-label="加载中"
-    >
-      <span className="sr-only">加载中...</span>
-    </div>
-  )
+  return <Spinner className={cn(sizeMap[size], className)} />
 }
 
 interface LoadingStateProps {
@@ -52,34 +41,22 @@ export function LoadingState({
   size = "md", 
   className 
 }: LoadingStateProps) {
-  const dotSizes = {
-    sm: "w-2 h-2",
-    md: "w-3 h-3", 
-    lg: "w-4 h-4"
+  const sizeMap = {
+    sm: "size-4",
+    md: "size-6", 
+    lg: "size-8"
   }
 
   return (
     <div className={cn("flex items-center justify-center min-h-[200px] w-full", className)}>
       <div className="flex flex-col items-center space-y-4">
-        <div className="flex space-x-2">
-          <div className={cn(
-            "bg-primary rounded-full animate-pulse",
-            dotSizes[size]
-          )} style={{ animationDelay: "0ms" }} />
-          <div className={cn(
-            "bg-primary rounded-full animate-pulse",
-            dotSizes[size]
-          )} style={{ animationDelay: "150ms" }} />
-          <div className={cn(
-            "bg-primary rounded-full animate-pulse",
-            dotSizes[size]
-          )} style={{ animationDelay: "300ms" }} />
-        </div>
+        <Spinner className={sizeMap[size]} />
         <p className="text-sm text-muted-foreground">{message}</p>
       </div>
     </div>
   )
 }
+
 
 interface LoadingOverlayProps {
   isLoading: boolean

@@ -46,6 +46,32 @@ definitions:
     - domains
     - organization_id
     type: object
+  vulun-scan-backend_internal_models.CreateEndpointsRequest:
+    properties:
+      domain_id:
+        type: integer
+      endpoints:
+        items:
+          $ref: '#/definitions/vulun-scan-backend_internal_models.EndpointDetail'
+        type: array
+      subdomain_id:
+        type: integer
+    required:
+    - endpoints
+    type: object
+  vulun-scan-backend_internal_models.CreateEndpointsResponseData:
+    properties:
+      existing_endpoints:
+        items:
+          type: string
+        type: array
+      message:
+        type: string
+      success_count:
+        type: integer
+      total_requested:
+        type: integer
+    type: object
   vulun-scan-backend_internal_models.CreateOrgRequest:
     properties:
       description:
@@ -175,6 +201,36 @@ definitions:
         items:
           $ref: '#/definitions/vulun-scan-backend_internal_models.Vulnerability'
         type: array
+    type: object
+  vulun-scan-backend_internal_models.EndpointDetail:
+    properties:
+      content_length:
+        type: integer
+      method:
+        type: string
+      status_code:
+        type: integer
+      title:
+        type: string
+      url:
+        type: string
+    required:
+    - url
+    type: object
+  vulun-scan-backend_internal_models.GetEndpointsResponse:
+    properties:
+      endpoints:
+        items:
+          $ref: '#/definitions/vulun-scan-backend_internal_models.Endpoint'
+        type: array
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
     type: object
   vulun-scan-backend_internal_models.GetOrgDomainsResponse:
     properties:
@@ -477,6 +533,51 @@ paths:
       summary: 获取单个域名详情
       tags:
       - 域名管理
+  /domains/{id}/endpoints:
+    get:
+      description: 根据域名ID获取该域名下的端点，支持分页和排序
+      parameters:
+      - description: 域名ID
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 页码,默认1
+        in: query
+        name: page
+        type: integer
+      - description: 每页数量,默认10
+        in: query
+        name: page_size
+        type: integer
+      - description: '排序字段: url, method, status_code, created_at, updated_at,默认updated_at'
+        in: query
+        name: sort_by
+        type: string
+      - description: '排序方向: asc, desc,默认desc'
+        in: query
+        name: sort_order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 获取成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.GetEndpointsResponse'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+      summary: 获取域名的端点列表
+      tags:
+      - 域名管理
   /domains/{id}/subdomains:
     get:
       description: 根据域名ID获取该域名下的所有子域名（支持分页和排序）
@@ -645,6 +746,109 @@ paths:
       summary: 更新域名
       tags:
       - 域名管理
+  /endpoints:
+    get:
+      description: 获取所有端点，支持分页和排序
+      parameters:
+      - description: 页码,默认1
+        in: query
+        name: page
+        type: integer
+      - description: 每页数量,默认10
+        in: query
+        name: page_size
+        type: integer
+      - description: '排序字段: url, method, status_code, created_at, updated_at,默认updated_at'
+        in: query
+        name: sort_by
+        type: string
+      - description: '排序方向: asc, desc,默认desc'
+        in: query
+        name: sort_order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 获取成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.GetEndpointsResponse'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+      summary: 获取所有端点列表
+      tags:
+      - 端点管理
+  /endpoints/{id}:
+    get:
+      description: 根据端点ID获取端点详情
+      parameters:
+      - description: 端点ID
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 获取成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.Endpoint'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+        "404":
+          description: 端点不存在
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+      summary: 获取端点详情
+      tags:
+      - 端点管理
+  /endpoints/create:
+    post:
+      consumes:
+      - application/json
+      description: 批量创建端点，可关联到指定域名或子域名
+      parameters:
+      - description: 端点创建请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/vulun-scan-backend_internal_models.CreateEndpointsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 创建成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.CreateEndpointsResponseData'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+      summary: 批量创建端点
+      tags:
+      - 端点管理
   /organizations:
     get:
       description: 获取所有组织列表，支持分页和排序
@@ -1079,6 +1283,71 @@ paths:
             $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
       summary: 获取单个子域名详情
       tags:
+      - 子域名管理
+  /subdomains/{id}/endpoints:
+    get:
+      description: 根据子域名ID获取该子域名下的端点，支持分页和排序
+      parameters:
+      - description: 子域名ID
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 页码,默认1
+        in: query
+        name: page
+        type: integer
+      - description: 每页数量,默认10
+        in: query
+        name: page_size
+        type: integer
+      - description: '排序字段: url, method, status_code, created_at, updated_at,默认updated_at'
+        in: query
+        name: sort_by
+        type: string
+      - description: 子域名ID
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 页码,默认1
+        in: query
+        name: page
+        type: integer
+      - description: 每页数量,默认10
+        in: query
+        name: page_size
+        type: integer
+      - description: '排序字段: url, method, status_code, created_at, updated_at,默认updated_at'
+        in: query
+        name: sort_by
+        type: string
+      - description: '排序方向: asc, desc,默认desc'
+        in: query
+        name: sort_order
+        type: string
+      produces:
+      - application/json
+      - application/json
+      responses:
+        "200":
+          description: 获取成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.GetEndpointsResponse'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+      summary: 获取子域名的端点列表
+      tags:
+      - 子域名管理
       - 子域名管理
   /subdomains/create:
     post:

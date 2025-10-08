@@ -42,24 +42,12 @@ type EndpointDetail struct {
 	ContentLength *int64 `json:"content_length"`
 }
 
-// UpdateEndpointRequest 更新端点请求
-type UpdateEndpointRequest struct {
-	ID            uint   `json:"id" binding:"required"`
-	URL           string `json:"url"`
-	Method        string `json:"method"`
-	StatusCode    *int   `json:"status_code"`
-	Title         string `json:"title"`
-	ContentLength *int64 `json:"content_length"`
-}
-
-// GetEndpointsRequest 获取端点列表请求
+// GetEndpointsRequest 获取所有端点列表请求
 type GetEndpointsRequest struct {
-	Page        int    `form:"page"`
-	PageSize    int    `form:"page_size"`
-	SortBy      string `form:"sort_by"`    // 排序字段: url, method, status_code, created_at, updated_at
-	SortOrder   string `form:"sort_order"` // 排序方向: asc, desc
-	DomainID    *uint  `form:"domain_id"`
-	SubdomainID *uint  `form:"subdomain_id"`
+	Page      int    `form:"page"`
+	PageSize  int    `form:"page_size"`
+	SortBy    string `form:"sort_by"`    // 排序字段: url, method, status_code, created_at, updated_at
+	SortOrder string `form:"sort_order"` // 排序方向: asc, desc
 }
 
 // GetEndpointsResponse 获取端点列表响应
@@ -84,9 +72,4 @@ type CreateEndpointsResponseData struct {
 	SuccessCount     int      `json:"success_count"`
 	ExistingEndpoints []string `json:"existing_endpoints"`
 	TotalRequested   int      `json:"total_requested"`
-}
-
-// DeleteEndpointResponseData 删除端点响应数据
-type DeleteEndpointResponseData struct {
-	Message string `json:"message"`
 }

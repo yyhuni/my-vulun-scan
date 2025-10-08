@@ -29,4 +29,7 @@ func SetupRoutes(api *gin.RouterGroup) {
 
 	// 设置子域名路由
 	SetupSubDomainRoutes(api)
+
+	// 设置端点路由
+	SetupEndpointRoutes(api)
 }

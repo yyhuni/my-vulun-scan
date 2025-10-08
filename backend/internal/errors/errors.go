@@ -11,12 +11,15 @@ var (
 	ErrDomainNotFound = errors.New("domain not found")
 
 	// Organization 相关错误
-	ErrOrganizationNotFound       = errors.New("organization not found")
-	ErrSomeOrganizationsNotExist  = errors.New("some organization IDs do not exist")
-	
+	ErrOrganizationNotFound      = errors.New("organization not found")
+	ErrSomeOrganizationsNotExist = errors.New("some organization IDs do not exist")
+
 	// Association 相关错误
 	ErrAssociationNotFound = errors.New("association not found")
 
 	// SubDomain 相关错误
 	ErrSubDomainNotFound = errors.New("subdomain not found")
+
+	// Endpoint 相关错误
+	ErrEndpointNotFound = errors.New("endpoint not found")
 )
