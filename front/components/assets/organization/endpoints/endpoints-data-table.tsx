@@ -56,15 +56,15 @@ import {
 } from "@/components/ui/table"
 
 // 导入资产类型定义
-import type { Asset } from "@/types/asset.types"
+import type { Endpoint } from "@/types/endpoint.types"
 
 // 组件属性类型定义
-interface AssetDataTableProps {
-  data: Asset[]                                  // 资产数据数组
-  columns: ColumnDef<Asset>[]                    // 列定义数组
-  onAddNew?: () => void                          // 添加新资产的回调函数
+interface EndpointDataTableProps {
+  data: Endpoint[]                                  // 端点数据数组
+  columns: ColumnDef<Endpoint>[]                    // 列定义数组
+  onAddNew?: () => void                          // 添加新端点的回调函数
   onBulkDelete?: () => void                      // 批量删除回调函数
-  onSelectionChange?: (selectedRows: Asset[]) => void  // 选中行变化回调
+  onSelectionChange?: (selectedRows: Endpoint[]) => void  // 选中行变化回调
   searchPlaceholder?: string                     // 搜索框占位符
   searchColumn?: string                          // 搜索的列名
   addButtonText?: string                         // 添加按钮文本
@@ -81,10 +81,10 @@ export function EndpointsDataTable({
   onAddNew,
   onBulkDelete,
   onSelectionChange,
-  searchPlaceholder = "搜索资产...",
-  searchColumn = "name",
+  searchPlaceholder = "搜索端点...",
+  searchColumn = "url",
   addButtonText = "添加",
-}: AssetDataTableProps) {
+}: EndpointDataTableProps) {
   // 表格状态管理
   // 选中行状态，key为行id，value为true或false
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({})
@@ -177,15 +177,16 @@ export function EndpointsDataTable({
                       onCheckedChange={(value) => column.toggleVisibility(!!value)}
                     >
                       {column.id === "id" && "ID"}
-                      {column.id === "name" && "资产名称"}
-                      {column.id === "type" && "类型"}
-                      {column.id === "status" && "状态"}
-                      {column.id === "ip" && "IP地址"}
+                      {column.id === "url" && "URL"}
+                      {column.id === "method" && "方法"}
+                      {column.id === "statusCode" && "状态码"}
+                      {column.id === "title" && "标题"}
+                      {column.id === "contentLength" && "大小"}
                       {column.id === "domain" && "域名"}
-                      {column.id === "port" && "端口"}
+                      {column.id === "subdomain" && "子域名"}
                       {column.id === "createdAt" && "创建时间"}
                       {column.id === "updatedAt" && "更新时间"}
-                      {!["id", "name", "type", "status", "ip", "domain", "port", "createdAt", "updatedAt"].includes(column.id) && column.id}
+                      {!["id", "url", "method", "statusCode", "title", "contentLength", "domain", "subdomain", "createdAt", "updatedAt"].includes(column.id) && column.id}
                     </DropdownMenuCheckboxItem>
                   )
                 })}

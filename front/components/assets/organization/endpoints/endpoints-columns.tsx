@@ -12,28 +12,28 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Eye, Edit, Trash2, Network, ChevronsUpDown } from "lucide-react"
-import { IconCircleCheckFilled, IconLoader } from "@tabler/icons-react"
-import type { Asset } from "@/types/asset.types"
+import { MoreHorizontal, Eye, Edit, Trash2, Network, ChevronsUpDown, Globe, Code } from "lucide-react"
+import { IconCircleCheckFilled, IconLoader, IconAlertTriangle, IconX } from "@tabler/icons-react"
+import type { Endpoint } from "@/types/endpoint.types"
 
 // 列创建函数的参数类型
 interface CreateColumnsProps {
   formatDate: (dateString: string) => string
   navigate: (path: string) => void
-  handleEdit: (asset: Asset) => void
-  handleDelete: (asset: Asset) => void
+  handleEdit: (endpoint: Endpoint) => void
+  handleDelete: (endpoint: Endpoint) => void
 }
 
 /**
  * Endpoint 行操作组件
  */
 function EndpointRowActions({
-  asset,
+  endpoint,
   onView,
   onEdit,
   onDelete,
 }: {
-  asset: Asset
+  endpoint: Endpoint
   onView: () => void
   onEdit: () => void
   onDelete: () => void
@@ -98,25 +98,49 @@ function DataTableColumnHeader({
 }
 
 /**
- * Endpoint 状态徽章组件
+ * HTTP 状态码徽章组件
  */
-function EndpointStatusBadge({ status }: { status: string }) {
-  const getStatusIcon = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "active":
-      case "活跃":
-      case "secure":
-      case "安全":
-        return <IconCircleCheckFilled className="fill-green-500 dark:fill-green-400" />
-      default:
-        return <IconLoader />
+function HttpStatusBadge({ statusCode }: { statusCode: number }) {
+  const getStatusInfo = (code: number) => {
+    if (code >= 200 && code < 300) {
+      return {
+        icon: <IconCircleCheckFilled className="fill-green-500 dark:fill-green-400" />,
+        variant: "default" as const,
+        className: "text-green-700 border-green-300 bg-green-50"
+      }
+    } else if (code >= 300 && code < 400) {
+      return {
+        icon: <IconLoader className="text-blue-500" />,
+        variant: "secondary" as const,
+        className: "text-blue-700 border-blue-300 bg-blue-50"
+      }
+    } else if (code >= 400 && code < 500) {
+      return {
+        icon: <IconAlertTriangle className="text-orange-500" />,
+        variant: "destructive" as const,
+        className: "text-orange-700 border-orange-300 bg-orange-50"
+      }
+    } else if (code >= 500) {
+      return {
+        icon: <IconX className="text-red-500" />,
+        variant: "destructive" as const,
+        className: "text-red-700 border-red-300 bg-red-50"
+      }
+    } else {
+      return {
+        icon: <IconLoader className="text-gray-500" />,
+        variant: "outline" as const,
+        className: "text-gray-700 border-gray-300 bg-gray-50"
+      }
     }
   }
 
+  const { icon, className } = getStatusInfo(statusCode)
+
   return (
-    <Badge variant="outline" className="text-muted-foreground px-1.5">
-      {getStatusIcon(status)}
-      {status}
+    <Badge variant="outline" className={`px-2 py-1 ${className}`}>
+      {icon}
+      <span className="ml-1">{statusCode}</span>
     </Badge>
   )
 }
@@ -129,7 +153,7 @@ export const createEndpointColumns = ({
   navigate,
   handleEdit,
   handleDelete,
-}: CreateColumnsProps): ColumnDef<Asset>[] => [
+}: CreateColumnsProps): ColumnDef<Endpoint>[] => [
   // 选择列
   {
     id: "select",
@@ -167,45 +191,86 @@ export const createEndpointColumns = ({
     ),
   },
 
-  // 资产名称列
+  // URL 列
   {
-    accessorKey: "name",
+    accessorKey: "url",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="资产名称" />
-    ),
-    cell: ({ row }) => <div className="font-medium">{row.getValue("name")}</div>,
-  },
-
-  // 资产类型列
-  {
-    accessorKey: "type",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="类型" />
-    ),
-    cell: ({ row }) => (
-      <div className="flex items-center space-x-2">
-        <Network className="h-4 w-4" />
-        <span>{row.getValue("type")}</span>
-      </div>
-    ),
-  },
-
-  // 状态列
-  {
-    accessorKey: "status",
-    header: "状态",
-    cell: ({ row }) => <EndpointStatusBadge status={row.getValue("status")} />,
-  },
-
-  // IP地址列
-  {
-    accessorKey: "ip",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="IP地址" />
+      <DataTableColumnHeader column={column} title="URL" />
     ),
     cell: ({ row }) => {
-      const ip = row.getValue("ip") as string
-      return <div className="font-mono text-sm">{ip || "-"}</div>
+      const url = row.getValue("url") as string
+      return (
+        <div className="max-w-[300px] font-mono text-sm">
+          <div className="truncate" title={url}>
+            {url}
+          </div>
+        </div>
+      )
+    },
+  },
+
+  // HTTP 方法列
+  {
+    accessorKey: "method",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="方法" />
+    ),
+    cell: ({ row }) => {
+      const method = row.getValue("method") as string
+      const getMethodColor = (method: string) => {
+        switch (method.toUpperCase()) {
+          case "GET": return "bg-green-100 text-green-800 border-green-200"
+          case "POST": return "bg-blue-100 text-blue-800 border-blue-200"
+          case "PUT": return "bg-orange-100 text-orange-800 border-orange-200"
+          case "DELETE": return "bg-red-100 text-red-800 border-red-200"
+          case "PATCH": return "bg-purple-100 text-purple-800 border-purple-200"
+          default: return "bg-gray-100 text-gray-800 border-gray-200"
+        }
+      }
+      return (
+        <Badge variant="outline" className={`font-mono ${getMethodColor(method)}`}>
+          {method}
+        </Badge>
+      )
+    },
+  },
+
+  // 状态码列
+  {
+    accessorKey: "statusCode",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="状态码" />
+    ),
+    cell: ({ row }) => <HttpStatusBadge statusCode={row.getValue("statusCode")} />,
+  },
+
+  // 标题列
+  {
+    accessorKey: "title",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="标题" />
+    ),
+    cell: ({ row }) => {
+      const title = row.getValue("title") as string
+      return (
+        <div className="max-w-[200px]">
+          <div className="truncate font-medium" title={title}>
+            {title}
+          </div>
+        </div>
+      )
+    },
+  },
+
+  // 内容长度列
+  {
+    accessorKey: "contentLength",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="内容大小(字节)" />
+    ),
+    cell: ({ row }) => {
+      const size = row.getValue("contentLength") as number
+      return <div className="font-mono text-sm">{size}</div>
     },
   },
 
@@ -217,19 +282,23 @@ export const createEndpointColumns = ({
     ),
     cell: ({ row }) => {
       const domain = row.getValue("domain") as string
-      return <div className="font-mono text-sm">{domain || "-"}</div>
+      return <div className="font-mono text-sm">{domain}</div>
     },
   },
 
-  // 端口列
+  // 子域名列
   {
-    accessorKey: "port",
+    accessorKey: "subdomain",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="端口" />
+      <DataTableColumnHeader column={column} title="子域名" />
     ),
     cell: ({ row }) => {
-      const port = row.getValue("port") as number
-      return <div className="font-mono text-sm">{port || "-"}</div>
+      const subdomain = row.getValue("subdomain") as string
+      return (
+        <div className="font-mono text-sm">
+          {subdomain || "-"}
+        </div>
+      )
     },
   },
 
@@ -246,13 +315,26 @@ export const createEndpointColumns = ({
     ),
   },
 
+  // 更新时间列
+  {
+    accessorKey: "updatedAt",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="更新时间" />
+    ),
+    cell: ({ row }) => (
+      <div className="text-sm text-muted-foreground">
+        {formatDate(row.getValue("updatedAt"))}
+      </div>
+    ),
+  },
+
   // 操作列
   {
     id: "actions",
     cell: ({ row }) => (
       <EndpointRowActions
-        asset={row.original}
-        onView={() => navigate(`/assets/asset/${row.original.id}`)}
+        endpoint={row.original}
+        onView={() => navigate(`/assets/endpoint/${row.original.id}`)}
         onEdit={() => handleEdit(row.original)}
         onDelete={() => handleDelete(row.original)}
       />

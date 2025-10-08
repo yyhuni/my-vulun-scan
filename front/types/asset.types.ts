@@ -5,6 +5,12 @@ export interface Asset {
   id: number
   name: string
   description?: string
+  type?: string
+  status?: string
+  ip?: string
+  domain?: string
+  port?: number
   createdAt: string
   updatedAt: string
 }
+

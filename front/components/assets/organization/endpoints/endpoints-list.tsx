@@ -5,14 +5,14 @@ import { useQuery } from "@tanstack/react-query"
 import { EndpointsDataTable } from "./endpoints-data-table"
 import { createEndpointColumns } from "./endpoints-columns"
 import { LoadingState } from "@/components/loading-spinner"
-import type { Asset } from "@/types/asset.types"
+import type { Endpoint } from "@/types/endpoint.types"
 
 /**
  * Endpoint 列表组件（使用 React Query）
  * 用于显示和管理 Endpoint 列表
  */
 export function EndpointsList({ organizationId }: { organizationId: string }) {
-  const [selectedAssets, setSelectedAssets] = useState<Asset[]>([])
+  const [selectedAssets, setSelectedAssets] = useState<Endpoint[]>([])
 
   // 使用 React Query 获取模拟的 Endpoint 数据
   const {
@@ -22,36 +22,80 @@ export function EndpointsList({ organizationId }: { organizationId: string }) {
     refetch
   } = useQuery({
     queryKey: ['endpoints', organizationId],
-    queryFn: async (): Promise<Asset[]> => {
+    queryFn: async (): Promise<Endpoint[]> => {
       // 模拟获取 Endpoint 数据
-      const mockEndpoints: Asset[] = [
+      const mockEndpoints: Endpoint[] = [
         {
           id: 7,
-          name: "/api/v1/users",
-          description: "用户管理API端点",
+          url: "https://api.example.com/api/v1/users",
+          method: "GET",
+          statusCode: 200,
+          title: "用户管理API",
+          contentLength: 1024,
+          domain: "example.com",
+          subdomain: "api.example.com",
           createdAt: "2024-01-21T10:15:00Z",
           updatedAt: "2024-03-14T15:30:00Z",
         },
         {
           id: 8,
-          name: "/api/v1/auth",
-          description: "认证API端点",
+          url: "https://api.example.com/api/v1/auth",
+          method: "POST",
+          statusCode: 201,
+          title: "认证API",
+          contentLength: 512,
+          domain: "example.com",
+          subdomain: "api.example.com",
           createdAt: "2024-01-22T12:45:00Z",
           updatedAt: "2024-03-13T11:20:00Z",
         },
         {
           id: 9,
-          name: "/admin/login",
-          description: "管理员登录页面",
+          url: "https://admin.example.com/admin/login",
+          method: "GET",
+          statusCode: 200,
+          title: "管理员登录页面",
+          contentLength: 2048,
+          domain: "example.com",
+          subdomain: "admin.example.com",
           createdAt: "2024-01-23T09:30:00Z",
           updatedAt: "2024-03-12T14:15:00Z",
         },
         {
           id: 10,
-          name: "/admin/dashboard",
-          description: "管理员仪表板",
+          url: "https://admin.example.com/admin/dashboard",
+          method: "GET",
+          statusCode: 200,
+          title: "管理员仪表板",
+          contentLength: 4096,
+          domain: "example.com",
+          subdomain: "admin.example.com",
           createdAt: "2024-01-24T11:20:00Z",
           updatedAt: "2024-03-11T16:45:00Z",
+        },
+        {
+          id: 11,
+          url: "https://api.example.com/api/v1/products",
+          method: "GET",
+          statusCode: 404,
+          title: "产品API - 未找到",
+          contentLength: 256,
+          domain: "example.com",
+          subdomain: "api.example.com",
+          createdAt: "2024-01-25T14:30:00Z",
+          updatedAt: "2024-03-10T09:15:00Z",
+        },
+        {
+          id: 12,
+          url: "https://test.example.com/health",
+          method: "GET",
+          statusCode: 500,
+          title: "健康检查 - 服务器错误",
+          contentLength: 128,
+          domain: "example.com",
+          subdomain: "test.example.com",
+          createdAt: "2024-01-26T16:45:00Z",
+          updatedAt: "2024-03-09T12:30:00Z",
         },
       ]
 
@@ -81,15 +125,15 @@ export function EndpointsList({ organizationId }: { organizationId: string }) {
   }
 
   // 处理编辑资产
-  const handleEditAsset = (asset: Asset) => {
+  const handleEditAsset = (endpoint: Endpoint) => {
     // TODO: 实现编辑功能
-    console.info(`编辑端点功能开发中: ${asset.name}`)
+    console.info(`编辑端点功能开发中: ${endpoint.url}`)
   }
 
   // 处理删除资产
-  const handleDeleteAsset = (asset: Asset) => {
+  const handleDeleteAsset = (endpoint: Endpoint) => {
     // TODO: 实现删除功能
-    console.info(`删除端点功能开发中: ${asset.name}`)
+    console.info(`删除端点功能开发中: ${endpoint.url}`)
   }
 
   // 处理批量删除
@@ -168,7 +212,7 @@ export function EndpointsList({ organizationId }: { organizationId: string }) {
       onBulkDelete={handleBulkDelete}
       onSelectionChange={setSelectedAssets}
       searchPlaceholder="搜索端点..."
-      searchColumn="name"
+      searchColumn="url"
       addButtonText="添加 Endpoint"
     />
   )
