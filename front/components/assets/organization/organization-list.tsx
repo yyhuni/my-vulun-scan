@@ -183,6 +183,10 @@ export function OrganizationList() {
     return <LoadingState message="加载组织数据中..." />
   }
 
+  // 数据为空检查
+  if (!data) {
+    return <LoadingState message="加载组织数据中..." />
+  }
 
   return (
     <div className="space-y-4">
