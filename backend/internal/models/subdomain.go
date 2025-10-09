@@ -23,10 +23,15 @@ type SubDomain struct {
 	Vulnerabilities []Vulnerability `json:"vulnerabilities" gorm:"foreignKey:SubdomainID;constraint:OnDelete:CASCADE"`
 }
 
+// DomainGroup 域名分组（根域名 + 子域名列表）
+type DomainGroup struct {
+	RootDomain string   `json:"root_domain" binding:"required"`
+	Subdomains []string `json:"subdomains" binding:"required"`
+}
+
 // CreateSubDomainsRequest 创建子域名请求
 type CreateSubDomainsRequest struct {
-	SubDomains []string `json:"sub_domains" binding:"required"`
-	DomainID   uint     `json:"domain_id" binding:"required"`
+	DomainGroups []DomainGroup `json:"domain_groups" binding:"required"`
 }
 
 // GetSubDomainsRequest 获取所有子域名列表请求
@@ -47,17 +52,20 @@ type GetSubDomainsResponse struct {
 
 // CreateSubDomainsResponse 创建子域名响应（service 层使用）
 type CreateSubDomainsResponse struct {
-	SuccessCount    int      `json:"success_count"`
-	ExistingDomains []string `json:"existing_domains"`
-	TotalRequested  int      `json:"total_requested"`
+	SuccessCount       int      `json:"success_count"`
+	ExistingDomains    []string `json:"existing_domains"`
+	TotalRequested     int      `json:"total_requested"`
+	DomainsCreated     int      `json:"domains_created"`      // 新创建的根域名数量
+	SubdomainsCreated  int      `json:"subdomains_created"`  // 新创建的子域名数量
 }
 
 // CreateSubDomainsResponseData 创建子域名响应数据（handler 层返回给前端）
 type CreateSubDomainsResponseData struct {
-	Message         string   `json:"message"`
-	SuccessCount    int      `json:"success_count"`
-	ExistingDomains []string `json:"existing_domains"`
-	TotalRequested  int      `json:"total_requested"`
+	Message            string   `json:"message"`
+	DomainsCreated     int      `json:"domains_created"`
+	SubdomainsCreated  int      `json:"subdomains_created"`
+	ExistingDomains    []string `json:"existing_domains"`
+	TotalRequested     int      `json:"total_requested"`
 }
 
 // GetOrgSubDomainsResponse 获取组织子域名响应

@@ -1,4 +1,5 @@
 import validator from 'validator'
+import * as psl from 'psl'
 
 /**
  * 域名验证工具类
@@ -143,5 +144,62 @@ export class DomainValidator {
       return null
     }
     return domain.trim().toLowerCase()
+  }
+
+  /**
+   * 从子域名中提取根域名（使用 PSL - Public Suffix List）
+   * @param subdomain - 子域名（如 www.example.com, blog.github.io）
+   * @returns 根域名（如 example.com, blog.github.io）或 null
+   * 
+   * 示例：
+   * - www.example.com → example.com
+   * - api.test.example.com → example.com
+   * - blog.github.io → blog.github.io (正确处理公共后缀)
+   * - www.bbc.co.uk → bbc.co.uk (正确处理多级 TLD)
+   */
+  static extractRootDomain(subdomain: string): string | null {
+    const trimmed = subdomain.trim().toLowerCase()
+    if (!trimmed) return null
+    
+    // 使用 psl 解析域名
+    const parsed = psl.parse(trimmed)
+    
+    // 如果解析失败或没有域名部分，返回 null
+    if (parsed.error || !parsed.domain) {
+      return null
+    }
+    
+    // 返回根域名（domain 字段就是我们需要的根域名）
+    return parsed.domain
+  }
+
+  /**
+   * 将子域名列表按根域名分组
+   * @param subdomains - 子域名列表
+   * @returns { grouped: Map<根域名, 子域名[]>, invalid: 无效的子域名[] }
+   */
+  static groupSubdomainsByRootDomain(subdomains: string[]): {
+    grouped: Map<string, string[]>
+    invalid: string[]
+  } {
+    const grouped = new Map<string, string[]>()
+    const invalid: string[] = []
+    
+    for (const subdomain of subdomains) {
+      const rootDomain = this.extractRootDomain(subdomain)
+      
+      if (!rootDomain) {
+        invalid.push(subdomain)
+        continue
+      }
+      
+      if (!grouped.has(rootDomain)) {
+        grouped.set(rootDomain, [])
+      }
+      
+      grouped.get(rootDomain)!.push(subdomain)
+    }
+    
+    return { grouped, invalid }
   }
 }

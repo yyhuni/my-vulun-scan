@@ -206,74 +206,93 @@ func (s *SubDomainService) GetSubDomainsByOrgID(orgID uint, page, pageSize int, 
 	return response, nil
 }
 
-// CreateSubDomains 批量创建子域名
+// CreateSubDomains 批量创建子域名（支持根域名分组）
 //
 // 业务逻辑说明：
-// 1. 在事务中批量创建子域名
-// 2. 对于每个子域名：
-//    a. 检查是否已存在于该主域名下（基于 name + domain_id 去重）
-//    b. 如果不存在，创建新的子域名记录
-//    c. 如果已存在，记录到 existingDomains 列表
+// 1. 前端已经将子域名按根域名分组
+// 2. 对于每个分组：
+//    a. 用 root_domain 查询对应的 domain_id
+//    b. 如果不存在就创建根域名
+//    c. 批量创建该根域名下的子域名并绑定 domain_id
 // 3. 返回创建统计信息
-//
-// 去重逻辑：
-// - 子域名的唯一性基于：name + domain_id 组合
-// - 同一个子域名可以存在于不同的主域名下
-// - 例如：admin.example.com 和 admin.test.com 可以同时存在
 //
 // 设计考虑：
 // - 使用事务确保批量创建的原子性
-// - 支持幂等性：重复提交已存在的子域名不会报错，只会跳过
+// - 支持幂等性：重复提交已存在的域名/子域名不会报错
 // - 返回详细的创建统计，方便前端展示结果
-//
-// 返回信息：
-// - SuccessCount: 成功创建的子域名数量
-// - ExistingDomains: 已存在的子域名列表
-// - TotalRequested: 请求创建的总数
-//
-// 使用场景：
-// - 主域名详情页：批量添加子域名
-// - 导入功能：从文件批量导入子域名
 func (s *SubDomainService) CreateSubDomains(req models.CreateSubDomainsRequest) (*models.CreateSubDomainsResponse, error) {
-
-	var createdCount int
+	var totalSubdomainsCreated int
+	var totalDomainsCreated int
 	var existingDomains []string
+	var totalSubdomainsRequested int
 
-	// 步骤1: 使用事务确保批量创建的原子性
+	// 计算总请求数
+	for _, group := range req.DomainGroups {
+		totalSubdomainsRequested += len(group.Subdomains)
+	}
+
+	// 使用事务确保原子性
 	err := s.db.Transaction(func(tx *gorm.DB) error {
-		// 步骤1.1: 一次性查询所有已存在的子域名（批量查询，避免 N+1 问题）
-		var existingSubDomains []models.SubDomain
-		if err := tx.Where("name IN ? AND domain_id = ?", req.SubDomains, req.DomainID).
-			Find(&existingSubDomains).Error; err != nil {
-			log.Error().Err(err).Msg("Failed to query existing sub domains")
-			return err
-		}
-
-		// 步骤1.2: 构建已存在子域名的 map（O(1) 查找性能）
-		existingMap := make(map[string]bool)
-		for _, sd := range existingSubDomains {
-			existingMap[sd.Name] = true
-			existingDomains = append(existingDomains, sd.Name)
-		}
-
-		// 步骤1.3: 过滤出需要创建的子域名
-		var newSubDomains []models.SubDomain
-		for _, name := range req.SubDomains {
-			if !existingMap[name] {
-				newSubDomains = append(newSubDomains, models.SubDomain{
-					Name:     name,
-					DomainID: req.DomainID,
-				})
+		// 遍历每个域名分组
+		for _, group := range req.DomainGroups {
+			// 步骤1: 用 root_domain 查询对应的 domain_id
+			var domain models.Domain
+			result := tx.Where("name = ?", group.RootDomain).First(&domain)
+			
+			if result.Error == gorm.ErrRecordNotFound {
+				// 根域名不存在，创建新的
+				domain = models.Domain{
+					Name: group.RootDomain,
+				}
+				if err := tx.Create(&domain).Error; err != nil {
+					log.Error().Err(err).Str("root_domain", group.RootDomain).Msg("Failed to create root domain")
+					return err
+				}
+				totalDomainsCreated++
+				log.Info().Str("root_domain", group.RootDomain).Uint("domain_id", domain.ID).Msg("Root domain created")
+			} else if result.Error != nil {
+				// 其他数据库错误
+				log.Error().Err(result.Error).Str("root_domain", group.RootDomain).Msg("Failed to query root domain")
+				return result.Error
 			}
-		}
+			// 否则域名已存在，直接使用
 
-		// 步骤1.4: 批量插入新子域名
-		if len(newSubDomains) > 0 {
-			if err := tx.Create(&newSubDomains).Error; err != nil {
-				log.Error().Err(err).Msg("Failed to batch create sub domains")
+			// 步骤2: 批量创建子域名并绑定 domain_id
+			// 2.1: 查询已存在的子域名
+			var existingSubDomains []models.SubDomain
+			if err := tx.Where("name IN ? AND domain_id = ?", group.Subdomains, domain.ID).
+				Find(&existingSubDomains).Error; err != nil {
+				log.Error().Err(err).Uint("domain_id", domain.ID).Msg("Failed to query existing sub domains")
 				return err
 			}
-			createdCount = len(newSubDomains)
+
+			// 2.2: 构建已存在子域名的 map
+			existingMap := make(map[string]bool)
+			for _, sd := range existingSubDomains {
+				existingMap[sd.Name] = true
+				existingDomains = append(existingDomains, sd.Name)
+			}
+
+			// 2.3: 过滤出需要创建的子域名
+			var newSubDomains []models.SubDomain
+			for _, name := range group.Subdomains {
+				if !existingMap[name] {
+					newSubDomains = append(newSubDomains, models.SubDomain{
+						Name:     name,
+						DomainID: domain.ID, // 绑定 domain_id
+					})
+				}
+			}
+
+			// 2.4: 批量插入新子域名
+			if len(newSubDomains) > 0 {
+				if err := tx.Create(&newSubDomains).Error; err != nil {
+					log.Error().Err(err).Uint("domain_id", domain.ID).Msg("Failed to batch create sub domains")
+					return err
+				}
+				totalSubdomainsCreated += len(newSubDomains)
+				log.Info().Uint("domain_id", domain.ID).Int("count", len(newSubDomains)).Msg("Sub domains created")
+			}
 		}
 
 		return nil
@@ -284,16 +303,18 @@ func (s *SubDomainService) CreateSubDomains(req models.CreateSubDomainsRequest) 
 	}
 
 	response := &models.CreateSubDomainsResponse{
-		SuccessCount:    createdCount,
-		ExistingDomains: existingDomains,
-		TotalRequested:  len(req.SubDomains),
+		SuccessCount:      totalSubdomainsCreated,
+		ExistingDomains:   existingDomains,
+		TotalRequested:    totalSubdomainsRequested,
+		DomainsCreated:    totalDomainsCreated,
+		SubdomainsCreated: totalSubdomainsCreated,
 	}
 
 	log.Info().
-		Uint("domain_id", req.DomainID).
-		Int("success_count", createdCount).
-		Int("total_domains", len(req.SubDomains)).
-		Msg("Sub domains created successfully")
+		Int("domains_created", totalDomainsCreated).
+		Int("subdomains_created", totalSubdomainsCreated).
+		Int("total_requested", totalSubdomainsRequested).
+		Msg("Sub domains batch creation completed")
 
 	return response, nil
 }

@@ -82,25 +82,27 @@ definitions:
     type: object
   models.CreateSubDomainsRequest:
     properties:
-      domain_id:
-        type: integer
-      sub_domains:
+      domain_groups:
         items:
-          type: string
+          $ref: '#/definitions/models.DomainGroup'
         type: array
+      organization_id:
+        type: integer
     required:
-    - domain_id
-    - sub_domains
+    - domain_groups
+    - organization_id
     type: object
   models.CreateSubDomainsResponseData:
     properties:
+      domains_created:
+        type: integer
       existing_domains:
         items:
           type: string
         type: array
       message:
         type: string
-      success_count:
+      subdomains_created:
         type: integer
       total_requested:
         type: integer
@@ -160,6 +162,18 @@ definitions:
         type: string
     required:
     - name
+    type: object
+  models.DomainGroup:
+    properties:
+      root_domain:
+        type: string
+      subdomains:
+        items:
+          type: string
+        type: array
+    required:
+    - root_domain
+    - subdomains
     type: object
   models.Endpoint:
     properties:
@@ -767,7 +781,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: 批量创建端点，可关联到指定域名或子域名
+      description: 批量创建端点，支持单个或多个端点创建，必须关联到指定子域名。subdomain_id 为必填字段
       parameters:
       - description: 端点创建请求
         in: body
@@ -1298,7 +1312,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: 批量创建子域名并关联到指定域名
+      description: 前端发送分组后的域名数据，后端自动创建根域名和子域名
       parameters:
       - description: 子域名创建请求
         in: body
@@ -1326,7 +1340,7 @@ paths:
           description: 服务器内部错误
           schema:
             $ref: '#/definitions/models.APIResponse'
-      summary: 批量创建子域名
+      summary: 批量创建子域名（支持根域名分组）
       tags:
       - 子域名管理
 swagger: "2.0"

@@ -468,7 +468,7 @@ const docTemplate = `{
         },
         "/endpoints/create": {
             "post": {
-                "description": "批量创建端点，可关联到指定域名或子域名",
+                "description": "批量创建端点，支持单个或多个端点创建，必须关联到指定子域名。subdomain_id 为必填字段",
                 "consumes": [
                     "application/json"
                 ],
@@ -1209,7 +1209,7 @@ const docTemplate = `{
         },
         "/subdomains/create": {
             "post": {
-                "description": "批量创建子域名并关联到指定域名",
+                "description": "前端发送分组后的域名数据，后端自动创建根域名和子域名",
                 "consumes": [
                     "application/json"
                 ],
@@ -1219,7 +1219,7 @@ const docTemplate = `{
                 "tags": [
                     "子域名管理"
                 ],
-                "summary": "批量创建子域名",
+                "summary": "批量创建子域名（支持根域名分组）",
                 "parameters": [
                     {
                         "description": "子域名创建请求",
@@ -1551,24 +1551,27 @@ const docTemplate = `{
         "models.CreateSubDomainsRequest": {
             "type": "object",
             "required": [
-                "domain_id",
-                "sub_domains"
+                "domain_groups",
+                "organization_id"
             ],
             "properties": {
-                "domain_id": {
-                    "type": "integer"
-                },
-                "sub_domains": {
+                "domain_groups": {
                     "type": "array",
                     "items": {
-                        "type": "string"
+                        "$ref": "#/definitions/models.DomainGroup"
                     }
+                },
+                "organization_id": {
+                    "type": "integer"
                 }
             }
         },
         "models.CreateSubDomainsResponseData": {
             "type": "object",
             "properties": {
+                "domains_created": {
+                    "type": "integer"
+                },
                 "existing_domains": {
                     "type": "array",
                     "items": {
@@ -1578,7 +1581,7 @@ const docTemplate = `{
                 "message": {
                     "type": "string"
                 },
-                "success_count": {
+                "subdomains_created": {
                     "type": "integer"
                 },
                 "total_requested": {
@@ -1667,6 +1670,24 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "models.DomainGroup": {
+            "type": "object",
+            "required": [
+                "root_domain",
+                "subdomains"
+            ],
+            "properties": {
+                "root_domain": {
+                    "type": "string"
+                },
+                "subdomains": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },

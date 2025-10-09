@@ -8,7 +8,6 @@ import (
 	"vulun-scan-backend/internal/models"
 	"vulun-scan-backend/internal/response"
 	"vulun-scan-backend/internal/services"
-	"vulun-scan-backend/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -98,8 +97,8 @@ func GetSubDomainByID(c *gin.Context) {
 }
 
 // CreateSubDomains 创建子域名
-// @Summary 批量创建子域名
-// @Description 批量创建子域名并关联到指定域名
+// @Summary 批量创建子域名（支持根域名分组）
+// @Description 前端发送分组后的域名数据，后端自动创建根域名和子域名
 // @Tags 子域名管理
 // @Accept json
 // @Produce json
@@ -116,15 +115,9 @@ func CreateSubDomains(c *gin.Context) {
 		return
 	}
 
-	// 验证子域名列表不能为空
-	if len(req.SubDomains) == 0 {
-		response.BadRequestResponse(c, "子域名列表不能为空")
-		return
-	}
-
-	// 验证子域名格式
-	if validationErrors := utils.ValidateSubdomains(req.SubDomains); len(validationErrors) > 0 {
-		response.ValidationErrorResponse(c, "子域名格式验证失败: "+validationErrors[0].Error())
+	// 验证域名分组列表不能为空
+	if len(req.DomainGroups) == 0 {
+		response.BadRequestResponse(c, "域名分组列表不能为空")
 		return
 	}
 
@@ -136,18 +129,19 @@ func CreateSubDomains(c *gin.Context) {
 		return
 	}
 
-	// 构建响应消息，包含成功创建数量和已存在的域名信息
-	message := fmt.Sprintf("成功创建 %d 个子域名", result.SuccessCount)
+	// 构建响应消息
+	message := fmt.Sprintf("成功创建 %d 个根域名和 %d 个子域名", result.DomainsCreated, result.SubdomainsCreated)
 	if len(result.ExistingDomains) > 0 {
 		message += fmt.Sprintf("，%d 个子域名已存在", len(result.ExistingDomains))
 	}
 
-	// 返回统一格式的成功响应，使用结构化的响应类型
+	// 返回统一格式的成功响应
 	response.SuccessResponse(c, models.CreateSubDomainsResponseData{
-		Message:         message,
-		SuccessCount:    result.SuccessCount,
-		ExistingDomains: result.ExistingDomains,
-		TotalRequested:  result.TotalRequested,
+		Message:           message,
+		DomainsCreated:    result.DomainsCreated,
+		SubdomainsCreated: result.SubdomainsCreated,
+		ExistingDomains:   result.ExistingDomains,
+		TotalRequested:    result.TotalRequested,
 	})
 }
 

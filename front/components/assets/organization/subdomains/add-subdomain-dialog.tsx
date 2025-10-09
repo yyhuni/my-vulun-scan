@@ -1,12 +1,13 @@
 "use client"
 
-import React, { useState } from "react"
-import { Plus, Network, AlertCircle } from "lucide-react"
+import React, { useState, useMemo } from "react"
+import { Plus, Network, AlertCircle, Info } from "lucide-react"
 import { toast } from "sonner"
 
 // 导入 UI 组件
 import { Button } from "@/components/ui/button"
 import { LoadingSpinner } from "@/components/loading-spinner"
+import { Badge } from "@/components/ui/badge"
 
 import {
   Dialog,
@@ -19,13 +20,6 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 
 // 导入类型定义
 import type { SubDomain } from '@/types/subdomain.types'
@@ -70,72 +64,72 @@ export function AddSubdomainDialog({
   // 子域名文本输入
   const [subdomainsText, setSubdomainsText] = useState("")
   
-  // 选中的域名ID
-  const [selectedDomainId, setSelectedDomainId] = useState<string>("")
-  
   // 使用 React Query mutation
   const createSubdomainMutation = useCreateSubdomain()
+
+  // 实时分析子域名输入，提取根域名分组
+  const domainAnalysis = useMemo(() => {
+    const lines = subdomainsText
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0)
+    
+    if (lines.length === 0) {
+      return {
+        totalCount: 0,
+        grouped: new Map<string, string[]>(),
+        invalid: [],
+        rootDomains: []
+      }
+    }
+
+    const { grouped, invalid } = DomainValidator.groupSubdomainsByRootDomain(lines)
+    const rootDomains = Array.from(grouped.keys())
+
+    return {
+      totalCount: lines.length,
+      grouped,
+      invalid,
+      rootDomains
+    }
+  }, [subdomainsText])
 
 
   // 处理表单提交
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // 验证是否选择了域名
-    if (!selectedDomainId) {
+    // 验证是否有输入
+    if (domainAnalysis.totalCount === 0) {
+      toast.error('请输入至少一个子域名')
       return
     }
 
-    // 解析子域名文本，每行一个子域名
-    const subdomainLines = subdomainsText
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0)
+    // 检查是否有无效域名
+    if (domainAnalysis.invalid.length > 0) {
+      toast.error(`发现 ${domainAnalysis.invalid.length} 个无效域名，请检查后重试`)
+      return
+    }
+
+    // 构建发送给后端的数据结构
+    const domainGroups = Array.from(domainAnalysis.grouped.entries()).map(([rootDomain, subdomains]) => ({
+      rootDomain,
+      subdomains
+    }))
     
-    if (subdomainLines.length === 0) {
-      return
+    const requestData = {
+      domainGroups
     }
 
-    // 使用 DomainValidator 进行批量验证
-    const validationResults = DomainValidator.validateSubdomainBatch(subdomainLines)
-    const invalidResults = validationResults.filter(result => !result.isValid)
+    console.log('准备提交的数据：', requestData)
 
-    if (invalidResults.length > 0) {
-      const errorMessages = invalidResults.map(r => `${r.originalDomain}: ${r.error}`).join('\n')
-      toast.error(`以下子域名格式不正确：\n${errorMessages}`)
-      return
-    }
-
-    // 调用真实API
-    try {
-      const response = await createSubdomainMutation.mutateAsync({
-        subDomains: subdomainLines,
-        domainId: parseInt(selectedDomainId)
-      })
-
-      // 创建成功，模拟返回的子域名数据（实际应该从API响应中获取）
-      const mockSubdomains: SubDomain[] = subdomainLines.map((name, index) => ({
-        id: Date.now() + index,
-        name: name,
-        domainId: parseInt(selectedDomainId),
-        domain: domains.find(d => d.id === parseInt(selectedDomainId)),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }))
-
-      // 调用成功回调
-      onAdd(mockSubdomains)
-      
-      // 重置表单
-      setSubdomainsText("")
-      setSelectedDomainId("")
-      
-      // 关闭对话框
-      setOpen(false)
-    } catch (error) {
-      // 错误处理已经在 mutation 中处理了
-      console.error('创建子域名失败:', error)
-    }
+    toast.info('功能开发中：将创建 ' + domainAnalysis.rootDomains.length + ' 个根域名和 ' + domainAnalysis.totalCount + ' 个子域名')
+    
+    // TODO: 调用后端 API
+    // await createSubdomainMutation.mutateAsync(requestData)
+    
+    // 暂时关闭对话框
+    // setOpen(false)
   }
 
   // 处理对话框关闭
@@ -145,7 +139,6 @@ export function AddSubdomainDialog({
       if (!newOpen) {
         // 关闭时重置表单
         setSubdomainsText("")
-        setSelectedDomainId("")
       }
     }
   }
@@ -170,47 +163,13 @@ export function AddSubdomainDialog({
             <span>添加子域名</span>
           </DialogTitle>
           <DialogDescription>
-            每行输入一个完整的子域名，支持批量添加。格式：subdomain.domain.com（如 www.example.com、api.example.com）
+            每行输入一个完整的子域名，系统会自动提取根域名并分组创建。格式：subdomain.domain.com（如 www.example.com、api.example.com）
           </DialogDescription>
         </DialogHeader>
         
         {/* 表单 */}
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
-            {/* 域名选择 */}
-            <div className="grid gap-2">
-              <Label htmlFor="domain-select">
-                所属域名 <span className="text-destructive">*</span>
-              </Label>
-              <Select
-                value={selectedDomainId}
-                onValueChange={setSelectedDomainId}
-                disabled={createSubdomainMutation.isPending}
-              >
-                <SelectTrigger id="domain-select">
-                  <SelectValue placeholder="请选择所属域名" />
-                </SelectTrigger>
-                <SelectContent>
-                  {domains.length === 0 ? (
-                    <div className="p-2 text-sm text-muted-foreground">
-                      暂无可用域名
-                    </div>
-                  ) : (
-                    domains.map((domain) => (
-                      <SelectItem key={domain.id} value={domain.id.toString()}>
-                        {domain.name}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-              {domains.length === 0 && (
-                <div className="text-xs text-amber-600">
-                  请先添加主资产(域名)后再添加子域名
-                </div>
-              )}
-            </div>
-
             {/* 子域名输入框 */}
             <div className="grid gap-2">
               <Label htmlFor="subdomains">
@@ -220,21 +179,77 @@ export function AddSubdomainDialog({
                 id="subdomains"
                 value={subdomainsText}
                 onChange={(e) => setSubdomainsText(e.target.value)}
-                placeholder={"www.example.com\napi.example.com\ntest.example.com\nadmin.example.com\napp.example.com\ncdn.example.com\nmail.example.com\nftp.example.com\nblog.example.com\nshop.example.com"}
-                disabled={createSubdomainMutation.isPending || !selectedDomainId}
+                placeholder={"www.example.com\napi.example.com\ntest.example.com\nadmin.test.com\napi.test.com\nblog.github.io\nwww.bbc.co.uk"}
+                disabled={createSubdomainMutation.isPending}
                 rows={20}
                 className="font-mono text-sm min-h-[400px] resize-y"
               />
               <div className="flex justify-between items-center text-xs">
                 <span className="text-muted-foreground flex items-center gap-1">
                   <AlertCircle className="h-3 w-3" />
-                  必须输入完整域名格式（如：www.example.com）
+                  系统会自动提取根域名并分组创建
                 </span>
                 <span className="font-medium text-primary">
-                  共 {subdomainsText.split('\n').filter(line => line.trim()).length} 个子域名
+                  共 {domainAnalysis.totalCount} 个子域名
                 </span>
               </div>
             </div>
+
+            {/* 域名分析预览 */}
+            {domainAnalysis.totalCount > 0 && (
+              <div className="grid gap-3 p-4 bg-muted/50 rounded-lg border">
+                <div className="flex items-center gap-2">
+                  <Info className="h-4 w-4 text-blue-500" />
+                  <span className="text-sm font-medium">域名分析</span>
+                </div>
+                
+                {/* 统计信息 */}
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="secondary" className="text-xs">
+                    {domainAnalysis.rootDomains.length} 个根域名
+                  </Badge>
+                  <Badge variant="secondary" className="text-xs">
+                    {domainAnalysis.totalCount} 个子域名
+                  </Badge>
+                  {domainAnalysis.invalid.length > 0 && (
+                    <Badge variant="destructive" className="text-xs">
+                      {domainAnalysis.invalid.length} 个无效
+                    </Badge>
+                  )}
+                </div>
+
+                {/* 根域名列表 */}
+                {domainAnalysis.rootDomains.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="text-xs text-muted-foreground">将创建以下根域名：</div>
+                    <div className="flex flex-wrap gap-2">
+                      {domainAnalysis.rootDomains.map((rootDomain) => (
+                        <Badge key={rootDomain} variant="outline" className="text-xs font-mono">
+                          {rootDomain}
+                          <span className="ml-1 text-muted-foreground">
+                            ({domainAnalysis.grouped.get(rootDomain)?.length})
+                          </span>
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 无效域名列表 */}
+                {domainAnalysis.invalid.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="text-xs text-destructive">无效的域名：</div>
+                    <div className="flex flex-wrap gap-2">
+                      {domainAnalysis.invalid.map((invalid, index) => (
+                        <Badge key={index} variant="destructive" className="text-xs font-mono">
+                          {invalid || '(空)'}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           
           {/* 对话框底部按钮 */}
@@ -249,7 +264,7 @@ export function AddSubdomainDialog({
             </Button>
             <Button 
               type="submit" 
-              disabled={createSubdomainMutation.isPending || !subdomainsText.trim() || !selectedDomainId || domains.length === 0}
+              disabled={createSubdomainMutation.isPending || domainAnalysis.totalCount === 0 || domainAnalysis.invalid.length > 0}
             >
               {createSubdomainMutation.isPending ? (
                 <>
