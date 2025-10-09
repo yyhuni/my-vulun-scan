@@ -98,11 +98,11 @@ func GetSubDomainByID(c *gin.Context) {
 
 // CreateSubDomains 创建子域名
 // @Summary 批量创建子域名（支持根域名分组）
-// @Description 前端发送分组后的域名数据，后端自动创建根域名和子域名
+// @Description 前端发送分组后的域名数据，后端自动创建根域名和子域名，需要指定组织ID
 // @Tags 子域名管理
 // @Accept json
 // @Produce json
-// @Param request body models.CreateSubDomainsRequest true "子域名创建请求"
+// @Param request body models.CreateSubDomainsRequest true "子域名创建请求（包含组织ID）"
 // @Success 200 {object} models.APIResponse{data=models.CreateSubDomainsResponseData} "创建成功"
 // @Failure 400 {object} models.APIResponse "请求参数错误"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"

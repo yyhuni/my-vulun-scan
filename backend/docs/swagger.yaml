@@ -86,8 +86,11 @@ definitions:
         items:
           $ref: '#/definitions/vulun-scan-backend_internal_models.DomainGroup'
         type: array
+      organization_id:
+        type: integer
     required:
     - domain_groups
+    - organization_id
     type: object
   vulun-scan-backend_internal_models.CreateSubDomainsResponseData:
     properties:
@@ -1309,9 +1312,9 @@ paths:
     post:
       consumes:
       - application/json
-      description: 前端发送分组后的域名数据，后端自动创建根域名和子域名
+      description: 前端发送分组后的域名数据，后端自动创建根域名和子域名，需要指定组织ID
       parameters:
-      - description: 子域名创建请求
+      - description: 子域名创建请求（包含组织ID）
         in: body
         name: request
         required: true

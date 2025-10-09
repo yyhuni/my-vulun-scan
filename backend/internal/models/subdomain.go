@@ -31,7 +31,8 @@ type DomainGroup struct {
 
 // CreateSubDomainsRequest 创建子域名请求
 type CreateSubDomainsRequest struct {
-	DomainGroups []DomainGroup `json:"domain_groups" binding:"required"`
+	OrganizationID uint          `json:"organization_id" binding:"required"`
+	DomainGroups   []DomainGroup `json:"domain_groups" binding:"required"`
 }
 
 // GetSubDomainsRequest 获取所有子域名列表请求

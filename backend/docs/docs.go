@@ -1209,7 +1209,7 @@ const docTemplate = `{
         },
         "/subdomains/create": {
             "post": {
-                "description": "前端发送分组后的域名数据，后端自动创建根域名和子域名",
+                "description": "前端发送分组后的域名数据，后端自动创建根域名和子域名，需要指定组织ID",
                 "consumes": [
                     "application/json"
                 ],
@@ -1222,7 +1222,7 @@ const docTemplate = `{
                 "summary": "批量创建子域名（支持根域名分组）",
                 "parameters": [
                     {
-                        "description": "子域名创建请求",
+                        "description": "子域名创建请求（包含组织ID）",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -1551,7 +1551,8 @@ const docTemplate = `{
         "vulun-scan-backend_internal_models.CreateSubDomainsRequest": {
             "type": "object",
             "required": [
-                "domain_groups"
+                "domain_groups",
+                "organization_id"
             ],
             "properties": {
                 "domain_groups": {
@@ -1559,6 +1560,9 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/vulun-scan-backend_internal_models.DomainGroup"
                     }
+                },
+                "organization_id": {
+                    "type": "integer"
                 }
             }
         },

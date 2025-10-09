@@ -17,7 +17,7 @@ trigger: always_on
 16.所有 API 响应必须使用结构化类型，禁止使用 gin.H 或 map[string]interface{}。在 models 包中定义专门的响应结构体（如 XxxResponseData），确保类型安全和 API 文档完整性
 17.所有业务操作的 toast 都放在 hook 中
 18.后端返回值应该用 backend/internal/utils/response.go
-19.目前后端项目，去不用做校验，安全相关的代码，完全信任前端输入
+19.目前后端项目，去不用做安全相关的代码
 20.后端参数处理（包括验证、默认值设置、格式转换等）都应该在 handler 层完成
 21.后端数据库模型不允许用omitempty省略 json，防止 debug 时候很难查找溯源
 22.域名校验验证应该放在 hanlder 层

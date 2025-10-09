@@ -212,14 +212,17 @@ func (s *SubDomainService) GetSubDomainsByOrgID(orgID uint, page, pageSize int, 
 //  1. 前端已经将子域名按根域名分组
 //  2. 对于每个分组：
 //     a. 用 root_domain 查询对应的 domain_id
-//     b. 如果不存在就创建根域名
-//     c. 批量创建该根域名下的子域名并绑定 domain_id
+//     b. 如果不存在则返回错误（域名必须先录入系统）
+//     c. 校验根域名是否关联到指定组织
+//     d. 如果未关联则返回错误（只能为已关联组织的域名创建子域名）
+//     e. 批量创建该根域名下的子域名并绑定 domain_id
 //  3. 返回创建统计信息
 //
 // 设计考虑：
 // - 使用事务确保批量创建的原子性
 // - 支持幂等性：重复提交已存在的域名/子域名不会报错
 // - 返回详细的创建统计，方便前端展示结果
+// - 严格的组织关联校验：只能为已关联组织的根域名创建子域名
 func (s *SubDomainService) CreateSubDomains(req models.CreateSubDomainsRequest) (*models.CreateSubDomainsResponse, error) {
 	var totalSubdomainsCreated int
 	var totalDomainsCreated int
@@ -235,31 +238,32 @@ func (s *SubDomainService) CreateSubDomains(req models.CreateSubDomainsRequest) 
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		// 遍历每个域名分组
 		for _, group := range req.DomainGroups {
-			// 步骤1: 用 root_domain 查询对应的 domain_id
-			var domain models.Domain
-			result := tx.Where("name = ?", group.RootDomain).First(&domain)
 
-			if result.Error == gorm.ErrRecordNotFound {
-				// 根域名不存在，创建新的
-				domain = models.Domain{
-					Name: group.RootDomain,
-				}
-				if err := tx.Create(&domain).Error; err != nil {
-					log.Error().Err(err).Str("root_domain", group.RootDomain).Msg("Failed to create root domain")
-					return err
-				}
-				totalDomainsCreated++
-				log.Info().Str("root_domain", group.RootDomain).Uint("domain_id", domain.ID).Msg("Root domain created")
-			} else if result.Error != nil {
-				// 其他数据库错误
-				log.Error().Err(result.Error).Str("root_domain", group.RootDomain).Msg("Failed to query root domain")
-				return result.Error
+			// 检查域名是否存在且关联到当前组织
+			var exists bool
+			sub := tx.Table("domains d").
+				Select("1").
+				Joins("JOIN organization_domains od ON od.domain_id = d.id").
+				Where("d.name = ? AND od.organization_id = ?", group.RootDomain, req.OrganizationID).
+				Limit(1)
+
+			err := tx.Raw("SELECT EXISTS(?) AS exists", sub).Scan(&exists).Error
+			if err != nil {
+				log.Error().
+					Err(err).
+					Str("root_domain", group.RootDomain).
+					Uint("organization_id", req.OrganizationID).
+					Msg("检查域名关联关系失败")
+				return fmt.Errorf("检查域名关联状态失败")
 			}
-			// 否则域名已存在，直接使用
+			if !exists {
+				return fmt.Errorf("域名 %s 不存在或未关联本组织", group.RootDomain)
+			}
 
 			// 步骤2: 批量创建子域名并绑定 domain_id
 			// 2.1: 查询已存在的子域名
 			var existingSubDomains []models.SubDomain
+			var domain models.Domain
 			if err := tx.Where("name IN ? AND domain_id = ?", group.Subdomains, domain.ID).
 				Find(&existingSubDomains).Error; err != nil {
 				log.Error().Err(err).Uint("domain_id", domain.ID).Msg("Failed to query existing sub domains")
@@ -270,7 +274,6 @@ func (s *SubDomainService) CreateSubDomains(req models.CreateSubDomainsRequest) 
 			existingMap := make(map[string]bool)
 			for _, sd := range existingSubDomains {
 				existingMap[sd.Name] = true
-				existingDomains = append(existingDomains, sd.Name)
 			}
 
 			// 2.3: 过滤出需要创建的子域名
