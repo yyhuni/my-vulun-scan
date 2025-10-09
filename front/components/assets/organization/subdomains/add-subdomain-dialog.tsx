@@ -121,15 +121,41 @@ export function AddSubdomainDialog({
       domainGroups
     }
 
-    console.log('准备提交的数据：', requestData)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('域名分析结果：', {
+        totalCount: domainAnalysis.totalCount,
+        rootDomains: domainAnalysis.rootDomains,
+        grouped: domainAnalysis.grouped,
+        groupedEntries: Array.from(domainAnalysis.grouped.entries()),
+        domainGroups,
+        requestData
+      })
+    }
 
-    toast.info('功能开发中：将创建 ' + domainAnalysis.rootDomains.length + ' 个根域名和 ' + domainAnalysis.totalCount + ' 个子域名')
-    
-    // TODO: 调用后端 API
-    // await createSubdomainMutation.mutateAsync(requestData)
-    
-    // 暂时关闭对话框
-    // setOpen(false)
+    // 验证数据不为空
+    if (!domainGroups || domainGroups.length === 0) {
+      toast.error('没有有效的域名分组数据')
+      return
+    }
+
+    try {
+      // 调用后端 API
+      const response = await createSubdomainMutation.mutateAsync(requestData)
+      
+      // 成功后调用回调函数
+      if (response?.data) {
+        // 这里可以传递创建成功的子域名列表给父组件
+        onAdd([]) // 暂时传递空数组，后续可以从响应中提取子域名数据
+      }
+      
+      // 关闭对话框
+      setOpen(false)
+    } catch (error) {
+      // 错误处理已经在 hook 中处理了，这里不需要额外处理
+      if (process.env.NODE_ENV === 'development') {
+        console.error('创建子域名失败:', error)
+      }
+    }
   }
 
   // 处理对话框关闭
@@ -218,22 +244,7 @@ export function AddSubdomainDialog({
                   )}
                 </div>
 
-                {/* 根域名列表 */}
-                {domainAnalysis.rootDomains.length > 0 && (
-                  <div className="space-y-2">
-                    <div className="text-xs text-muted-foreground">将创建以下根域名：</div>
-                    <div className="flex flex-wrap gap-2">
-                      {domainAnalysis.rootDomains.map((rootDomain) => (
-                        <Badge key={rootDomain} variant="outline" className="text-xs font-mono">
-                          {rootDomain}
-                          <span className="ml-1 text-muted-foreground">
-                            ({domainAnalysis.grouped.get(rootDomain)?.length})
-                          </span>
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
+
 
                 {/* 无效域名列表 */}
                 {domainAnalysis.invalid.length > 0 && (

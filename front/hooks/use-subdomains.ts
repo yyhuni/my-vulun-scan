@@ -88,8 +88,10 @@ export function useCreateSubdomain() {
 
   return useMutation({
     mutationFn: (data: {
-      subDomains: string[]
-      domainId: number
+      domainGroups: Array<{
+        rootDomain: string
+        subdomains: string[]
+      }>
     }) => SubDomainService.createSubDomains(data),
     onMutate: async () => {
       toast.loading('正在创建子域名...', { id: 'create-subdomain' })

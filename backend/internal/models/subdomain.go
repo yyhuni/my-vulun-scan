@@ -52,20 +52,20 @@ type GetSubDomainsResponse struct {
 
 // CreateSubDomainsResponse 创建子域名响应（service 层使用）
 type CreateSubDomainsResponse struct {
-	SuccessCount       int      `json:"success_count"`
-	ExistingDomains    []string `json:"existing_domains"`
-	TotalRequested     int      `json:"total_requested"`
-	DomainsCreated     int      `json:"domains_created"`      // 新创建的根域名数量
-	SubdomainsCreated  int      `json:"subdomains_created"`  // 新创建的子域名数量
+	SuccessCount      int      `json:"success_count"`
+	ExistingDomains   []string `json:"existing_domains"`
+	TotalRequested    int      `json:"total_requested"`
+	DomainsCreated    int      `json:"domains_created"`    // 新创建的根域名数量
+	SubdomainsCreated int      `json:"subdomains_created"` // 新创建的子域名数量
 }
 
 // CreateSubDomainsResponseData 创建子域名响应数据（handler 层返回给前端）
 type CreateSubDomainsResponseData struct {
-	Message            string   `json:"message"`
-	DomainsCreated     int      `json:"domains_created"`
-	SubdomainsCreated  int      `json:"subdomains_created"`
-	ExistingDomains    []string `json:"existing_domains"`
-	TotalRequested     int      `json:"total_requested"`
+	Message           string   `json:"message"`
+	DomainsCreated    int      `json:"domains_created"`
+	SubdomainsCreated int      `json:"subdomains_created"`
+	ExistingDomains   []string `json:"existing_domains"`
+	TotalRequested    int      `json:"total_requested"`
 }
 
 // GetOrgSubDomainsResponse 获取组织子域名响应

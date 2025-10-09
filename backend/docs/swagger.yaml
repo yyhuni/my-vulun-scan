@@ -1,6 +1,6 @@
 basePath: /api/v1
 definitions:
-  models.APIResponse:
+  vulun-scan-backend_internal_models.APIResponse:
     properties:
       code:
         description: HTTP状态码，如 "200", "400", "500"
@@ -14,7 +14,7 @@ definitions:
         description: 业务状态，如 "success", "error"
         type: string
     type: object
-  models.BatchDeleteOrgsRequest:
+  vulun-scan-backend_internal_models.BatchDeleteOrgsRequest:
     properties:
       organization_ids:
         items:
@@ -23,7 +23,7 @@ definitions:
     required:
     - organization_ids
     type: object
-  models.BatchDeleteOrgsResponseData:
+  vulun-scan-backend_internal_models.BatchDeleteOrgsResponseData:
     properties:
       deleted_count:
         type: integer
@@ -31,14 +31,14 @@ definitions:
         type: string
       organizations:
         items:
-          $ref: '#/definitions/models.Organization'
+          $ref: '#/definitions/vulun-scan-backend_internal_models.Organization'
         type: array
     type: object
-  models.CreateDomainsRequest:
+  vulun-scan-backend_internal_models.CreateDomainsRequest:
     properties:
       domains:
         items:
-          $ref: '#/definitions/models.DomainDetail'
+          $ref: '#/definitions/vulun-scan-backend_internal_models.DomainDetail'
         type: array
       organization_id:
         type: integer
@@ -46,11 +46,11 @@ definitions:
     - domains
     - organization_id
     type: object
-  models.CreateEndpointsRequest:
+  vulun-scan-backend_internal_models.CreateEndpointsRequest:
     properties:
       endpoints:
         items:
-          $ref: '#/definitions/models.EndpointDetail'
+          $ref: '#/definitions/vulun-scan-backend_internal_models.EndpointDetail'
         type: array
       subdomain_id:
         type: integer
@@ -58,7 +58,7 @@ definitions:
     - endpoints
     - subdomain_id
     type: object
-  models.CreateEndpointsResponseData:
+  vulun-scan-backend_internal_models.CreateEndpointsResponseData:
     properties:
       existing_endpoints:
         items:
@@ -71,7 +71,7 @@ definitions:
       total_requested:
         type: integer
     type: object
-  models.CreateOrgRequest:
+  vulun-scan-backend_internal_models.CreateOrgRequest:
     properties:
       description:
         type: string
@@ -80,19 +80,16 @@ definitions:
     required:
     - name
     type: object
-  models.CreateSubDomainsRequest:
+  vulun-scan-backend_internal_models.CreateSubDomainsRequest:
     properties:
       domain_groups:
         items:
-          $ref: '#/definitions/models.DomainGroup'
+          $ref: '#/definitions/vulun-scan-backend_internal_models.DomainGroup'
         type: array
-      organization_id:
-        type: integer
     required:
     - domain_groups
-    - organization_id
     type: object
-  models.CreateSubDomainsResponseData:
+  vulun-scan-backend_internal_models.CreateSubDomainsResponseData:
     properties:
       domains_created:
         type: integer
@@ -107,24 +104,24 @@ definitions:
       total_requested:
         type: integer
     type: object
-  models.DeleteDomainResponseData:
+  vulun-scan-backend_internal_models.DeleteDomainResponseData:
     properties:
       message:
         type: string
     type: object
-  models.DeleteOrgRequest:
+  vulun-scan-backend_internal_models.DeleteOrgRequest:
     properties:
       id:
         type: integer
     required:
     - id
     type: object
-  models.DeleteOrgResponseData:
+  vulun-scan-backend_internal_models.DeleteOrgResponseData:
     properties:
       message:
         type: string
     type: object
-  models.Domain:
+  vulun-scan-backend_internal_models.Domain:
     properties:
       created_at:
         type: string
@@ -139,22 +136,22 @@ definitions:
       organizations:
         description: 关联关系 - 级联删除配置在 OrganizationDomain 中间表定义
         items:
-          $ref: '#/definitions/models.Organization'
+          $ref: '#/definitions/vulun-scan-backend_internal_models.Organization'
         type: array
       sub_domains:
         description: SubDomain 的级联删除：删除 Domain 时自动删除其所有子域名（包括根子域名）
         items:
-          $ref: '#/definitions/models.SubDomain'
+          $ref: '#/definitions/vulun-scan-backend_internal_models.SubDomain'
         type: array
       updated_at:
         type: string
       vulnerabilities:
         description: Vulnerability 的级联删除：删除 Domain 时自动删除其所有漏洞
         items:
-          $ref: '#/definitions/models.Vulnerability'
+          $ref: '#/definitions/vulun-scan-backend_internal_models.Vulnerability'
         type: array
     type: object
-  models.DomainDetail:
+  vulun-scan-backend_internal_models.DomainDetail:
     properties:
       description:
         type: string
@@ -163,7 +160,7 @@ definitions:
     required:
     - name
     type: object
-  models.DomainGroup:
+  vulun-scan-backend_internal_models.DomainGroup:
     properties:
       root_domain:
         type: string
@@ -175,7 +172,7 @@ definitions:
     - root_domain
     - subdomains
     type: object
-  models.Endpoint:
+  vulun-scan-backend_internal_models.Endpoint:
     properties:
       content_length:
         type: integer
@@ -190,7 +187,7 @@ definitions:
         type: integer
       subdomain:
         allOf:
-        - $ref: '#/definitions/models.SubDomain'
+        - $ref: '#/definitions/vulun-scan-backend_internal_models.SubDomain'
         description: 关联关系
       subdomain_id:
         type: integer
@@ -203,10 +200,10 @@ definitions:
         type: string
       vulnerabilities:
         items:
-          $ref: '#/definitions/models.Vulnerability'
+          $ref: '#/definitions/vulun-scan-backend_internal_models.Vulnerability'
         type: array
     type: object
-  models.EndpointDetail:
+  vulun-scan-backend_internal_models.EndpointDetail:
     properties:
       content_length:
         type: integer
@@ -221,11 +218,11 @@ definitions:
     required:
     - url
     type: object
-  models.GetEndpointsResponse:
+  vulun-scan-backend_internal_models.GetEndpointsResponse:
     properties:
       endpoints:
         items:
-          $ref: '#/definitions/models.Endpoint'
+          $ref: '#/definitions/vulun-scan-backend_internal_models.Endpoint'
         type: array
       page:
         type: integer
@@ -236,11 +233,11 @@ definitions:
       total_pages:
         type: integer
     type: object
-  models.GetOrgDomainsResponse:
+  vulun-scan-backend_internal_models.GetOrgDomainsResponse:
     properties:
       domains:
         items:
-          $ref: '#/definitions/models.Domain'
+          $ref: '#/definitions/vulun-scan-backend_internal_models.Domain'
         type: array
       page:
         type: integer
@@ -251,11 +248,11 @@ definitions:
       total_pages:
         type: integer
     type: object
-  models.GetOrgsResponse:
+  vulun-scan-backend_internal_models.GetOrgsResponse:
     properties:
       organizations:
         items:
-          $ref: '#/definitions/models.Organization'
+          $ref: '#/definitions/vulun-scan-backend_internal_models.Organization'
         type: array
       page:
         type: integer
@@ -266,7 +263,7 @@ definitions:
       total_pages:
         type: integer
     type: object
-  models.GetSubDomainsResponse:
+  vulun-scan-backend_internal_models.GetSubDomainsResponse:
     properties:
       page:
         type: integer
@@ -274,12 +271,12 @@ definitions:
         type: integer
       sub_domains:
         items:
-          $ref: '#/definitions/models.SubDomain'
+          $ref: '#/definitions/vulun-scan-backend_internal_models.SubDomain'
         type: array
       total:
         type: integer
     type: object
-  models.Organization:
+  vulun-scan-backend_internal_models.Organization:
     properties:
       created_at:
         type: string
@@ -288,7 +285,7 @@ definitions:
       domains:
         description: 关联关系 - 级联删除配置在 OrganizationDomain 中间表定义
         items:
-          $ref: '#/definitions/models.Domain'
+          $ref: '#/definitions/vulun-scan-backend_internal_models.Domain'
         type: array
       id:
         description: 数据库基础字段
@@ -299,7 +296,7 @@ definitions:
       updated_at:
         type: string
     type: object
-  models.RemoveOrgDomainRequest:
+  vulun-scan-backend_internal_models.RemoveOrgDomainRequest:
     properties:
       domain_id:
         type: integer
@@ -309,25 +306,25 @@ definitions:
     - domain_id
     - organization_id
     type: object
-  models.RemoveOrgDomainResponseData:
+  vulun-scan-backend_internal_models.RemoveOrgDomainResponseData:
     properties:
       message:
         type: string
     type: object
-  models.SubDomain:
+  vulun-scan-backend_internal_models.SubDomain:
     properties:
       created_at:
         type: string
       domain:
         allOf:
-        - $ref: '#/definitions/models.Domain'
+        - $ref: '#/definitions/vulun-scan-backend_internal_models.Domain'
         description: 关联关系
       domain_id:
         type: integer
       endpoints:
         description: Endpoint 的级联删除：删除 SubDomain 时自动删除其所有端点
         items:
-          $ref: '#/definitions/models.Endpoint'
+          $ref: '#/definitions/vulun-scan-backend_internal_models.Endpoint'
         type: array
       id:
         description: 数据库基础字段
@@ -340,10 +337,10 @@ definitions:
       vulnerabilities:
         description: Vulnerability 的级联删除：删除 SubDomain 时自动删除其所有漏洞
         items:
-          $ref: '#/definitions/models.Vulnerability'
+          $ref: '#/definitions/vulun-scan-backend_internal_models.Vulnerability'
         type: array
     type: object
-  models.UpdateDomainRequest:
+  vulun-scan-backend_internal_models.UpdateDomainRequest:
     properties:
       description:
         type: string
@@ -354,7 +351,7 @@ definitions:
     required:
     - id
     type: object
-  models.UpdateOrgRequest:
+  vulun-scan-backend_internal_models.UpdateOrgRequest:
     properties:
       description:
         type: string
@@ -365,7 +362,7 @@ definitions:
     required:
     - id
     type: object
-  models.Vulnerability:
+  vulun-scan-backend_internal_models.Vulnerability:
     properties:
       affected_url:
         type: string
@@ -391,12 +388,12 @@ definitions:
         type: string
       domain_relation:
         allOf:
-        - $ref: '#/definitions/models.Domain'
+        - $ref: '#/definitions/vulun-scan-backend_internal_models.Domain'
         description: 关联关系
       endpoint_id:
         type: integer
       endpoint_relation:
-        $ref: '#/definitions/models.Endpoint'
+        $ref: '#/definitions/vulun-scan-backend_internal_models.Endpoint'
       extracted_results:
         description: 扫描结果
         items:
@@ -450,7 +447,7 @@ definitions:
         description: 关联关系 - 灵活归属
         type: integer
       subdomain_relation:
-        $ref: '#/definitions/models.SubDomain'
+        $ref: '#/definitions/vulun-scan-backend_internal_models.SubDomain'
       target_domain:
         type: string
       title:
@@ -485,23 +482,23 @@ paths:
           description: 删除成功
           schema:
             allOf:
-            - $ref: '#/definitions/models.APIResponse'
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.DeleteDomainResponseData'
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.DeleteDomainResponseData'
               type: object
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "404":
           description: 域名不存在
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "500":
           description: 服务器内部错误
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
       summary: 删除域名
       tags:
       - 域名管理
@@ -521,19 +518,19 @@ paths:
           description: 获取成功
           schema:
             allOf:
-            - $ref: '#/definitions/models.APIResponse'
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.Domain'
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.Domain'
               type: object
         "404":
           description: 域名不存在
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "500":
           description: 服务器内部错误
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
       summary: 获取单个域名详情
       tags:
       - 域名管理
@@ -570,23 +567,23 @@ paths:
           description: 获取成功
           schema:
             allOf:
-            - $ref: '#/definitions/models.APIResponse'
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.GetSubDomainsResponse'
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.GetSubDomainsResponse'
               type: object
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "404":
           description: 域名不存在
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "500":
           description: 服务器内部错误
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
       summary: 获取域名的子域名列表
       tags:
       - 域名管理
@@ -601,7 +598,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.CreateDomainsRequest'
+          $ref: '#/definitions/vulun-scan-backend_internal_models.CreateDomainsRequest'
       produces:
       - application/json
       responses:
@@ -609,21 +606,21 @@ paths:
           description: 创建成功，返回创建的域名列表
           schema:
             allOf:
-            - $ref: '#/definitions/models.APIResponse'
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/models.Domain'
+                    $ref: '#/definitions/vulun-scan-backend_internal_models.Domain'
                   type: array
               type: object
         "400":
           description: 请求参数错误（如域名列表为空、参数格式错误等）
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "500":
           description: 服务器内部错误
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
       summary: 批量创建域名
       tags:
       - 域名管理
@@ -638,7 +635,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.RemoveOrgDomainRequest'
+          $ref: '#/definitions/vulun-scan-backend_internal_models.RemoveOrgDomainRequest'
       produces:
       - application/json
       responses:
@@ -646,23 +643,23 @@ paths:
           description: 解除关联成功
           schema:
             allOf:
-            - $ref: '#/definitions/models.APIResponse'
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.RemoveOrgDomainResponseData'
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.RemoveOrgDomainResponseData'
               type: object
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "404":
           description: 组织、域名或关联不存在
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "500":
           description: 服务器内部错误
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
       summary: 解除组织与域名的关联（待实现完善）
       tags:
       - 域名管理
@@ -677,7 +674,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.UpdateDomainRequest'
+          $ref: '#/definitions/vulun-scan-backend_internal_models.UpdateDomainRequest'
       produces:
       - application/json
       responses:
@@ -685,23 +682,23 @@ paths:
           description: 更新成功
           schema:
             allOf:
-            - $ref: '#/definitions/models.APIResponse'
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.Domain'
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.Domain'
               type: object
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "404":
           description: 域名不存在
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "500":
           description: 服务器内部错误
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
       summary: 更新域名
       tags:
       - 域名管理
@@ -732,15 +729,15 @@ paths:
           description: 获取成功
           schema:
             allOf:
-            - $ref: '#/definitions/models.APIResponse'
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.GetEndpointsResponse'
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.GetEndpointsResponse'
               type: object
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
       summary: 获取所有端点列表
       tags:
       - 端点管理
@@ -761,19 +758,19 @@ paths:
           description: 获取成功
           schema:
             allOf:
-            - $ref: '#/definitions/models.APIResponse'
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.Endpoint'
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.Endpoint'
               type: object
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "404":
           description: 端点不存在
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
       summary: 获取端点详情
       tags:
       - 端点管理
@@ -788,7 +785,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.CreateEndpointsRequest'
+          $ref: '#/definitions/vulun-scan-backend_internal_models.CreateEndpointsRequest'
       produces:
       - application/json
       responses:
@@ -796,15 +793,15 @@ paths:
           description: 创建成功
           schema:
             allOf:
-            - $ref: '#/definitions/models.APIResponse'
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.CreateEndpointsResponseData'
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.CreateEndpointsResponseData'
               type: object
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
       summary: 批量创建端点
       tags:
       - 端点管理
@@ -849,19 +846,19 @@ paths:
           description: 获取成功
           schema:
             allOf:
-            - $ref: '#/definitions/models.APIResponse'
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.GetOrgsResponse'
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.GetOrgsResponse'
               type: object
         "422":
           description: 请求参数验证失败
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "500":
           description: 服务器内部错误
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
       summary: 获取组织列表
       tags:
       - 组织管理
@@ -882,19 +879,19 @@ paths:
           description: 获取成功
           schema:
             allOf:
-            - $ref: '#/definitions/models.APIResponse'
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.Organization'
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.Organization'
               type: object
         "404":
           description: 组织不存在
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "500":
           description: 服务器内部错误
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
       summary: 获取单个组织详情
       tags:
       - 组织管理
@@ -942,19 +939,19 @@ paths:
           description: 获取成功
           schema:
             allOf:
-            - $ref: '#/definitions/models.APIResponse'
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.GetOrgDomainsResponse'
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.GetOrgDomainsResponse'
               type: object
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "500":
           description: 服务器内部错误
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
       summary: 获取组织的域名列表
       tags:
       - 域名管理
@@ -991,23 +988,23 @@ paths:
           description: 获取成功
           schema:
             allOf:
-            - $ref: '#/definitions/models.APIResponse'
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.GetSubDomainsResponse'
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.GetSubDomainsResponse'
               type: object
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "404":
           description: 组织不存在
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "500":
           description: 服务器内部错误
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
       summary: 获取组织的子域名列表
       tags:
       - 组织管理
@@ -1022,7 +1019,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.BatchDeleteOrgsRequest'
+          $ref: '#/definitions/vulun-scan-backend_internal_models.BatchDeleteOrgsRequest'
       produces:
       - application/json
       responses:
@@ -1030,23 +1027,23 @@ paths:
           description: 批量删除成功
           schema:
             allOf:
-            - $ref: '#/definitions/models.APIResponse'
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.BatchDeleteOrgsResponseData'
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.BatchDeleteOrgsResponseData'
               type: object
         "400":
           description: 业务逻辑错误
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "422":
           description: 请求参数验证失败
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "500":
           description: 服务器内部错误
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
       summary: 批量删除组织（待实现完善）
       tags:
       - 组织管理
@@ -1061,7 +1058,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.CreateOrgRequest'
+          $ref: '#/definitions/vulun-scan-backend_internal_models.CreateOrgRequest'
       produces:
       - application/json
       responses:
@@ -1069,19 +1066,19 @@ paths:
           description: 创建成功
           schema:
             allOf:
-            - $ref: '#/definitions/models.APIResponse'
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.Organization'
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.Organization'
               type: object
         "422":
           description: 请求参数验证失败
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "500":
           description: 服务器内部错误
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
       summary: 创建组织
       tags:
       - 组织管理
@@ -1096,7 +1093,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.DeleteOrgRequest'
+          $ref: '#/definitions/vulun-scan-backend_internal_models.DeleteOrgRequest'
       produces:
       - application/json
       responses:
@@ -1104,23 +1101,23 @@ paths:
           description: 删除成功
           schema:
             allOf:
-            - $ref: '#/definitions/models.APIResponse'
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.DeleteOrgResponseData'
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.DeleteOrgResponseData'
               type: object
         "404":
           description: 组织不存在
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "422":
           description: 请求参数验证失败
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "500":
           description: 服务器内部错误
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
       summary: 删除组织（待实现完善）
       tags:
       - 组织管理
@@ -1135,7 +1132,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.UpdateOrgRequest'
+          $ref: '#/definitions/vulun-scan-backend_internal_models.UpdateOrgRequest'
       produces:
       - application/json
       responses:
@@ -1143,23 +1140,23 @@ paths:
           description: 更新成功
           schema:
             allOf:
-            - $ref: '#/definitions/models.APIResponse'
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.Organization'
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.Organization'
               type: object
         "404":
           description: 组织不存在
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "422":
           description: 请求参数验证失败
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "500":
           description: 服务器内部错误
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
       summary: 更新组织
       tags:
       - 组织管理
@@ -1190,19 +1187,19 @@ paths:
           description: 获取子域名列表成功
           schema:
             allOf:
-            - $ref: '#/definitions/models.APIResponse'
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.GetSubDomainsResponse'
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.GetSubDomainsResponse'
               type: object
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "500":
           description: 服务器内部错误
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
       summary: 获取所有子域名列表
       tags:
       - 子域名管理
@@ -1223,23 +1220,23 @@ paths:
           description: 获取成功
           schema:
             allOf:
-            - $ref: '#/definitions/models.APIResponse'
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.SubDomain'
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.SubDomain'
               type: object
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "404":
           description: 子域名不存在
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "500":
           description: 服务器内部错误
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
       summary: 获取单个子域名详情
       tags:
       - 子域名管理
@@ -1295,15 +1292,15 @@ paths:
           description: 获取成功
           schema:
             allOf:
-            - $ref: '#/definitions/models.APIResponse'
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.GetEndpointsResponse'
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.GetEndpointsResponse'
               type: object
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
       summary: 获取子域名的端点列表
       tags:
       - 子域名管理
@@ -1319,7 +1316,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.CreateSubDomainsRequest'
+          $ref: '#/definitions/vulun-scan-backend_internal_models.CreateSubDomainsRequest'
       produces:
       - application/json
       responses:
@@ -1327,19 +1324,19 @@ paths:
           description: 创建成功
           schema:
             allOf:
-            - $ref: '#/definitions/models.APIResponse'
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/models.CreateSubDomainsResponseData'
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.CreateSubDomainsResponseData'
               type: object
         "400":
           description: 请求参数错误
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "500":
           description: 服务器内部错误
           schema:
-            $ref: '#/definitions/models.APIResponse'
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
       summary: 批量创建子域名（支持根域名分组）
       tags:
       - 子域名管理

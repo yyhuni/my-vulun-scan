@@ -27,13 +27,16 @@ export interface GetSubDomainsResponse {
 }
 
 export interface CreateSubDomainsRequest {
-  subDomains: string[]
-  domainId: number
+  domainGroups: Array<{
+    rootDomain: string
+    subdomains: string[]
+  }>
 }
 
 export interface CreateSubDomainsResponse {
   message: string
-  successCount: number
+  domainsCreated: number
+  subdomainsCreated: number
   existingDomains: string[]
   totalRequested: number
 }

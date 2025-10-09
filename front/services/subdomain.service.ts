@@ -73,19 +73,24 @@ export class SubDomainService {
 
 
   /**
-   * 批量创建子域名
+   * 批量创建子域名（支持域名分组）
    * @param data - 子域名创建请求对象
-   * @param data.subDomains - 子域名名称数组
-   * @param data.domainId - 域名ID
+   * @param data.domainGroups - 域名分组数组，每个分组包含根域名和子域名列表
    * @returns Promise<ApiResponse<CreateSubDomainsResponse>> - 创建成功后的响应
    */
   static async createSubDomains(data: {
-    subDomains: string[]
-    domainId: number
+    domainGroups: Array<{
+      rootDomain: string
+      subdomains: string[]
+    }>
   }): Promise<ApiResponse<CreateSubDomainsResponse>> {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 SubDomainService.createSubDomains 接收到的数据:', data)
+      console.log('🔍 准备发送的请求体:', { domainGroups: data.domainGroups })
+    }
+    
     const response = await api.post<ApiResponse<CreateSubDomainsResponse>>('/subdomains/create', {
-      subDomains: data.subDomains,  // ✅ 使用驼峰命名，拦截器会自动转换为 sub_domains
-      domainId: data.domainId       // ✅ 使用驼峰命名，拦截器会自动转换为 domain_id
+      domainGroups: data.domainGroups  // ✅ 使用驼峰命名，拦截器会自动转换为 domain_groups
     })
     return response.data
   }

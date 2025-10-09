@@ -300,6 +300,11 @@ func (s *DomainService) GetDomainsByOrgID(req models.GetDomainsByOrgIDRequest) (
 
 	// 通过 JOIN 中间表查询该组织的域名总数
 	// JOIN 的作用：从 domains 表中筛选出与该组织关联的所有域名
+	/**
+	SELECT COUNT(*) FROM domains
+	JOIN organization_domains ON organization_domains.domain_id = domains.id
+	WHERE organization_domains.organization_id = [req.OrgID值]
+	**/
 	if err := s.db.Model(&models.Domain{}).
 		Joins("JOIN organization_domains ON organization_domains.domain_id = domains.id").
 		Where("organization_domains.organization_id = ?", req.OrgID).
@@ -316,6 +321,14 @@ func (s *DomainService) GetDomainsByOrgID(req models.GetDomainsByOrgIDRequest) (
 	orderClause := s.buildOrderClause(req.SortBy, req.SortOrder)
 
 	// 执行分页查询，支持动态排序
+	/**
+	SELECT domains.*
+	FROM domains
+	JOIN organization_domains ON organization_domains.domain_id = domains.id
+	WHERE organization_domains.organization_id = [req.OrgID值]
+	ORDER BY [orderClause值]
+	LIMIT [req.PageSize值] OFFSET [offset值]
+	**/
 	offset := (req.Page - 1) * req.PageSize
 	result := s.db.
 		Joins("JOIN organization_domains ON organization_domains.domain_id = domains.id").
@@ -490,7 +503,7 @@ func (s *DomainService) RemoveOrganizationDomain(req models.RemoveOrgDomainReque
 //
 // 级联删除链：
 // Domain -> SubDomains -> Endpoints -> Vulnerabilities
-// Domain -> Endpoints -> Vulnerabilities  
+// Domain -> Endpoints -> Vulnerabilities
 // Domain -> Vulnerabilities
 //
 // 安全考虑：

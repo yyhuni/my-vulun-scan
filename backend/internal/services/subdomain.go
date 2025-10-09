@@ -41,13 +41,13 @@ func (s *SubDomainService) GetSubDomains(page, pageSize int, sortBy, sortOrder s
 		"createdAt": "created_at",
 		"updatedAt": "updated_at",
 	}
-	
+
 	// 获取实际的数据库字段名
 	dbSortField, exists := sortFieldMap[sortBy]
 	if !exists {
 		dbSortField = "updated_at" // 默认按更新时间排序
 	}
-	
+
 	orderClause := fmt.Sprintf("%s %s", dbSortField, sortOrder)
 	query = query.Order(orderClause)
 
@@ -100,13 +100,13 @@ func (s *SubDomainService) GetSubDomainsByDomainID(domainID uint, page, pageSize
 		"createdAt": "created_at",
 		"updatedAt": "updated_at",
 	}
-	
+
 	// 获取实际的数据库字段名
 	dbSortField, exists := sortFieldMap[sortBy]
 	if !exists {
 		dbSortField = "updated_at" // 默认按更新时间排序
 	}
-	
+
 	orderClause := fmt.Sprintf("%s %s", dbSortField, sortOrder)
 	query = query.Order(orderClause)
 
@@ -164,13 +164,13 @@ func (s *SubDomainService) GetSubDomainsByOrgID(orgID uint, page, pageSize int, 
 		"createdAt": "created_at",
 		"updatedAt": "updated_at",
 	}
-	
+
 	// 获取实际的数据库字段名
 	dbSortField, exists := sortFieldMap[sortBy]
 	if !exists {
 		dbSortField = "updated_at" // 默认按更新时间排序
 	}
-	
+
 	orderClause := fmt.Sprintf("sub_domains.%s %s", dbSortField, sortOrder)
 	query = query.Order(orderClause)
 
@@ -209,12 +209,12 @@ func (s *SubDomainService) GetSubDomainsByOrgID(orgID uint, page, pageSize int, 
 // CreateSubDomains 批量创建子域名（支持根域名分组）
 //
 // 业务逻辑说明：
-// 1. 前端已经将子域名按根域名分组
-// 2. 对于每个分组：
-//    a. 用 root_domain 查询对应的 domain_id
-//    b. 如果不存在就创建根域名
-//    c. 批量创建该根域名下的子域名并绑定 domain_id
-// 3. 返回创建统计信息
+//  1. 前端已经将子域名按根域名分组
+//  2. 对于每个分组：
+//     a. 用 root_domain 查询对应的 domain_id
+//     b. 如果不存在就创建根域名
+//     c. 批量创建该根域名下的子域名并绑定 domain_id
+//  3. 返回创建统计信息
 //
 // 设计考虑：
 // - 使用事务确保批量创建的原子性
@@ -238,7 +238,7 @@ func (s *SubDomainService) CreateSubDomains(req models.CreateSubDomainsRequest) 
 			// 步骤1: 用 root_domain 查询对应的 domain_id
 			var domain models.Domain
 			result := tx.Where("name = ?", group.RootDomain).First(&domain)
-			
+
 			if result.Error == gorm.ErrRecordNotFound {
 				// 根域名不存在，创建新的
 				domain = models.Domain{
