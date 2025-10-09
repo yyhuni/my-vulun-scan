@@ -44,7 +44,8 @@ func NewDomainService() *DomainService {
 // - 事务失败会自动回滚，不会产生脏数据
 func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models.Domain, error) {
 
-	var resultDomains []models.Domain
+	// 预分配结果切片容量，避免动态扩容
+	resultDomains := make([]models.Domain, 0, len(req.Domains))
 	var newDomainsCount int // 用于统计新创建的域名数量
 
 	// 步骤1: 验证组织是否存在
@@ -84,7 +85,8 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 		}
 
 		// 步骤2.4: 找出需要创建的新域名
-		var newDomains []models.Domain
+		// 预估容量：最多不超过请求的域名数量
+		newDomains := make([]models.Domain, 0, len(req.Domains))
 		for _, detail := range req.Domains {
 			if _, exists := existingDomainMap[detail.Name]; !exists {
 				newDomains = append(newDomains, models.Domain{
@@ -102,6 +104,23 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 			}
 			newDomainsCount = len(newDomains) // 记录新创建的域名数量
 			log.Info().Int("count", len(newDomains)).Msg("Domains created successfully")
+
+			// 步骤2.5.1: 为每个新创建的域名自动创建根子域名
+			// 预分配切片容量，避免动态扩容带来的性能开销
+			rootSubdomains := make([]models.SubDomain, 0, len(newDomains))
+			for _, domain := range newDomains {
+				rootSubdomains = append(rootSubdomains, models.SubDomain{
+					Name:     domain.Name, // 根子域名与域名同名
+					DomainID: domain.ID,
+				})
+			}
+
+			// 批量创建根子域名
+			if err := tx.Create(&rootSubdomains).Error; err != nil {
+				log.Error().Err(err).Int("count", len(rootSubdomains)).Msg("Failed to create root subdomains")
+				return err
+			}
+			log.Info().Int("count", len(rootSubdomains)).Msg("Root subdomains created successfully")
 
 			// 将新创建的域名也加入映射
 			for _, domain := range newDomains {
@@ -127,7 +146,8 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 		}
 
 		// 步骤2.8: 找出需要创建的新关联并构建结果列表
-		var newAssocs []models.OrganizationDomain
+		// 预估容量：最多不超过请求的域名数量
+		newAssocs := make([]models.OrganizationDomain, 0, len(req.Domains))
 		for _, detail := range req.Domains {
 			domain := existingDomainMap[detail.Name]
 
@@ -490,7 +510,8 @@ func (s *DomainService) DeleteDomain(id uint) error {
 		}
 
 		// 步骤2: 删除域名（级联删除会自动处理关联数据）
-		if err := tx.Select("Organizations", "SubDomains", "Endpoints", "Vulnerabilities").Delete(&domain).Error; err != nil {
+		// 注意：删除 Domain 会级联删除所有 SubDomains（包括根子域名），进而级联删除所有 Endpoints
+		if err := tx.Select("Organizations", "SubDomains", "Vulnerabilities").Delete(&domain).Error; err != nil {
 			log.Error().Err(err).
 				Uint("domain_id", id).
 				Str("domain_name", domain.Name).

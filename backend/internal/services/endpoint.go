@@ -98,8 +98,7 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 
 	log.Info().
 		Int("total_requested", len(req.Endpoints)).
-		Interface("domain_id", req.DomainID).
-		Interface("subdomain_id", req.SubdomainID).
+		Uint("subdomain_id", req.SubdomainID).
 		Msg("Starting to create endpoints")
 
 	// 使用事务确保批量创建的原子性
@@ -113,21 +112,9 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 		}
 
 		var existingEndpointsInDB []models.Endpoint
-		query := tx.Model(&models.Endpoint{}).Where("url IN ? AND method IN ?", urls, methods)
-
-		if req.DomainID != nil {
-			query = query.Where("domain_id = ?", *req.DomainID)
-		} else {
-			query = query.Where("domain_id IS NULL")
-		}
-
-		if req.SubdomainID != nil {
-			query = query.Where("subdomain_id = ?", *req.SubdomainID)
-		} else {
-			query = query.Where("subdomain_id IS NULL")
-		}
-
-		if err := query.Find(&existingEndpointsInDB).Error; err != nil {
+		if err := tx.Model(&models.Endpoint{}).
+			Where("url IN ? AND method IN ? AND subdomain_id = ?", urls, methods, req.SubdomainID).
+			Find(&existingEndpointsInDB).Error; err != nil {
 			log.Error().Err(err).Msg("Failed to query existing endpoints")
 			return err
 		}
@@ -156,7 +143,6 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 					StatusCode:    detail.StatusCode,
 					Title:         detail.Title,
 					ContentLength: detail.ContentLength,
-					DomainID:      req.DomainID,
 					SubdomainID:   req.SubdomainID,
 				}
 				newEndpoints = append(newEndpoints, newEndpoint)
@@ -196,56 +182,6 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 	return response, nil
 }
 
-// GetEndpointsByDomainID 获取域名下的端点列表
-func (s *EndpointService) GetEndpointsByDomainID(domainID uint, page, pageSize int, sortBy, sortOrder string) (*models.GetEndpointsResponse, error) {
-	// 先计算总数（使用独立的查询）
-	var total int64
-	if err := s.db.Model(&models.Endpoint{}).Where("domain_id = ?", domainID).Count(&total).Error; err != nil {
-		log.Error().Err(err).Uint("domain_id", domainID).Msg("Failed to count endpoints by domain ID")
-		return nil, err
-	}
-
-	// 构建数据查询
-	query := s.db.Model(&models.Endpoint{}).Where("domain_id = ?", domainID)
-
-	// 应用排序
-	query = query.Order(fmt.Sprintf("%s %s", sortBy, sortOrder))
-
-	// 分页
-	offset := (page - 1) * pageSize
-	query = query.Offset(offset).Limit(pageSize)
-
-	// 执行查询
-	var endpoints []models.Endpoint
-	if err := query.Find(&endpoints).Error; err != nil {
-		log.Error().Err(err).Uint("domain_id", domainID).Msg("Failed to query endpoints by domain ID")
-		return nil, err
-	}
-
-	// 计算总页数
-	totalPages := 0
-	if pageSize > 0 {
-		totalPages = int((total + int64(pageSize) - 1) / int64(pageSize))
-	}
-
-	response := &models.GetEndpointsResponse{
-		Endpoints:  endpoints,
-		Total:      total,
-		Page:       page,
-		PageSize:   pageSize,
-		TotalPages: totalPages,
-	}
-
-	log.Info().
-		Uint("domain_id", domainID).
-		Int("page", page).
-		Int("page_size", pageSize).
-		Int64("total", total).
-		Int("count", len(endpoints)).
-		Msg("Endpoints by domain ID retrieved successfully")
-
-	return response, nil
-}
 
 // GetEndpointsBySubdomainID 获取子域名下的端点列表
 func (s *EndpointService) GetEndpointsBySubdomainID(subdomainID uint, page, pageSize int, sortBy, sortOrder string) (*models.GetEndpointsResponse, error) {

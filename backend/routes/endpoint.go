@@ -19,7 +19,7 @@ func SetupEndpointRoutes(api *gin.RouterGroup) {
 		// 示例：GET /endpoints/1
 		endpoints.GET("/:id", handlers.GetEndpointByID)
 
-		// 批量创建端点 - 支持一次创建多个端点并可关联到指定 Domain 或 Subdomain
+		// 批量创建端点 - 必须关联到指定的 Subdomain
 		// 请求体示例：{
 		//   "endpoints": [
 		//     {"url": "/api/v1/users", "method": "GET", "status_code": 200, "title": "获取用户列表"},
@@ -27,14 +27,6 @@ func SetupEndpointRoutes(api *gin.RouterGroup) {
 		//   "subdomain_id": 2
 		// }
 		endpoints.POST("/create", handlers.CreateEndpoints)
-	}
-
-	// 域名相关的端点路由
-	domains := api.Group("/domains")
-	{
-		// 获取指定域名下的端点列表
-		// 示例：GET /domains/1/endpoints?page=1&page_size=10&sort_by=created_at&sort_order=desc
-		domains.GET("/:id/endpoints", handlers.GetEndpointsByDomainID)
 	}
 
 	// 子域名相关的端点路由

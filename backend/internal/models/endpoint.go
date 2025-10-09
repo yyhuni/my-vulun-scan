@@ -17,20 +17,17 @@ type Endpoint struct {
 	StatusCode    *int   `json:"status_code"`
 	Title         string `json:"title" gorm:"size:255"`
 	ContentLength *int64 `json:"content_length"`
-	DomainID      *uint  `json:"domain_id" gorm:"index"`
-	SubdomainID   *uint  `json:"subdomain_id" gorm:"index"`
+	SubdomainID   uint   `json:"subdomain_id" gorm:"not null;index"`
 
 	// 关联关系
-	Domain      *Domain      `json:"domain" gorm:"foreignKey:DomainID;constraint:OnDelete:CASCADE"`
-	Subdomain   *SubDomain   `json:"subdomain" gorm:"foreignKey:SubdomainID;constraint:OnDelete:CASCADE"`
+	Subdomain       *SubDomain      `json:"subdomain" gorm:"foreignKey:SubdomainID;constraint:OnDelete:CASCADE"`
 	Vulnerabilities []Vulnerability `json:"vulnerabilities" gorm:"foreignKey:EndPointID;constraint:OnDelete:CASCADE"`
 }
 
 // CreateEndpointsRequest 创建端点请求
 type CreateEndpointsRequest struct {
-	Endpoints []EndpointDetail `json:"endpoints" binding:"required"`
-	DomainID  *uint            `json:"domain_id"`
-	SubdomainID *uint          `json:"subdomain_id"`
+	Endpoints   []EndpointDetail `json:"endpoints" binding:"required"`
+	SubdomainID uint             `json:"subdomain_id" binding:"required"`
 }
 
 // EndpointDetail 端点详细信息
