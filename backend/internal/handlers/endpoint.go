@@ -95,7 +95,7 @@ func GetEndpointByID(c *gin.Context) {
 
 // CreateEndpoints 批量创建端点
 // @Summary 批量创建端点
-// @Description 批量创建端点，可关联到指定域名或子域名
+// @Description 批量创建端点，支持单个或多个端点创建，必须关联到指定子域名。subdomain_id 为必填字段
 // @Tags 端点管理
 // @Accept json
 // @Produce json
@@ -110,6 +110,12 @@ func CreateEndpoints(c *gin.Context) {
 		return
 	}
 
+	// 验证 subdomain_id 不能为空
+	if req.SubdomainID == 0 {
+		response.ValidationErrorResponse(c, "subdomain_id 不能为空")
+		return
+	}
+
 	if len(req.Endpoints) == 0 {
 		response.BadRequestResponse(c, "端点列表不能为空")
 		return
@@ -121,7 +127,7 @@ func CreateEndpoints(c *gin.Context) {
 			response.ValidationErrorResponse(c, fmt.Sprintf("第 %d 个端点的 URL 不能为空", i+1))
 			return
 		}
-		
+
 		// 使用 utils.ValidateHTTPURL 验证 URL 格式
 		if err := utils.ValidateHTTPURL(detail.URL); err != nil {
 			response.ValidationErrorResponse(c, fmt.Sprintf("第 %d 个端点的 URL 格式无效: %s", i+1, err.Error()))

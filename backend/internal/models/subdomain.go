@@ -12,7 +12,7 @@ type SubDomain struct {
 	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 
 	// 核心业务字段
-	Name     string `json:"name" gorm:"not null;size:255"`
+	Name     string `json:"name" gorm:"not null;size:255;index"`
 	DomainID uint   `json:"domain_id" gorm:"not null;index"`
 
 	// 关联关系
