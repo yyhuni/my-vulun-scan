@@ -183,24 +183,6 @@ export function OrganizationList() {
     return <LoadingState message="加载组织数据中..." />
   }
 
-  // 空数据状态
-  if (!data?.organizations || data.organizations.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <div className="rounded-full bg-muted p-3 mb-4">
-          <Building2 className="h-6 w-6 text-muted-foreground" />
-        </div>
-        <h3 className="text-lg font-semibold mb-2">暂无组织</h3>
-        <p className="text-muted-foreground text-center mb-4">
-          系统中还没有任何组织，点击下方按钮添加第一个组织
-        </p>
-        <Button onClick={() => setAddDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          添加组织
-        </Button>
-      </div>
-    )
-  }
 
   return (
     <div className="space-y-4">
