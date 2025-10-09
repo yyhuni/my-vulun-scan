@@ -44,6 +44,7 @@
     "snakecase-keys": "^9.0.2",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.1",
+    "validator": "^13.15.15",
     "vaul": "^1.1.2",
     "zod": "^4.1.11"
   },
@@ -54,6 +55,7 @@
     "@types/node": "^20.19.19",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/validator": "^13.15.3",
     "eslint": "^9",
     "eslint-config-next": "15.5.4",
     "tailwindcss": "^4",

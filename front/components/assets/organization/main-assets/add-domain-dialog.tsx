@@ -23,6 +23,8 @@ import { Textarea } from "@/components/ui/textarea"
 
 // 导入类型定义
 import type { Asset } from "@/types/asset.types"
+// 导入验证工具
+import { DomainValidator } from "@/lib/domain-validator"
 
 // 组件属性类型定义
 interface AddDomainDialogProps {
@@ -60,13 +62,6 @@ export function AddDomainDialog({
   // 使用 React Query 的创建域名 mutation
   const createDomain = useCreateDomain()
 
-  // 验证域名格式
-  const validateDomainName = (name: string): boolean => {
-    // 基本的域名格式验证
-    const domainRegex = /^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/
-    return domainRegex.test(name)
-  }
-
   // 处理表单提交
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -81,13 +76,11 @@ export function AddDomainDialog({
       return
     }
 
-    // 验证每个域名格式
-    const invalidDomains: string[] = []
-    for (const domain of domainLines) {
-      if (!validateDomainName(domain)) {
-        invalidDomains.push(domain)
-      }
-    }
+    // 使用 DomainValidator 进行批量验证
+    const validationResults = DomainValidator.validateDomainBatch(domainLines)
+    const invalidDomains = validationResults
+      .filter(result => !result.isValid)
+      .map(result => `${result.originalDomain}: ${result.error}`)
 
     if (invalidDomains.length > 0) {
       return

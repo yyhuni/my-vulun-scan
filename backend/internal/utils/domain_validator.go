@@ -3,8 +3,9 @@ package utils
 import (
 	"fmt"
 	"net"
-	"regexp"
 	"strings"
+
+	"github.com/asaskevich/govalidator"
 )
 
 // DomainValidationError 域名验证错误类型
@@ -108,7 +109,7 @@ func (v *DomainValidator) ValidateDomains(domains []string) []error {
 	return errors
 }
 
-// validateBasicFormat 基本格式验证
+// validateBasicFormat 基本格式验证 - 使用 govalidator
 func (v *DomainValidator) validateBasicFormat(domain string) error {
 	// 检查是否以点开头或结尾
 	if strings.HasPrefix(domain, ".") || strings.HasSuffix(domain, ".") {
@@ -126,14 +127,11 @@ func (v *DomainValidator) validateBasicFormat(domain string) error {
 		}
 	}
 
-	// RFC 1035 域名格式正则表达式
-	// 允许字母、数字、连字符，但不能以连字符开头或结尾
-	domainRegex := regexp.MustCompile(`^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$`)
-	
-	if !domainRegex.MatchString(domain) {
+	// 使用 govalidator 验证域名格式（更严格和可靠）
+	if !govalidator.IsDNSName(domain) {
 		return &DomainValidationError{
 			Domain: domain,
-			Reason: "域名格式不符合 RFC 1035 标准",
+			Reason: "域名格式不符合 DNS 标准",
 		}
 	}
 
@@ -189,9 +187,8 @@ func (v *DomainValidator) validateTLD(tld string) error {
 		}
 	}
 
-	// 顶级域名只能包含字母
-	tldRegex := regexp.MustCompile(`^[a-zA-Z]{2,}$`)
-	if !tldRegex.MatchString(tld) {
+	// 顶级域名只能包含字母（使用 govalidator 的字母验证）
+	if !govalidator.IsAlpha(tld) {
 		return &DomainValidationError{
 			Domain: tld,
 			Reason: "顶级域名只能包含字母",

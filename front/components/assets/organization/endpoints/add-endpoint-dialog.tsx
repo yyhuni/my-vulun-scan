@@ -25,6 +25,8 @@ import {
 
 // 导入类型定义
 import type { Endpoint, CreateEndpointRequest } from "@/types/endpoint.types"
+// 导入 URL 验证工具
+import { UrlValidator } from "@/lib/url-validator"
 
 // 组件属性类型定义
 interface AddEndpointDialogProps {
@@ -66,17 +68,7 @@ export function AddEndpointDialog({
   // 使用 React Query 的创建 Endpoint mutation
   const createEndpoint = useCreateEndpoint()
 
-  // 验证 URL 格式 - 只支持完整 URL
-  const validateUrl = (url: string): boolean => {
-    try {
-      const urlObj = new URL(url)
-      return ['http:', 'https:'].includes(urlObj.protocol)
-    } catch {
-      return false
-    }
-  }
-
-  // 实时验证 URLs
+  // 实时验证 URLs - 使用严格的验证工具
   useEffect(() => {
     const urls = urlsText
       .split('\n')
@@ -85,10 +77,13 @@ export function AddEndpointDialog({
     
     setParsedUrls(urls)
     
+    // 使用 UrlValidator 进行批量验证
+    const validationResults = UrlValidator.validateBatch(urls)
+    
     const errors: string[] = []
-    urls.forEach((url, index) => {
-      if (!validateUrl(url)) {
-        errors.push(`第 ${index + 1} 行: 无效的 URL 格式 - ${url}`)
+    validationResults.forEach((result) => {
+      if (!result.isValid) {
+        errors.push(`第 ${result.index + 1} 行: ${result.error} - ${result.originalUrl}`)
       }
     })
     
@@ -119,12 +114,6 @@ export function AddEndpointDialog({
     const endpoints: CreateEndpointRequest[] = urlLines.map(url => {
       return {
         url,
-        method: "GET",
-        statusCode: 200,
-        title: `GET ${url}`,
-        contentLength: 0,
-        domain: "",
-        subdomain: undefined,
       }
     })
 

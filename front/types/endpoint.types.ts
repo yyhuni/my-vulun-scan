@@ -40,19 +40,18 @@ export interface GetEndpointsResponse {
 
 // 创建 Endpoint 请求参数
 export interface CreateEndpointRequest {
-  url: string
-  method: string
-  statusCode: number
-  title: string
-  contentLength: number
-  domain: string
-  subdomain?: string
+  url: string                      // 必填
+  method?: string                  // 可选
+  statusCode?: number | null       // 可选
+  title?: string                   // 可选
+  contentLength?: number | null    // 可选
+  domain?: string                  // 可选
+  subdomain?: string               // 可选
 }
 
 // 更新 Endpoint 请求参数
 export interface UpdateEndpointRequest {
   id: number
-  url?: string
   method?: string
   statusCode?: number
   title?: string

@@ -28,9 +28,11 @@ import {
 } from "@/components/ui/select"
 
 // 导入类型定义
-import type { SubDomain } from "@/types/subdomain.types"
+import type { SubDomain } from '@/types/subdomain.types'
 import type { Asset } from "@/types/asset.types"
 import { useCreateSubdomain } from "@/hooks/use-subdomains"
+// 导入验证工具
+import { DomainValidator } from '@/lib/domain-validator'
 
 // 组件属性类型定义
 interface AddSubdomainDialogProps {
@@ -74,13 +76,6 @@ export function AddSubdomainDialog({
   // 使用 React Query mutation
   const createSubdomainMutation = useCreateSubdomain()
 
-  // 验证完整域名格式
-  const validateSubdomainName = (name: string): boolean => {
-    // 完整域名格式验证：必须包含至少一个点，且符合域名规范
-    // 例如：www.example.com, api.test.org, subdomain.domain.co.uk
-    const fullDomainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/
-    return fullDomainRegex.test(name) && name.includes('.')
-  }
 
   // 处理表单提交
   const handleSubmit = async (e: React.FormEvent) => {
@@ -101,16 +96,13 @@ export function AddSubdomainDialog({
       return
     }
 
-    // 验证每个子域名格式
-    const invalidSubdomains: string[] = []
-    for (const subdomain of subdomainLines) {
-      if (!validateSubdomainName(subdomain)) {
-        invalidSubdomains.push(subdomain)
-      }
-    }
+    // 使用 DomainValidator 进行批量验证
+    const validationResults = DomainValidator.validateSubdomainBatch(subdomainLines)
+    const invalidResults = validationResults.filter(result => !result.isValid)
 
-    if (invalidSubdomains.length > 0) {
-      toast.error(`以下子域名格式不正确：\n${invalidSubdomains.join(', ')}\n\n请输入完整的域名格式，如：www.example.com`)
+    if (invalidResults.length > 0) {
+      const errorMessages = invalidResults.map(r => `${r.originalDomain}: ${r.error}`).join('\n')
+      toast.error(`以下子域名格式不正确：\n${errorMessages}`)
       return
     }
 
