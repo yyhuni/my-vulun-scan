@@ -1,16 +1,19 @@
 // Endpoint 专用数据类型定义
+// 注意：后端返回 snake_case，但 api-client.ts 会自动转换为 camelCase
 
 export interface Endpoint {
   id: number
   url: string
   method: string
-  statusCode: number
+  statusCode: number      // 后端: status_code
   title: string
-  contentLength: number
-  domain: string
+  contentLength: number   // 后端: content_length
+  domainId: number        // 后端: domain_id
+  subdomainId?: number    // 后端: subdomain_id
+  domain?: string
   subdomain?: string
-  createdAt: string
-  updatedAt: string
+  createdAt: string       // 后端: created_at
+  updatedAt: string       // 后端: updated_at
 }
 
 // Endpoint 列表查询请求参数
@@ -26,11 +29,13 @@ export interface GetEndpointsRequest {
 }
 
 // Endpoint 列表响应数据
+// 注意：后端返回 snake_case，但 api-client.ts 会自动转换为 camelCase
 export interface GetEndpointsResponse {
-  data: Endpoint[]
+  endpoints: Endpoint[]
   total: number
   page: number
-  pageSize: number
+  pageSize: number      // 后端: page_size
+  totalPages: number    // 后端: total_pages
 }
 
 // 创建 Endpoint 请求参数

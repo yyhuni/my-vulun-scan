@@ -100,47 +100,45 @@ function DataTableColumnHeader({
 /**
  * HTTP 状态码徽章组件
  */
-function HttpStatusBadge({ statusCode }: { statusCode: number }) {
+function HttpStatusBadge({ statusCode }: { statusCode: number | null | undefined }) {
+  // 处理空值情况
+  if (statusCode === null || statusCode === undefined) {
+    return (
+      <Badge variant="outline" className="px-2 py-1 text-gray-700 border-gray-300 bg-gray-50">
+        -
+      </Badge>
+    )
+  }
+
   const getStatusInfo = (code: number) => {
     if (code >= 200 && code < 300) {
       return {
-        icon: <IconCircleCheckFilled className="fill-green-500 dark:fill-green-400" />,
-        variant: "default" as const,
         className: "text-green-700 border-green-300 bg-green-50"
       }
     } else if (code >= 300 && code < 400) {
       return {
-        icon: <IconLoader className="text-blue-500" />,
-        variant: "secondary" as const,
         className: "text-blue-700 border-blue-300 bg-blue-50"
       }
     } else if (code >= 400 && code < 500) {
       return {
-        icon: <IconAlertTriangle className="text-orange-500" />,
-        variant: "destructive" as const,
         className: "text-orange-700 border-orange-300 bg-orange-50"
       }
     } else if (code >= 500) {
       return {
-        icon: <IconX className="text-red-500" />,
-        variant: "destructive" as const,
         className: "text-red-700 border-red-300 bg-red-50"
       }
     } else {
       return {
-        icon: <IconLoader className="text-gray-500" />,
-        variant: "outline" as const,
         className: "text-gray-700 border-gray-300 bg-gray-50"
       }
     }
   }
 
-  const { icon, className } = getStatusInfo(statusCode)
+  const { className } = getStatusInfo(statusCode)
 
   return (
     <Badge variant="outline" className={`px-2 py-1 ${className}`}>
-      {icon}
-      <span className="ml-1">{statusCode}</span>
+      {statusCode}
     </Badge>
   )
 }
@@ -200,9 +198,41 @@ export const createEndpointColumns = ({
     cell: ({ row }) => {
       const url = row.getValue("url") as string
       return (
-        <div className="max-w-[300px] font-mono text-sm">
+        <div className="max-w-[400px] font-mono text-sm">
           <div className="truncate" title={url}>
             {url}
+          </div>
+        </div>
+      )
+    },
+  },
+
+  // Endpoint 列（从 URL 中提取路径）
+  {
+    id: "endpoint",
+    accessorFn: (row) => {
+      // 提供访问器函数用于排序
+      const getEndpointPath = (fullUrl: string) => {
+        try {
+          const urlObj = new URL(fullUrl)
+          return urlObj.pathname + urlObj.search + urlObj.hash
+        } catch {
+          // 如果 URL 解析失败，尝试简单的字符串处理
+          const match = fullUrl.match(/^https?:\/\/[^\/]+(.*)$/)
+          return match ? match[1] || '/' : fullUrl
+        }
+      }
+      return getEndpointPath(row.url)
+    },
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Endpoint" />
+    ),
+    cell: ({ row }) => {
+      const endpoint = row.getValue("endpoint") as string
+      return (
+        <div className="max-w-[200px] font-mono text-sm">
+          <div className="truncate" title={endpoint}>
+            {endpoint}
           </div>
         </div>
       )
@@ -269,34 +299,10 @@ export const createEndpointColumns = ({
       <DataTableColumnHeader column={column} title="内容大小(字节)" />
     ),
     cell: ({ row }) => {
-      const size = row.getValue("contentLength") as number
-      return <div className="font-mono text-sm">{size}</div>
-    },
-  },
-
-  // 域名列
-  {
-    accessorKey: "domain",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="域名" />
-    ),
-    cell: ({ row }) => {
-      const domain = row.getValue("domain") as string
-      return <div className="font-mono text-sm">{domain}</div>
-    },
-  },
-
-  // 子域名列
-  {
-    accessorKey: "subdomain",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="子域名" />
-    ),
-    cell: ({ row }) => {
-      const subdomain = row.getValue("subdomain") as string
+      const size = row.getValue("contentLength") as number | null | undefined
       return (
         <div className="font-mono text-sm">
-          {subdomain || "-"}
+          {size !== null && size !== undefined ? size : "-"}
         </div>
       )
     },

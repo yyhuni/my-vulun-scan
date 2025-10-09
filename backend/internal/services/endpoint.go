@@ -114,19 +114,19 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 
 		var existingEndpointsInDB []models.Endpoint
 		query := tx.Model(&models.Endpoint{}).Where("url IN ? AND method IN ?", urls, methods)
-		
+
 		if req.DomainID != nil {
 			query = query.Where("domain_id = ?", *req.DomainID)
 		} else {
 			query = query.Where("domain_id IS NULL")
 		}
-		
+
 		if req.SubdomainID != nil {
 			query = query.Where("subdomain_id = ?", *req.SubdomainID)
 		} else {
 			query = query.Where("subdomain_id IS NULL")
 		}
-		
+
 		if err := query.Find(&existingEndpointsInDB).Error; err != nil {
 			log.Error().Err(err).Msg("Failed to query existing endpoints")
 			return err
@@ -143,7 +143,7 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 		var newEndpoints []models.Endpoint
 		for _, detail := range req.Endpoints {
 			key := fmt.Sprintf("%s|%s", detail.URL, detail.Method)
-			
+
 			if existingMap[key] {
 				// 已存在，记录到列表
 				existingEndpoints = append(existingEndpoints, fmt.Sprintf("%s %s", detail.Method, detail.URL))

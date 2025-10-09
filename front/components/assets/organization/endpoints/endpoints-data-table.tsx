@@ -68,6 +68,11 @@ interface EndpointDataTableProps {
   searchPlaceholder?: string                     // 搜索框占位符
   searchColumn?: string                          // 搜索的列名
   addButtonText?: string                         // 添加按钮文本
+  // 服务器端分页支持
+  pagination?: { pageIndex: number; pageSize: number }  // 外部分页状态
+  onPaginationChange?: (pagination: { pageIndex: number; pageSize: number }) => void  // 分页变化回调
+  totalCount?: number                            // 总记录数
+  totalPages?: number                            // 总页数
 }
 
 /**
@@ -84,6 +89,10 @@ export function EndpointsDataTable({
   searchPlaceholder = "搜索端点...",
   searchColumn = "url",
   addButtonText = "添加",
+  pagination: externalPagination,
+  onPaginationChange,
+  totalCount,
+  totalPages,
 }: EndpointDataTableProps) {
   // 表格状态管理
   // 选中行状态，key为行id，value为true或false
@@ -94,11 +103,30 @@ export function EndpointsDataTable({
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   // 排序状态，key为列id，value为true或false
   const [sorting, setSorting] = React.useState<SortingState>([])
-  // 分页状态，pageIndex为当前页码，pageSize为每页显示的行数
-  const [pagination, setPagination] = React.useState<{ pageIndex: number, pageSize: number }>({
+  // 内部分页状态（客户端分页）
+  const [internalPagination, setInternalPagination] = React.useState<{ pageIndex: number, pageSize: number }>({
     pageIndex: 0,
     pageSize: 10,
   })
+  
+  // 使用外部分页或内部分页
+  const pagination = externalPagination || internalPagination
+  
+  // 分页变化处理
+  const handlePaginationChange = React.useCallback((updaterOrValue: any) => {
+    if (onPaginationChange) {
+      // 外部控制分页（服务器端分页）
+      if (typeof updaterOrValue === 'function') {
+        const newPagination = updaterOrValue(pagination)
+        onPaginationChange(newPagination)
+      } else {
+        onPaginationChange(updaterOrValue)
+      }
+    } else {
+      // 内部控制分页（客户端分页）
+      setInternalPagination(updaterOrValue)
+    }
+  }, [onPaginationChange, pagination])
 
   // 创建表格实例
   const table = useReactTable({
@@ -117,13 +145,15 @@ export function EndpointsDataTable({
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
-    onPaginationChange: setPagination,
+    onPaginationChange: handlePaginationChange,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    getPaginationRowModel: externalPagination ? undefined : getPaginationRowModel(), // 服务器端分页不需要客户端分页
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
+    manualPagination: !!externalPagination, // 启用手动分页
+    pageCount: totalPages, // 服务器端总页数
   })
 
   // 监听选中行变化，通知父组件
@@ -178,15 +208,14 @@ export function EndpointsDataTable({
                     >
                       {column.id === "id" && "ID"}
                       {column.id === "url" && "URL"}
+                      {column.id === "endpoint" && "Endpoint"}
                       {column.id === "method" && "方法"}
                       {column.id === "statusCode" && "状态码"}
                       {column.id === "title" && "标题"}
                       {column.id === "contentLength" && "大小"}
-                      {column.id === "domain" && "域名"}
-                      {column.id === "subdomain" && "子域名"}
                       {column.id === "createdAt" && "创建时间"}
                       {column.id === "updatedAt" && "更新时间"}
-                      {!["id", "url", "method", "statusCode", "title", "contentLength", "domain", "subdomain", "createdAt", "updatedAt"].includes(column.id) && column.id}
+                      {!["id", "url", "endpoint", "method", "statusCode", "title", "contentLength", "createdAt", "updatedAt"].includes(column.id) && column.id}
                     </DropdownMenuCheckboxItem>
                   )
                 })}
@@ -283,7 +312,7 @@ export function EndpointsDataTable({
         {/* 选中行信息 */}
         <div className="flex-1 text-sm text-muted-foreground">
           {table.getFilteredSelectedRowModel().rows.length} of{" "}
-          {table.getFilteredRowModel().rows.length} row(s) selected
+          {externalPagination ? totalCount : table.getFilteredRowModel().rows.length} row(s) selected
         </div>
 
         {/* 分页控制器 */}
@@ -315,7 +344,7 @@ export function EndpointsDataTable({
           {/* 页码信息 */}
           <div className="flex w-[100px] items-center justify-center text-sm font-medium">
             Page {table.getState().pagination.pageIndex + 1} of{" "}
-            {table.getPageCount()}
+            {externalPagination ? totalPages : table.getPageCount()}
           </div>
 
           {/* 分页按钮 */}
@@ -324,7 +353,7 @@ export function EndpointsDataTable({
               variant="outline"
               className="hidden h-8 w-8 p-0 lg:flex"
               onClick={() => table.setPageIndex(0)}
-              disabled={!table.getCanPreviousPage()}
+              disabled={externalPagination ? pagination.pageIndex === 0 : !table.getCanPreviousPage()}
             >
               <span className="sr-only">跳转到第一页</span>
               <IconChevronsLeft className="h-4 w-4" />
@@ -333,7 +362,7 @@ export function EndpointsDataTable({
               variant="outline"
               className="h-8 w-8 p-0"
               onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
+              disabled={externalPagination ? pagination.pageIndex === 0 : !table.getCanPreviousPage()}
             >
               <span className="sr-only">上一页</span>
               <IconChevronLeft className="h-4 w-4" />
@@ -342,7 +371,7 @@ export function EndpointsDataTable({
               variant="outline"
               className="h-8 w-8 p-0"
               onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
+              disabled={externalPagination ? pagination.pageIndex >= (totalPages || 1) - 1 : !table.getCanNextPage()}
             >
               <span className="sr-only">下一页</span>
               <IconChevronRight className="h-4 w-4" />
@@ -350,8 +379,8 @@ export function EndpointsDataTable({
             <Button
               variant="outline"
               className="hidden h-8 w-8 p-0 lg:flex"
-              onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-              disabled={!table.getCanNextPage()}
+              onClick={() => table.setPageIndex((totalPages || table.getPageCount()) - 1)}
+              disabled={externalPagination ? pagination.pageIndex >= (totalPages || 1) - 1 : !table.getCanNextPage()}
             >
               <span className="sr-only">跳转到最后一页</span>
               <IconChevronsRight className="h-4 w-4" />

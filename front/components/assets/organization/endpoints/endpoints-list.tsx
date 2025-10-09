@@ -1,10 +1,12 @@
 "use client"
 
 import React, { useState, useMemo } from "react"
-import { useQuery } from "@tanstack/react-query"
 import { EndpointsDataTable } from "./endpoints-data-table"
 import { createEndpointColumns } from "./endpoints-columns"
+import { AddEndpointDialog } from "./add-endpoint-dialog"
+import { EditEndpointDialog } from "./edit-endpoint-dialog"
 import { LoadingState } from "@/components/loading-spinner"
+import { useEndpoints } from "@/hooks/use-endpoints"
 import type { Endpoint } from "@/types/endpoint.types"
 
 /**
@@ -13,98 +15,32 @@ import type { Endpoint } from "@/types/endpoint.types"
  */
 export function EndpointsList({ organizationId }: { organizationId: string }) {
   const [selectedAssets, setSelectedAssets] = useState<Endpoint[]>([])
+  const [showAddDialog, setShowAddDialog] = useState(false)
+  const [editingEndpoint, setEditingEndpoint] = useState<Endpoint | null>(null)
+  
+  // 分页状态管理
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10
+  })
 
-  // 使用 React Query 获取模拟的 Endpoint 数据
+  // 使用 React Query 获取 Endpoint 数据
   const {
-    data: endpoints,
+    data: endpointsResponse,
     isLoading,
     error,
     refetch
-  } = useQuery({
-    queryKey: ['endpoints', organizationId],
-    queryFn: async (): Promise<Endpoint[]> => {
-      // 模拟获取 Endpoint 数据
-      const mockEndpoints: Endpoint[] = [
-        {
-          id: 7,
-          url: "https://api.example.com/api/v1/users",
-          method: "GET",
-          statusCode: 200,
-          title: "用户管理API",
-          contentLength: 1024,
-          domain: "example.com",
-          subdomain: "api.example.com",
-          createdAt: "2024-01-21T10:15:00Z",
-          updatedAt: "2024-03-14T15:30:00Z",
-        },
-        {
-          id: 8,
-          url: "https://api.example.com/api/v1/auth",
-          method: "POST",
-          statusCode: 201,
-          title: "认证API",
-          contentLength: 512,
-          domain: "example.com",
-          subdomain: "api.example.com",
-          createdAt: "2024-01-22T12:45:00Z",
-          updatedAt: "2024-03-13T11:20:00Z",
-        },
-        {
-          id: 9,
-          url: "https://admin.example.com/admin/login",
-          method: "GET",
-          statusCode: 200,
-          title: "管理员登录页面",
-          contentLength: 2048,
-          domain: "example.com",
-          subdomain: "admin.example.com",
-          createdAt: "2024-01-23T09:30:00Z",
-          updatedAt: "2024-03-12T14:15:00Z",
-        },
-        {
-          id: 10,
-          url: "https://admin.example.com/admin/dashboard",
-          method: "GET",
-          statusCode: 200,
-          title: "管理员仪表板",
-          contentLength: 4096,
-          domain: "example.com",
-          subdomain: "admin.example.com",
-          createdAt: "2024-01-24T11:20:00Z",
-          updatedAt: "2024-03-11T16:45:00Z",
-        },
-        {
-          id: 11,
-          url: "https://api.example.com/api/v1/products",
-          method: "GET",
-          statusCode: 404,
-          title: "产品API - 未找到",
-          contentLength: 256,
-          domain: "example.com",
-          subdomain: "api.example.com",
-          createdAt: "2024-01-25T14:30:00Z",
-          updatedAt: "2024-03-10T09:15:00Z",
-        },
-        {
-          id: 12,
-          url: "https://test.example.com/health",
-          method: "GET",
-          statusCode: 500,
-          title: "健康检查 - 服务器错误",
-          contentLength: 128,
-          domain: "example.com",
-          subdomain: "test.example.com",
-          createdAt: "2024-01-26T16:45:00Z",
-          updatedAt: "2024-03-09T12:30:00Z",
-        },
-      ]
-
-      // 模拟API延迟
-      await new Promise((resolve) => setTimeout(resolve, 500))
-      return mockEndpoints
-    },
-    staleTime: 5 * 60 * 1000, // 5分钟
+  } = useEndpoints({
+    page: pagination.pageIndex + 1, // API 使用 1-based 页码
+    pageSize: pagination.pageSize,
+    sortBy: 'updated_at',
+    sortOrder: 'desc'
   })
+  
+  // 提取 endpoints 数据
+  const endpoints = endpointsResponse?.endpoints || []
+  const totalCount = endpointsResponse?.total || 0
+  const totalPages = endpointsResponse?.totalPages || 0  // 注意：已被 api-client 转换为驼峰
 
   // 辅助函数 - 格式化日期
   const formatDate = (dateString: string): string => {
@@ -126,8 +62,14 @@ export function EndpointsList({ organizationId }: { organizationId: string }) {
 
   // 处理编辑资产
   const handleEditAsset = (endpoint: Endpoint) => {
-    // TODO: 实现编辑功能
-    console.info(`编辑端点功能开发中: ${endpoint.url}`)
+    setEditingEndpoint(endpoint)
+  }
+
+  // 处理编辑成功回调
+  const handleEditSuccess = (updatedEndpoint: Endpoint) => {
+    // 刷新数据
+    refetch()
+    setEditingEndpoint(null)
   }
 
   // 处理删除资产
@@ -147,8 +89,14 @@ export function EndpointsList({ organizationId }: { organizationId: string }) {
 
   // 处理添加 Endpoint
   const handleAddEndpoint = () => {
-    // TODO: 实现添加功能
-    console.info("添加 Endpoint 功能开发中")
+    setShowAddDialog(true)
+  }
+
+  // 处理添加成功回调
+  const handleAddSuccess = (newEndpoints: Endpoint[]) => {
+    // 刷新数据
+    refetch()
+    setShowAddDialog(false)
   }
 
   // 创建列定义
@@ -205,15 +153,43 @@ export function EndpointsList({ organizationId }: { organizationId: string }) {
   }
 
   return (
-    <EndpointsDataTable
-      data={endpoints}
-      columns={endpointColumns}
-      onAddNew={handleAddEndpoint}
-      onBulkDelete={handleBulkDelete}
-      onSelectionChange={setSelectedAssets}
-      searchPlaceholder="搜索端点..."
-      searchColumn="url"
-      addButtonText="添加 Endpoint"
-    />
+    <>
+      <EndpointsDataTable
+        data={endpoints}
+        columns={endpointColumns}
+        onAddNew={handleAddEndpoint}
+        onBulkDelete={handleBulkDelete}
+        onSelectionChange={setSelectedAssets}
+        searchPlaceholder="搜索 Endpoint..."
+        searchColumn="url"
+        addButtonText="添加 Endpoint"
+        pagination={pagination}
+        onPaginationChange={setPagination}
+        totalCount={totalCount}
+        totalPages={totalPages}
+      />
+      
+      {/* 添加 Endpoint 对话框 */}
+      <AddEndpointDialog
+        organizationId={organizationId}
+        onAdd={handleAddSuccess}
+        open={showAddDialog}
+        onOpenChange={setShowAddDialog}
+      />
+      
+      {/* 编辑 Endpoint 对话框 */}
+      {editingEndpoint && (
+        <EditEndpointDialog
+          endpoint={editingEndpoint}
+          onEdit={handleEditSuccess}
+          open={!!editingEndpoint}
+          onOpenChange={(open) => {
+            if (!open) {
+              setEditingEndpoint(null)
+            }
+          }}
+        />
+      )}
+    </>
   )
 }
