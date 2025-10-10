@@ -94,18 +94,9 @@ definitions:
     type: object
   vulun-scan-backend_internal_models.CreateSubDomainsResponseData:
     properties:
-      domains_created:
-        type: integer
-      existing_domains:
-        items:
-          type: string
-        type: array
       message:
+        description: 响应消息，包含创建结果的详细信息
         type: string
-      subdomains_created:
-        type: integer
-      total_requested:
-        type: integer
     type: object
   vulun-scan-backend_internal_models.DeleteDomainResponseData:
     properties:

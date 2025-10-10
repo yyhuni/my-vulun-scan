@@ -12,8 +12,8 @@ type SubDomain struct {
 	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 
 	// 核心业务字段
-	Name     string `json:"name" gorm:"not null;size:255;index"`
-	DomainID uint   `json:"domain_id" gorm:"not null;index"`
+	Name     string `json:"name" gorm:"not null;size:255;uniqueIndex;uniqueIndex:idx_subdomain_domain_name"`
+	DomainID uint   `json:"domain_id" gorm:"not null;index;uniqueIndex:idx_subdomain_domain_name"`
 
 	// 关联关系
 	Domain *Domain `json:"domain" gorm:"foreignKey:DomainID;constraint:OnDelete:CASCADE"`
@@ -53,20 +53,13 @@ type GetSubDomainsResponse struct {
 
 // CreateSubDomainsResponse 创建子域名响应（service 层使用）
 type CreateSubDomainsResponse struct {
-	SuccessCount      int      `json:"success_count"`
-	ExistingDomains   []string `json:"existing_domains"`
-	TotalRequested    int      `json:"total_requested"`
-	DomainsCreated    int      `json:"domains_created"`    // 新创建的根域名数量
-	SubdomainsCreated int      `json:"subdomains_created"` // 新创建的子域名数量
+	SubdomainsCreated     int `json:"subdomains_created"`      // 实际创建的子域名数量
+	TotalUniqueSubdomains int `json:"total_unique_subdomains"` // 去重后的唯一子域名总数
 }
 
 // CreateSubDomainsResponseData 创建子域名响应数据（handler 层返回给前端）
 type CreateSubDomainsResponseData struct {
-	Message           string   `json:"message"`
-	DomainsCreated    int      `json:"domains_created"`
-	SubdomainsCreated int      `json:"subdomains_created"`
-	ExistingDomains   []string `json:"existing_domains"`
-	TotalRequested    int      `json:"total_requested"`
+	Message string `json:"message"` // 响应消息，包含创建结果的详细信息
 }
 
 // GetOrgSubDomainsResponse 获取组织子域名响应

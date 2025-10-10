@@ -1569,23 +1569,9 @@ const docTemplate = `{
         "vulun-scan-backend_internal_models.CreateSubDomainsResponseData": {
             "type": "object",
             "properties": {
-                "domains_created": {
-                    "type": "integer"
-                },
-                "existing_domains": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
                 "message": {
+                    "description": "响应消息，包含创建结果的详细信息",
                     "type": "string"
-                },
-                "subdomains_created": {
-                    "type": "integer"
-                },
-                "total_requested": {
-                    "type": "integer"
                 }
             }
         },
