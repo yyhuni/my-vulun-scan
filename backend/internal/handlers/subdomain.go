@@ -132,18 +132,12 @@ func CreateSubDomains(c *gin.Context) {
 	// 计算已存在的子域名数量
 	alreadyExists := result.TotalUniqueSubdomains - result.SubdomainsCreated
 
-	// 构建响应消息
-	var message string
-	if alreadyExists > 0 {
-		message = fmt.Sprintf("成功创建 %d 个子域名，%d 个子域名已存在",
-			result.SubdomainsCreated, alreadyExists)
-	} else {
-		message = fmt.Sprintf("成功创建 %d 个子域名", result.SubdomainsCreated)
-	}
-
-	// 返回统一格式的成功响应
+	// 返回结构化数据，由前端构建友好的消息
 	response.SuccessResponse(c, models.CreateSubDomainsResponseData{
-		Message: message,
+		SubdomainsCreated:     result.SubdomainsCreated,
+		AlreadyExists:         alreadyExists,
+		SkippedDomains:        result.SkippedDomains,
+		TotalUniqueSubdomains: result.TotalUniqueSubdomains,
 	})
 }
 

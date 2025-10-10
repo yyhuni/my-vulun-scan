@@ -249,11 +249,16 @@ func (s *SubDomainService) CreateSubDomains(req models.CreateSubDomainsRequest) 
 
 	// ===== 步骤2：验证并映射域名ID =====
 	// 验证所有根域名是否存在且已关联到指定组织
-	// 返回：domainNameToIDMap[根域名] = 域名ID
-	// 如果有任何根域名不存在或未关联组织，会返回错误
-	domainNameToIDMap, err := s.validateAndMapDomains(rootToSubdomainsMap, req.OrganizationID)
-	if err != nil {
-		return nil, err
+	// 返回：domainNameToIDMap[根域名] = 域名ID, skippedDomains = 不存在或未关联的根域名列表
+	// 注意：这里采用部分成功策略，即使部分根域名无效也继续处理有效的
+	domainNameToIDMap, skippedDomains := s.validateAndMapDomains(rootToSubdomainsMap, req.OrganizationID)
+	
+	// 如果所有根域名都无效，直接返回
+	if len(domainNameToIDMap) == 0 {
+		return &models.CreateSubDomainsResponse{
+			TotalUniqueSubdomains: totalUniqueSubdomains,
+			SkippedDomains:        skippedDomains,
+		}, nil
 	}
 
 	// ===== 步骤3：构建插入映射 =====
@@ -276,6 +281,7 @@ func (s *SubDomainService) CreateSubDomains(req models.CreateSubDomainsRequest) 
 	if len(subdomainsToInsert) == 0 {
 		return &models.CreateSubDomainsResponse{
 			TotalUniqueSubdomains: totalUniqueSubdomains,
+			SkippedDomains:        skippedDomains,
 		}, nil
 	}
 
@@ -289,7 +295,8 @@ func (s *SubDomainService) CreateSubDomains(req models.CreateSubDomainsRequest) 
 	// 返回创建结果
 	return &models.CreateSubDomainsResponse{
 		SubdomainsCreated:     int(totalRowsInserted),  // 实际创建的子域名数量
-		TotalUniqueSubdomains: totalUniqueSubdomains, // 去重后的唯一子域名总数
+		TotalUniqueSubdomains: totalUniqueSubdomains,   // 去重后的唯一子域名总数
+		SkippedDomains:        skippedDomains,          // 被跳过的根域名列表
 	}, nil
 }
 
@@ -351,25 +358,25 @@ func (s *SubDomainService) collectAndDedupeSubdomains(domainGroups []models.Doma
 	return rootToSubdomainsMap, totalUniqueSubdomains
 }
 
-// validateAndMapDomains 验证并映射域名ID
+// validateAndMapDomains 验证并映射域名ID（部分成功模式）
 //
 // 功能说明：
 // 验证所有根域名是否存在于数据库中，并且已经关联到指定的组织
-// 如果所有根域名都有效，则返回「域名名称→域名ID」的映射关系
+// 采用部分成功策略：即使部分根域名无效，也会返回有效的域名映射
 //
 // 验证规则：
 // - 根域名必须在 domains 表中存在
 // - 根域名必须通过 organization_domains 表关联到指定的组织
-// - 如果有任何一个根域名不满足条件，整个操作失败（保证原子性）
+// - 无效的根域名会被记录到 skippedDomains 中，但不影响其他有效根域名的处理
 //
 // 参数：
 //   - rootToSubdomainsMap: 根域名到子域名的映射
 //   - orgID: 组织ID
 //
 // 返回：
-//   - map[string]uint: 域名名称到域名ID的映射
-//   - error: 如果有根域名不存在或未关联组织，返回详细的错误信息
-func (s *SubDomainService) validateAndMapDomains(rootToSubdomainsMap map[string]map[string]struct{}, orgID uint) (map[string]uint, error) {
+//   - map[string]uint: 有效的域名名称到域名ID的映射
+//   - []string: 被跳过的根域名列表（不存在或未关联组织）
+func (s *SubDomainService) validateAndMapDomains(rootToSubdomainsMap map[string]map[string]struct{}, orgID uint) (map[string]uint, []string) {
 	// 从 map 中提取所有根域名（用于 SQL IN 查询）
 	rootDomains := make([]string, 0, len(rootToSubdomainsMap))
 	for root := range rootToSubdomainsMap {
@@ -386,7 +393,9 @@ func (s *SubDomainService) validateAndMapDomains(rootToSubdomainsMap map[string]
 		Joins("JOIN organization_domains od ON od.domain_id = d.id").
 		Where("d.name IN ? AND od.organization_id = ?", rootDomains, orgID).
 		Find(&domains).Error; err != nil {
-		return nil, fmt.Errorf("查询根域名失败: %w", err)
+		// 数据库查询失败，返回空映射和所有根域名作为跳过列表
+		log.Error().Err(err).Msg("查询根域名失败")
+		return make(map[string]uint), rootDomains
 	}
 
 	// 构建域名名称到ID的映射（用于后续步骤）
@@ -395,26 +404,25 @@ func (s *SubDomainService) validateAndMapDomains(rootToSubdomainsMap map[string]
 		domainNameToIDMap[domain.Name] = domain.ID
 	}
 
-	// 检查是否有根域名缺失（不存在或未关联到组织）
+	// 收集被跳过的根域名（不存在或未关联到组织）
 	// 如果查询结果中没有某个根域名，说明它要么不存在，要么未关联到组织
-	var missingRootDomains []string
+	var skippedDomains []string
 	for _, root := range rootDomains {
 		if _, exists := domainNameToIDMap[root]; !exists {
-			missingRootDomains = append(missingRootDomains, root)
+			skippedDomains = append(skippedDomains, root)
 		}
 	}
 
-	// 如果有缺失的根域名，返回详细的错误信息
-	if len(missingRootDomains) > 0 {
-		return nil, fmt.Errorf(
-			"批量创建失败：以下 %d 个根域名不存在或未关联组织ID=%d: %v。请先在系统中添加这些域名并关联到组织",
-			len(missingRootDomains),
-			orgID,
-			missingRootDomains,
-		)
+	// 记录跳过的域名信息
+	if len(skippedDomains) > 0 {
+		log.Warn().
+			Uint("organization_id", orgID).
+			Strs("skipped_domains", skippedDomains).
+			Msg("部分根域名不存在或未关联组织，已跳过")
 	}
 
-	return domainNameToIDMap, nil
+	// 返回有效的域名映射和跳过的域名列表
+	return domainNameToIDMap, skippedDomains
 }
 
 // buildInsertionMap 构建待插入映射和全局子域名集合
@@ -449,7 +457,12 @@ func (s *SubDomainService) buildInsertionMap(
 	// 遍历所有根域名及其子域名
 	for rootDomainName, subdomainSet := range rootToSubdomainsMap {
 		// 获取根域名对应的数据库ID
-		domainID := domainNameToIDMap[rootDomainName]
+		domainID, exists := domainNameToIDMap[rootDomainName]
+		
+		// ✅ 跳过无效的根域名（已在 validateAndMapDomains 中被过滤）
+		if !exists || domainID == 0 {
+			continue
+		}
 		
 		// 收集域名ID（用于后续查询）
 		domainIDs = append(domainIDs, domainID)

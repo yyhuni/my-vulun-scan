@@ -27,6 +27,7 @@ export interface GetSubDomainsResponse {
 }
 
 export interface CreateSubDomainsRequest {
+  organizationId: number // 组织ID（必填）
   domainGroups: Array<{
     rootDomain: string
     subdomains: string[]
@@ -34,9 +35,8 @@ export interface CreateSubDomainsRequest {
 }
 
 export interface CreateSubDomainsResponse {
-  message: string
-  domainsCreated: number
-  subdomainsCreated: number
-  existingDomains: string[]
-  totalRequested: number
+  subdomainsCreated: number     // 实际创建的子域名数量
+  alreadyExists: number          // 已存在的子域名数量
+  skippedDomains: string[]       // 被跳过的根域名列表
+  totalUniqueSubdomains: number  // 请求的唯一子域名总数
 }

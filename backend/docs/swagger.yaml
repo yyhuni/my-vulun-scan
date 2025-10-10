@@ -94,9 +94,20 @@ definitions:
     type: object
   vulun-scan-backend_internal_models.CreateSubDomainsResponseData:
     properties:
-      message:
-        description: 响应消息，包含创建结果的详细信息
-        type: string
+      already_exists:
+        description: 已存在的子域名数量
+        type: integer
+      skipped_domains:
+        description: 被跳过的根域名列表
+        items:
+          type: string
+        type: array
+      subdomains_created:
+        description: 实际创建的子域名数量
+        type: integer
+      total_unique_subdomains:
+        description: 请求的唯一子域名总数
+        type: integer
     type: object
   vulun-scan-backend_internal_models.DeleteDomainResponseData:
     properties:
