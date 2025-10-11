@@ -391,7 +391,7 @@ func (s *DomainService) buildOrderClause(sortBy, sortOrder string) string {
 	return fmt.Sprintf("domains.%s %s", sortBy, sortOrder)
 }
 
-// UnlinkDomainFromOrganization 解除组织与域名的关联，如果域名成为孤儿则删除
+// DeleteDomainFromOrganization 从组织中删除域名，如果域名成为孤儿则彻底删除
 //
 // 业务逻辑说明：
 // 1. 验证组织和域名是否存在
@@ -412,7 +412,7 @@ func (s *DomainService) buildOrderClause(sortBy, sortOrder string) string {
 // 使用场景：
 // - 前端用户从组织中移除某个域名时调用
 // - 如果这是最后一个使用该域名的组织，域名会被自动删除
-func (s *DomainService) UnlinkDomainFromOrganization(req models.UnlinkDomainRequest) error {
+func (s *DomainService) DeleteDomainFromOrganization(req models.DeleteDomainRequest) error {
 
 	// 使用事务确保数据一致性：关联解除和孤儿域名删除要么全部成功，要么全部回滚
 	return s.db.Transaction(func(tx *gorm.DB) error {

@@ -8,6 +8,16 @@ import { EditMainAssetDialog } from "./edit-main-asset-dialog"
 import { LoadingState } from "@/components/loading-spinner"
 import { useCreateDomain, useDeleteDomainFromOrganization } from "@/hooks/use-domains"
 import { useOrganizationDomains } from "@/hooks/use-organizations"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import type { Asset } from "@/types/asset.types"
 
 /**
@@ -19,6 +29,11 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null)
+  
+  // 确认对话框状态
+  const [removeDialogOpen, setRemoveDialogOpen] = useState(false)
+  const [bulkRemoveDialogOpen, setBulkRemoveDialogOpen] = useState(false)
+  const [assetToRemove, setAssetToRemove] = useState<Asset | null>(null)
   
   // 分页状态
   const [pagination, setPagination] = useState({
@@ -68,10 +83,21 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
 
   // 处理移除资产（从组织中移除域名）
   const handleRemoveAsset = (asset: Asset) => {
+    setAssetToRemove(asset)
+    setRemoveDialogOpen(true)
+  }
+
+  // 确认移除单个资产
+  const confirmRemoveAsset = () => {
+    if (!assetToRemove) return
+    
     deleteDomainMutation.mutate({
       organizationId: parseInt(organizationId),
-      domainId: asset.id
+      domainId: assetToRemove.id
     })
+    
+    setRemoveDialogOpen(false)
+    setAssetToRemove(null)
   }
 
   // 处理批量移除（从组织中批量移除域名）
@@ -79,6 +105,13 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
     if (selectedAssets.length === 0) {
       return
     }
+    setBulkRemoveDialogOpen(true)
+  }
+
+  // 确认批量移除
+  const confirmBulkRemove = () => {
+    if (selectedAssets.length === 0) return
+    
     // 批量移除：依次调用移除操作
     selectedAssets.forEach(asset => {
       deleteDomainMutation.mutate({
@@ -86,6 +119,8 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
         domainId: asset.id
       })
     })
+    
+    setBulkRemoveDialogOpen(false)
     // 清空选中状态
     setSelectedAssets([])
   }
@@ -193,6 +228,78 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
           onEdit={handleEditSuccess}
         />
       )}
+
+      {/* 单个移除确认对话框 */}
+      <AlertDialog open={removeDialogOpen} onOpenChange={setRemoveDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认移除域名</AlertDialogTitle>
+            <AlertDialogDescription>
+              确定要从当前组织中移除以下域名吗？此操作将解除域名与组织的关联关系。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {assetToRemove && (
+            <div className="mt-2 p-3 bg-muted rounded-md">
+              <div className="flex flex-col space-y-1">
+                <div className="flex items-center">
+                  <span className="text-sm font-medium">域名：</span>
+                  <span className="ml-2 font-mono text-sm">{assetToRemove.name}</span>
+                </div>
+                {assetToRemove.description && (
+                  <div className="flex items-start">
+                    <span className="text-sm font-medium">描述：</span>
+                    <span className="ml-2 text-sm text-muted-foreground">{assetToRemove.description}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmRemoveAsset}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              确认移除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 批量移除确认对话框 */}
+      <AlertDialog open={bulkRemoveDialogOpen} onOpenChange={setBulkRemoveDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认批量移除</AlertDialogTitle>
+            <AlertDialogDescription>
+              确定要从当前组织中移除以下 {selectedAssets.length} 个域名吗？此操作将解除这些域名与组织的关联关系。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="mt-2 p-3 bg-muted rounded-md max-h-60 overflow-y-auto">
+            <ul className="text-sm space-y-2">
+              {selectedAssets.map((asset) => (
+                <li key={asset.id} className="flex flex-col space-y-1 border-b border-border pb-2 last:border-0 last:pb-0">
+                  <div className="flex items-center">
+                    <span className="font-medium font-mono">{asset.name}</span>
+                  </div>
+                  {asset.description && (
+                    <span className="text-muted-foreground text-xs">{asset.description}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmBulkRemove}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              确认移除全部
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

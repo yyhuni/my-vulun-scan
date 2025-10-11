@@ -89,14 +89,14 @@ export function useDeleteDomainFromOrganization() {
     mutationFn: (data: { organizationId: number; domainId: number }) => 
       DomainService.deleteDomainFromOrganization(data),
     onMutate: ({ organizationId, domainId }) => {
-      toast.loading('正在删除域名...', { id: `delete-${organizationId}-${domainId}` })
+      toast.loading('正在移除域名...', { id: `delete-${organizationId}-${domainId}` })
     },
     onSuccess: (response, { organizationId, domainId }) => {
       toast.dismiss(`delete-${organizationId}-${domainId}`)
       
       if (response.state === 'success') {
         // 使用后端返回的详细消息，如果没有则使用默认消息
-        const successMessage = response.data?.message || `成功从组织 ${organizationId} 删除域名 ${domainId}`
+        const successMessage = response.data?.message || `成功从组织 ID: ${organizationId} 移除域名 ID: ${domainId}`
         toast.success(successMessage)
         
         // 刷新相关查询
@@ -107,17 +107,17 @@ export function useDeleteDomainFromOrganization() {
           queryKey: ['organizations', 'detail', organizationId, 'domains'] 
         })
       } else {
-        throw new Error(response.message || '删除失败')
+        throw new Error(response.message || '移除失败')
       }
     },
     onError: (error: any, { organizationId, domainId }) => {
       toast.dismiss(`delete-${organizationId}-${domainId}`)
       
       if (process.env.NODE_ENV === 'development') {
-        console.error('删除域名失败:', error)
+        console.error('移除域名失败:', error)
       }
       
-      const errorMessage = error?.response?.data?.message || error?.message || '删除失败'
+      const errorMessage = error?.response?.data?.message || error?.message || '移除失败'
       toast.error(errorMessage)
     },
   })

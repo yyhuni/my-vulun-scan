@@ -193,7 +193,7 @@ func GetDomainsByOrgID(c *gin.Context) {
 // @Produce json
 // @Param organization_id path uint true "组织ID" example(1)
 // @Param domain_id path uint true "域名ID" example(2)
-// @Success 200 {object} models.APIResponse{data=models.UnlinkDomainResponseData} "删除成功"
+// @Success 200 {object} models.APIResponse{data=models.DeleteDomainResponseData} "删除成功"
 // @Failure 400 {object} models.APIResponse "请求参数错误"
 // @Failure 404 {object} models.APIResponse "组织、域名或关联不存在"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
@@ -210,31 +210,31 @@ func DeleteDomainFromOrganization(c *gin.Context) {
 	}
 
 	// 构建请求对象
-	req := models.UnlinkDomainRequest{
+	req := models.DeleteDomainRequest{
 		OrgID:    uri.OrganizationID,
 		DomainID: uri.DomainID,
 	}
 
 	service := services.NewDomainService()
-	err := service.UnlinkDomainFromOrganization(req)
+	err := service.DeleteDomainFromOrganization(req)
 	if err != nil {
 		switch err.Error() {
 		case "organization not found":
-			response.NotFoundResponse(c, fmt.Sprintf("组织 %d 不存在", uri.OrganizationID))
+			response.NotFoundResponse(c, fmt.Sprintf("组织 ID: %d 不存在", uri.OrganizationID))
 			return
 		case "domain not found":
-			response.NotFoundResponse(c, fmt.Sprintf("域名 %d 不存在", uri.DomainID))
+			response.NotFoundResponse(c, fmt.Sprintf("域名 ID: %d 不存在", uri.DomainID))
 			return
 		case "association not found":
-			response.NotFoundResponse(c, fmt.Sprintf("组织 %d 与域名 %d 之间不存在关联关系", uri.OrganizationID, uri.DomainID))
+			response.NotFoundResponse(c, fmt.Sprintf("组织 ID: %d 与域名 ID: %d 之间不存在关联关系", uri.OrganizationID, uri.DomainID))
 			return
 		default:
-			response.InternalServerErrorResponse(c, fmt.Sprintf("从组织 %d 删除域名 %d 失败: %s", uri.OrganizationID, uri.DomainID, err.Error()))
+			response.InternalServerErrorResponse(c, fmt.Sprintf("从组织 ID: %d 移除域名 ID: %d 失败: %s", uri.OrganizationID, uri.DomainID, err.Error()))
 			return
 		}
 	}
 
-	response.SuccessResponse(c, models.UnlinkDomainResponseData{
-		Message: fmt.Sprintf("成功从组织 %d 删除域名 %d", uri.OrganizationID, uri.DomainID),
+	response.SuccessResponse(c, models.DeleteDomainResponseData{
+		Message: fmt.Sprintf("成功从组织 ID: %d 移除域名 ID: %d", uri.OrganizationID, uri.DomainID),
 	})
 }
