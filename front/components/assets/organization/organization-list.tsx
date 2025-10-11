@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { Trash2, Plus, Building2 } from "lucide-react"
 
 // 导入 UI 组件
@@ -105,9 +106,10 @@ export function OrganizationList() {
     setEditDialogOpen(true)
   }
 
-  // 导航到详情页面
+  // 导航到详情页面（使用 Next.js 客户端路由）
+  const router = useRouter()
   const navigate = (path: string) => {
-    window.location.href = path
+    router.push(path)
   }
 
   // 创建列定义

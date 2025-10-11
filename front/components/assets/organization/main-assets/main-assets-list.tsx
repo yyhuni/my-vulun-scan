@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { MainAssetsDataTable } from "./main-assets-data-table"
 import { createMainAssetColumns } from "./main-assets-columns"
 import { AddDomainDialog } from "./add-domain-dialog"
@@ -71,9 +72,10 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
     })
   }
 
-  // 导航函数
+  // 导航函数（使用 Next.js 客户端路由）
+  const router = useRouter()
   const navigate = (path: string) => {
-    window.location.href = path
+    router.push(path)
   }
 
   // 处理编辑资产

@@ -34,7 +34,7 @@ definitions:
       message:
         type: string
       success_count:
-        description: 成功删除的数量
+        description: 成功移除的数量
         type: integer
     type: object
   vulun-scan-backend_internal_models.BatchDeleteOrgsRequest:
@@ -968,7 +968,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 删除成功
+          description: 移除成功
           schema:
             allOf:
             - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
@@ -988,7 +988,42 @@ paths:
           description: 服务器内部错误
           schema:
             $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
-      summary: 从组织中删除域名
+      summary: 从组织中移除域名
+      tags:
+      - 域名管理
+  /organizations/{organization_id}/domains/batch-remove:
+    post:
+      consumes:
+      - application/json
+      description: 批量解除指定组织与多个域名的关联关系，如果域名成为孤儿（没有任何组织关联）则自动删除该域名
+      parameters:
+      - description: 批量移除请求，包含组织ID和域名ID列表
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/vulun-scan-backend_internal_models.BatchDeleteDomainsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 移除成功，返回成功和失败的统计信息
+          schema:
+            allOf:
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.BatchDeleteDomainsResponseData'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+      summary: 批量从组织中移除域名
       tags:
       - 域名管理
   /organizations/batch-delete:
@@ -1030,41 +1065,6 @@ paths:
       summary: 批量删除组织
       tags:
       - 组织管理
-  /organizations/batch-delete-domains:
-    post:
-      consumes:
-      - application/json
-      description: 批量解除指定组织与多个域名的关联关系，如果域名成为孤儿（没有任何组织关联）则自动删除该域名
-      parameters:
-      - description: 批量删除请求，包含组织ID和域名ID列表
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/vulun-scan-backend_internal_models.BatchDeleteDomainsRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 删除成功，返回成功和失败的统计信息
-          schema:
-            allOf:
-            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/vulun-scan-backend_internal_models.BatchDeleteDomainsResponseData'
-              type: object
-        "400":
-          description: 请求参数错误
-          schema:
-            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
-        "500":
-          description: 服务器内部错误
-          schema:
-            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
-      summary: 批量从组织中删除域名
-      tags:
-      - 域名管理
   /organizations/create:
     post:
       consumes:

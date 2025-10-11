@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { SubdomainsDataTable } from "./subdomains-data-table"
 import { createSubdomainColumns } from "./subdomains-columns"
 import { AddSubdomainDialog } from "./add-subdomain-dialog"
@@ -61,9 +62,10 @@ export function SubdomainsList({ organizationId }: { organizationId: string }) {
     })
   }
 
-  // 导航函数
+  // 导航函数（使用 Next.js 客户端路由）
+  const router = useRouter()
   const navigate = (path: string) => {
-    window.location.href = path
+    router.push(path)
   }
 
   // 处理编辑子域名

@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { EndpointsDataTable } from "./endpoints-data-table"
 import { createEndpointColumns } from "./endpoints-columns"
 import { AddEndpointDialog } from "./add-endpoint-dialog"
@@ -55,9 +56,10 @@ export function EndpointsList({ organizationId }: { organizationId: string }) {
     })
   }
 
-  // 导航函数
+  // 导航函数（使用 Next.js 客户端路由）
+  const router = useRouter()
   const navigate = (path: string) => {
-    window.location.href = path
+    router.push(path)
   }
 
   // 处理编辑资产

@@ -21,3 +21,4 @@ trigger: always_on
 20.后端参数处理（包括验证、默认值设置、格式转换等）都应该在 handler 层完成
 21.后端数据库模型不允许用omitempty省略 json，防止 debug 时候很难查找溯源
 22.域名校验验证应该放在 hanlder 层
+23.前端非必要不要采用window.location.href去跳转，而是用Next.js 客户端路由
