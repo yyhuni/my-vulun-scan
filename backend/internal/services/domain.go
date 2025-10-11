@@ -1,9 +1,10 @@
 package services
 
 import (
+	"errors"
 	"fmt"
 
-	"vulun-scan-backend/internal/errors"
+	customErrors "vulun-scan-backend/internal/errors"
 	"vulun-scan-backend/internal/models"
 	"vulun-scan-backend/pkg/database"
 
@@ -199,7 +200,7 @@ func (s *DomainService) GetDomainByID(id uint) (*models.Domain, error) {
 	result := s.db.First(&domain, "id = ?", id)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
-			return nil, errors.ErrDomainNotFound
+			return nil, customErrors.ErrDomainNotFound
 		}
 		log.Error().Err(result.Error).Msg("Failed to query domain")
 		return nil, result.Error
@@ -226,7 +227,7 @@ func (s *DomainService) UpdateDomain(req models.UpdateDomainRequest) (*models.Do
 	if err := s.db.First(&domain, "id = ?", req.ID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			log.Error().Uint("domain_id", req.ID).Msg("Domain not found")
-			return nil, errors.ErrDomainNotFound
+			return nil, customErrors.ErrDomainNotFound
 		}
 		log.Error().Err(err).Msg("Failed to query domain")
 		return nil, err
@@ -421,7 +422,7 @@ func (s *DomainService) DeleteDomainFromOrganization(req models.DeleteDomainRequ
 		if err := tx.First(&domain, "id = ?", req.DomainID).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
 				log.Error().Uint("domain_id", req.DomainID).Msg("Domain not found")
-				return errors.ErrDomainNotFound
+				return customErrors.ErrDomainNotFound
 			}
 			log.Error().Err(err).Msg("Failed to query domain")
 			return err
@@ -443,7 +444,7 @@ func (s *DomainService) DeleteDomainFromOrganization(req models.DeleteDomainRequ
 				Uint("organization_id", req.OrgID).
 				Uint("domain_id", req.DomainID).
 				Msg("Association not found")
-			return errors.ErrAssociationNotFound
+			return customErrors.ErrAssociationNotFound
 		}
 
 		// 步骤3: 删除组织和域名的关联关系
@@ -491,4 +492,52 @@ func (s *DomainService) DeleteDomainFromOrganization(req models.DeleteDomainRequ
 
 		return nil
 	})
+}
+
+// BatchDeleteDomainsFromOrganization 批量从组织中删除域名
+//
+// 业务逻辑说明：
+// 1. 循环处理每个域名，调用单个删除逻辑
+// 2. 统计成功和失败的数量
+// 3. 每个域名的删除是独立的事务
+//
+// 注意事项：
+// - 每个域名的删除是独立的事务，一个失败不影响其他
+// - 如果某个域名不存在或关联不存在，会记录为失败但继续处理其他域名
+// - 如果域名成为孤儿会自动删除（由单个删除逻辑处理）
+func (s *DomainService) BatchDeleteDomainsFromOrganization(req models.BatchDeleteDomainsRequest) (int, int, error) {
+	successCount := 0
+	failedCount := 0
+
+	for _, domainID := range req.DomainIDs {
+		// 构建单个删除请求
+		deleteReq := models.DeleteDomainRequest{
+			OrgID:    req.OrgID,
+			DomainID: domainID,
+		}
+
+		// 调用单个删除逻辑（内部会自动处理孤儿域名删除）
+		err := s.DeleteDomainFromOrganization(deleteReq)
+		if err != nil {
+			log.Error().
+				Uint("organization_id", req.OrgID).
+				Uint("domain_id", domainID).
+				Err(err).
+				Msg("Failed to delete domain from organization")
+			failedCount++
+			continue
+		}
+
+		successCount++
+		log.Info().
+			Uint("organization_id", req.OrgID).
+			Uint("domain_id", domainID).
+			Msg("Domain deleted from organization successfully")
+	}
+
+	if successCount == 0 && failedCount > 0 {
+		return successCount, failedCount, errors.New("所有域名删除失败")
+	}
+
+	return successCount, failedCount, nil
 }

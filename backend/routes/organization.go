@@ -32,7 +32,7 @@ func SetupOrganizationRoutes(api *gin.RouterGroup) {
 		// 请求体示例：{"id": 1}
 		organizations.POST("/delete", handlers.DeleteOrganization)
 
-		// 批量删除组织 - 支持一次删除多个组织（待实现完善）
+		// 批量删除组织 - 支持一次删除多个组织
 		// 请求体示例：{"organization_ids": [1, 2, 3]}
 		organizations.POST("/batch-delete", handlers.BatchDeleteOrganizations)
 	}

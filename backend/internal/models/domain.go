@@ -69,3 +69,16 @@ type GetOrgDomainsResponse struct {
 type DeleteDomainResponseData struct {
 	Message string `json:"message"`
 }
+
+// BatchDeleteDomainsRequest 批量从组织删除域名请求
+type BatchDeleteDomainsRequest struct {
+	OrgID     uint   `json:"organization_id" binding:"required"`
+	DomainIDs []uint `json:"domain_ids" binding:"required"`
+}
+
+// BatchDeleteDomainsResponseData 批量删除域名响应数据
+type BatchDeleteDomainsResponseData struct {
+	Message      string `json:"message"`
+	SuccessCount int    `json:"success_count"` // 成功删除的数量
+	FailedCount  int    `json:"failed_count"`  // 失败的数量
+}
