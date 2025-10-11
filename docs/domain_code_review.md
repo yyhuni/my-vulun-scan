@@ -188,52 +188,67 @@ if err != nil {
 
 ## 🟡 优化建议
 
-### 5. 后端：UpdateDomain 允许清空描述字段
+### 5. ✅ 已修复：UpdateDomain 允许清空描述字段
 
-**位置**: `backend/internal/services/domain.go:224-270`
+**位置**: `backend/internal/services/domain.go:246-266`
 
 **问题描述**:  
 当前实现中，如果 `req.Description` 为空字符串，则不会更新该字段。但用户可能希望清空描述。
 
-**当前逻辑**:
-```go
-if req.Description != "" {  // 空字符串不会被更新
-	updateData["description"] = req.Description
-}
-```
+**修复方案**:  
+采用指针类型方案，可以区分"不更新"和"清空"三种状态：
+- `nil`: 不更新该字段
+- 空字符串 `""`: 清空该字段
+- 有值: 更新为新值
 
-**优化建议**:  
-使用指针类型或添加一个显式的"清空"标志：
+**修复后的代码**:
 
-**方案1：使用指针类型**
 ```go
-// models/domain.go
+// models/domain.go - 使用指针类型
 type UpdateDomainRequest struct {
 	ID          uint    `json:"id" binding:"required"`
-	Name        *string `json:"name"`         // 使用指针
-	Description *string `json:"description"`  // 使用指针
+	Name        *string `json:"name"`        // nil=不更新，有值=更新
+	Description *string `json:"description"` // nil=不更新，空字符串=清空，有值=更新
 }
 
-// services/domain.go
+// services/domain.go - 处理指针类型
+updateData := make(map[string]interface{})
 if req.Name != nil {
 	updateData["name"] = *req.Name
 }
 if req.Description != nil {
 	updateData["description"] = *req.Description  // 可以是空字符串
 }
-```
 
-**方案2：显式标志**
-```go
-type UpdateDomainRequest struct {
-	ID                uint   `json:"id" binding:"required"`
-	Name              string `json:"name"`
-	Description       string `json:"description"`
-	ClearDescription  bool   `json:"clear_description"`
+// handlers/domain.go - 验证逻辑调整
+if req.Name != nil && *req.Name != "" {
+	if err := utils.ValidateDomain(*req.Name); err != nil {
+		// 验证失败
+	}
 }
 ```
 
-**影响**: 用户体验受限，无法主动清空域名描述。
+**前端调用示例**:
+```typescript
+// 只更新名称，不动描述
+updateDomain({ id: 1, name: "new-domain.com" })
+
+// 清空描述
+updateDomain({ id: 1, description: "" })
+
+// 更新描述
+updateDomain({ id: 1, description: "新的描述" })
+
+// 同时更新
+updateDomain({ id: 1, name: "new-domain.com", description: "新的描述" })
+```
+
+**修复效果**:
+- ✅ 支持只更新部分字段（不传的字段不会被更新）
+- ✅ 支持清空描述字段（传空字符串）
+- ✅ API 语义更清晰，符合 REST 最佳实践
+- ✅ 前端可以精确控制更新行为
+- ✅ 更新了 Swagger 文档说明字段更新规则
 
 ---
 
@@ -512,15 +527,15 @@ export function useCreateDomain(options?: {
 ### 高优先级（必须修复）- ✅ 已完成
 1. ✅ **修复问题 #1**: GetDomainByID 返回专用响应结构（已优化）
 2. ✅ **修复问题 #3**: Domain Types 字段命名不一致（已修复）
-3. ✅ **修复问题 #6**: CreateDomains API 文档完善（已补充）
+3. ✅ **修复问题 #5**: UpdateDomain 允许清空描述字段（已优化）
+4. ✅ **修复问题 #6**: CreateDomains API 文档完善（已补充）
 
-### 中优先级（建议修复）- 🔄 部分完成
-4. ⚠️ **修复问题 #2**: DeleteDomainFromOrganization 未验证组织存在性
-5. ⚠️ **修复问题 #4**: Handler 错误处理使用字符串匹配
-6. ⚠️ **优化建议 #9**: useDomain Hook 错误处理
+### 中优先级（建议修复）- 🔄 待处理
+5. ⚠️ **修复问题 #2**: DeleteDomainFromOrganization 未验证组织存在性
+6. ⚠️ **修复问题 #4**: Handler 错误处理使用字符串匹配
+7. ⚠️ **优化建议 #9**: useDomain Hook 错误处理
 
 ### 低优先级（可选优化）- 📋 待评估
-7. ⚠️ **优化建议 #5**: UpdateDomain 允许清空描述字段
 8. 🚫 **不采用 #7**: 批量删除性能优化（保持当前独立事务方案）
 9. ⚠️ **优化建议 #8**: GetDomainsByOrgID 查询优化
 10. ⚠️ **优化建议 #10**: Toast 提示灵活性
@@ -529,7 +544,8 @@ export function useCreateDomain(options?: {
 - ✅ 创建了 `DomainResponseData` 专用响应结构体
 - ✅ 修复了前端类型定义的命名不一致问题
 - ✅ 完善了 API 文档的幂等性行为说明
-- ✅ 更新了 Swagger 文档
+- ✅ 实现了 UpdateDomain 指针类型支持，可以清空描述字段
+- ✅ 更新了前后端代码和 Swagger 文档
 
 ---
 
@@ -562,12 +578,13 @@ export function useCreateDomain(options?: {
 ## 📌 总结
 
 ### 审查成果
-本次审查共发现 **10 个问题/优化点**，已完成 **3 个高优先级修复**：
+本次审查共发现 **10 个问题/优化点**，已完成 **4 个高优先级修复**：
 
 ✅ **已完成修复**:
 1. **问题 #1**: 创建 `DomainResponseData` 专用响应结构，不包含不必要的组织关联字段
 2. **问题 #3**: 修复前端 Domain 类型定义，使用下划线命名与后端保持一致
-3. **问题 #6**: 完善 CreateDomains API 文档，明确说明幂等性行为和业务场景
+3. **问题 #5**: 实现 UpdateDomain 指针类型支持，可以清空描述字段
+4. **问题 #6**: 完善 CreateDomains API 文档，明确说明幂等性行为和业务场景
 
 ⚠️ **待修复**（中优先级）:
 - **问题 #2**: DeleteDomainFromOrganization 未验证组织存在性
@@ -579,12 +596,14 @@ export function useCreateDomain(options?: {
 ### 代码质量提升
 - **响应结构优化**: 减少不必要的数据传输，API 设计更清晰
 - **类型安全增强**: 前后端类型定义完全一致，避免运行时错误
-- **文档完善**: API 使用者能清楚了解幂等性行为和重复数据处理逻辑
+- **API 语义改进**: 使用指针类型精确控制字段更新行为，符合 REST 最佳实践
+- **文档完善**: API 使用者能清楚了解幂等性行为和字段更新规则
+- **用户体验提升**: 前端可以精确控制更新哪些字段，支持清空操作
 - **技术债务**: 明确记录了需要改进的错误处理方式
 
 ### 后续建议
 1. **优先处理错误处理规范化**（问题 #2 和 #4），使用自定义错误类型替代字符串匹配
-2. **评估是否需要支持清空描述字段**（问题 #5），根据实际业务需求决定
-3. **前端 Hook 层优化**（问题 #9 和 #10），提升错误处理和灵活性
+2. **前端 Hook 层优化**（问题 #9 和 #10），提升错误处理和灵活性
+3. **考虑其他模块应用类似优化**：将指针类型更新模式推广到其他更新接口
 
-Domain 模块经过本次审查和修复，代码质量有明显提升，前后端一致性和 API 文档质量显著改善。
+Domain 模块经过本次审查和修复，代码质量有明显提升，前后端一致性、API 设计和用户体验都得到显著改善。

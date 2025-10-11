@@ -177,7 +177,7 @@ export function useUpdateDomain() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { name: string; description?: string } }) =>
+    mutationFn: ({ id, data }: { id: number; data: { name?: string; description?: string } }) =>
       DomainService.updateDomain({ id, ...data }),
     onMutate: ({ id }) => {
       toast.loading('正在更新域名...', { id: `update-domain-${id}` })

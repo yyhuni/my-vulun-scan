@@ -40,20 +40,26 @@ export class DomainService {
    * 更新域名信息
    * @param data - 更新请求对象
    * @param data.id - 域名ID
-   * @param data.name - 域名名称
-   * @param data.description - 域名描述
+   * @param data.name - 域名名称（可选，不传表示不更新）
+   * @param data.description - 域名描述（可选，不传表示不更新，传空字符串表示清空）
    * @returns Promise<ApiResponse<Domain>>
    */
   static async updateDomain(data: {
     id: number
-    name: string
+    name?: string
     description?: string
   }): Promise<ApiResponse<Domain>> {
-    const response = await api.post<ApiResponse<Domain>>('/domains/update', {
-      id: data.id,
-      name: data.name,
-      description: data.description || ''
-    })
+    const requestBody: any = { id: data.id }
+    
+    // 只传递有值的字段，undefined 会被忽略
+    if (data.name !== undefined) {
+      requestBody.name = data.name
+    }
+    if (data.description !== undefined) {
+      requestBody.description = data.description
+    }
+    
+    const response = await api.post<ApiResponse<Domain>>('/domains/update', requestBody)
     return response.data
   }
 
