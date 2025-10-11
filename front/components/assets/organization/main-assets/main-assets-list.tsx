@@ -6,7 +6,7 @@ import { createMainAssetColumns } from "./main-assets-columns"
 import { AddDomainDialog } from "./add-domain-dialog"
 import { EditMainAssetDialog } from "./edit-main-asset-dialog"
 import { LoadingState } from "@/components/loading-spinner"
-import { useCreateDomain } from "@/hooks/use-domains"
+import { useCreateDomain, useDeleteDomainFromOrganization } from "@/hooks/use-domains"
 import { useOrganizationDomains } from "@/hooks/use-organizations"
 import type { Asset } from "@/types/asset.types"
 
@@ -39,6 +39,9 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
     sortOrder: "desc"
   })
 
+  // 移除域名 mutation
+  const deleteDomainMutation = useDeleteDomainFromOrganization()
+
   // 辅助函数 - 格式化日期
   const formatDate = (dateString: string): string => {
     return new Date(dateString).toLocaleString("zh-CN", {
@@ -63,19 +66,28 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
     setIsEditDialogOpen(true)
   }
 
-  // 处理删除资产
-  const handleDeleteAsset = (asset: Asset) => {
-    // TODO: 实现删除功能
-    console.info(`删除资产功能开发中: ${asset.name}`)
+  // 处理移除资产（从组织中移除域名）
+  const handleRemoveAsset = (asset: Asset) => {
+    deleteDomainMutation.mutate({
+      organizationId: parseInt(organizationId),
+      domainId: asset.id
+    })
   }
 
-  // 处理批量删除
-  const handleBulkDelete = () => {
+  // 处理批量移除（从组织中批量移除域名）
+  const handleBulkRemove = () => {
     if (selectedAssets.length === 0) {
       return
     }
-    // TODO: 实现批量删除功能
-    console.info(`批量删除功能开发中，选中 ${selectedAssets.length} 个资产`)
+    // 批量移除：依次调用移除操作
+    selectedAssets.forEach(asset => {
+      deleteDomainMutation.mutate({
+        organizationId: parseInt(organizationId),
+        domainId: asset.id
+      })
+    })
+    // 清空选中状态
+    setSelectedAssets([])
   }
 
   // 处理添加主资产
@@ -108,9 +120,9 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
         formatDate,
         navigate,
         handleEdit: handleEditAsset,
-        handleDelete: handleDeleteAsset,
+        handleRemove: handleRemoveAsset,
       }),
-    [formatDate, navigate, handleEditAsset, handleDeleteAsset]
+    [formatDate, navigate, handleEditAsset, handleRemoveAsset]
   )
 
   // 错误状态
@@ -147,7 +159,7 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
         data={data.domains}
         columns={mainAssetColumns}
         onAddNew={handleAddMainAsset}
-        onBulkDelete={handleBulkDelete}
+        onBulkRemove={handleBulkRemove}
         onSelectionChange={setSelectedAssets}
         searchPlaceholder="搜索主资产..."
         searchColumn="name"

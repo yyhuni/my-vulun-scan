@@ -391,7 +391,7 @@ func (s *DomainService) buildOrderClause(sortBy, sortOrder string) string {
 	return fmt.Sprintf("domains.%s %s", sortBy, sortOrder)
 }
 
-// RemoveOrganizationDomain 解除组织与域名的关联，如果域名成为孤儿则删除
+// UnlinkDomainFromOrganization 解除组织与域名的关联，如果域名成为孤儿则删除
 //
 // 业务逻辑说明：
 // 1. 验证组织和域名是否存在
@@ -412,7 +412,7 @@ func (s *DomainService) buildOrderClause(sortBy, sortOrder string) string {
 // 使用场景：
 // - 前端用户从组织中移除某个域名时调用
 // - 如果这是最后一个使用该域名的组织，域名会被自动删除
-func (s *DomainService) RemoveOrganizationDomain(req models.RemoveOrgDomainRequest) error {
+func (s *DomainService) UnlinkDomainFromOrganization(req models.UnlinkDomainRequest) error {
 
 	// 使用事务确保数据一致性：关联解除和孤儿域名删除要么全部成功，要么全部回滚
 	return s.db.Transaction(func(tx *gorm.DB) error {
@@ -489,53 +489,6 @@ func (s *DomainService) RemoveOrganizationDomain(req models.RemoveOrgDomainReque
 				Str("domain_name", domain.Name).
 				Msg("Orphan domain deleted")
 		}
-
-		return nil
-	})
-}
-
-// DeleteDomain 根据ID删除域名
-//
-// 业务逻辑说明：
-// 1. 验证域名是否存在
-// 2. 删除域名（会级联删除所有关联的子域名、端点和漏洞）
-// 3. 自动清理组织关联关系（通过 GORM 的 many2many 自动处理）
-//
-// 级联删除链：
-// Domain -> SubDomains -> Endpoints -> Vulnerabilities
-// Domain -> Endpoints -> Vulnerabilities
-// Domain -> Vulnerabilities
-//
-// 安全考虑：
-// - 使用事务确保数据一致性
-// - 级联删除通过数据库约束自动处理，避免孤儿记录
-func (s *DomainService) DeleteDomain(id uint) error {
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		// 步骤1: 验证域名是否存在
-		var domain models.Domain
-		if err := tx.First(&domain, "id = ?", id).Error; err != nil {
-			if err == gorm.ErrRecordNotFound {
-				log.Warn().Uint("domain_id", id).Msg("Domain not found for deletion")
-				return errors.ErrDomainNotFound
-			}
-			log.Error().Err(err).Uint("domain_id", id).Msg("Failed to query domain for deletion")
-			return fmt.Errorf("查询域名失败: %w", err)
-		}
-
-		// 步骤2: 删除域名（级联删除会自动处理关联数据）
-		// 注意：删除 Domain 会级联删除所有 SubDomains（包括根子域名），进而级联删除所有 Endpoints
-		if err := tx.Select("Organizations", "SubDomains", "Vulnerabilities").Delete(&domain).Error; err != nil {
-			log.Error().Err(err).
-				Uint("domain_id", id).
-				Str("domain_name", domain.Name).
-				Msg("Failed to delete domain")
-			return fmt.Errorf("删除域名失败: %w", err)
-		}
-
-		log.Info().
-			Uint("domain_id", id).
-			Str("domain_name", domain.Name).
-			Msg("Domain deleted successfully with all associations")
 
 		return nil
 	})

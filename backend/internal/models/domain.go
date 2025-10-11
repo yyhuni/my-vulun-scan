@@ -41,8 +41,8 @@ type UpdateDomainRequest struct {
 	Description string `json:"description"`
 }
 
-// RemoveOrgDomainRequest 移除组织域名关联请求
-type RemoveOrgDomainRequest struct {
+// UnlinkDomainRequest 解除组织域名关联请求
+type UnlinkDomainRequest struct {
 	OrgID    uint `json:"organization_id" binding:"required"`
 	DomainID uint `json:"domain_id" binding:"required"`
 }
@@ -65,17 +65,7 @@ type GetOrgDomainsResponse struct {
 	TotalPages int      `json:"total_pages"`
 }
 
-// RemoveOrgDomainResponseData 解除组织域名关联响应数据
-type RemoveOrgDomainResponseData struct {
-	Message string `json:"message"`
-}
-
-// DeleteDomainRequest 删除域名请求
-type DeleteDomainRequest struct {
-	ID uint `uri:"id" binding:"required"` // 域名ID（路径参数）
-}
-
-// DeleteDomainResponseData 删除域名响应数据
-type DeleteDomainResponseData struct {
+// UnlinkDomainResponseData 解除组织域名关联响应数据
+type UnlinkDomainResponseData struct {
 	Message string `json:"message"`
 }

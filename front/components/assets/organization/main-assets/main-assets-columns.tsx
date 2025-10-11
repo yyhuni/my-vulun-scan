@@ -19,7 +19,7 @@ interface CreateColumnsProps {
   formatDate: (dateString: string) => string
   navigate: (path: string) => void
   handleEdit: (asset: Asset) => void
-  handleDelete: (asset: Asset) => void
+  handleRemove: (asset: Asset) => void
 }
 
 /**
@@ -29,12 +29,12 @@ function MainAssetRowActions({
   asset,
   onView,
   onEdit,
-  onDelete,
+  onRemove,
 }: {
   asset: Asset
   onView: () => void
   onEdit: () => void
-  onDelete: () => void
+  onRemove: () => void
 }) {
   return (
     <DropdownMenu>
@@ -58,11 +58,11 @@ function MainAssetRowActions({
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          onClick={onDelete}
+          onClick={onRemove}
           className="text-destructive focus:text-destructive"
         >
           <Trash2 className="mr-2 h-4 w-4" />
-          删除
+          移除
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -102,7 +102,7 @@ export const createMainAssetColumns = ({
   formatDate,
   navigate,
   handleEdit,
-  handleDelete,
+  handleRemove,
 }: CreateColumnsProps): ColumnDef<Asset>[] => [
   // 选择列
   {
@@ -196,7 +196,7 @@ export const createMainAssetColumns = ({
         asset={row.original}
         onView={() => navigate(`/assets/asset/${row.original.id}`)}
         onEdit={() => handleEdit(row.original)}
-        onDelete={() => handleDelete(row.original)}
+        onRemove={() => handleRemove(row.original)}
       />
     ),
     enableSorting: false,

@@ -58,20 +58,19 @@ export class DomainService {
   }
 
   /**
-   * 解除组织与域名的关联
-   * @param data - 解除关联请求对象
+   * 从组织中删除域名
+   * @param data - 删除请求对象
    * @param data.organizationId - 组织ID
    * @param data.domainId - 域名ID
    * @returns Promise<ApiResponse<any>>
    */
-  static async removeFromOrganization(data: {
+  static async deleteDomainFromOrganization(data: {
     organizationId: number
     domainId: number
   }): Promise<ApiResponse<any>> {
-    const response = await api.post<ApiResponse<any>>('/domains/remove-from-organization', {
-      organizationId: data.organizationId,  // ✅ 使用驼峰命名，拦截器会自动转换为 organization_id
-      domainId: data.domainId  // ✅ 使用驼峰命名，拦截器会自动转换为 domain_id
-    })
+    const response = await api.delete<ApiResponse<any>>(
+      `/organizations/${data.organizationId}/domains/${data.domainId}`
+    )
     return response.data
   }
 

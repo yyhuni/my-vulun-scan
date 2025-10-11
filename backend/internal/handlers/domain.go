@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 
 	customErrors "vulun-scan-backend/internal/errors"
 	"vulun-scan-backend/internal/models"
@@ -185,85 +186,55 @@ func GetDomainsByOrgID(c *gin.Context) {
 	response.SuccessResponse(c, result)
 }
 
-// RemoveOrganizationDomain 解除组织与域名的关联
-// @Summary 解除组织与域名的关联（待实现完善）
+// DeleteDomainFromOrganization 从组织中删除域名
+// @Summary 从组织中删除域名
 // @Description 解除指定组织与域名的关联关系，如果域名成为孤儿（没有任何组织关联）则自动删除该域名
 // @Tags 域名管理
-// @Accept json
 // @Produce json
-// @Param request body models.RemoveOrgDomainRequest true "解除关联请求"
-// @Success 200 {object} models.APIResponse{data=models.RemoveOrgDomainResponseData} "解除关联成功"
+// @Param organization_id path uint true "组织ID" example(1)
+// @Param domain_id path uint true "域名ID" example(2)
+// @Success 200 {object} models.APIResponse{data=models.UnlinkDomainResponseData} "删除成功"
 // @Failure 400 {object} models.APIResponse "请求参数错误"
 // @Failure 404 {object} models.APIResponse "组织、域名或关联不存在"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
-// @Router /domains/remove-from-organization [post]
-func RemoveOrganizationDomain(c *gin.Context) {
-	var req models.RemoveOrgDomainRequest
-
-	if err := c.ShouldBindJSON(&req); err != nil {
+// @Router /organizations/{organization_id}/domains/{domain_id} [delete]
+func DeleteDomainFromOrganization(c *gin.Context) {
+	// 绑定路径参数
+	var uri struct {
+		OrganizationID uint `uri:"organization_id" binding:"required"`
+		DomainID       uint `uri:"domain_id" binding:"required"`
+	}
+	if err := c.ShouldBindUri(&uri); err != nil {
 		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
 		return
 	}
 
+	// 构建请求对象
+	req := models.UnlinkDomainRequest{
+		OrgID:    uri.OrganizationID,
+		DomainID: uri.DomainID,
+	}
+
 	service := services.NewDomainService()
-	err := service.RemoveOrganizationDomain(req)
+	err := service.UnlinkDomainFromOrganization(req)
 	if err != nil {
 		switch err.Error() {
 		case "organization not found":
-			response.NotFoundResponse(c, "组织不存在")
+			response.NotFoundResponse(c, fmt.Sprintf("组织 %d 不存在", uri.OrganizationID))
 			return
 		case "domain not found":
-			response.NotFoundResponse(c, "域名不存在")
+			response.NotFoundResponse(c, fmt.Sprintf("域名 %d 不存在", uri.DomainID))
 			return
 		case "association not found":
-			response.NotFoundResponse(c, "关联关系不存在")
+			response.NotFoundResponse(c, fmt.Sprintf("组织 %d 与域名 %d 之间不存在关联关系", uri.OrganizationID, uri.DomainID))
 			return
 		default:
-			response.InternalServerErrorResponse(c, "解除关联失败: "+err.Error())
+			response.InternalServerErrorResponse(c, fmt.Sprintf("从组织 %d 删除域名 %d 失败: %s", uri.OrganizationID, uri.DomainID, err.Error()))
 			return
 		}
 	}
 
-	response.SuccessResponse(c, models.RemoveOrgDomainResponseData{
-		Message: "解除关联成功，孤儿域名已自动删除",
-	})
-}
-
-// DeleteDomain 删除域名
-// @Summary 删除域名
-// @Description 根据ID删除域名，会级联删除所有关联的子域名、端点和漏洞数据
-// @Tags 域名管理
-// @Accept json
-// @Produce json
-// @Param id path uint true "域名ID"
-// @Success 200 {object} models.APIResponse{data=models.DeleteDomainResponseData} "删除成功"
-// @Failure 400 {object} models.APIResponse "请求参数错误"
-// @Failure 404 {object} models.APIResponse "域名不存在"
-// @Failure 500 {object} models.APIResponse "服务器内部错误"
-// @Router /domains/{id} [delete]
-func DeleteDomain(c *gin.Context) {
-	var req models.DeleteDomainRequest
-
-	// 绑定路径参数
-	if err := c.ShouldBindUri(&req); err != nil {
-		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
-		return
-	}
-
-	service := services.NewDomainService()
-
-	// 执行删除操作
-	if err := service.DeleteDomain(req.ID); err != nil {
-		// 根据错误类型返回不同的响应
-		if errors.Is(err, customErrors.ErrDomainNotFound) {
-			response.NotFoundResponse(c, "域名不存在")
-			return
-		}
-		response.InternalServerErrorResponse(c, "删除域名失败: "+err.Error())
-		return
-	}
-
-	response.SuccessResponse(c, models.DeleteDomainResponseData{
-		Message: "域名删除成功，所有关联数据已清理",
+	response.SuccessResponse(c, models.UnlinkDomainResponseData{
+		Message: fmt.Sprintf("成功从组织 %d 删除域名 %d", uri.OrganizationID, uri.DomainID),
 	})
 }

@@ -64,7 +64,7 @@ interface AssetDataTableProps {
   data: Asset[]                                  // 资产数据数组
   columns: ColumnDef<Asset>[]                    // 列定义数组
   onAddNew?: () => void                          // 添加新资产的回调函数
-  onBulkDelete?: () => void                      // 批量删除回调函数
+  onBulkRemove?: () => void                      // 批量移除回调函数
   onSelectionChange?: (selectedRows: Asset[]) => void  // 选中行变化回调
   searchPlaceholder?: string                     // 搜索框占位符
   searchColumn?: string                          // 搜索的列名
@@ -85,7 +85,7 @@ export function MainAssetsDataTable({
   data,
   columns,
   onAddNew,
-  onBulkDelete,
+  onBulkRemove,
   onSelectionChange,
   searchPlaceholder = "搜索资产...",
   searchColumn = "name",
@@ -212,10 +212,10 @@ export function MainAssetsDataTable({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* 批量删除按钮 */}
-          {onBulkDelete && (
+          {/* 批量移除按钮 */}
+          {onBulkRemove && (
             <Button 
-              onClick={onBulkDelete}
+              onClick={onBulkRemove}
               size="sm"
               variant="outline"
               disabled={table.getFilteredSelectedRowModel().rows.length === 0}
@@ -226,10 +226,7 @@ export function MainAssetsDataTable({
               }
             >
               <IconTrash className="mr-2 h-4 w-4" />
-              批量删除
-              {table.getFilteredSelectedRowModel().rows.length > 0 && (
-                <span className="ml-1">({table.getFilteredSelectedRowModel().rows.length})</span>
-              )}
+              批量移除
             </Button>
           )}
 

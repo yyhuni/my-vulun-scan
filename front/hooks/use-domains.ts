@@ -81,21 +81,23 @@ export function useCreateDomain() {
   })
 }
 
-// 解除组织与域名的关联
-export function useRemoveDomainFromOrganization() {
+// 从组织中删除域名
+export function useDeleteDomainFromOrganization() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (data: { organizationId: number; domainId: number }) => 
-      DomainService.removeFromOrganization(data),
+      DomainService.deleteDomainFromOrganization(data),
     onMutate: ({ organizationId, domainId }) => {
-      toast.loading('正在解除关联...', { id: `remove-${organizationId}-${domainId}` })
+      toast.loading('正在删除域名...', { id: `delete-${organizationId}-${domainId}` })
     },
     onSuccess: (response, { organizationId, domainId }) => {
-      toast.dismiss(`remove-${organizationId}-${domainId}`)
+      toast.dismiss(`delete-${organizationId}-${domainId}`)
       
       if (response.state === 'success') {
-        toast.success('解除关联成功')
+        // 使用后端返回的详细消息，如果没有则使用默认消息
+        const successMessage = response.data?.message || `成功从组织 ${organizationId} 删除域名 ${domainId}`
+        toast.success(successMessage)
         
         // 刷新相关查询
         queryClient.invalidateQueries({ queryKey: domainKeys.lists() })
@@ -105,17 +107,17 @@ export function useRemoveDomainFromOrganization() {
           queryKey: ['organizations', 'detail', organizationId, 'domains'] 
         })
       } else {
-        throw new Error(response.message || '解除关联失败')
+        throw new Error(response.message || '删除失败')
       }
     },
     onError: (error: any, { organizationId, domainId }) => {
-      toast.dismiss(`remove-${organizationId}-${domainId}`)
+      toast.dismiss(`delete-${organizationId}-${domainId}`)
       
       if (process.env.NODE_ENV === 'development') {
-        console.error('解除关联失败:', error)
+        console.error('删除域名失败:', error)
       }
       
-      const errorMessage = error?.response?.data?.message || error?.message || '解除关联失败'
+      const errorMessage = error?.response?.data?.message || error?.message || '删除失败'
       toast.error(errorMessage)
     },
   })

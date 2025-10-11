@@ -236,9 +236,6 @@ export function SubdomainsDataTable({
             >
               <IconTrash className="mr-2 h-4 w-4" />
               批量删除
-              {table.getFilteredSelectedRowModel().rows.length > 0 && (
-                <span className="ml-1">({table.getFilteredSelectedRowModel().rows.length})</span>
-              )}
             </Button>
           )}
 

@@ -26,17 +26,9 @@ func SetupDomainRoutes(api *gin.RouterGroup) {
 		// 示例：GET /domains/1
 		domains.GET("/:id", handlers.GetDomainByID)
 
-		// 删除域名 - 根据ID删除域名及其所有关联数据
-		// 示例：DELETE /domains/1
-		domains.DELETE("/:id", handlers.DeleteDomain)
-
 		// 更新域名信息 - 支持更新名称和描述
 		// 请求体示例：{"id": 1, "name": "new-domain.com", "description": "新描述"}
 		domains.POST("/update", handlers.UpdateDomain)
-
-		// 解除组织与域名的关联 - 从组织中移除指定域名
-		// 请求体示例：{"organization_id": 1, "domain_id": 2}
-		domains.POST("/remove-from-organization", handlers.RemoveOrganizationDomain)
 	}
 
 	// 组织相关的域名路由
@@ -45,5 +37,9 @@ func SetupDomainRoutes(api *gin.RouterGroup) {
 		// 获取组织的域名列表
 		// 示例：GET /organizations/1/domains?page=1&page_size=10&sort_by=name&sort_order=asc
 		organizations.GET("/:id/domains", handlers.GetDomainsByOrgID)
+
+		// 从组织中删除域名 - 解除关联关系，如果域名成为孤儿则自动删除
+		// 示例：DELETE /organizations/1/domains/2
+		organizations.DELETE("/:organization_id/domains/:domain_id", handlers.DeleteDomainFromOrganization)
 	}
 }
