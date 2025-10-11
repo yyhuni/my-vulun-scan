@@ -244,13 +244,15 @@ func (s *DomainService) UpdateDomain(req models.UpdateDomainRequest) (*models.Do
 	}
 
 	// 步骤2: 更新域名信息
-	// 只更新非空字段，保持灵活性
+	// 使用指针类型区分"不更新"和"清空"
+	// nil = 不更新该字段
+	// 非nil（包括空字符串）= 更新为该值
 	updateData := make(map[string]interface{})
-	if req.Name != "" {
-		updateData["name"] = req.Name
+	if req.Name != nil {
+		updateData["name"] = *req.Name
 	}
-	if req.Description != "" {
-		updateData["description"] = req.Description
+	if req.Description != nil {
+		updateData["description"] = *req.Description
 	}
 
 	// 如果没有任何更新字段，直接返回原域名

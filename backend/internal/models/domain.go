@@ -35,10 +35,11 @@ type DomainDetail struct {
 }
 
 // UpdateDomainRequest 更新域名请求
+// 使用指针类型允许区分"不更新"和"清空"
 type UpdateDomainRequest struct {
-	ID          uint   `json:"id" binding:"required"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	ID          uint    `json:"id" binding:"required"`
+	Name        *string `json:"name"`        // 指针类型：nil=不更新，空字符串=清空，有值=更新
+	Description *string `json:"description"` // 指针类型：nil=不更新，空字符串=清空，有值=更新
 }
 
 // DeleteDomainRequest 从组织移除域名请求

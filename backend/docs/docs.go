@@ -84,7 +84,7 @@ const docTemplate = `{
         },
         "/domains/update": {
             "post": {
-                "description": "更新域名信息（名称和描述），返回更新后的域名信息（不包含组织关联信息）",
+                "description": "更新域名信息（名称和描述），返回更新后的域名信息（不包含组织关联信息）\n\n**字段更新说明：**\n- name: 传null不更新，传空字符串会报错（域名不能为空），传值则更新\n- description: 传null不更新，传空字符串清空，传值则更新\n- 至少需要更新一个字段，否则直接返回原数据",
                 "consumes": [
                     "application/json"
                 ],
@@ -1993,12 +1993,14 @@ const docTemplate = `{
             ],
             "properties": {
                 "description": {
+                    "description": "指针类型：nil=不更新，空字符串=清空，有值=更新",
                     "type": "string"
                 },
                 "id": {
                     "type": "integer"
                 },
                 "name": {
+                    "description": "指针类型：nil=不更新，空字符串=清空，有值=更新",
                     "type": "string"
                 }
             }

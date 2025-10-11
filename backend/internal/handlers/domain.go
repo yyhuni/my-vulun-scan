@@ -108,6 +108,11 @@ func GetDomainByID(c *gin.Context) {
 // UpdateDomain 更新域名
 // @Summary 更新域名
 // @Description 更新域名信息（名称和描述），返回更新后的域名信息（不包含组织关联信息）
+// @Description
+// @Description **字段更新说明：**
+// @Description - name: 传null不更新，传空字符串会报错（域名不能为空），传值则更新
+// @Description - description: 传null不更新，传空字符串清空，传值则更新
+// @Description - 至少需要更新一个字段，否则直接返回原数据
 // @Tags 域名管理
 // @Accept json
 // @Produce json
@@ -126,8 +131,9 @@ func UpdateDomain(c *gin.Context) {
 	}
 
 	// 验证新域名格式（如果提供了新名称）
-	if req.Name != "" {
-		if err := utils.ValidateDomain(req.Name); err != nil {
+	// 使用指针类型：nil表示不更新，非nil表示要更新（包括空字符串）
+	if req.Name != nil && *req.Name != "" {
+		if err := utils.ValidateDomain(*req.Name); err != nil {
 			response.ValidationErrorResponse(c, "域名格式验证失败: "+err.Error())
 			return
 		}

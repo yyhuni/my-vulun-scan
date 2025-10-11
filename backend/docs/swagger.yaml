@@ -372,10 +372,12 @@ definitions:
   vulun-scan-backend_internal_models.UpdateDomainRequest:
     properties:
       description:
+        description: 指针类型：nil=不更新，空字符串=清空，有值=更新
         type: string
       id:
         type: integer
       name:
+        description: 指针类型：nil=不更新，空字符串=清空，有值=更新
         type: string
     required:
     - id
@@ -636,7 +638,13 @@ paths:
     post:
       consumes:
       - application/json
-      description: 更新域名信息（名称和描述），返回更新后的域名信息（不包含组织关联信息）
+      description: |-
+        更新域名信息（名称和描述），返回更新后的域名信息（不包含组织关联信息）
+
+        **字段更新说明：**
+        - name: 传null不更新，传空字符串会报错（域名不能为空），传值则更新
+        - description: 传null不更新，传空字符串清空，传值则更新
+        - 至少需要更新一个字段，否则直接返回原数据
       parameters:
       - description: 更新信息
         in: body
