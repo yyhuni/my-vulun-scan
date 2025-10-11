@@ -35,7 +35,7 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
   } = useOrganizationDomains(parseInt(organizationId), {
     page: pagination.pageIndex + 1, // 转换为 1-based
     pageSize: pagination.pageSize,
-    sortBy: "updatedAt",
+    sortBy: "updated_at",
     sortOrder: "desc"
   })
 

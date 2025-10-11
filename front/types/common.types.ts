@@ -12,7 +12,7 @@ export interface PaginationInfo {
 export interface PaginationParams {
   page?: number
   pageSize?: number
-  sortBy?: string    // 排序字段：id, name, createdAt, updatedAt（使用驼峰命名）
+  sortBy?: string    // 排序字段：id, name, created_at, updated_at（使用下划线命名）
   sortOrder?: "asc" | "desc"  // 排序方向：asc, desc
 }
 

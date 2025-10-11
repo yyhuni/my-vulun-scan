@@ -71,7 +71,7 @@ export function OrganizationList() {
   } = useOrganizations({
     page: pagination.pageIndex + 1, // 转换为 1-based
     pageSize: pagination.pageSize,
-    sortBy: "updatedAt",
+    sortBy: "updated_at",
     sortOrder: "desc"
   })
 

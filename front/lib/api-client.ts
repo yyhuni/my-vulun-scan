@@ -22,12 +22,12 @@
  * 【请求流程】前端发送数据到后端
  * ══════════════════════════════════════════════════════════════════════
  * 
- * 步骤1️⃣ 前端代码（写驼峰）
+ * 步骤1️⃣ 前端代码（键名写驼峰，值写下划线）
  * ┌────────────────────────────────────────┐
  * │ api.get('/organizations', {            │
  * │   params: {                            │
- * │     pageSize: 10,        // 驼峰命名   │
- * │     sortBy: 'createdAt', // 驼峰命名   │
+ * │     pageSize: 10,          // 键名：驼峰 │
+ * │     sortBy: 'updated_at',  // 值：下划线 │
  * │     sortOrder: 'desc'                  │
  * │   }                                    │
  * │ })                                     │
@@ -35,21 +35,22 @@
  *                    ↓
  *         （调用 api.get，触发请求拦截器）
  *                    ↓
- * 步骤2️⃣ 请求拦截器自动转换（驼峰 → 下划线）
+ * 步骤2️⃣ 请求拦截器自动转换（只转换键名）
  * ┌────────────────────────────────────────┐
  * │ 拦截器接收到：                          │
  * │ params: {                              │
  * │   pageSize: 10,                        │
- * │   sortBy: 'createdAt',                 │
+ * │   sortBy: 'updated_at',                │
  * │   sortOrder: 'desc'                    │
  * │ }                                      │
  * │                                        │
  * │ 执行：snakecaseKeys(params)            │
+ * │ ⚠️ 注意：只转换键名，不转换值        │
  * │                                        │
  * │ 转换后：                                │
  * │ params: {                              │
- * │   page_size: 10,        // 下划线      │
- * │   sort_by: 'created_at',// 下划线      │
+ * │   page_size: 10,        // 键名转换  │
+ * │   sort_by: 'updated_at',// 值不变    │
  * │   sort_order: 'desc'                   │
  * │ }                                      │
  * └────────────────────────────────────────┘
@@ -60,7 +61,7 @@
  * ┌────────────────────────────────────────┐
  * │ GET /api/v1/organizations?             │
  * │   page_size=10&                        │
- * │   sort_by=created_at&                  │
+ * │   sort_by=updated_at&                  │
  * │   sort_order=desc                      │
  * │                                        │
  * │ Go 后端解析到结构体：                   │
@@ -137,10 +138,10 @@
  * ══════════════════════════════════════════════════════════════════════
  * 【关键总结】
  * ══════════════════════════════════════════════════════════════════════
- * ✅ 前端代码：全程使用驼峰命名（pageSize, createdAt）
- * ✅ 后端代码：全程使用下划线命名（page_size, created_at）
- * ✅ 拦截器：自动双向转换，前端开发者无需关心
- * ✅ 优势：前后端各自使用自己语言的命名规范，互不影响
+ * ✅ 前端代码：键名使用驼峰（pageSize），值使用下划线（"updated_at"）
+ * ✅ 后端代码：全程使用下划线命名（page_size, updated_at）
+ * ✅ 拦截器：自动转换键名（pageSize → page_size），不转换值
+ * ⚠️ 注意：字符串值必须直接使用后端期望的格式（下划线）
  */
 
 import axios from 'axios';
@@ -328,9 +329,9 @@ export default apiClient;
  * 1. GET 请求（推荐使用 params）：
  *    ✅ 推荐：
  *    api.get('/organizations', { 
- *      params: { pageSize: 10, sortBy: 'createdAt' }
+ *      params: { pageSize: 10, sortBy: 'updated_at' }
  *    })
- *    自动转换为：/organizations?page_size=10&sort_by=created_at
+ *    自动转换为：/organizations?page_size=10&sort_by=updated_at
  * 
  *    ❌ 不推荐（绕过自动转换）：
  *    const url = `/organizations?page_size=${pageSize}`

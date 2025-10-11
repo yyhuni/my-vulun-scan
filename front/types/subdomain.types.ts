@@ -15,7 +15,7 @@ export interface GetSubDomainsParams {
   organizationId?: number
   page?: number
   pageSize?: number
-  sortBy?: 'id' | 'name' | 'createdAt' | 'updatedAt'
+  sortBy?: 'id' | 'name' | 'created_at' | 'updated_at'  // 使用下划线命名以匹配后端
   sortOrder?: 'asc' | 'desc'
 }
 

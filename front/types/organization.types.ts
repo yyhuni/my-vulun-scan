@@ -1,15 +1,15 @@
 import { ColumnDef } from "@tanstack/react-table"
 import { PaginationInfo } from "./common.types"
+import type { Domain } from "./domain.types"
 
-// 组织相关类型定义
+// 组织相关类型定义（匹配后端 Organization 模型）
 export interface Organization {
   id: number
   name: string
   description: string
-  createdAt: string
-  updatedAt: string
-  domainCount?: number
-  status?: string
+  createdAt: string      // 后端 created_at 经过 camelcaseKeys 转换
+  updatedAt: string      // 后端 updated_at 经过 camelcaseKeys 转换
+  domains?: Domain[]     // 关联的域名列表（仅在 Preload 时返回）
 }
 
 // 组织列表响应类型（匹配后端GetOrganizationsResponse）

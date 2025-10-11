@@ -13,7 +13,7 @@ export class OrganizationService {
    * @param params - 查询参数对象
    * @param params.page - 当前页码，1-based
    * @param params.pageSize - 分页大小
-   * @param params.sortBy - 排序字段：id, name, createdAt, updatedAt（使用驼峰命名）
+   * @param params.sortBy - 排序字段：id, name, created_at, updated_at（使用下划线命名）
    * @param params.sortOrder - 排序方向：asc, desc
    * @returns Promise<ApiResponse<OrganizationsResponse<Organization>>>
    */
@@ -23,7 +23,8 @@ export class OrganizationService {
     sortBy?: string
     sortOrder?: 'asc' | 'desc'
   }): Promise<ApiResponse<OrganizationsResponse<Organization>>> {
-    // ✅ 使用 params 对象，拦截器会自动将驼峰转换为下划线
+    // ✅ 使用 params 对象，拦截器会自动将键名从驼峰转换为下划线（如 sortBy → sort_by）
+    // ⚠️ 注意：值本身不会转换，需要直接使用后端期望的格式（如 "updated_at"）
     const response = await api.get<ApiResponse<OrganizationsResponse<Organization>>>(
       '/organizations',
       { params }
