@@ -16,7 +16,7 @@ type Organization struct {
 	Description string `json:"description" gorm:"size:1000"`
 
 	// 关联关系 - 级联删除配置在 OrganizationDomain 中间表定义
-	Domains []Domain `json:"domains" gorm:"many2many:organization_domains"`
+	Domains []Domain `json:"domains" gorm:"many2many:organization_domains;constraint:OnDelete:CASCADE"`
 }
 
 // CreateOrgRequest 创建组织请求
