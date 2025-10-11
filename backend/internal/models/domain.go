@@ -13,7 +13,7 @@ type Domain struct {
 
 	// 核心业务字段
 	// 注意：Name 字段在应用层已统一转为小写，数据库层通过 CHECK 约束防止插入大写值
-	Name        string `json:"name" gorm:"uniqueIndex;not null;size:255;check:name = LOWER(name),name"`
+	Name        string `json:"name" gorm:"uniqueIndex;not null;size:255;check:name = LOWER(name)"`
 	Description string `json:"description" gorm:"size:1000"`
 
 	// 关联关系 - 级联删除配置在 OrganizationDomain 中间表定义

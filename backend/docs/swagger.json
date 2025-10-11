@@ -1666,7 +1666,7 @@
                     "type": "integer"
                 },
                 "name": {
-                    "description": "核心业务字段",
+                    "description": "核心业务字段\n注意：Name 字段在应用层已统一转为小写，数据库层通过 CHECK 约束防止插入大写值",
                     "type": "string"
                 },
                 "organizations": {
@@ -1965,7 +1965,7 @@
                     "type": "integer"
                 },
                 "name": {
-                    "description": "核心业务字段",
+                    "description": "核心业务字段\n注意：Name 字段在应用层已统一转为小写，数据库层通过 CHECK 约束防止插入大写值",
                     "type": "string"
                 },
                 "updated_at": {
