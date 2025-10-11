@@ -6,6 +6,7 @@ import (
 
 	"vulun-scan-backend/internal/errors"
 	"vulun-scan-backend/internal/models"
+	"vulun-scan-backend/internal/utils"
 	"vulun-scan-backend/pkg/database"
 
 	"github.com/rs/zerolog/log"
@@ -300,16 +301,22 @@ func (s *SubDomainService) CreateSubDomains(req models.CreateSubDomainsRequest) 
 	}, nil
 }
 
-// collectAndDedupeSubdomains 收集并去重所有域名分组
+// collectAndDedupeSubdomains 收集并去重所有域名分组（带子域名归属验证）
 //
 // 功能说明：
 // 从请求中收集所有的根域名和子域名，自动过滤空字符串，并利用 map 的键唯一性实现去重
+// **新增**：验证每个子域名是否真的属于指定的根域名，过滤掉无效的子域名
 //
 // 去重逻辑：
 // - 同一个根域名在多个分组中出现，只保留一个
 // - 同一个根域名下的重复子域名，只保留一个
 // - 示例：[{"example.com": ["www", "www", "api"]}, {"example.com": ["www"]}]
 //         结果：{"example.com": ["www", "api"]}
+//
+// 验证逻辑：
+// - 验证子域名是否以 ".根域名" 结尾
+// - 例如：www.example.com 是 example.com 的子域名 ✓
+// - 例如：test.com 不是 example.com 的子域名 ✗
 //
 // 参数：
 //   - domainGroups: 域名分组列表，每个分组包含根域名和子域名列表
@@ -323,8 +330,8 @@ func (s *SubDomainService) collectAndDedupeSubdomains(domainGroups []models.Doma
 
 	// 遍历所有域名分组
 	for _, domainGroup := range domainGroups {
-		// 清理根域名：去除首尾空格
-		rootDomain := strings.TrimSpace(domainGroup.RootDomain)
+		// 清理根域名：去除首尾空格并转为小写
+		rootDomain := strings.TrimSpace(strings.ToLower(domainGroup.RootDomain))
 		if rootDomain == "" {
 			continue // 跳过空的根域名
 		}
@@ -337,13 +344,24 @@ func (s *SubDomainService) collectAndDedupeSubdomains(domainGroups []models.Doma
 
 		// 遍历当前根域名下的所有子域名
 		for _, sdname := range domainGroup.Subdomains {
-			// 清理子域名：去除首尾空格
-			subdomainName := strings.TrimSpace(sdname)
+			// 清理子域名：去除首尾空格并转为小写
+			subdomainName := strings.TrimSpace(strings.ToLower(sdname))
 			if subdomainName == "" {
 				continue // 跳过空的子域名
 			}
 			
-			// 将子域名添加到集合中（map的键自动去重）
+			// ===== 新增：验证子域名是否属于根域名 =====
+			// 使用 IsSubdomainOf 检查子域名是否真的属于根域名
+			if !utils.IsSubdomainOf(subdomainName, rootDomain) {
+				// 记录警告日志，但不中断处理流程（跳过无效子域名）
+				log.Warn().
+					Str("root_domain", rootDomain).
+					Str("invalid_subdomain", subdomainName).
+					Msg("跳过无效子域名：不属于指定的根域名")
+				continue // 跳过不属于根域名的子域名
+			}
+			
+			// 将有效的子域名添加到集合中（map的键自动去重）
 			// 如果子域名已存在，会被自动覆盖（值都是 struct{}）
 			rootToSubdomainsMap[rootDomain][subdomainName] = struct{}{}
 		}
@@ -386,12 +404,13 @@ func (s *SubDomainService) validateAndMapDomains(rootToSubdomainsMap map[string]
 	// 查询数据库：获取已关联到指定组织的域名记录
 	// SQL: SELECT d.id, d.name FROM domains d
 	//      JOIN organization_domains od ON od.domain_id = d.id
-	//      WHERE d.name IN (...) AND od.organization_id = ?
+	//      WHERE LOWER(d.name) IN (...) AND od.organization_id = ?
+	// 注意：使用 LOWER() 进行大小写不敏感查询，因为 collectAndDedupeSubdomains 已将域名转为小写
 	var domains []models.Domain
 	if err := s.db.Table("domains d").
 		Select("d.id, d.name").
 		Joins("JOIN organization_domains od ON od.domain_id = d.id").
-		Where("d.name IN ? AND od.organization_id = ?", rootDomains, orgID).
+		Where("LOWER(d.name) IN ? AND od.organization_id = ?", rootDomains, orgID).
 		Find(&domains).Error; err != nil {
 		// 数据库查询失败，返回空映射和所有根域名作为跳过列表
 		log.Error().Err(err).Msg("查询根域名失败")
@@ -399,9 +418,10 @@ func (s *SubDomainService) validateAndMapDomains(rootToSubdomainsMap map[string]
 	}
 
 	// 构建域名名称到ID的映射（用于后续步骤）
+	// 注意：将域名转为小写作为key，与 collectAndDedupeSubdomains 中的小写域名一致
 	domainNameToIDMap := make(map[string]uint, len(domains))
 	for _, domain := range domains {
-		domainNameToIDMap[domain.Name] = domain.ID
+		domainNameToIDMap[strings.ToLower(domain.Name)] = domain.ID
 	}
 
 	// 收集被跳过的根域名（不存在或未关联到组织）

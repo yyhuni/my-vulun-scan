@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	customErrors "vulun-scan-backend/internal/errors"
 	"vulun-scan-backend/internal/models"
@@ -62,12 +63,14 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 
 	// 步骤2: 使用事务处理批量创建和关联
 	err := s.db.Transaction(func(tx *gorm.DB) error {
-		// 步骤2.1: 收集所有域名名称并构建映射
+		// 步骤2.1: 收集所有域名名称并构建映射（统一转为小写）
 		domainNames := make([]string, 0, len(req.Domains))
 		domainDetailMap := make(map[string]models.DomainDetail)
 		for _, detail := range req.Domains {
-			domainNames = append(domainNames, detail.Name)
-			domainDetailMap[detail.Name] = detail
+			// 将域名转为小写，确保数据一致性
+			normalizedName := strings.ToLower(strings.TrimSpace(detail.Name))
+			domainNames = append(domainNames, normalizedName)
+			domainDetailMap[normalizedName] = detail
 		}
 
 		// 步骤2.2: 批量查询已存在的域名（1次查询）
@@ -89,9 +92,11 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 		// 预估容量：最多不超过请求的域名数量
 		newDomains := make([]models.Domain, 0, len(req.Domains))
 		for _, detail := range req.Domains {
-			if _, exists := existingDomainMap[detail.Name]; !exists {
+			// 使用标准化后的小写域名
+			normalizedName := strings.ToLower(strings.TrimSpace(detail.Name))
+			if _, exists := existingDomainMap[normalizedName]; !exists {
 				newDomains = append(newDomains, models.Domain{
-					Name:        detail.Name,
+					Name:        normalizedName, // 存储小写域名
 					Description: detail.Description,
 				})
 			}
@@ -249,7 +254,8 @@ func (s *DomainService) UpdateDomain(req models.UpdateDomainRequest) (*models.Do
 	// 非nil（包括空字符串）= 更新为该值
 	updateData := make(map[string]interface{})
 	if req.Name != nil {
-		updateData["name"] = *req.Name
+		// 将域名转为小写，确保数据一致性
+		updateData["name"] = strings.ToLower(strings.TrimSpace(*req.Name))
 	}
 	if req.Description != nil {
 		updateData["description"] = *req.Description

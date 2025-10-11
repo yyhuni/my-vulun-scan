@@ -256,3 +256,49 @@ func ValidateSubdomains(subdomains []string) []error {
 	}
 	return errors
 }
+
+// IsSubdomainOf 检查 subdomain 是否是 parentDomain 的子域名
+// 例如：
+// - www.example.com 是 example.com 的子域名 ✓
+// - api.example.com 是 example.com 的子域名 ✓  
+// - example.com 不是 example.com 的子域名（自己不是自己的子域名）✗
+// - test.com 不是 example.com 的子域名 ✗
+func IsSubdomainOf(subdomain, parentDomain string) bool {
+	subdomain = strings.TrimSpace(strings.ToLower(subdomain))
+	parentDomain = strings.TrimSpace(strings.ToLower(parentDomain))
+	
+	// 子域名必须以 ".父域名" 结尾
+	// 例如：www.example.com 以 .example.com 结尾
+	suffix := "." + parentDomain
+	return strings.HasSuffix(subdomain, suffix)
+}
+
+// ValidateSubdomainBelongsTo 验证子域名是否属于指定的父域名
+func ValidateSubdomainBelongsTo(subdomain, parentDomain string) error {
+	subdomain = strings.TrimSpace(subdomain)
+	parentDomain = strings.TrimSpace(parentDomain)
+	
+	if subdomain == "" {
+		return &DomainValidationError{
+			Domain: subdomain,
+			Reason: "子域名不能为空",
+		}
+	}
+	
+	if parentDomain == "" {
+		return &DomainValidationError{
+			Domain: parentDomain,
+			Reason: "父域名不能为空",
+		}
+	}
+	
+	// 检查子域名是否属于父域名
+	if !IsSubdomainOf(subdomain, parentDomain) {
+		return &DomainValidationError{
+			Domain: subdomain,
+			Reason: fmt.Sprintf("'%s' 不是 '%s' 的子域名", subdomain, parentDomain),
+		}
+	}
+	
+	return nil
+}
