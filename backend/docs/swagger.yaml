@@ -199,6 +199,19 @@ definitions:
     - root_domain
     - subdomains
     type: object
+  vulun-scan-backend_internal_models.DomainResponseData:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
   vulun-scan-backend_internal_models.Endpoint:
     properties:
       content_length:
@@ -482,7 +495,7 @@ info:
 paths:
   /domains/{id}:
     get:
-      description: 根据域名ID获取域名的详细信息（不包含子域名）
+      description: 根据域名ID获取域名的详细信息（不包含组织关联信息）
       parameters:
       - description: 域名ID
         example: 1
@@ -500,7 +513,7 @@ paths:
             - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/vulun-scan-backend_internal_models.Domain'
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.DomainResponseData'
               type: object
         "404":
           description: 域名不存在
@@ -570,7 +583,19 @@ paths:
     post:
       consumes:
       - application/json
-      description: 批量创建域名并自动关联到指定组织（支持单个或多个域名）。如果域名已存在，会复用现有域名并建立关联关系
+      description: |-
+        批量创建域名并自动关联到指定组织（支持单个或多个域名）
+
+        **幂等性行为说明：**
+        - 如果域名已存在，会复用现有域名并建立新的关联关系
+        - 如果域名与组织的关联已存在，会跳过（不会报错）
+        - 每个新创建的域名会自动创建一个同名的根子域名
+        - 重复提交相同的域名是安全的，不会产生重复数据
+
+        **业务场景：**
+        - 适用于从外部导入域名列表
+        - 支持多个组织共享同一个域名
+        - 域名在数据库中全局唯一，通过中间表实现多对多关系
       parameters:
       - description: 域名创建请求，包含域名列表和组织ID
         in: body
@@ -582,7 +607,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 创建成功，返回创建的域名列表
+          description: 创建成功，返回创建的域名列表（包括新创建和已存在的）
           schema:
             allOf:
             - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
@@ -596,6 +621,10 @@ paths:
           description: 请求参数错误（如域名列表为空、参数格式错误等）
           schema:
             $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+        "404":
+          description: 指定的组织不存在
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "500":
           description: 服务器内部错误
           schema:
@@ -607,7 +636,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: 更新域名信息（名称和描述）
+      description: 更新域名信息（名称和描述），返回更新后的域名信息（不包含组织关联信息）
       parameters:
       - description: 更新信息
         in: body
@@ -625,7 +654,7 @@ paths:
             - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/vulun-scan-backend_internal_models.Domain'
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.DomainResponseData'
               type: object
         "400":
           description: 请求参数错误

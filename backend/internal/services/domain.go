@@ -192,8 +192,8 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 	return resultDomains, nil
 }
 
-// GetDomainByID 根据ID获取域名信息（不包含子域名）
-func (s *DomainService) GetDomainByID(id uint) (*models.Domain, error) {
+// GetDomainByID 根据ID获取域名信息（不包含组织信息）
+func (s *DomainService) GetDomainByID(id uint) (*models.DomainResponseData, error) {
 
 	var domain models.Domain
 
@@ -207,7 +207,17 @@ func (s *DomainService) GetDomainByID(id uint) (*models.Domain, error) {
 	}
 
 	log.Info().Uint("id", id).Msg("Domain retrieved successfully")
-	return &domain, nil
+
+	// 转换为响应结构体（不包含组织信息）
+	response := &models.DomainResponseData{
+		ID:          domain.ID,
+		CreatedAt:   domain.CreatedAt,
+		UpdatedAt:   domain.UpdatedAt,
+		Name:        domain.Name,
+		Description: domain.Description,
+	}
+
+	return response, nil
 }
 
 // UpdateDomain 更新域名信息
@@ -215,13 +225,13 @@ func (s *DomainService) GetDomainByID(id uint) (*models.Domain, error) {
 // 业务逻辑说明：
 // 1. 验证域名是否存在
 // 2. 更新域名的名称和描述
-// 3. 返回更新后的域名信息
+// 3. 返回更新后的域名信息（不包含组织信息）
 //
 // 注意事项：
 // - 只能更新名称和描述，不能修改ID和时间戳
 // - 名称修改后需要保证唯一性
 // - 更新操作会自动更新 updated_at 字段
-func (s *DomainService) UpdateDomain(req models.UpdateDomainRequest) (*models.Domain, error) {
+func (s *DomainService) UpdateDomain(req models.UpdateDomainRequest) (*models.DomainResponseData, error) {
 	// 步骤1: 验证域名是否存在
 	var domain models.Domain
 	if err := s.db.First(&domain, "id = ?", req.ID).Error; err != nil {
@@ -246,7 +256,13 @@ func (s *DomainService) UpdateDomain(req models.UpdateDomainRequest) (*models.Do
 	// 如果没有任何更新字段，直接返回原域名
 	if len(updateData) == 0 {
 		log.Info().Uint("domain_id", req.ID).Msg("No fields to update")
-		return &domain, nil
+		return &models.DomainResponseData{
+			ID:          domain.ID,
+			CreatedAt:   domain.CreatedAt,
+			UpdatedAt:   domain.UpdatedAt,
+			Name:        domain.Name,
+			Description: domain.Description,
+		}, nil
 	}
 
 	// 执行更新操作
@@ -266,7 +282,16 @@ func (s *DomainService) UpdateDomain(req models.UpdateDomainRequest) (*models.Do
 		Str("name", domain.Name).
 		Msg("Domain updated successfully")
 
-	return &domain, nil
+	// 转换为响应结构体（不包含组织信息）
+	response := &models.DomainResponseData{
+		ID:          domain.ID,
+		CreatedAt:   domain.CreatedAt,
+		UpdatedAt:   domain.UpdatedAt,
+		Name:        domain.Name,
+		Description: domain.Description,
+	}
+
+	return response, nil
 }
 
 // GetDomainsByOrgID 根据组织ID获取域名列表(支持分页和排序)

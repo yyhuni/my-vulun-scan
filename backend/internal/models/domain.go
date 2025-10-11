@@ -82,3 +82,12 @@ type BatchDeleteDomainsResponseData struct {
 	SuccessCount int    `json:"success_count"` // 成功移除的数量
 	FailedCount  int    `json:"failed_count"`  // 失败的数量
 }
+
+// DomainResponseData 域名详情响应数据（不包含组织信息）
+type DomainResponseData struct {
+	ID          uint      `json:"id"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+}

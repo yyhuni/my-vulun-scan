@@ -15,13 +15,25 @@ import (
 
 // CreateDomains 批量创建域名
 // @Summary 批量创建域名
-// @Description 批量创建域名并自动关联到指定组织（支持单个或多个域名）。如果域名已存在，会复用现有域名并建立关联关系
+// @Description 批量创建域名并自动关联到指定组织（支持单个或多个域名）
+// @Description
+// @Description **幂等性行为说明：**
+// @Description - 如果域名已存在，会复用现有域名并建立新的关联关系
+// @Description - 如果域名与组织的关联已存在，会跳过（不会报错）
+// @Description - 每个新创建的域名会自动创建一个同名的根子域名
+// @Description - 重复提交相同的域名是安全的，不会产生重复数据
+// @Description
+// @Description **业务场景：**
+// @Description - 适用于从外部导入域名列表
+// @Description - 支持多个组织共享同一个域名
+// @Description - 域名在数据库中全局唯一，通过中间表实现多对多关系
 // @Tags 域名管理
 // @Accept json
 // @Produce json
 // @Param request body models.CreateDomainsRequest true "域名创建请求，包含域名列表和组织ID"
-// @Success 200 {object} models.APIResponse{data=[]models.Domain} "创建成功，返回创建的域名列表"
+// @Success 200 {object} models.APIResponse{data=[]models.Domain} "创建成功，返回创建的域名列表（包括新创建和已存在的）"
 // @Failure 400 {object} models.APIResponse "请求参数错误（如域名列表为空、参数格式错误等）"
+// @Failure 404 {object} models.APIResponse "指定的组织不存在"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
 // @Router /domains/create [post]
 func CreateDomains(c *gin.Context) {
@@ -60,11 +72,11 @@ func CreateDomains(c *gin.Context) {
 
 // GetDomainByID 获取单个域名详情
 // @Summary 获取单个域名详情
-// @Description 根据域名ID获取域名的详细信息（不包含子域名）
+// @Description 根据域名ID获取域名的详细信息（不包含组织关联信息）
 // @Tags 域名管理
 // @Produce json
 // @Param id path uint true "域名ID" example(1)
-// @Success 200 {object} models.APIResponse{data=models.Domain} "获取成功"
+// @Success 200 {object} models.APIResponse{data=models.DomainResponseData} "获取成功"
 // @Failure 404 {object} models.APIResponse "域名不存在"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
 // @Router /domains/{id} [get]
@@ -95,12 +107,12 @@ func GetDomainByID(c *gin.Context) {
 
 // UpdateDomain 更新域名
 // @Summary 更新域名
-// @Description 更新域名信息（名称和描述）
+// @Description 更新域名信息（名称和描述），返回更新后的域名信息（不包含组织关联信息）
 // @Tags 域名管理
 // @Accept json
 // @Produce json
 // @Param request body models.UpdateDomainRequest true "更新信息"
-// @Success 200 {object} models.APIResponse{data=models.Domain} "更新成功"
+// @Success 200 {object} models.APIResponse{data=models.DomainResponseData} "更新成功"
 // @Failure 400 {object} models.APIResponse "请求参数错误"
 // @Failure 404 {object} models.APIResponse "域名不存在"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"

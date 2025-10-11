@@ -17,7 +17,7 @@ const docTemplate = `{
     "paths": {
         "/domains/create": {
             "post": {
-                "description": "批量创建域名并自动关联到指定组织（支持单个或多个域名）。如果域名已存在，会复用现有域名并建立关联关系",
+                "description": "批量创建域名并自动关联到指定组织（支持单个或多个域名）\n\n**幂等性行为说明：**\n- 如果域名已存在，会复用现有域名并建立新的关联关系\n- 如果域名与组织的关联已存在，会跳过（不会报错）\n- 每个新创建的域名会自动创建一个同名的根子域名\n- 重复提交相同的域名是安全的，不会产生重复数据\n\n**业务场景：**\n- 适用于从外部导入域名列表\n- 支持多个组织共享同一个域名\n- 域名在数据库中全局唯一，通过中间表实现多对多关系",
                 "consumes": [
                     "application/json"
                 ],
@@ -41,7 +41,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "创建成功，返回创建的域名列表",
+                        "description": "创建成功，返回创建的域名列表（包括新创建和已存在的）",
                         "schema": {
                             "allOf": [
                                 {
@@ -67,6 +67,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
                         }
                     },
+                    "404": {
+                        "description": "指定的组织不存在",
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                        }
+                    },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
@@ -78,7 +84,7 @@ const docTemplate = `{
         },
         "/domains/update": {
             "post": {
-                "description": "更新域名信息（名称和描述）",
+                "description": "更新域名信息（名称和描述），返回更新后的域名信息（不包含组织关联信息）",
                 "consumes": [
                     "application/json"
                 ],
@@ -112,7 +118,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.Domain"
+                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.DomainResponseData"
                                         }
                                     }
                                 }
@@ -142,7 +148,7 @@ const docTemplate = `{
         },
         "/domains/{id}": {
             "get": {
-                "description": "根据域名ID获取域名的详细信息（不包含子域名）",
+                "description": "根据域名ID获取域名的详细信息（不包含组织关联信息）",
                 "produces": [
                     "application/json"
                 ],
@@ -172,7 +178,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.Domain"
+                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.DomainResponseData"
                                         }
                                     }
                                 }
@@ -1724,6 +1730,26 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "vulun-scan-backend_internal_models.DomainResponseData": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
                 }
             }
         },
