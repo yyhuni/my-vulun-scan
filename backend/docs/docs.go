@@ -1684,7 +1684,7 @@ const docTemplate = `{
                     }
                 },
                 "sub_domains": {
-                    "description": "HasMany 关系 - 级联删除由子表的 BelongsTo 关系配置",
+                    "description": "HasMany 关系 - 也需要配置级联删除，确保删除 Domain 时自动删除关联的 SubDomain 和 Vulnerability",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/vulun-scan-backend_internal_models.SubDomain"
@@ -1794,7 +1794,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "vulnerabilities": {
-                    "description": "HasMany 关系 - 级联删除由子表的 BelongsTo 关系配置",
+                    "description": "HasMany 关系 - 也需要配置级联删除，确保删除 Endpoint 时自动删除关联的 Vulnerability",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/vulun-scan-backend_internal_models.Vulnerability"
@@ -1961,7 +1961,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "endpoints": {
-                    "description": "HasMany 关系 - 级联删除由子表的 BelongsTo 关系配置",
+                    "description": "HasMany 关系 - 也需要配置级联删除，确保删除 SubDomain 时自动删除关联的 Endpoint 和 Vulnerability",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/vulun-scan-backend_internal_models.Endpoint"
