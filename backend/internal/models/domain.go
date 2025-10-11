@@ -41,7 +41,7 @@ type UpdateDomainRequest struct {
 	Description string `json:"description"`
 }
 
-// DeleteDomainRequest 从组织删除域名请求
+// DeleteDomainRequest 从组织移除域名请求
 type DeleteDomainRequest struct {
 	OrgID    uint `json:"organization_id" binding:"required"`
 	DomainID uint `json:"domain_id" binding:"required"`
@@ -65,20 +65,20 @@ type GetOrgDomainsResponse struct {
 	TotalPages int      `json:"total_pages"`
 }
 
-// DeleteDomainResponseData 从组织删除域名响应数据
+// DeleteDomainResponseData 从组织移除域名响应数据
 type DeleteDomainResponseData struct {
 	Message string `json:"message"`
 }
 
-// BatchDeleteDomainsRequest 批量从组织删除域名请求
+// BatchDeleteDomainsRequest 批量从组织移除域名请求
 type BatchDeleteDomainsRequest struct {
 	OrgID     uint   `json:"organization_id" binding:"required"`
 	DomainIDs []uint `json:"domain_ids" binding:"required"`
 }
 
-// BatchDeleteDomainsResponseData 批量删除域名响应数据
+// BatchDeleteDomainsResponseData 批量移除域名响应数据
 type BatchDeleteDomainsResponseData struct {
 	Message      string `json:"message"`
-	SuccessCount int    `json:"success_count"` // 成功删除的数量
+	SuccessCount int    `json:"success_count"` // 成功移除的数量
 	FailedCount  int    `json:"failed_count"`  // 失败的数量
 }

@@ -6,7 +6,7 @@ import { createMainAssetColumns } from "./main-assets-columns"
 import { AddDomainDialog } from "./add-domain-dialog"
 import { EditMainAssetDialog } from "./edit-main-asset-dialog"
 import { LoadingState } from "@/components/loading-spinner"
-import { useCreateDomain, useDeleteDomainFromOrganization } from "@/hooks/use-domains"
+import { useCreateDomain, useDeleteDomainFromOrganization, useBatchDeleteDomainsFromOrganization } from "@/hooks/use-domains"
 import { useOrganizationDomains } from "@/hooks/use-organizations"
 import {
   AlertDialog,
@@ -56,6 +56,7 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
 
   // 移除域名 mutation
   const deleteDomainMutation = useDeleteDomainFromOrganization()
+  const batchDeleteMutation = useBatchDeleteDomainsFromOrganization()
 
   // 辅助函数 - 格式化日期
   const formatDate = (dateString: string): string => {
@@ -112,12 +113,10 @@ export function MainAssetsList({ organizationId }: { organizationId: string }) {
   const confirmBulkRemove = () => {
     if (selectedAssets.length === 0) return
     
-    // 批量移除：依次调用移除操作
-    selectedAssets.forEach(asset => {
-      deleteDomainMutation.mutate({
-        organizationId: parseInt(organizationId),
-        domainId: asset.id
-      })
+    // 调用批量删除接口
+    batchDeleteMutation.mutate({
+      organizationId: parseInt(organizationId),
+      domainIds: selectedAssets.map(asset => asset.id)
     })
     
     setBulkRemoveDialogOpen(false)

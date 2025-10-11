@@ -81,7 +81,7 @@ export function useCreateDomain() {
   })
 }
 
-// 从组织中删除域名
+// 从组织中移除域名
 export function useDeleteDomainFromOrganization() {
   const queryClient = useQueryClient()
 
@@ -118,6 +118,55 @@ export function useDeleteDomainFromOrganization() {
       }
       
       const errorMessage = error?.response?.data?.message || error?.message || '移除失败'
+      toast.error(errorMessage)
+    },
+  })
+}
+
+// 批量从组织中移除域名
+export function useBatchDeleteDomainsFromOrganization() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (data: { organizationId: number; domainIds: number[] }) => 
+      DomainService.batchDeleteDomainsFromOrganization(data),
+    onMutate: ({ organizationId }) => {
+      toast.loading('正在批量移除域名...', { id: `batch-delete-${organizationId}` })
+    },
+    onSuccess: (response, { organizationId }) => {
+      toast.dismiss(`batch-delete-${organizationId}`)
+      
+      if (response.state === 'success') {
+        // 使用后端返回的详细消息
+        const message = response.data?.message || '批量移除完成'
+        const successCount = response.data?.successCount || 0
+        const failedCount = response.data?.failedCount || 0
+        
+        if (failedCount > 0) {
+          toast.warning(`${message}（成功：${successCount}，失败：${failedCount}）`)
+        } else {
+          toast.success(message)
+        }
+        
+        // 刷新相关查询
+        queryClient.invalidateQueries({ queryKey: domainKeys.lists() })
+        
+        // 刷新组织的域名列表
+        queryClient.invalidateQueries({ 
+          queryKey: ['organizations', 'detail', organizationId, 'domains'] 
+        })
+      } else {
+        throw new Error(response.message || '批量移除失败')
+      }
+    },
+    onError: (error: any, { organizationId }) => {
+      toast.dismiss(`batch-delete-${organizationId}`)
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.error('批量移除域名失败:', error)
+      }
+      
+      const errorMessage = error?.response?.data?.message || error?.message || '批量移除失败'
       toast.error(errorMessage)
     },
   })
@@ -163,68 +212,3 @@ export function useUpdateDomain() {
     },
   })
 }
-
-// 注意：以下删除功能需要后端 API 支持，目前后端还没有实现
-/*
-// 删除域名
-export function useDeleteDomain() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (id: number) => DomainService.deleteDomain(id),
-    onMutate: (id) => {
-      toast.loading('正在删除域名...', { id: `delete-domain-${id}` })
-    },
-    onSuccess: (response: any, id) => {
-      toast.dismiss(`delete-domain-${id}`)
-      
-      if (response.state === 'success') {
-        toast.success('删除成功')
-        queryClient.invalidateQueries({ queryKey: domainKeys.lists() })
-      } else {
-        throw new Error(response.message || '删除域名失败')
-      }
-    },
-    onError: (error: any, id) => {
-      toast.dismiss(`delete-domain-${id}`)
-      if (process.env.NODE_ENV === 'development') {
-        console.error('删除域名失败:', error)
-      }
-      
-      const errorMessage = error?.response?.data?.message || error?.message || '删除失败'
-      toast.error(errorMessage)
-    },
-  })
-}
-
-// 批量删除域名
-export function useBatchDeleteDomains() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (ids: number[]) => DomainService.batchDeleteDomains(ids),
-    onMutate: () => {
-      toast.loading('正在批量删除域名...', { id: 'batch-delete-domains' })
-    },
-    onSuccess: (response: any) => {
-      toast.dismiss('batch-delete-domains')
-      
-      if (response.state === 'success') {
-        toast.success('批量删除成功')
-        queryClient.invalidateQueries({ queryKey: domainKeys.lists() })
-      } else {
-        throw new Error(response.message || '批量删除域名失败')
-      }
-    },
-    onError: (error: any) => {
-      toast.dismiss('batch-delete-domains')
-      if (process.env.NODE_ENV === 'development') {
-        console.error('批量删除域名失败:', error)
-      }
-      
-      const errorMessage = error?.response?.data?.message || error?.message || '批量删除失败'
-      toast.error(errorMessage)
-    },
-  })
-}
-*/

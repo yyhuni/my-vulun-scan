@@ -186,14 +186,14 @@ func GetDomainsByOrgID(c *gin.Context) {
 	response.SuccessResponse(c, result)
 }
 
-// DeleteDomainFromOrganization 从组织中删除域名
-// @Summary 从组织中删除域名
+// DeleteDomainFromOrganization 从组织中移除域名
+// @Summary 从组织中移除域名
 // @Description 解除指定组织与域名的关联关系，如果域名成为孤儿（没有任何组织关联）则自动删除该域名
 // @Tags 域名管理
 // @Produce json
 // @Param organization_id path uint true "组织ID" example(1)
 // @Param domain_id path uint true "域名ID" example(2)
-// @Success 200 {object} models.APIResponse{data=models.DeleteDomainResponseData} "删除成功"
+// @Success 200 {object} models.APIResponse{data=models.DeleteDomainResponseData} "移除成功"
 // @Failure 400 {object} models.APIResponse "请求参数错误"
 // @Failure 404 {object} models.APIResponse "组织、域名或关联不存在"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
@@ -239,17 +239,17 @@ func DeleteDomainFromOrganization(c *gin.Context) {
 	})
 }
 
-// BatchDeleteDomainsFromOrganization 批量从组织中删除域名
-// @Summary 批量从组织中删除域名
+// BatchDeleteDomainsFromOrganization 批量从组织中移除域名
+// @Summary 批量从组织中移除域名
 // @Description 批量解除指定组织与多个域名的关联关系，如果域名成为孤儿（没有任何组织关联）则自动删除该域名
 // @Tags 域名管理
 // @Accept json
 // @Produce json
-// @Param request body models.BatchDeleteDomainsRequest true "批量删除请求，包含组织ID和域名ID列表"
-// @Success 200 {object} models.APIResponse{data=models.BatchDeleteDomainsResponseData} "删除成功，返回成功和失败的统计信息"
+// @Param request body models.BatchDeleteDomainsRequest true "批量移除请求，包含组织ID和域名ID列表"
+// @Success 200 {object} models.APIResponse{data=models.BatchDeleteDomainsResponseData} "移除成功，返回成功和失败的统计信息"
 // @Failure 400 {object} models.APIResponse "请求参数错误"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
-// @Router /organizations/batch-delete-domains [post]
+// @Router /organizations/{organization_id}/domains/batch-remove [post]
 func BatchDeleteDomainsFromOrganization(c *gin.Context) {
 	var req models.BatchDeleteDomainsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -268,7 +268,7 @@ func BatchDeleteDomainsFromOrganization(c *gin.Context) {
 	// 即使部分失败，只要有成功的就返回成功
 	if successCount > 0 {
 		response.SuccessResponse(c, models.BatchDeleteDomainsResponseData{
-			Message:      fmt.Sprintf("批量删除完成：成功 %d 个，失败 %d 个", successCount, failedCount),
+			Message:      fmt.Sprintf("批量移除完成：成功 %d 个，失败 %d 个", successCount, failedCount),
 			SuccessCount: successCount,
 			FailedCount:  failedCount,
 		})
@@ -276,5 +276,5 @@ func BatchDeleteDomainsFromOrganization(c *gin.Context) {
 	}
 
 	// 全部失败
-	response.InternalServerErrorResponse(c, fmt.Sprintf("批量删除失败: %s", err.Error()))
+	response.InternalServerErrorResponse(c, fmt.Sprintf("批量移除失败: %s", err.Error()))
 }

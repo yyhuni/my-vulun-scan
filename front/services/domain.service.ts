@@ -58,8 +58,8 @@ export class DomainService {
   }
 
   /**
-   * 从组织中删除域名
-   * @param data - 删除请求对象
+   * 从组织中移除域名
+   * @param data - 移除请求对象
    * @param data.organizationId - 组织ID
    * @param data.domainId - 域名ID
    * @returns Promise<ApiResponse<any>>
@@ -70,6 +70,31 @@ export class DomainService {
   }): Promise<ApiResponse<any>> {
     const response = await api.delete<ApiResponse<any>>(
       `/organizations/${data.organizationId}/domains/${data.domainId}`
+    )
+    return response.data
+  }
+
+  /**
+   * 批量从组织中移除域名
+   * @param data - 批量移除请求对象
+   * @param data.organizationId - 组织ID
+   * @param data.domainIds - 域名ID数组
+   * @returns Promise<ApiResponse<{ message: string; successCount: number; failedCount: number }>>
+   */
+  static async batchDeleteDomainsFromOrganization(data: {
+    organizationId: number
+    domainIds: number[]
+  }): Promise<ApiResponse<{ 
+    message: string
+    successCount: number
+    failedCount: number
+  }>> {
+    const response = await api.post<ApiResponse<any>>(
+      `/organizations/${data.organizationId}/domains/batch-remove`,
+      {
+        organizationId: data.organizationId,  // 拦截器会转换为 organization_id
+        domainIds: data.domainIds,            // 拦截器会转换为 domain_ids
+      }
     )
     return response.data
   }
