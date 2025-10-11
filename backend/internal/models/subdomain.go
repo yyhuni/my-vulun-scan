@@ -16,11 +16,11 @@ type SubDomain struct {
 	DomainID uint   `json:"domain_id" gorm:"not null;index;uniqueIndex:idx_subdomain_domain_name"`
 
 	// 关联关系
+	// BelongsTo 关系 - 在这里配置级联删除
 	Domain *Domain `json:"domain" gorm:"foreignKey:DomainID;constraint:OnDelete:CASCADE"`
-	// Endpoint 的级联删除：删除 SubDomain 时自动删除其所有端点
-	Endpoints []Endpoint `json:"endpoints" gorm:"foreignKey:SubdomainID;constraint:OnDelete:CASCADE"`
-	// Vulnerability 的级联删除：删除 SubDomain 时自动删除其所有漏洞
-	Vulnerabilities []Vulnerability `json:"vulnerabilities" gorm:"foreignKey:SubdomainID;constraint:OnDelete:CASCADE"`
+	// HasMany 关系 - 级联删除由子表的 BelongsTo 关系配置
+	Endpoints       []Endpoint      `json:"endpoints" gorm:"foreignKey:SubdomainID"`
+	Vulnerabilities []Vulnerability `json:"vulnerabilities" gorm:"foreignKey:SubdomainID"`
 }
 
 // DomainGroup 域名分组（根域名 + 子域名列表）

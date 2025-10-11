@@ -28,7 +28,7 @@ func SetupOrganizationRoutes(api *gin.RouterGroup) {
 		// 请求体示例：{"id": 1, "name": "新名称", "description": "新描述"}
 		organizations.POST("/update", handlers.UpdateOrg)
 
-		// 删除单个组织 - 会级联删除相关的域名关联（待实现完善）
+		// 删除单个组织 - 会级联删除相关的域名关联
 		// 请求体示例：{"id": 1}
 		organizations.POST("/delete", handlers.DeleteOrganization)
 

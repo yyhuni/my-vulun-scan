@@ -20,8 +20,10 @@ type Endpoint struct {
 	SubdomainID   uint   `json:"subdomain_id" gorm:"not null;index"`
 
 	// 关联关系
-	Subdomain       *SubDomain      `json:"subdomain" gorm:"foreignKey:SubdomainID;constraint:OnDelete:CASCADE"`
-	Vulnerabilities []Vulnerability `json:"vulnerabilities" gorm:"foreignKey:EndPointID;constraint:OnDelete:CASCADE"`
+	// BelongsTo 关系 - 在这里配置级联删除
+	Subdomain *SubDomain `json:"subdomain" gorm:"foreignKey:SubdomainID;constraint:OnDelete:CASCADE"`
+	// HasMany 关系 - 级联删除由子表的 BelongsTo 关系配置
+	Vulnerabilities []Vulnerability `json:"vulnerabilities" gorm:"foreignKey:EndPointID"`
 }
 
 // CreateEndpointsRequest 创建端点请求

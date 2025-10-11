@@ -17,10 +17,9 @@ type Domain struct {
 
 	// 关联关系 - 级联删除配置在 OrganizationDomain 中间表定义
 	Organizations []Organization `json:"organizations" gorm:"many2many:organization_domains"`
-	// SubDomain 的级联删除：删除 Domain 时自动删除其所有子域名（包括根子域名）
-	SubDomains []SubDomain `json:"sub_domains" gorm:"foreignKey:DomainID;constraint:OnDelete:CASCADE"`
-	// Vulnerability 的级联删除：删除 Domain 时自动删除其所有漏洞
-	Vulnerabilities []Vulnerability `json:"vulnerabilities" gorm:"foreignKey:DomainID;constraint:OnDelete:CASCADE"`
+	// HasMany 关系 - 级联删除由子表的 BelongsTo 关系配置
+	SubDomains      []SubDomain     `json:"sub_domains" gorm:"foreignKey:DomainID"`
+	Vulnerabilities []Vulnerability `json:"vulnerabilities" gorm:"foreignKey:DomainID"`
 }
 
 // CreateDomainsRequest 创建域名请求

@@ -144,14 +144,13 @@ definitions:
           $ref: '#/definitions/vulun-scan-backend_internal_models.Organization'
         type: array
       sub_domains:
-        description: SubDomain 的级联删除：删除 Domain 时自动删除其所有子域名（包括根子域名）
+        description: HasMany 关系 - 级联删除由子表的 BelongsTo 关系配置
         items:
           $ref: '#/definitions/vulun-scan-backend_internal_models.SubDomain'
         type: array
       updated_at:
         type: string
       vulnerabilities:
-        description: Vulnerability 的级联删除：删除 Domain 时自动删除其所有漏洞
         items:
           $ref: '#/definitions/vulun-scan-backend_internal_models.Vulnerability'
         type: array
@@ -193,7 +192,9 @@ definitions:
       subdomain:
         allOf:
         - $ref: '#/definitions/vulun-scan-backend_internal_models.SubDomain'
-        description: 关联关系
+        description: |-
+          关联关系
+          BelongsTo 关系 - 在这里配置级联删除
       subdomain_id:
         type: integer
       title:
@@ -204,6 +205,7 @@ definitions:
         description: 核心业务字段
         type: string
       vulnerabilities:
+        description: HasMany 关系 - 级联删除由子表的 BelongsTo 关系配置
         items:
           $ref: '#/definitions/vulun-scan-backend_internal_models.Vulnerability'
         type: array
@@ -323,11 +325,13 @@ definitions:
       domain:
         allOf:
         - $ref: '#/definitions/vulun-scan-backend_internal_models.Domain'
-        description: 关联关系
+        description: |-
+          关联关系
+          BelongsTo 关系 - 在这里配置级联删除
       domain_id:
         type: integer
       endpoints:
-        description: Endpoint 的级联删除：删除 SubDomain 时自动删除其所有端点
+        description: HasMany 关系 - 级联删除由子表的 BelongsTo 关系配置
         items:
           $ref: '#/definitions/vulun-scan-backend_internal_models.Endpoint'
         type: array
@@ -340,7 +344,6 @@ definitions:
       updated_at:
         type: string
       vulnerabilities:
-        description: Vulnerability 的级联删除：删除 SubDomain 时自动删除其所有漏洞
         items:
           $ref: '#/definitions/vulun-scan-backend_internal_models.Vulnerability'
         type: array

@@ -189,12 +189,9 @@ func (s *OrganizationService) DeleteOrganization(organizationID uint) error {
 			domainIDs[i] = d.ID
 		}
 
-		// 步骤3: 删除组织记录，并自动清理所有关联
-		// Select(clause.Associations) 的作用：
-		// - 自动识别并清理模型中定义的所有关联字段（如 Domains 等）
-		// - 相当于自动执行：Association("Domains").Clear()
-		// - 无需手动逐个清理关联，代码更简洁且易于维护
-		res := tx.Select(clause.Associations).Delete(&org)
+		// 步骤3: 删除组织记录
+		// 数据库的 OnDelete:CASCADE 会自动清理 organization_domains 中间表
+		res := tx.Delete(&org)
 		if res.Error != nil {
 			log.Error().Err(res.Error).Msg("Failed to delete organization")
 			return res.Error
@@ -213,7 +210,7 @@ func (s *OrganizationService) DeleteOrganization(organizationID uint) error {
 			err := tx.Raw(`
 				SELECT d.id 
 				FROM domains d
-				WHERE d.id IN (?) 
+				WHERE d.id IN (?)
 				AND NOT EXISTS (
 					SELECT 1 FROM organization_domains od 
 					WHERE od.domain_id = d.id
