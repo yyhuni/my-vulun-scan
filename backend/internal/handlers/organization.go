@@ -154,9 +154,8 @@ func UpdateOrg(c *gin.Context) {
 	response.SuccessResponse(c, organization)
 }
 
-// TODO: 待实现完善
 // DeleteOrganization 删除组织
-// @Summary 删除组织（待实现完善）
+// @Summary 删除组织
 // @Description 删除指定的组织（级联删除关联的域名和孤儿域名）
 // @Tags 组织管理
 // @Accept json
@@ -191,9 +190,8 @@ func DeleteOrganization(c *gin.Context) {
 	})
 }
 
-// TODO: 待实现完善
 // BatchDeleteOrganizations 批量删除组织
-// @Summary 批量删除组织（待实现完善）
+// @Summary 批量删除组织
 // @Description 批量删除组织（级联删除关联的域名和孤儿域名）
 // @Tags 组织管理
 // @Accept json

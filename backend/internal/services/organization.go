@@ -9,7 +9,6 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 // OrganizationService 组织服务
@@ -275,6 +274,7 @@ func (s *OrganizationService) BatchDeleteOrganizations(organizationIDs []uint) (
 			return err
 		}
 
+		// 检查删除的组织数量是否与请求的ID数量一致
 		if len(deletedOrgs) != len(organizationIDs) {
 			return errors.ErrSomeOrganizationsNotExist
 		}
@@ -288,16 +288,20 @@ func (s *OrganizationService) BatchDeleteOrganizations(organizationIDs []uint) (
 			}
 		}
 
-		// 步骤3: 逐个删除组织（使用 Select(clause.Associations) 自动清理所有关联）
-		// 注意：这里无法直接批量删除，因为需要为每个组织清理关联
-		for _, org := range deletedOrgs {
-			if err := tx.Select(clause.Associations).Delete(&org).Error; err != nil {
-				log.Error().Err(err).Uint("org_id", org.ID).Msg("Failed to delete organization")
-				return err
-			}
+		// 步骤3: 批量清理中间表关联
+		// 手动删除 organization_domains 中间表记录，实现批量操作
+		if err := tx.Exec("DELETE FROM organization_domains WHERE organization_id IN ?", organizationIDs).Error; err != nil {
+			log.Error().Err(err).Msg("Failed to delete organization-domain associations")
+			return err
 		}
 
-		// 步骤4: 批量查询孤儿域名（没有任何组织关联的域名）
+		// 步骤4: 批量删除组织记录
+		if err := tx.Where("id IN ?", organizationIDs).Delete(&models.Organization{}).Error; err != nil {
+			log.Error().Err(err).Msg("Failed to batch delete organizations")
+			return err
+		}
+
+		// 步骤5: 批量查询孤儿域名（没有任何组织关联的域名）
 		// 收集了所有被删除组织的域名ID，统一检查哪些成为了孤儿域名
 		if len(allDomainIDs) > 0 {
 			var orphanDomainIDs []uint
