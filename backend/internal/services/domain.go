@@ -394,40 +394,29 @@ func (s *DomainService) buildOrderClause(sortBy, sortOrder string) string {
 // DeleteDomainFromOrganization 从组织中删除域名，如果域名成为孤儿则彻底删除
 //
 // 业务逻辑说明：
-// 1. 验证组织和域名是否存在
-// 2. 验证关联关系是否存在
+// 1. 查询域名（后续步骤需要使用 domain 对象）
+// 2. 验证关联关系是否存在（防止误删除孤儿域名）
 // 3. 解除关联（删除 organization_domains 中间表记录）
 // 4. 检查域名是否成为孤儿（没有任何组织关联）
-// 5. 如果是孤儿域名，则自动删除该域名
+// 5. 如果是孤儿域名，则触发级联删除
 //
-// 孤儿域名的定义：
-// - 在 domains 表中存在，但在 organization_domains 表中没有任何关联记录
-// - 这种域名没有实际用途，应该被清理以节省存储空间
+// 级联删除说明：
+// - 删除 domains 表记录会触发数据库级联删除
+// - 自动删除关联的 subdomains、endpoints、vulnerabilities 等所有子数据
 //
 // 设计考虑：
 // - 使用事务确保关联解除和域名删除的原子性
 // - 自动清理孤儿域名，避免数据库中产生垃圾数据
-// - 多层验证确保操作的安全性
 //
 // 使用场景：
 // - 前端用户从组织中移除某个域名时调用
-// - 如果这是最后一个使用该域名的组织，域名会被自动删除
+// - 如果这是最后一个使用该域名的组织，域名及其所有子数据会被自动删除
 func (s *DomainService) DeleteDomainFromOrganization(req models.DeleteDomainRequest) error {
 
 	// 使用事务确保数据一致性：关联解除和孤儿域名删除要么全部成功，要么全部回滚
 	return s.db.Transaction(func(tx *gorm.DB) error {
-		// 步骤1: 验证组织是否存在
-		var org models.Organization
-		if err := tx.First(&org, "id = ?", req.OrgID).Error; err != nil {
-			if err == gorm.ErrRecordNotFound {
-				log.Error().Uint("organization_id", req.OrgID).Msg("Organization not found")
-				return errors.ErrOrganizationNotFound
-			}
-			log.Error().Err(err).Msg("Failed to query organization")
-			return err
-		}
-
-		// 步骤2: 验证域名是否存在
+		// 步骤1: 查询域名（后续步骤需要使用 domain 对象）
+		// SQL: SELECT * FROM `domains` WHERE id = ? LIMIT 1
 		var domain models.Domain
 		if err := tx.First(&domain, "id = ?", req.DomainID).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
@@ -438,8 +427,9 @@ func (s *DomainService) DeleteDomainFromOrganization(req models.DeleteDomainRequ
 			return err
 		}
 
-		// 步骤3: 验证关联关系是否存在
-		// 如果关联不存在，说明操作无效，应该返回错误
+		// 步骤2: 验证关联关系是否存在
+		// 这个验证很重要：防止删除不存在的关联后误判为孤儿域名而导致误删除
+		// SQL: SELECT COUNT(*) FROM `organization_domains` WHERE organization_id = ? AND domain_id = ?
 		var count int64
 		if err := tx.Model(&models.OrganizationDomain{}).
 			Where("organization_id = ? AND domain_id = ?", req.OrgID, req.DomainID).
@@ -456,8 +446,12 @@ func (s *DomainService) DeleteDomainFromOrganization(req models.DeleteDomainRequ
 			return errors.ErrAssociationNotFound
 		}
 
-		// 步骤4: 使用 GORM 的 Association 方法删除关联
-		// Association().Delete() 会自动处理中间表，比手动 DELETE 更安全
+		// 步骤3: 删除组织和域名的关联关系
+		// 注意：这里只删除 organization_domains 中间表的记录
+		// 不会删除 organizations 表和 domains 表中的实体记录
+		// 不会触发任何级联删除操作
+		// SQL: DELETE FROM `organization_domains` WHERE organization_id = ? AND domain_id = ?
+		org := models.Organization{ID: req.OrgID}
 		if err := tx.Model(&org).Association("Domains").Delete(&domain); err != nil {
 			log.Error().Err(err).Msg("Failed to delete association")
 			return err
@@ -468,8 +462,8 @@ func (s *DomainService) DeleteDomainFromOrganization(req models.DeleteDomainRequ
 			Uint("domain_id", req.DomainID).
 			Msg("Association removed successfully")
 
-		// 步骤5: 检查域名是否成为孤儿（没有任何组织关联）
-		// 查询 organization_domains 表中是否还有该域名的关联记录
+		// 步骤4: 检查域名是否成为孤儿（没有任何组织关联）
+		// SQL: SELECT COUNT(*) FROM `organization_domains` WHERE domain_id = ?
 		if err := tx.Model(&models.OrganizationDomain{}).
 			Where("domain_id = ?", req.DomainID).
 			Count(&count).Error; err != nil {
@@ -477,8 +471,13 @@ func (s *DomainService) DeleteDomainFromOrganization(req models.DeleteDomainRequ
 			return err
 		}
 
-		// 步骤6: 如果是孤儿域名，则自动删除
-		// 孤儿域名没有实际用途，应该被清理以保持数据库整洁
+		// 步骤5: 如果是孤儿域名，则自动删除
+		// 注意：这里会删除 domains 表的记录，触发数据库级联删除
+		// 会自动删除关联的 subdomains、endpoints、vulnerabilities 等所有子数据
+		// SQL: DELETE FROM `domains` WHERE id = ?
+		// 级联: DELETE FROM `subdomains` WHERE domain_id = ? (自动)
+		// 级联: DELETE FROM `endpoints` WHERE subdomain_id IN (...) (自动)
+		// 级联: DELETE FROM `vulnerabilities` WHERE domain_id = ? OR subdomain_id IN (...) OR endpoint_id IN (...) (自动)
 		if count == 0 {
 			if err := tx.Delete(&domain).Error; err != nil {
 				log.Error().Err(err).Msg("Failed to delete orphan domain")
