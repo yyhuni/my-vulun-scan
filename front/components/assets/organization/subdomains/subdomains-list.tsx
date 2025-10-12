@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import { SubdomainsDataTable } from "./subdomains-data-table"
 import { createSubdomainColumns } from "./subdomains-columns"
 import { AddSubdomainDialog } from "./add-subdomain-dialog"
-import { EditSubdomainDialog } from "./edit-subdomain-dialog"
 import { LoadingState, LoadingSpinner } from "@/components/loading-spinner"
 import {
   AlertDialog,
@@ -28,8 +27,6 @@ import type { SubDomain } from "@/types/subdomain.types"
 export function SubdomainsList({ organizationId }: { organizationId: string }) {
   const [selectedSubdomains, setSelectedSubdomains] = useState<SubDomain[]>([])
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const [editingSubdomain, setEditingSubdomain] = useState<SubDomain | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [subdomainToDelete, setSubdomainToDelete] = useState<SubDomain | null>(null)
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
@@ -85,12 +82,6 @@ export function SubdomainsList({ organizationId }: { organizationId: string }) {
     router.push(path)
   }
 
-  // 处理编辑子域名
-  const handleEditSubdomain = (subdomain: SubDomain) => {
-    setEditingSubdomain(subdomain)
-    setIsEditDialogOpen(true)
-  }
-
   // 处理删除子域名
   const handleDeleteSubdomain = (subdomain: SubDomain) => {
     setSubdomainToDelete(subdomain)
@@ -140,13 +131,6 @@ export function SubdomainsList({ organizationId }: { organizationId: string }) {
     setIsAddDialogOpen(false)
   }
 
-  // 处理编辑成功
-  const handleEditSuccess = async (updatedSubdomain: SubDomain) => {
-    // React Query 会自动刷新数据，不需要手动处理
-    setIsEditDialogOpen(false)
-    setEditingSubdomain(null)
-  }
-
   // 处理分页变化
   const handlePaginationChange = (newPagination: { pageIndex: number; pageSize: number }) => {
     setPagination(newPagination)
@@ -158,10 +142,9 @@ export function SubdomainsList({ organizationId }: { organizationId: string }) {
       createSubdomainColumns({
         formatDate,
         navigate,
-        handleEdit: handleEditSubdomain,
         handleDelete: handleDeleteSubdomain,
       }),
-    [formatDate, navigate, handleEditSubdomain, handleDeleteSubdomain]
+    [formatDate, navigate, handleDeleteSubdomain]
   )
 
   // 错误状态
@@ -220,17 +203,6 @@ export function SubdomainsList({ organizationId }: { organizationId: string }) {
         open={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
       />
-      
-      {/* 编辑子域名对话框 */}
-      {editingSubdomain && (
-        <EditSubdomainDialog
-          subdomain={editingSubdomain}
-          domains={domainsData?.domains || []}
-          open={isEditDialogOpen}
-          onOpenChange={setIsEditDialogOpen}
-          onEdit={handleEditSuccess}
-        />
-      )}
 
       {/* 删除确认对话框 */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

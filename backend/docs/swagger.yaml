@@ -175,6 +175,11 @@ definitions:
         type: string
       description:
         type: string
+      endpoints:
+        description: 冗余关联
+        items:
+          $ref: '#/definitions/vulun-scan-backend_internal_models.Endpoint'
+        type: array
       id:
         description: 数据库基础字段
         type: integer
@@ -189,7 +194,8 @@ definitions:
           $ref: '#/definitions/vulun-scan-backend_internal_models.Organization'
         type: array
       sub_domains:
-        description: HasMany 关系 - 也需要配置级联删除，确保删除 Domain 时自动删除关联的 SubDomain 和 Vulnerability
+        description: HasMany 关系 - 也需要配置级联删除，确保删除 Domain 时自动删除关联的 SubDomain、Endpoint
+          和 Vulnerability
         items:
           $ref: '#/definitions/vulun-scan-backend_internal_models.SubDomain'
         type: array
@@ -240,6 +246,13 @@ definitions:
         type: integer
       created_at:
         type: string
+      domain:
+        allOf:
+        - $ref: '#/definitions/vulun-scan-backend_internal_models.Domain'
+        description: 冗余关联
+      domain_id:
+        description: 冗余字段，用于性能优化
+        type: integer
       id:
         description: 数据库基础字段
         type: integer
@@ -254,6 +267,9 @@ definitions:
           关联关系
           BelongsTo 关系 - 在这里配置级联删除
       subdomain_id:
+        description: |-
+          关联字段 - 只读(创建后)
+          <-:create 表示该字段只在创建时可写，创建后只读
         type: integer
       title:
         type: string
@@ -385,6 +401,7 @@ definitions:
         description: |-
           核心业务字段
           注意：Name 字段在应用层已统一转为小写，数据库层通过 CHECK 约束防止插入大写值
+          <-:create 表示该字段只在创建时可写，创建后只读
         type: string
       updated_at:
         type: string
@@ -413,19 +430,6 @@ definitions:
       id:
         type: integer
       name:
-        type: string
-    required:
-    - id
-    type: object
-  vulun-scan-backend_internal_models.UpdateSubDomainRequest:
-    properties:
-      domain_id:
-        description: 指针类型：nil=不更新，有值=更新所属域名
-        type: integer
-      id:
-        type: integer
-      name:
-        description: 指针类型：nil=不更新，有值=更新子域名
         type: string
     required:
     - id
@@ -1505,51 +1509,6 @@ paths:
           schema:
             $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
       summary: 批量创建子域名（支持根域名分组）
-      tags:
-      - 子域名管理
-  /subdomains/update:
-    post:
-      consumes:
-      - application/json
-      description: |-
-        更新子域名的名称和所属域名，返回更新后的子域名信息
-
-        **字段更新说明：**
-        - name: 传null不更新，传值则更新子域名
-        - domain_id: 传null不更新，传值则更新所属域名
-        - 至少需要更新一个字段，否则直接返回原数据
-      parameters:
-      - description: 更新信息
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/vulun-scan-backend_internal_models.UpdateSubDomainRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 更新成功
-          schema:
-            allOf:
-            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/vulun-scan-backend_internal_models.SubDomain'
-              type: object
-        "400":
-          description: 请求参数错误
-          schema:
-            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
-        "404":
-          description: 子域名不存在
-          schema:
-            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
-        "500":
-          description: 服务器内部错误
-          schema:
-            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
-      summary: 更新子域名
       tags:
       - 子域名管理
 swagger: "2.0"

@@ -175,38 +175,6 @@ export function useCreateSubdomain() {
   })
 }
 
-// 更新子域名
-export function useUpdateSubdomain() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (data: { id: number; name?: string; domainId?: number }) =>
-      SubDomainService.updateSubDomain(data),
-    onMutate: ({ id }) => {
-      toast.loading('正在更新子域名...', { id: `update-subdomain-${id}` })
-    },
-    onSuccess: (response, { id }) => {
-      toast.dismiss(`update-subdomain-${id}`)
-      
-      if (response.state === 'success') {
-        toast.success('✅ 更新成功')
-        queryClient.invalidateQueries({ queryKey: subdomainKeys.lists() })
-        queryClient.invalidateQueries({ queryKey: subdomainKeys.detail(id) })
-      } else {
-        toast.error(response.message || '更新子域名失败')
-      }
-    },
-    onError: (error: any, { id }) => {
-      toast.dismiss(`update-subdomain-${id}`)
-      if (process.env.NODE_ENV === 'development') {
-        console.error('更新子域名失败:', error)
-      }
-      const errorMessage = error?.response?.data?.message || error?.message || '更新失败'
-      toast.error(errorMessage)
-    },
-  })
-}
-
 // 删除子域名
 export function useDeleteSubdomain() {
   const queryClient = useQueryClient()

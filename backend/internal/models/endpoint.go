@@ -17,11 +17,16 @@ type Endpoint struct {
 	StatusCode    *int   `json:"status_code"`
 	Title         string `json:"title" gorm:"size:255"`
 	ContentLength *int64 `json:"content_length"`
-	SubdomainID   uint   `json:"subdomain_id" gorm:"not null;index"`
+
+	// 关联字段 - 只读(创建后)
+	// <-:create 表示该字段只在创建时可写，创建后只读
+	SubdomainID uint `json:"subdomain_id" gorm:"not null;index;<-:create"`
+	DomainID    uint `json:"domain_id" gorm:"not null;index;<-:create"` // 冗余字段，用于性能优化
 
 	// 关联关系
 	// BelongsTo 关系 - 在这里配置级联删除
 	Subdomain *SubDomain `json:"subdomain" gorm:"foreignKey:SubdomainID;constraint:OnDelete:CASCADE"`
+	Domain    *Domain    `json:"domain" gorm:"foreignKey:DomainID;constraint:OnDelete:CASCADE"` // 冗余关联
 	// HasMany 关系 - 也需要配置级联删除，确保删除 Endpoint 时自动删除关联的 Vulnerability
 	Vulnerabilities []Vulnerability `json:"vulnerabilities" gorm:"foreignKey:EndPointID;constraint:OnDelete:CASCADE"`
 }
@@ -60,15 +65,15 @@ type GetEndpointsResponse struct {
 
 // CreateEndpointsResponse 创建端点响应（service 层使用）
 type CreateEndpointsResponse struct {
-	SuccessCount     int      `json:"success_count"`
+	SuccessCount      int      `json:"success_count"`
 	ExistingEndpoints []string `json:"existing_endpoints"`
-	TotalRequested   int      `json:"total_requested"`
+	TotalRequested    int      `json:"total_requested"`
 }
 
 // CreateEndpointsResponseData 创建端点响应数据（handler 层返回给前端）
 type CreateEndpointsResponseData struct {
-	Message          string   `json:"message"`
-	SuccessCount     int      `json:"success_count"`
+	Message           string   `json:"message"`
+	SuccessCount      int      `json:"success_count"`
 	ExistingEndpoints []string `json:"existing_endpoints"`
-	TotalRequested   int      `json:"total_requested"`
+	TotalRequested    int      `json:"total_requested"`
 }

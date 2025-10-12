@@ -13,8 +13,9 @@ type SubDomain struct {
 
 	// 核心业务字段
 	// 注意：Name 字段在应用层已统一转为小写，数据库层通过 CHECK 约束防止插入大写值
-	Name     string `json:"name" gorm:"not null;size:255;uniqueIndex;uniqueIndex:idx_subdomain_domain_name;check:name = LOWER(name)"`
-	DomainID uint   `json:"domain_id" gorm:"not null;index;uniqueIndex:idx_subdomain_domain_name"`
+	// <-:create 表示该字段只在创建时可写，创建后只读
+	Name     string `json:"name" gorm:"not null;size:255;uniqueIndex;uniqueIndex:idx_subdomain_domain_name;check:name = LOWER(name);<-:create"`
+	DomainID uint   `json:"domain_id" gorm:"not null;index;uniqueIndex:idx_subdomain_domain_name;<-:create"`
 
 	// 关联关系
 	// BelongsTo 关系 - 在这里配置级联删除
@@ -73,14 +74,6 @@ type GetOrgSubDomainsResponse struct {
 	Total      int         `json:"total"`
 	Page       int         `json:"page"`
 	PageSize   int         `json:"page_size"`
-}
-
-// UpdateSubDomainRequest 更新子域名请求
-// 使用指针类型允许区分"不更新"和"更新"
-type UpdateSubDomainRequest struct {
-	ID       uint   `json:"id" binding:"required"`
-	Name     *string `json:"name"`      // 指针类型：nil=不更新，有值=更新子域名
-	DomainID *uint   `json:"domain_id"` // 指针类型：nil=不更新，有值=更新所属域名
 }
 
 // BatchDeleteSubDomainsRequest 批量删除子域名请求

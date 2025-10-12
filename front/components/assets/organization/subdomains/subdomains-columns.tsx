@@ -11,14 +11,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Eye, Edit, Trash2, ChevronsUpDown } from "lucide-react"
+import { MoreHorizontal, Eye, Trash2, ChevronsUpDown } from "lucide-react"
 import type { SubDomain } from "@/types/subdomain.types"
 
 // 列创建函数的参数类型
 interface CreateColumnsProps {
   formatDate: (dateString: string) => string
   navigate: (path: string) => void
-  handleEdit: (subdomain: SubDomain) => void
   handleDelete: (subdomain: SubDomain) => void
 }
 
@@ -28,12 +27,10 @@ interface CreateColumnsProps {
 function SubdomainRowActions({
   subdomain,
   onView,
-  onEdit,
   onDelete,
 }: {
   subdomain: SubDomain
   onView: () => void
-  onEdit: () => void
   onDelete: () => void
 }) {
   return (
@@ -51,10 +48,6 @@ function SubdomainRowActions({
         <DropdownMenuItem onClick={onView}>
           <Eye className="mr-2 h-4 w-4" />
           查看详情
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={onEdit}>
-          <Edit className="mr-2 h-4 w-4" />
-          编辑
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
@@ -101,7 +94,6 @@ function DataTableColumnHeader({
 export const createSubdomainColumns = ({
   formatDate,
   navigate,
-  handleEdit,
   handleDelete,
 }: CreateColumnsProps): ColumnDef<SubDomain>[] => [
   // 选择列
@@ -201,7 +193,6 @@ export const createSubdomainColumns = ({
       <SubdomainRowActions
         subdomain={row.original}
         onView={() => navigate(`/assets/subdomain/${row.original.id}`)}
-        onEdit={() => handleEdit(row.original)}
         onDelete={() => handleDelete(row.original)}
       />
     ),

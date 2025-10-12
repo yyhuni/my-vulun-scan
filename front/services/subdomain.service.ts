@@ -5,7 +5,6 @@ import type {
   GetSubDomainsParams, 
   GetSubDomainsResponse, 
   CreateSubDomainsResponse,
-  UpdateSubDomainRequest,
   BatchDeleteSubDomainsResponse
 } from "@/types/subdomain.types"
 
@@ -105,19 +104,6 @@ export class SubDomainService {
       organizationId: data.organizationId,  // ✅ 组织ID（拦截器会转换为 organization_id）
       domainGroups: data.domainGroups       // ✅ 域名分组（拦截器会转换为 domain_groups）
     })
-    return response.data
-  }
-
-  /**
-   * 更新子域名
-   * @param data - 更新请求对象
-   * @param data.id - 子域名ID
-   * @param data.name - 新的子域名（可选）
-   * @param data.domainId - 新的所属域名ID（可选）
-   * @returns Promise<ApiResponse<SubDomain>> - 更新后的子域名
-   */
-  static async updateSubDomain(data: UpdateSubDomainRequest): Promise<ApiResponse<SubDomain>> {
-    const response = await api.post<ApiResponse<SubDomain>>('/subdomains/update', data)
     return response.data
   }
 

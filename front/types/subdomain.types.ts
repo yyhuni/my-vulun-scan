@@ -41,12 +41,6 @@ export interface CreateSubDomainsResponse {
   totalUniqueSubdomains: number  // 请求的唯一子域名总数
 }
 
-export interface UpdateSubDomainRequest {
-  id: number
-  name?: string       // 可选：更新子域名
-  domainId?: number   // 可选：更新所属域名
-}
-
 export interface BatchDeleteSubDomainsRequest {
   subdomainIds: number[]  // 需要删除的子域名ID列表
 }

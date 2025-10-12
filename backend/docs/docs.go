@@ -1337,70 +1337,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/subdomains/update": {
-            "post": {
-                "description": "更新子域名的名称和所属域名，返回更新后的子域名信息\n\n**字段更新说明：**\n- name: 传null不更新，传值则更新子域名\n- domain_id: 传null不更新，传值则更新所属域名\n- 至少需要更新一个字段，否则直接返回原数据",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "子域名管理"
-                ],
-                "summary": "更新子域名",
-                "parameters": [
-                    {
-                        "description": "更新信息",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.UpdateSubDomainRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "更新成功",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.SubDomain"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误",
-                        "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "子域名不存在",
-                        "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "服务器内部错误",
-                        "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/subdomains/{id}": {
             "get": {
                 "description": "根据子域名ID获取子域名的详细信息",
@@ -1885,6 +1821,13 @@ const docTemplate = `{
                 "description": {
                     "type": "string"
                 },
+                "endpoints": {
+                    "description": "冗余关联",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/vulun-scan-backend_internal_models.Endpoint"
+                    }
+                },
                 "id": {
                     "description": "数据库基础字段",
                     "type": "integer"
@@ -1901,7 +1844,7 @@ const docTemplate = `{
                     }
                 },
                 "sub_domains": {
-                    "description": "HasMany 关系 - 也需要配置级联删除，确保删除 Domain 时自动删除关联的 SubDomain 和 Vulnerability",
+                    "description": "HasMany 关系 - 也需要配置级联删除，确保删除 Domain 时自动删除关联的 SubDomain、Endpoint 和 Vulnerability",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/vulun-scan-backend_internal_models.SubDomain"
@@ -1979,6 +1922,18 @@ const docTemplate = `{
                 "created_at": {
                     "type": "string"
                 },
+                "domain": {
+                    "description": "冗余关联",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.Domain"
+                        }
+                    ]
+                },
+                "domain_id": {
+                    "description": "冗余字段，用于性能优化",
+                    "type": "integer"
+                },
                 "id": {
                     "description": "数据库基础字段",
                     "type": "integer"
@@ -1998,6 +1953,7 @@ const docTemplate = `{
                     ]
                 },
                 "subdomain_id": {
+                    "description": "关联字段 - 只读(创建后)\n\u003c-:create 表示该字段只在创建时可写，创建后只读",
                     "type": "integer"
                 },
                 "title": {
@@ -2189,7 +2145,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "name": {
-                    "description": "核心业务字段\n注意：Name 字段在应用层已统一转为小写，数据库层通过 CHECK 约束防止插入大写值",
+                    "description": "核心业务字段\n注意：Name 字段在应用层已统一转为小写，数据库层通过 CHECK 约束防止插入大写值\n\u003c-:create 表示该字段只在创建时可写，创建后只读",
                     "type": "string"
                 },
                 "updated_at": {
@@ -2235,25 +2191,6 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "vulun-scan-backend_internal_models.UpdateSubDomainRequest": {
-            "type": "object",
-            "required": [
-                "id"
-            ],
-            "properties": {
-                "domain_id": {
-                    "description": "指针类型：nil=不更新，有值=更新所属域名",
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "description": "指针类型：nil=不更新，有值=更新子域名",
                     "type": "string"
                 }
             }

@@ -28,10 +28,6 @@ func SetupSubDomainRoutes(api *gin.RouterGroup) {
 		// 请求体示例：{"sub_domains": ["api.example.com", "www.example.com"], "domain_id": 1}
 		subDomains.POST("/create", handlers.CreateSubDomains)
 
-		// 更新子域名 - 更新子域名的名称或所属域名
-		// 请求体示例：{"id": 1, "name": "new.example.com", "domain_id": 2}
-		subDomains.POST("/update", handlers.UpdateSubDomain)
-
 		// 批量删除子域名 - 支持一次删除多个子域名
 		// 请求体示例：{"subdomain_ids": [1, 2, 3]}
 		subDomains.POST("/batch-delete", handlers.BatchDeleteSubDomains)
