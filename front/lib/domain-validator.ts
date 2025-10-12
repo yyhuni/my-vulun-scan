@@ -202,4 +202,30 @@ export class DomainValidator {
     
     return { grouped, invalid }
   }
+
+  /**
+   * 检查子域名是否属于指定的根域名
+   * @param subdomain - 子域名（如 www.example.com, api.example.com）
+   * @param rootDomain - 根域名（如 example.com）
+   * @returns 是否属于该根域名
+   * 
+   * 示例：
+   * - isSubdomainOf('www.example.com', 'example.com') → true
+   * - isSubdomainOf('api.test.example.com', 'example.com') → true
+   * - isSubdomainOf('www.test.com', 'example.com') → false
+   */
+  static isSubdomainOf(subdomain: string, rootDomain: string): boolean {
+    const trimmedSubdomain = subdomain.trim().toLowerCase()
+    const trimmedRootDomain = rootDomain.trim().toLowerCase()
+    
+    if (!trimmedSubdomain || !trimmedRootDomain) {
+      return false
+    }
+    
+    // 提取子域名的根域名
+    const extractedRoot = this.extractRootDomain(trimmedSubdomain)
+    
+    // 比较提取的根域名与目标根域名
+    return extractedRoot === trimmedRootDomain
+  }
 }

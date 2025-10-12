@@ -96,51 +96,6 @@ func GetSubDomainByID(c *gin.Context) {
 	response.SuccessResponse(c, subDomain)
 }
 
-// CreateSubDomains 创建子域名
-// @Summary 批量创建子域名（支持根域名分组）
-// @Description 前端发送分组后的域名数据，后端自动创建根域名和子域名，需要指定组织ID
-// @Tags 子域名管理
-// @Accept json
-// @Produce json
-// @Param request body models.CreateSubDomainsRequest true "子域名创建请求（包含组织ID）"
-// @Success 200 {object} models.APIResponse{data=models.CreateSubDomainsResponseData} "创建成功"
-// @Failure 400 {object} models.APIResponse "请求参数错误"
-// @Failure 500 {object} models.APIResponse "服务器内部错误"
-// @Router /subdomains/create [post]
-func CreateSubDomains(c *gin.Context) {
-	// 解析请求体
-	var req models.CreateSubDomainsRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
-		return
-	}
-
-	// 验证域名分组列表不能为空
-	if len(req.DomainGroups) == 0 {
-		response.BadRequestResponse(c, "域名分组列表不能为空")
-		return
-	}
-
-	// 调用服务层创建子域名
-	service := services.NewSubDomainService()
-	result, err := service.CreateSubDomains(req)
-	if err != nil {
-		response.InternalServerErrorResponse(c, "创建子域名失败: "+err.Error())
-		return
-	}
-
-	// 计算已存在的子域名数量
-	alreadyExists := result.TotalUniqueSubdomains - result.SubdomainsCreated
-
-	// 返回结构化数据，由前端构建友好的消息
-	response.SuccessResponse(c, models.CreateSubDomainsResponseData{
-		SubdomainsCreated:     result.SubdomainsCreated,
-		AlreadyExists:         alreadyExists,
-		SkippedDomains:        result.SkippedDomains,
-		TotalUniqueSubdomains: result.TotalUniqueSubdomains,
-	})
-}
-
 // GetSubDomainsByDomainID 获取域名的所有子域名
 // @Summary 获取域名的子域名列表
 // @Description 根据域名ID获取该域名下的所有子域名（支持分页和排序）
@@ -351,5 +306,59 @@ func BatchDeleteSubDomains(c *gin.Context) {
 		Message:      "批量删除子域名成功",
 		DeletedCount: len(req.SubDomainIDs),
 		SubDomains:   subdomains,
+	})
+}
+
+// CreateSubDomainsForDomain 为指定域名批量创建子域名（新接口 - 简化版）
+// @Summary 为指定域名批量创建子域名
+// @Description 为指定域名批量创建子域名，只需验证子域名是否属于该域名
+// @Tags 域名管理
+// @Accept json
+// @Produce json
+// @Param id path uint true "域名ID" example(1)
+// @Param request body models.CreateSubDomainsForDomainRequest true "子域名列表"
+// @Success 200 {object} models.APIResponse{data=models.CreateSubDomainsResponseData} "创建成功"
+// @Failure 400 {object} models.APIResponse "请求参数错误"
+// @Failure 404 {object} models.APIResponse "域名不存在"
+// @Failure 500 {object} models.APIResponse "服务器内部错误"
+// @Router /domains/{id}/subdomains/create [post]
+func CreateSubDomainsForDomain(c *gin.Context) {
+	// 获取路径参数 id
+	var uri struct {
+		ID uint `uri:"id" binding:"required"`
+	}
+	if err := c.ShouldBindUri(&uri); err != nil {
+		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	// 解析请求体
+	var req models.CreateSubDomainsForDomainRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	// 验证子域名列表不能为空
+	if len(req.Subdomains) == 0 {
+		response.BadRequestResponse(c, "子域名列表不能为空")
+		return
+	}
+
+	// 调用服务层创建子域名
+	service := services.NewSubDomainService()
+	result, err := service.CreateSubDomainsForDomain(uri.ID, req.Subdomains)
+	if err != nil {
+		response.InternalServerErrorResponse(c, "创建子域名失败: "+err.Error())
+		return
+	}
+
+	// 计算已存在的子域名数量
+	alreadyExists := len(req.Subdomains) - result.SubdomainsCreated
+
+	// 返回结构化数据
+	response.SuccessResponse(c, models.CreateSubDomainsResponseData{
+		SubdomainsCreated: result.SubdomainsCreated,
+		AlreadyExists:     alreadyExists,
 	})
 }

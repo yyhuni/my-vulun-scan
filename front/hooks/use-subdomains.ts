@@ -83,97 +83,64 @@ export function useSubdomain(id: number) {
   })
 }
 
-// 创建子域名
-export function useCreateSubdomain() {
+// 创建子域名（为指定域名批量添加子域名 - 新接口）
+export function useCreateSubdomainForDomain() {
   const queryClient = useQueryClient()
-  const params = useParams()
-  
-  // 从路由参数中自动获取组织ID
-  const routeOrganizationId = params.id ? parseInt(params.id as string) : undefined
 
   return useMutation({
     mutationFn: (data: {
-      organizationId?: number  // 变为可选，优先使用传入的，否则使用路由中的
-      domainGroups: Array<{
-        rootDomain: string
-        subdomains: string[]
-      }>
+      domainId: number
+      subdomains: string[]
     }) => {
-      // 优先使用传入的 organizationId，否则使用路由中的
-      const finalOrgId = data.organizationId || routeOrganizationId
-      
-      if (!finalOrgId) {
-        throw new Error('缺少组织ID：请确保在组织页面中调用此方法，或手动传递 organizationId')
-      }
-
-      return SubDomainService.createSubDomains({
-        organizationId: finalOrgId,
-        domainGroups: data.domainGroups
+      return SubDomainService.createSubDomainsForDomain({
+        domainId: data.domainId,
+        subdomains: data.subdomains
       })
     },
     onMutate: async () => {
-      toast.loading('正在创建子域名...', { id: 'create-subdomain' })
+      toast.loading('正在创建子域名...', { id: 'create-subdomain-for-domain' })
     },
     onSuccess: (response) => {
       // 关闭加载提示
-      toast.dismiss('create-subdomain')
+      toast.dismiss('create-subdomain-for-domain')
       
       if (response.state === 'success' && response.data) {
-        const { subdomainsCreated, alreadyExists, skippedDomains } = response.data
+        const { subdomainsCreated, alreadyExists } = response.data
         
         // 根据不同情况构建友好的消息
         if (subdomainsCreated > 0) {
-          // 成功创建了一些子域名
           let message = `✅ 成功创建 ${subdomainsCreated} 个子域名`
           
-          const details: string[] = []
           if (alreadyExists > 0) {
-            details.push(`${alreadyExists} 个已存在`)
-          }
-          if (skippedDomains && skippedDomains.length > 0) {
-            details.push(`${skippedDomains.length} 个根域名无效`)
-          }
-          
-          if (details.length > 0) {
-            message += `\n⚠️ ${details.join('，')}`
+            message += `\n⚠️ ${alreadyExists} 个已存在`
           }
           
           toast.success(message, { duration: 4000 })
-        } else if (skippedDomains && skippedDomains.length > 0) {
-          // 所有根域名都无效
-          toast.error(
-            `❌ 创建失败：所有根域名都无效\n${skippedDomains.join(', ')}\n请先在系统中添加并关联根域名`,
-            { duration: 5000 }
-          )
         } else if (alreadyExists > 0) {
-          // 所有子域名都已存在
           toast.info(`📝 所有 ${alreadyExists} 个子域名已存在`, { duration: 3000 })
         } else {
-          // 兜底情况
           toast.success('操作成功')
         }
         
         // 刷新相关查询
         queryClient.invalidateQueries({ queryKey: subdomainKeys.lists() })
       } else {
-        // 后端返回了错误状态，直接显示后端的 message
         toast.error(response.message || '创建子域名失败')
       }
     },
     onError: (error: any) => {
-      // 关闭加载提示
-      toast.dismiss('create-subdomain')
+      toast.dismiss('create-subdomain-for-domain')
       
       if (process.env.NODE_ENV === 'development') {
         console.error('创建子域名失败:', error)
       }
       
-      // 显示具体的错误信息
       const errorMessage = error?.response?.data?.message || error?.message || '创建失败'
       toast.error(errorMessage)
     },
   })
 }
+
 
 // 删除子域名
 export function useDeleteSubdomain() {

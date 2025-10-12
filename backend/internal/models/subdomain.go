@@ -25,16 +25,9 @@ type SubDomain struct {
 	Vulnerabilities []Vulnerability `json:"vulnerabilities" gorm:"foreignKey:SubdomainID;constraint:OnDelete:CASCADE"`
 }
 
-// DomainGroup 域名分组（根域名 + 子域名列表）
-type DomainGroup struct {
-	RootDomain string   `json:"root_domain" binding:"required"`
+// CreateSubDomainsForDomainRequest 为指定域名创建子域名请求
+type CreateSubDomainsForDomainRequest struct {
 	Subdomains []string `json:"subdomains" binding:"required"`
-}
-
-// CreateSubDomainsRequest 创建子域名请求
-type CreateSubDomainsRequest struct {
-	OrganizationID uint          `json:"organization_id" binding:"required"`
-	DomainGroups   []DomainGroup `json:"domain_groups" binding:"required"`
 }
 
 // GetSubDomainsRequest 获取所有子域名列表请求

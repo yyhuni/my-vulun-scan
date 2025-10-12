@@ -24,10 +24,6 @@ func SetupSubDomainRoutes(api *gin.RouterGroup) {
 		// 示例：DELETE /subdomains/1
 		subDomains.DELETE("/:id", handlers.DeleteSubDomain)
 
-		// 批量创建子域名 - 支持一次创建多个子域名并关联到指定域名
-		// 请求体示例：{"sub_domains": ["api.example.com", "www.example.com"], "domain_id": 1}
-		subDomains.POST("/create", handlers.CreateSubDomains)
-
 		// 批量删除子域名 - 支持一次删除多个子域名
 		// 请求体示例：{"subdomain_ids": [1, 2, 3]}
 		subDomains.POST("/batch-delete", handlers.BatchDeleteSubDomains)
@@ -39,6 +35,11 @@ func SetupSubDomainRoutes(api *gin.RouterGroup) {
 		// 获取域名的所有子域名列表
 		// 示例：GET /domains/1/subdomains?page=1&page_size=10&sort_by=created_at&sort_order=desc
 		domains.GET("/:id/subdomains", handlers.GetSubDomainsByDomainID)
+
+		// 为指定域名批量创建子域名（新接口 - 简化版）
+		// 示例：POST /domains/1/subdomains/create
+		// 请求体：{"subdomains": ["www.example.com", "api.example.com", "admin.example.com"]}
+		domains.POST("/:id/subdomains/create", handlers.CreateSubDomainsForDomain)
 	}
 
 	// 组织相关的子域名路由

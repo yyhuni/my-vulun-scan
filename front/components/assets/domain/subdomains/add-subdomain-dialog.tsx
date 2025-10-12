@@ -23,15 +23,14 @@ import { Textarea } from "@/components/ui/textarea"
 
 // 导入类型定义
 import type { SubDomain } from '@/types/subdomain.types'
-import type { Asset } from "@/types/asset.types"
-import { useCreateSubdomain } from "@/hooks/use-subdomains"
+import { useCreateSubdomainForDomain } from "@/hooks/use-subdomains"
 // 导入验证工具
 import { DomainValidator } from '@/lib/domain-validator'
 
 // 组件属性类型定义
 interface AddSubdomainDialogProps {
-  organizationId: string                       // 组织ID
-  domains: Asset[]                             // 可选的域名列表
+  domainId: string                             // 域名ID
+  domainName: string                           // 域名名称（用于验证）
   onAdd: (subdomains: SubDomain[]) => void    // 添加成功回调函数
   open?: boolean                               // 外部控制对话框开关状态
   onOpenChange?: (open: boolean) => void       // 外部控制对话框开关回调
@@ -50,8 +49,8 @@ interface AddSubdomainDialogProps {
  * 6. 用户友好的交互
  */
 export function AddSubdomainDialog({ 
-  organizationId, 
-  domains,
+  domainId,
+  domainName,
   onAdd, 
   open: externalOpen, 
   onOpenChange: externalOnOpenChange 
@@ -65,9 +64,9 @@ export function AddSubdomainDialog({
   const [subdomainsText, setSubdomainsText] = useState("")
   
   // 使用 React Query mutation
-  const createSubdomainMutation = useCreateSubdomain()
+  const createSubdomainMutation = useCreateSubdomainForDomain()
 
-  // 实时分析子域名输入，提取根域名分组
+  // 实时分析子域名输入，验证是否属于当前域名
   const domainAnalysis = useMemo(() => {
     const lines = subdomainsText
       .split('\n')
@@ -77,22 +76,29 @@ export function AddSubdomainDialog({
     if (lines.length === 0) {
       return {
         totalCount: 0,
-        grouped: new Map<string, string[]>(),
-        invalid: [],
-        rootDomains: []
+        valid: [],
+        invalid: []
       }
     }
 
-    const { grouped, invalid } = DomainValidator.groupSubdomainsByRootDomain(lines)
-    const rootDomains = Array.from(grouped.keys())
+    // 验证每个子域名是否属于当前域名
+    const valid: string[] = []
+    const invalid: string[] = []
+    
+    lines.forEach(subdomain => {
+      if (DomainValidator.isSubdomainOf(subdomain, domainName)) {
+        valid.push(subdomain)
+      } else {
+        invalid.push(subdomain)
+      }
+    })
 
     return {
       totalCount: lines.length,
-      grouped,
-      invalid,
-      rootDomains
+      valid,
+      invalid
     }
-  }, [subdomainsText])
+  }, [subdomainsText, domainName])
 
 
   // 处理表单提交
@@ -107,51 +113,32 @@ export function AddSubdomainDialog({
 
     // 检查是否有无效域名
     if (domainAnalysis.invalid.length > 0) {
-      toast.error(`发现 ${domainAnalysis.invalid.length} 个无效域名，请检查后重试`)
+      toast.error(`发现 ${domainAnalysis.invalid.length} 个无效子域名，这些子域名不属于 ${domainName}`)
       return
     }
 
-    // 构建发送给后端的数据结构
-    const domainGroups = Array.from(domainAnalysis.grouped.entries()).map(([rootDomain, subdomains]) => ({
-      rootDomain,
-      subdomains
-    }))
-    
-    const requestData = {
-      domainGroups
-    }
-
-    if (process.env.NODE_ENV === 'development') {
-      console.log('域名分析结果：', {
-        totalCount: domainAnalysis.totalCount,
-        rootDomains: domainAnalysis.rootDomains,
-        grouped: domainAnalysis.grouped,
-        groupedEntries: Array.from(domainAnalysis.grouped.entries()),
-        domainGroups,
-        requestData
-      })
-    }
-
-    // 验证数据不为空
-    if (!domainGroups || domainGroups.length === 0) {
-      toast.error('没有有效的域名分组数据')
+    // 检查是否有有效的子域名
+    if (domainAnalysis.valid.length === 0) {
+      toast.error('没有有效的子域名')
       return
     }
 
     try {
       // 调用后端 API
-      const response = await createSubdomainMutation.mutateAsync(requestData)
+      const response = await createSubdomainMutation.mutateAsync({
+        domainId: parseInt(domainId),
+        subdomains: domainAnalysis.valid
+      })
       
       // 成功后调用回调函数
       if (response?.data) {
-        // 这里可以传递创建成功的子域名列表给父组件
-        onAdd([]) // 暂时传递空数组，后续可以从响应中提取子域名数据
+        onAdd([])
       }
       
       // 关闭对话框
       setOpen(false)
     } catch (error) {
-      // 错误处理已经在 hook 中处理了，这里不需要额外处理
+      // 错误处理已经在 hook 中处理了
       if (process.env.NODE_ENV === 'development') {
         console.error('创建子域名失败:', error)
       }
@@ -189,7 +176,7 @@ export function AddSubdomainDialog({
             <span>添加子域名</span>
           </DialogTitle>
           <DialogDescription>
-            每行输入一个完整的子域名，系统会自动提取根域名并分组创建。格式：subdomain.domain.com（如 www.example.com、api.example.com）
+            每行输入一个完整的子域名，必须属于当前域名 <span className="font-mono font-semibold">{domainName}</span>。格式：subdomain.{domainName}（如 www.{domainName}、api.{domainName}）
           </DialogDescription>
         </DialogHeader>
         
@@ -205,7 +192,7 @@ export function AddSubdomainDialog({
                 id="subdomains"
                 value={subdomainsText}
                 onChange={(e) => setSubdomainsText(e.target.value)}
-                placeholder={"www.example.com\napi.example.com\ntest.example.com\nadmin.test.com\napi.test.com\nblog.github.io\nwww.bbc.co.uk"}
+                placeholder={`www.${domainName}\napi.${domainName}\nadmin.${domainName}\ntest.${domainName}`}
                 disabled={createSubdomainMutation.isPending}
                 rows={20}
                 className="font-mono text-sm min-h-[400px] resize-y"
@@ -213,10 +200,10 @@ export function AddSubdomainDialog({
               <div className="flex justify-between items-center text-xs">
                 <span className="text-muted-foreground flex items-center gap-1">
                   <AlertCircle className="h-3 w-3" />
-                  系统会自动提取根域名并分组创建
+                  所有子域名必须属于 {domainName}
                 </span>
                 <span className="font-medium text-primary">
-                  共 {domainAnalysis.totalCount} 个子域名
+                  共 {domainAnalysis.totalCount} 个，有效 {domainAnalysis.valid.length} 个
                 </span>
               </div>
             </div>
@@ -226,16 +213,16 @@ export function AddSubdomainDialog({
               <div className="grid gap-3 p-4 bg-muted/50 rounded-lg border">
                 <div className="flex items-center gap-2">
                   <Info className="h-4 w-4 text-blue-500" />
-                  <span className="text-sm font-medium">域名分析</span>
+                  <span className="text-sm font-medium">验证结果</span>
                 </div>
                 
                 {/* 统计信息 */}
                 <div className="flex flex-wrap gap-2">
                   <Badge variant="secondary" className="text-xs">
-                    {domainAnalysis.rootDomains.length} 个根域名
+                    目标域名: {domainName}
                   </Badge>
-                  <Badge variant="secondary" className="text-xs">
-                    {domainAnalysis.totalCount} 个子域名
+                  <Badge variant="default" className="text-xs bg-green-600">
+                    {domainAnalysis.valid.length} 个有效
                   </Badge>
                   {domainAnalysis.invalid.length > 0 && (
                     <Badge variant="destructive" className="text-xs">
@@ -244,12 +231,10 @@ export function AddSubdomainDialog({
                   )}
                 </div>
 
-
-
-                {/* 无效域名列表 */}
+                {/* 无效子域名列表 */}
                 {domainAnalysis.invalid.length > 0 && (
                   <div className="space-y-2">
-                    <div className="text-xs text-destructive">无效的域名：</div>
+                    <div className="text-xs text-destructive">无效的子域名（不属于 {domainName}）：</div>
                     <div className="flex flex-wrap gap-2">
                       {domainAnalysis.invalid.map((invalid, index) => (
                         <Badge key={index} variant="destructive" className="text-xs font-mono">
@@ -275,7 +260,7 @@ export function AddSubdomainDialog({
             </Button>
             <Button 
               type="submit" 
-              disabled={createSubdomainMutation.isPending || domainAnalysis.totalCount === 0 || domainAnalysis.invalid.length > 0}
+              disabled={createSubdomainMutation.isPending || domainAnalysis.valid.length === 0}
             >
               {createSubdomainMutation.isPending ? (
                 <>

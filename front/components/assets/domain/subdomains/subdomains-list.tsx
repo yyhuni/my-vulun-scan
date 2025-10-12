@@ -223,11 +223,11 @@ export function SubdomainsList({
         onPaginationChange={handlePaginationChange}
       />
       
-      {/* 添加子域名对话框 - 当有有效的 organizationId 时显示 */}
-      {effectiveOrganizationId && (
+      {/* 添加子域名对话框 - 只在通过 domainId 访问时显示 */}
+      {domainId && domainData && (
         <AddSubdomainDialog
-          organizationId={effectiveOrganizationId}
-          domains={domainsData?.domains || []}
+          domainId={domainId}
+          domainName={domainData.name}
           onAdd={handleAddSuccess}
           open={isAddDialogOpen}
           onOpenChange={setIsAddDialogOpen}
