@@ -160,19 +160,6 @@ export const createSubdomainColumns = ({
     },
   },
 
-  // 创建时间列
-  {
-    accessorKey: "createdAt",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="创建时间" />
-    ),
-    cell: ({ row }) => (
-      <div className="text-sm text-muted-foreground">
-        {formatDate(row.getValue("createdAt"))}
-      </div>
-    ),
-  },
-
   // 更新时间列
   {
     accessorKey: "updatedAt",

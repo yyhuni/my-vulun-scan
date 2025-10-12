@@ -87,9 +87,9 @@ export function MainAssetsDataTable({
   onAddNew,
   onBulkRemove,
   onSelectionChange,
-  searchPlaceholder = "搜索资产...",
+  searchPlaceholder = "Search assets...",
   searchColumn = "name",
-  addButtonText = "添加",
+  addButtonText = "Add",
   pagination: externalPagination,
   setPagination: setExternalPagination,
   paginationInfo,
@@ -181,7 +181,7 @@ export function MainAssetsDataTable({
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
                 <IconLayoutColumns className="mr-2 h-4 w-4" />
-                列显示
+                Columns
                 <IconChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -201,10 +201,10 @@ export function MainAssetsDataTable({
                       onCheckedChange={(value) => column.toggleVisibility(!!value)}
                     >
                       {column.id === "id" && "ID"}
-                      {column.id === "name" && "域名"}
-                      {column.id === "description" && "描述"}
-                      {column.id === "createdAt" && "创建时间"}
-                      {column.id === "updatedAt" && "更新时间"}
+                      {column.id === "name" && "Domain"}
+                      {column.id === "description" && "Description"}
+                      {column.id === "createdAt" && "Created At"}
+                      {column.id === "updatedAt" && "Updated At"}
                       {!["id", "name", "description", "createdAt", "updatedAt"].includes(column.id) && column.id}
                     </DropdownMenuCheckboxItem>
                   )
@@ -226,7 +226,7 @@ export function MainAssetsDataTable({
               }
             >
               <IconTrash className="mr-2 h-4 w-4" />
-              批量移除
+              Remove
             </Button>
           )}
 
@@ -287,7 +287,7 @@ export function MainAssetsDataTable({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  暂无数据
+                  No results
                 </TableCell>
               </TableRow>
             )}
@@ -342,7 +342,7 @@ export function MainAssetsDataTable({
               onClick={() => table.setPageIndex(0)}
               disabled={!table.getCanPreviousPage()}
             >
-              <span className="sr-only">跳转到第一页</span>
+              <span className="sr-only">Go to first page</span>
               <IconChevronsLeft className="h-4 w-4" />
             </Button>
             <Button
@@ -351,7 +351,7 @@ export function MainAssetsDataTable({
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
             >
-              <span className="sr-only">上一页</span>
+              <span className="sr-only">Go to previous page</span>
               <IconChevronLeft className="h-4 w-4" />
             </Button>
             <Button
@@ -360,7 +360,7 @@ export function MainAssetsDataTable({
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
             >
-              <span className="sr-only">下一页</span>
+              <span className="sr-only">Go to next page</span>
               <IconChevronRight className="h-4 w-4" />
             </Button>
             <Button
@@ -369,7 +369,7 @@ export function MainAssetsDataTable({
               onClick={() => table.setPageIndex(table.getPageCount() - 1)}
               disabled={!table.getCanNextPage()}
             >
-              <span className="sr-only">跳转到最后一页</span>
+              <span className="sr-only">Go to last page</span>
               <IconChevronsRight className="h-4 w-4" />
             </Button>
           </div>

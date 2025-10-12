@@ -240,22 +240,6 @@ export const createDomainColumns = ({
     },
   },
   
-  // 创建时间列 - 使用驼峰命名（响应拦截器已自动转换）
-  {
-    accessorKey: "createdAt",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="创建时间" />
-    ),
-    cell: ({ row }) => {
-      const createdAt = row.getValue("createdAt") as string | undefined
-      return (
-        <div className="text-sm text-muted-foreground">
-          {createdAt ? formatDate(createdAt) : "-"}
-        </div>
-      )
-    },
-  },
-  
   // 更新时间列 - 使用驼峰命名（响应拦截器已自动转换）
   {
     accessorKey: "updatedAt",

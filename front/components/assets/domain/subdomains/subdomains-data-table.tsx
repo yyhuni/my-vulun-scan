@@ -87,9 +87,9 @@ export function SubdomainsDataTable({
   onAddNew,
   onBulkDelete,
   onSelectionChange,
-  searchPlaceholder = "搜索子域名...",
+  searchPlaceholder = "Search subdomains...",
   searchColumn = "name",
-  addButtonText = "添加",
+  addButtonText = "Add",
   pagination: externalPagination,
   setPagination: setExternalPagination,
   paginationInfo,
@@ -190,7 +190,7 @@ export function SubdomainsDataTable({
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
                 <IconLayoutColumns className="mr-2 h-4 w-4" />
-                列显示
+                Columns
                 <IconChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -210,11 +210,11 @@ export function SubdomainsDataTable({
                       onCheckedChange={(value) => column.toggleVisibility(!!value)}
                     >
                       {column.id === "id" && "ID"}
-                      {column.id === "name" && "子域名"}
-                      {column.id === "domainId" && "域名ID"}
-                      {column.id === "domain" && "所属域名"}
-                      {column.id === "createdAt" && "创建时间"}
-                      {column.id === "updatedAt" && "更新时间"}
+                      {column.id === "name" && "Subdomain"}
+                      {column.id === "domainId" && "Domain ID"}
+                      {column.id === "domain" && "Domain"}
+                      {column.id === "createdAt" && "Created At"}
+                      {column.id === "updatedAt" && "Updated At"}
                       {!["id", "name", "domainId", "domain", "createdAt", "updatedAt"].includes(column.id) && column.id}
                     </DropdownMenuCheckboxItem>
                   )
@@ -235,7 +235,7 @@ export function SubdomainsDataTable({
               }
             >
               <IconTrash className="mr-2 h-4 w-4" />
-              批量删除
+              Delete
             </Button>
           )}
 
@@ -296,7 +296,7 @@ export function SubdomainsDataTable({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  暂无数据
+                  No results
                 </TableCell>
               </TableRow>
             )}
@@ -351,7 +351,7 @@ export function SubdomainsDataTable({
               onClick={() => table.setPageIndex(0)}
               disabled={!table.getCanPreviousPage()}
             >
-              <span className="sr-only">跳转到第一页</span>
+              <span className="sr-only">Go to first page</span>
               <IconChevronsLeft className="h-4 w-4" />
             </Button>
             <Button
@@ -360,7 +360,7 @@ export function SubdomainsDataTable({
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
             >
-              <span className="sr-only">上一页</span>
+              <span className="sr-only">Go to previous page</span>
               <IconChevronLeft className="h-4 w-4" />
             </Button>
             <Button
@@ -369,7 +369,7 @@ export function SubdomainsDataTable({
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
             >
-              <span className="sr-only">下一页</span>
+              <span className="sr-only">Go to next page</span>
               <IconChevronRight className="h-4 w-4" />
             </Button>
             <Button
@@ -378,7 +378,7 @@ export function SubdomainsDataTable({
               onClick={() => table.setPageIndex(table.getPageCount() - 1)}
               disabled={!table.getCanNextPage()}
             >
-              <span className="sr-only">跳转到最后一页</span>
+              <span className="sr-only">Go to last page</span>
               <IconChevronsRight className="h-4 w-4" />
             </Button>
           </div>

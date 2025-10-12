@@ -86,9 +86,9 @@ export function EndpointsDataTable({
   onAddNew,
   onBulkDelete,
   onSelectionChange,
-  searchPlaceholder = "搜索端点...",
+  searchPlaceholder = "Search endpoints...",
   searchColumn = "url",
-  addButtonText = "添加",
+  addButtonText = "Add",
   pagination: externalPagination,
   onPaginationChange,
   totalCount,
@@ -187,7 +187,7 @@ export function EndpointsDataTable({
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
                 <IconLayoutColumns className="mr-2 h-4 w-4" />
-                列显示
+                Columns
                 <IconChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -209,12 +209,12 @@ export function EndpointsDataTable({
                       {column.id === "id" && "ID"}
                       {column.id === "url" && "URL"}
                       {column.id === "endpoint" && "Endpoint"}
-                      {column.id === "method" && "方法"}
-                      {column.id === "statusCode" && "状态码"}
-                      {column.id === "title" && "标题"}
-                      {column.id === "contentLength" && "大小"}
-                      {column.id === "createdAt" && "创建时间"}
-                      {column.id === "updatedAt" && "更新时间"}
+                      {column.id === "method" && "Method"}
+                      {column.id === "statusCode" && "Status"}
+                      {column.id === "title" && "Title"}
+                      {column.id === "contentLength" && "Size"}
+                      {column.id === "createdAt" && "Created At"}
+                      {column.id === "updatedAt" && "Updated At"}
                       {!["id", "url", "endpoint", "method", "statusCode", "title", "contentLength", "createdAt", "updatedAt"].includes(column.id) && column.id}
                     </DropdownMenuCheckboxItem>
                   )
@@ -236,7 +236,7 @@ export function EndpointsDataTable({
               }
             >
               <IconTrash className="mr-2 h-4 w-4" />
-              批量删除
+              Delete
             </Button>
           )}
 
@@ -297,7 +297,7 @@ export function EndpointsDataTable({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  暂无数据
+                  No results
                 </TableCell>
               </TableRow>
             )}
@@ -352,7 +352,7 @@ export function EndpointsDataTable({
               onClick={() => table.setPageIndex(0)}
               disabled={externalPagination ? pagination.pageIndex === 0 : !table.getCanPreviousPage()}
             >
-              <span className="sr-only">跳转到第一页</span>
+              <span className="sr-only">Go to first page</span>
               <IconChevronsLeft className="h-4 w-4" />
             </Button>
             <Button
@@ -361,7 +361,7 @@ export function EndpointsDataTable({
               onClick={() => table.previousPage()}
               disabled={externalPagination ? pagination.pageIndex === 0 : !table.getCanPreviousPage()}
             >
-              <span className="sr-only">上一页</span>
+              <span className="sr-only">Go to previous page</span>
               <IconChevronLeft className="h-4 w-4" />
             </Button>
             <Button
@@ -370,7 +370,7 @@ export function EndpointsDataTable({
               onClick={() => table.nextPage()}
               disabled={externalPagination ? pagination.pageIndex >= (totalPages || 1) - 1 : !table.getCanNextPage()}
             >
-              <span className="sr-only">下一页</span>
+              <span className="sr-only">Go to next page</span>
               <IconChevronRight className="h-4 w-4" />
             </Button>
             <Button
@@ -379,7 +379,7 @@ export function EndpointsDataTable({
               onClick={() => table.setPageIndex((totalPages || table.getPageCount()) - 1)}
               disabled={externalPagination ? pagination.pageIndex >= (totalPages || 1) - 1 : !table.getCanNextPage()}
             >
-              <span className="sr-only">跳转到最后一页</span>
+              <span className="sr-only">Go to last page</span>
               <IconChevronsRight className="h-4 w-4" />
             </Button>
           </div>

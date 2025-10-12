@@ -64,7 +64,7 @@ export function DomainDataTable({
   onAddNew,
   onBulkDelete,
   onSelectionChange,
-  searchPlaceholder = "搜索域名...",
+  searchPlaceholder = "Search domains...",
   searchColumn = "name",
   pagination: externalPagination,
   setPagination: setExternalPagination,
@@ -161,7 +161,7 @@ export function DomainDataTable({
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
                 <IconLayoutColumns className="mr-2 h-4 w-4" />
-                列显示
+                Columns
                 <IconChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -181,11 +181,12 @@ export function DomainDataTable({
                       onCheckedChange={(value) => column.toggleVisibility(!!value)}
                     >
                       {column.id === "id" && "ID"}
-                      {column.id === "name" && "域名"}
-                      {column.id === "description" && "描述"}
-                      {column.id === "createdAt" && "创建时间"}
-                      {column.id === "updatedAt" && "更新时间"}
-                      {!["id", "name", "description", "createdAt", "updatedAt"].includes(column.id) && column.id}
+                      {column.id === "name" && "Domain"}
+                      {column.id === "description" && "Description"}
+                      {column.id === "createdAt" && "Created At"}
+                      {column.id === "updatedAt" && "Updated At"}
+                      {column.id === "organizations" && "Organizations"}
+                      {!["id", "name", "description", "createdAt", "updatedAt", "organizations"].includes(column.id) && column.id}
                     </DropdownMenuCheckboxItem>
                   )
                 })}
@@ -206,7 +207,7 @@ export function DomainDataTable({
               }
             >
               <IconTrash className="mr-2 h-4 w-4" />
-              批量删除
+              Delete
             </Button>
           )}
 
@@ -214,7 +215,7 @@ export function DomainDataTable({
           {onAddNew && (
             <Button onClick={onAddNew} size="sm">
               <IconPlus className="mr-2 h-4 w-4" />
-              添加域名
+              Add Domain
             </Button>
           )}
         </div>
@@ -267,7 +268,7 @@ export function DomainDataTable({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  暂无数据
+                  No results
                 </TableCell>
               </TableRow>
             )}
@@ -288,7 +289,7 @@ export function DomainDataTable({
           {/* 每页显示数量选择 */}
           <div className="flex items-center space-x-2">
             <Label htmlFor="rows-per-page" className="text-sm font-medium">
-              每页显示
+              Rows per page
             </Label>
             <Select
               value={`${table.getState().pagination.pageSize}`}
@@ -311,8 +312,8 @@ export function DomainDataTable({
 
           {/* 页码信息 */}
           <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-            第 {table.getState().pagination.pageIndex + 1} 页，共{" "}
-            {paginationInfo ? paginationInfo.totalPages : table.getPageCount()} 页
+            Page {table.getState().pagination.pageIndex + 1} of{" "}
+            {paginationInfo ? paginationInfo.totalPages : table.getPageCount()}
           </div>
 
           {/* 分页按钮 */}
@@ -323,7 +324,7 @@ export function DomainDataTable({
               onClick={() => table.setPageIndex(0)}
               disabled={!table.getCanPreviousPage()}
             >
-              <span className="sr-only">跳转到第一页</span>
+              <span className="sr-only">Go to first page</span>
               <IconChevronsLeft className="h-4 w-4" />
             </Button>
             <Button
@@ -332,7 +333,7 @@ export function DomainDataTable({
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
             >
-              <span className="sr-only">上一页</span>
+              <span className="sr-only">Go to previous page</span>
               <IconChevronLeft className="h-4 w-4" />
             </Button>
             <Button
@@ -341,7 +342,7 @@ export function DomainDataTable({
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
             >
-              <span className="sr-only">下一页</span>
+              <span className="sr-only">Go to next page</span>
               <IconChevronRight className="h-4 w-4" />
             </Button>
             <Button
@@ -350,7 +351,7 @@ export function DomainDataTable({
               onClick={() => table.setPageIndex(table.getPageCount() - 1)}
               disabled={!table.getCanNextPage()}
             >
-              <span className="sr-only">跳转到最后一页</span>
+              <span className="sr-only">Go to last page</span>
               <IconChevronsRight className="h-4 w-4" />
             </Button>
           </div>
