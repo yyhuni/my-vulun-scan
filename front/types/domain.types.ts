@@ -1,5 +1,6 @@
 import { ColumnDef } from "@tanstack/react-table"
 import { PaginationParams, PaginationInfo } from "./common.types"
+import type { Organization } from "./organization.types"
 
 // 域名相关类型定义
 
@@ -11,6 +12,7 @@ export interface Domain {
   description: string
   createdAt: string  // 响应拦截器自动从 created_at 转换而来
   updatedAt: string  // 响应拦截器自动从 updated_at 转换而来
+  organizations?: Organization[]  // 关联的组织列表（仅在 Preload 时返回）
 }
 
 // 获取域名列表请求参数

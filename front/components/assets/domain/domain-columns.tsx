@@ -184,6 +184,56 @@ export const createDomainColumns = ({
     },
   },
   
+  // 所属组织列
+  {
+    accessorKey: "organizations",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="所属组织" />
+    ),
+    cell: ({ row }) => {
+      const organizations = row.original.organizations || []
+      
+      if (organizations.length === 0) {
+        return (
+          <div className="text-sm text-muted-foreground">
+            -
+          </div>
+        )
+      }
+      
+      // 每个组织单独一行显示
+      return (
+        <div className="flex flex-col gap-1 py-1">
+          {organizations.map((org) => (
+            <Badge 
+              key={org.id} 
+              variant="secondary" 
+              className="justify-start max-w-[200px] truncate text-xs"
+              title={org.name}
+            >
+              {org.name}
+            </Badge>
+          ))}
+        </div>
+      )
+    },
+    // 启用排序：按第一个组织名称排序
+    sortingFn: (rowA, rowB) => {
+      const orgsA = rowA.original.organizations || []
+      const orgsB = rowB.original.organizations || []
+      
+      // 如果没有组织，排到最后
+      if (orgsA.length === 0 && orgsB.length === 0) return 0
+      if (orgsA.length === 0) return 1
+      if (orgsB.length === 0) return -1
+      
+      // 按第一个组织名称排序
+      const nameA = orgsA[0].name.toLowerCase()
+      const nameB = orgsB[0].name.toLowerCase()
+      return nameA.localeCompare(nameB)
+    },
+  },
+  
   // 创建时间列 - 使用驼峰命名（响应拦截器已自动转换）
   {
     accessorKey: "createdAt",

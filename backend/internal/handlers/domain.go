@@ -72,11 +72,11 @@ func CreateDomains(c *gin.Context) {
 
 // GetDomainByID 获取单个域名详情
 // @Summary 获取单个域名详情
-// @Description 根据域名ID获取域名的详细信息（不包含组织关联信息）
+// @Description 根据域名ID获取域名的详细信息（包含组织关联信息）
 // @Tags 域名管理
 // @Produce json
 // @Param id path uint true "域名ID" example(1)
-// @Success 200 {object} models.APIResponse{data=models.DomainResponseData} "获取成功"
+// @Success 200 {object} models.APIResponse{data=models.Domain} "获取成功"
 // @Failure 404 {object} models.APIResponse "域名不存在"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
 // @Router /domains/{id} [get]

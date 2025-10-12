@@ -197,12 +197,13 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 	return resultDomains, nil
 }
 
-// GetDomainByID 根据ID获取域名信息（不包含组织信息）
-func (s *DomainService) GetDomainByID(id uint) (*models.DomainResponseData, error) {
+// GetDomainByID 根据ID获取域名信息（包含组织关联信息）
+func (s *DomainService) GetDomainByID(id uint) (*models.Domain, error) {
 
 	var domain models.Domain
 
-	result := s.db.First(&domain, "id = ?", id)
+	// 加载关联的组织信息
+	result := s.db.Preload("Organizations").First(&domain, "id = ?", id)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
 			return nil, customErrors.ErrDomainNotFound
@@ -213,16 +214,8 @@ func (s *DomainService) GetDomainByID(id uint) (*models.DomainResponseData, erro
 
 	log.Info().Uint("id", id).Msg("Domain retrieved successfully")
 
-	// 转换为响应结构体（不包含组织信息）
-	response := &models.DomainResponseData{
-		ID:          domain.ID,
-		CreatedAt:   domain.CreatedAt,
-		UpdatedAt:   domain.UpdatedAt,
-		Name:        domain.Name,
-		Description: domain.Description,
-	}
-
-	return response, nil
+	// 返回完整的域名模型（包含关联的组织）
+	return &domain, nil
 }
 
 // UpdateDomain 更新域名信息
@@ -604,6 +597,7 @@ func (s *DomainService) GetAllDomains(req models.GetAllDomainsRequest) (*models.
 	offset := (req.Page - 1) * req.PageSize
 	result := s.db.
 		Model(&models.Domain{}).
+		Preload("Organizations").
 		Order(orderClause).
 		Offset(offset).
 		Limit(req.PageSize).

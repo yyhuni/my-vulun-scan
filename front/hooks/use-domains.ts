@@ -96,6 +96,9 @@ export function useCreateDomain() {
         // 刷新相关查询
         queryClient.invalidateQueries({ queryKey: domainKeys.lists() })
         
+        // 刷新所有域名列表（包括 useAllDomains）
+        queryClient.invalidateQueries({ queryKey: ['domains', 'all'] })
+        
         // 刷新该组织的域名列表（使用 organizationKeys）
         if (variables.organizationId) {
           queryClient.invalidateQueries({ 
@@ -140,6 +143,9 @@ export function useDeleteDomainFromOrganization() {
         
         // 刷新相关查询
         queryClient.invalidateQueries({ queryKey: domainKeys.lists() })
+        
+        // 刷新所有域名列表（包括 useAllDomains）
+        queryClient.invalidateQueries({ queryKey: ['domains', 'all'] })
         
         // 刷新组织的域名列表
         queryClient.invalidateQueries({ 
@@ -190,6 +196,9 @@ export function useBatchDeleteDomainsFromOrganization() {
         // 刷新相关查询
         queryClient.invalidateQueries({ queryKey: domainKeys.lists() })
         
+        // 刷新所有域名列表（包括 useAllDomains）
+        queryClient.invalidateQueries({ queryKey: ['domains', 'all'] })
+        
         // 刷新组织的域名列表
         queryClient.invalidateQueries({ 
           queryKey: ['organizations', 'detail', organizationId, 'domains'] 
@@ -226,8 +235,13 @@ export function useUpdateDomain() {
       
       if (response.state === 'success') {
         toast.success('更新成功')
+        
+        // 刷新所有域名相关查询
         queryClient.invalidateQueries({ queryKey: domainKeys.lists() })
         queryClient.invalidateQueries({ queryKey: domainKeys.detail(id) })
+        
+        // 刷新所有域名列表（包括 useAllDomains）
+        queryClient.invalidateQueries({ queryKey: ['domains', 'all'] })
         
         // 刷新所有组织的域名列表（更精确的匹配）
         queryClient.invalidateQueries({ 
