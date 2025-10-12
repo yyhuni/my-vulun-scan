@@ -1,6 +1,13 @@
 import { api } from "@/lib/api-client"
 import type { ApiResponse } from "@/types/api-response.types"
-import type { SubDomain, GetSubDomainsParams, GetSubDomainsResponse, CreateSubDomainsResponse } from "@/types/subdomain.types"
+import type { 
+  SubDomain, 
+  GetSubDomainsParams, 
+  GetSubDomainsResponse, 
+  CreateSubDomainsResponse,
+  UpdateSubDomainRequest,
+  BatchDeleteSubDomainsResponse
+} from "@/types/subdomain.types"
 
 export class SubDomainService {
   // ========== 子域名基础操作 ==========
@@ -97,6 +104,41 @@ export class SubDomainService {
     const response = await api.post<ApiResponse<CreateSubDomainsResponse>>('/subdomains/create', {
       organizationId: data.organizationId,  // ✅ 组织ID（拦截器会转换为 organization_id）
       domainGroups: data.domainGroups       // ✅ 域名分组（拦截器会转换为 domain_groups）
+    })
+    return response.data
+  }
+
+  /**
+   * 更新子域名
+   * @param data - 更新请求对象
+   * @param data.id - 子域名ID
+   * @param data.name - 新的子域名（可选）
+   * @param data.domainId - 新的所属域名ID（可选）
+   * @returns Promise<ApiResponse<SubDomain>> - 更新后的子域名
+   */
+  static async updateSubDomain(data: UpdateSubDomainRequest): Promise<ApiResponse<SubDomain>> {
+    const response = await api.post<ApiResponse<SubDomain>>('/subdomains/update', data)
+    return response.data
+  }
+
+  /**
+   * 删除单个子域名
+   * @param id - 子域名ID
+   * @returns Promise<ApiResponse<SubDomain>> - 被删除的子域名信息
+   */
+  static async deleteSubDomain(id: number): Promise<ApiResponse<SubDomain>> {
+    const response = await api.delete<ApiResponse<SubDomain>>(`/subdomains/${id}`)
+    return response.data
+  }
+
+  /**
+   * 批量删除子域名
+   * @param subdomainIds - 子域名ID数组
+   * @returns Promise<ApiResponse<BatchDeleteSubDomainsResponse>> - 批量删除响应
+   */
+  static async batchDeleteSubDomains(subdomainIds: number[]): Promise<ApiResponse<BatchDeleteSubDomainsResponse>> {
+    const response = await api.post<ApiResponse<BatchDeleteSubDomainsResponse>>('/subdomains/batch-delete', {
+      subdomainIds  // 拦截器会转换为 subdomain_ids
     })
     return response.data
   }

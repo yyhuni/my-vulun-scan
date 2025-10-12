@@ -6,8 +6,18 @@ import { SubdomainsDataTable } from "./subdomains-data-table"
 import { createSubdomainColumns } from "./subdomains-columns"
 import { AddSubdomainDialog } from "./add-subdomain-dialog"
 import { EditSubdomainDialog } from "./edit-subdomain-dialog"
-import { LoadingState } from "@/components/loading-spinner"
-import { useSubdomains } from "@/hooks/use-subdomains"
+import { LoadingState, LoadingSpinner } from "@/components/loading-spinner"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { useSubdomains, useDeleteSubdomain, useBatchDeleteSubdomains } from "@/hooks/use-subdomains"
 import { useOrganizationDomains } from "@/hooks/use-organizations"
 import type { SubDomain } from "@/types/subdomain.types"
 
@@ -20,6 +30,9 @@ export function SubdomainsList({ organizationId }: { organizationId: string }) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingSubdomain, setEditingSubdomain] = useState<SubDomain | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [subdomainToDelete, setSubdomainToDelete] = useState<SubDomain | null>(null)
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
   
   // 分页状态
   const [pagination, setPagination] = useState({
@@ -49,6 +62,10 @@ export function SubdomainsList({ organizationId }: { organizationId: string }) {
     sortOrder: "asc"
   })
 
+  // Mutations
+  const deleteSubdomain = useDeleteSubdomain()
+  const batchDeleteSubdomains = useBatchDeleteSubdomains()
+
   // 辅助函数 - 格式化日期
   const formatDate = (dateString: string): string => {
     return new Date(dateString).toLocaleString("zh-CN", {
@@ -76,8 +93,19 @@ export function SubdomainsList({ organizationId }: { organizationId: string }) {
 
   // 处理删除子域名
   const handleDeleteSubdomain = (subdomain: SubDomain) => {
-    // TODO: 实现删除功能
-    console.info(`删除子域名功能开发中: ${subdomain.name}`)
+    setSubdomainToDelete(subdomain)
+    setDeleteDialogOpen(true)
+  }
+
+  // 确认删除子域名
+  const confirmDelete = async () => {
+    if (!subdomainToDelete) return
+
+    setDeleteDialogOpen(false)
+    setSubdomainToDelete(null)
+    
+    // 使用 React Query 的删除 mutation
+    deleteSubdomain.mutate(subdomainToDelete.id)
   }
 
   // 处理批量删除
@@ -85,8 +113,20 @@ export function SubdomainsList({ organizationId }: { organizationId: string }) {
     if (selectedSubdomains.length === 0) {
       return
     }
-    // TODO: 实现批量删除功能
-    console.info(`批量删除功能开发中，选中 ${selectedSubdomains.length} 个子域名`)
+    setBulkDeleteDialogOpen(true)
+  }
+
+  // 确认批量删除
+  const confirmBulkDelete = async () => {
+    if (selectedSubdomains.length === 0) return
+
+    const deletedIds = selectedSubdomains.map(subdomain => subdomain.id)
+    
+    setBulkDeleteDialogOpen(false)
+    setSelectedSubdomains([])
+    
+    // 使用 React Query 的批量删除 mutation
+    batchDeleteSubdomains.mutate(deletedIds)
   }
 
   // 处理添加子域名
@@ -191,6 +231,76 @@ export function SubdomainsList({ organizationId }: { organizationId: string }) {
           onEdit={handleEditSuccess}
         />
       )}
+
+      {/* 删除确认对话框 */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认删除</AlertDialogTitle>
+            <AlertDialogDescription>
+              此操作无法撤销。这将永久删除子域名 "{subdomainToDelete?.name}" 及其相关数据（包括关联的 Endpoints 和 Vulnerabilities）。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteSubdomain.isPending}
+            >
+              {deleteSubdomain.isPending ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  删除中...
+                </>
+              ) : (
+                "删除"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 批量删除确认对话框 */}
+      <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认批量删除</AlertDialogTitle>
+            <AlertDialogDescription>
+              此操作无法撤销。这将永久删除以下 {selectedSubdomains.length} 个子域名及其相关数据（包括关联的 Endpoints 和 Vulnerabilities）。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="mt-2 p-2 bg-muted rounded-md max-h-60 overflow-y-auto">
+            <ul className="text-sm space-y-1">
+              {selectedSubdomains.map((subdomain) => (
+                <li key={subdomain.id} className="flex items-center">
+                  <span className="font-medium font-mono">{subdomain.name}</span>
+                  {subdomain.domain && (
+                    <span className="ml-2 text-muted-foreground">- {subdomain.domain.name}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmBulkDelete} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={batchDeleteSubdomains.isPending}
+            >
+              {batchDeleteSubdomains.isPending ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  删除中...
+                </>
+              ) : (
+                `删除 ${selectedSubdomains.length} 个子域名`
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

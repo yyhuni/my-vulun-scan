@@ -175,29 +175,25 @@ export function useCreateSubdomain() {
   })
 }
 
-// 注意：子域名的更新和删除功能需要后端 API 支持
-// 当后端实现相应接口后，可以取消注释以下代码：
-
-/*
 // 更新子域名
 export function useUpdateSubdomain() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { name: string; description?: string } }) =>
-      SubDomainService.updateSubDomain({ id, ...data }),
+    mutationFn: (data: { id: number; name?: string; domainId?: number }) =>
+      SubDomainService.updateSubDomain(data),
     onMutate: ({ id }) => {
       toast.loading('正在更新子域名...', { id: `update-subdomain-${id}` })
     },
-    onSuccess: (response: any, { id }) => {
+    onSuccess: (response, { id }) => {
       toast.dismiss(`update-subdomain-${id}`)
       
       if (response.state === 'success') {
-        toast.success('更新成功')
+        toast.success('✅ 更新成功')
         queryClient.invalidateQueries({ queryKey: subdomainKeys.lists() })
         queryClient.invalidateQueries({ queryKey: subdomainKeys.detail(id) })
       } else {
-        throw new Error(response.message || '更新子域名失败')
+        toast.error(response.message || '更新子域名失败')
       }
     },
     onError: (error: any, { id }) => {
@@ -205,7 +201,8 @@ export function useUpdateSubdomain() {
       if (process.env.NODE_ENV === 'development') {
         console.error('更新子域名失败:', error)
       }
-      toast.error('更新失败')
+      const errorMessage = error?.response?.data?.message || error?.message || '更新失败'
+      toast.error(errorMessage)
     },
   })
 }
@@ -219,14 +216,14 @@ export function useDeleteSubdomain() {
     onMutate: (id) => {
       toast.loading('正在删除子域名...', { id: `delete-subdomain-${id}` })
     },
-    onSuccess: (response: any, id) => {
+    onSuccess: (response, id) => {
       toast.dismiss(`delete-subdomain-${id}`)
       
       if (response.state === 'success') {
-        toast.success('删除成功')
+        toast.success('✅ 删除成功')
         queryClient.invalidateQueries({ queryKey: subdomainKeys.lists() })
       } else {
-        throw new Error(response.message || '删除子域名失败')
+        toast.error(response.message || '删除子域名失败')
       }
     },
     onError: (error: any, id) => {
@@ -234,7 +231,8 @@ export function useDeleteSubdomain() {
       if (process.env.NODE_ENV === 'development') {
         console.error('删除子域名失败:', error)
       }
-      toast.error('删除失败')
+      const errorMessage = error?.response?.data?.message || error?.message || '删除失败'
+      toast.error(errorMessage)
     },
   })
 }
@@ -248,14 +246,15 @@ export function useBatchDeleteSubdomains() {
     onMutate: () => {
       toast.loading('正在批量删除子域名...', { id: 'batch-delete-subdomains' })
     },
-    onSuccess: (response: any) => {
+    onSuccess: (response) => {
       toast.dismiss('batch-delete-subdomains')
       
-      if (response.state === 'success') {
-        toast.success('批量删除成功')
+      if (response.state === 'success' && response.data) {
+        const { deletedCount } = response.data
+        toast.success(`✅ 成功删除 ${deletedCount} 个子域名`)
         queryClient.invalidateQueries({ queryKey: subdomainKeys.lists() })
       } else {
-        throw new Error(response.message || '批量删除子域名失败')
+        toast.error(response.message || '批量删除子域名失败')
       }
     },
     onError: (error: any) => {
@@ -263,8 +262,8 @@ export function useBatchDeleteSubdomains() {
       if (process.env.NODE_ENV === 'development') {
         console.error('批量删除子域名失败:', error)
       }
-      toast.error('批量删除失败')
+      const errorMessage = error?.response?.data?.message || error?.message || '批量删除失败'
+      toast.error(errorMessage)
     },
   })
 }
-*/

@@ -29,6 +29,9 @@ import {
 import type { SubDomain } from "@/types/subdomain.types"
 import type { Asset } from "@/types/asset.types"
 
+// 导入 React Query Hook
+import { useUpdateSubdomain } from "@/hooks/use-subdomains"
+
 // 组件属性类型定义
 interface EditSubdomainDialogProps {
   subdomain: SubDomain                             // 要编辑的子域名数据
@@ -63,8 +66,8 @@ export function EditSubdomainDialog({
     domainId: "",
   })
 
-  // 加载状态（暂时用于模拟）
-  const [isLoading, setIsLoading] = useState(false)
+  // 使用 React Query 的更新 mutation
+  const updateMutation = useUpdateSubdomain()
 
   // 表单验证错误状态
   const [errors, setErrors] = useState({
@@ -155,27 +158,33 @@ export function EditSubdomainDialog({
       return
     }
 
-    // 模拟API调用
-    setIsLoading(true)
-    
-    // TODO: 接入真实API
-    setTimeout(() => {
-      // 模拟更新后的子域名数据
-      const updatedSubdomain: SubDomain = {
-        ...subdomain,
-        name: formData.name.trim(),
-        domainId: parseInt(formData.domainId),
-        domain: domains.find(d => d.id === parseInt(formData.domainId)),
-        updatedAt: new Date().toISOString(),
-      }
+    // 准备更新数据
+    const updateData: { id: number; name?: string; domainId?: number } = {
+      id: subdomain.id,
+    }
 
-      // 调用成功回调
-      onEdit(updatedSubdomain)
-      
-      // 关闭对话框
-      onOpenChange(false)
-      setIsLoading(false)
-    }, 1000)
+    // 只包含变更的字段
+    if (formData.name.trim() !== subdomain.name) {
+      updateData.name = formData.name.trim()
+    }
+    if (formData.domainId !== subdomain.domainId?.toString()) {
+      updateData.domainId = parseInt(formData.domainId)
+    }
+
+    // 调用真实的更新 API
+    updateMutation.mutate(updateData, {
+      onSuccess: () => {
+        // 调用成功回调（React Query 会自动刷新数据）
+        onEdit({
+          ...subdomain,
+          name: updateData.name || subdomain.name,
+          domainId: updateData.domainId || subdomain.domainId,
+          updatedAt: new Date().toISOString(),
+        })
+        // 关闭对话框
+        onOpenChange(false)
+      }
+    })
   }
 
   // 处理输入框变化
@@ -197,7 +206,7 @@ export function EditSubdomainDialog({
 
   // 处理对话框关闭
   const handleOpenChange = (newOpen: boolean) => {
-    if (!isLoading) {
+    if (!updateMutation.isPending) {
       onOpenChange(newOpen)
     }
   }
@@ -241,7 +250,7 @@ export function EditSubdomainDialog({
                 value={formData.name}
                 onChange={(e) => handleInputChange("name", e.target.value)}
                 placeholder="请输入子域名（如：www.example.com）"
-                disabled={isLoading}
+                disabled={updateMutation.isPending}
                 maxLength={100}
                 required
                 className={errors.name ? "border-destructive" : ""}
@@ -264,7 +273,7 @@ export function EditSubdomainDialog({
               <Select
                 value={formData.domainId}
                 onValueChange={(value) => handleInputChange("domainId", value)}
-                disabled={isLoading}
+                disabled={updateMutation.isPending}
               >
                 <SelectTrigger 
                   id="edit-domain-select"
@@ -307,7 +316,7 @@ export function EditSubdomainDialog({
               type="button" 
               variant="outline" 
               onClick={() => handleOpenChange(false)}
-              disabled={isLoading}
+              disabled={updateMutation.isPending}
             >
               取消
             </Button>
@@ -317,7 +326,7 @@ export function EditSubdomainDialog({
                 type="button" 
                 variant="ghost" 
                 onClick={handleReset}
-                disabled={isLoading}
+                disabled={updateMutation.isPending}
               >
                 重置
               </Button>
@@ -325,9 +334,9 @@ export function EditSubdomainDialog({
             
             <Button 
               type="submit" 
-              disabled={isLoading || !formData.name.trim() || !formData.domainId || !hasChanges() || !!errors.name || !!errors.domainId}
+              disabled={updateMutation.isPending || !formData.name.trim() || !formData.domainId || !hasChanges() || !!errors.name || !!errors.domainId}
             >
-              {isLoading ? (
+              {updateMutation.isPending ? (
                 <>
                   <LoadingSpinner size="sm" className="mr-2" />
                   更新中...

@@ -74,3 +74,23 @@ type GetOrgSubDomainsResponse struct {
 	Page       int         `json:"page"`
 	PageSize   int         `json:"page_size"`
 }
+
+// UpdateSubDomainRequest 更新子域名请求
+// 使用指针类型允许区分"不更新"和"更新"
+type UpdateSubDomainRequest struct {
+	ID       uint   `json:"id" binding:"required"`
+	Name     *string `json:"name"`      // 指针类型：nil=不更新，有值=更新子域名
+	DomainID *uint   `json:"domain_id"` // 指针类型：nil=不更新，有值=更新所属域名
+}
+
+// BatchDeleteSubDomainsRequest 批量删除子域名请求
+type BatchDeleteSubDomainsRequest struct {
+	SubDomainIDs []uint `json:"subdomain_ids" binding:"required"`
+}
+
+// BatchDeleteSubDomainsResponseData 批量删除子域名响应数据
+type BatchDeleteSubDomainsResponseData struct {
+	Message      string      `json:"message"`
+	DeletedCount int         `json:"deleted_count"`
+	SubDomains   []SubDomain `json:"sub_domains"`
+}

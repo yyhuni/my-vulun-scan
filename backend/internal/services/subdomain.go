@@ -664,3 +664,148 @@ func (s *SubDomainService) GetSubDomainByID(id uint) (*models.SubDomain, error) 
 	log.Info().Uint("id", id).Str("name", subDomain.Name).Msg("Sub domain retrieved successfully")
 	return &subDomain, nil
 }
+
+// UpdateSubDomain 更新子域名信息
+//
+// 功能说明：
+// 更新子域名的名称和所属域名
+//
+// 处理流程：
+// 1. 验证子域名是否存在
+// 2. 如果更新域名ID，验证新域名是否存在
+// 3. 更新子域名信息
+// 4. 返回更新后的子域名
+//
+// 参数：
+//   - req: 更新请求，包含子域名ID和可选的名称、域名ID
+//
+// 返回：
+//   - *models.SubDomain: 更新后的子域名信息
+//   - error: 如果验证失败或更新失败则返回错误
+func (s *SubDomainService) UpdateSubDomain(req models.UpdateSubDomainRequest) (*models.SubDomain, error) {
+	// 步骤1: 验证子域名是否存在
+	var subDomain models.SubDomain
+	if err := s.db.First(&subDomain, "id = ?", req.ID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			log.Error().Uint("subdomain_id", req.ID).Msg("子域名不存在")
+			return nil, errors.ErrSubDomainNotFound
+		}
+		log.Error().Err(err).Msg("查询子域名失败")
+		return nil, err
+	}
+
+	// 步骤2: 构建更新数据
+	updateData := make(map[string]interface{})
+	
+	// 更新名称
+	if req.Name != nil {
+		// 将子域名转为小写，确保数据一致性
+		updateData["name"] = strings.ToLower(strings.TrimSpace(*req.Name))
+	}
+	
+	// 更新所属域名
+	if req.DomainID != nil {
+		// 验证新域名是否存在
+		var domain models.Domain
+		if err := s.db.First(&domain, "id = ?", *req.DomainID).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				log.Error().Uint("domain_id", *req.DomainID).Msg("域名不存在")
+				return nil, fmt.Errorf("域名ID %d 不存在", *req.DomainID)
+			}
+			log.Error().Err(err).Msg("查询域名失败")
+			return nil, err
+		}
+		updateData["domain_id"] = *req.DomainID
+	}
+
+	// 如果没有任何更新字段，直接返回原子域名
+	if len(updateData) == 0 {
+		log.Info().Uint("subdomain_id", req.ID).Msg("没有需要更新的字段")
+		return &subDomain, nil
+	}
+
+	// 步骤3: 执行更新操作
+	if err := s.db.Model(&subDomain).Updates(updateData).Error; err != nil {
+		log.Error().Err(err).Uint("subdomain_id", req.ID).Msg("更新子域名失败")
+		return nil, err
+	}
+
+	// 步骤4: 重新查询获取更新后的数据（包括自动更新的 updated_at）
+	if err := s.db.Preload("Domain").First(&subDomain, "id = ?", req.ID).Error; err != nil {
+		log.Error().Err(err).Msg("查询更新后的子域名失败")
+		return nil, err
+	}
+
+	log.Info().
+		Uint("subdomain_id", req.ID).
+		Str("name", subDomain.Name).
+		Uint("domain_id", subDomain.DomainID).
+		Msg("子域名更新成功")
+
+	return &subDomain, nil
+}
+
+// BatchDeleteSubDomains 批量删除子域名
+//
+// 功能说明：
+// 批量删除多个子域名，通过事务保证原子性
+//
+// 处理流程：
+// 1. 验证所有子域名是否存在
+// 2. 预加载子域名及其关联的域名信息
+// 3. 批量删除子域名（GORM会自动级联删除关联的Endpoints和Vulnerabilities）
+//
+// 事务保证：
+// - 所有子域名的删除要么全部成功，要么全部失败
+// - 如果任何一个子域名删除失败，整个批量操作回滚
+//
+// 参数：
+//   - subdomainIDs: 需要删除的子域名ID列表
+//
+// 返回：
+//   - []models.SubDomain: 被删除的子域名列表（供前端确认）
+//   - error: 如果验证失败或删除失败则返回错误
+func (s *SubDomainService) BatchDeleteSubDomains(subdomainIDs []uint) ([]models.SubDomain, error) {
+	if len(subdomainIDs) == 0 {
+		return nil, fmt.Errorf("子域名ID列表不能为空")
+	}
+
+	var deletedSubDomains []models.SubDomain
+
+	// 使用事务确保批量删除的原子性
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		// 步骤1: 验证所有子域名是否存在
+		if err := tx.Where("id IN ?", subdomainIDs).Find(&deletedSubDomains).Error; err != nil {
+			log.Error().Err(err).Msg("查询待删除子域名失败")
+			return err
+		}
+
+		// 检查删除的子域名数量是否与请求的ID数量一致
+		if len(deletedSubDomains) != len(subdomainIDs) {
+			log.Warn().
+				Int("requested", len(subdomainIDs)).
+				Int("found", len(deletedSubDomains)).
+				Msg("部分子域名ID不存在")
+			return fmt.Errorf("部分子域名ID不存在")
+		}
+
+		// 步骤2: 批量删除子域名
+		// 数据库已配置 CASCADE，会自动删除关联的 Endpoints 和 Vulnerabilities
+		if err := tx.Where("id IN ?", subdomainIDs).Delete(&models.SubDomain{}).Error; err != nil {
+			log.Error().Err(err).Msg("批量删除子域名失败")
+			return err
+		}
+
+		log.Info().
+			Int("count", len(subdomainIDs)).
+			Msg("子域名批量删除成功")
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return deletedSubDomains, nil
+}

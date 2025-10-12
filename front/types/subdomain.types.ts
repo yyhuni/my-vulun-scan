@@ -2,10 +2,10 @@ import type { Domain } from './domain.types'
 
 export interface SubDomain {
   id: number
-  createdAt: string
-  updatedAt: string
+  createdAt: string    // 驼峰命名，api-client.ts 会自动从 created_at 转换
+  updatedAt: string    // 驼峰命名，api-client.ts 会自动从 updated_at 转换
   name: string
-  domainId: number
+  domainId: number     // 驼峰命名，api-client.ts 会自动从 domain_id 转换
   domain?: Domain
 }
 
@@ -39,4 +39,20 @@ export interface CreateSubDomainsResponse {
   alreadyExists: number          // 已存在的子域名数量
   skippedDomains: string[]       // 被跳过的根域名列表
   totalUniqueSubdomains: number  // 请求的唯一子域名总数
+}
+
+export interface UpdateSubDomainRequest {
+  id: number
+  name?: string       // 可选：更新子域名
+  domainId?: number   // 可选：更新所属域名
+}
+
+export interface BatchDeleteSubDomainsRequest {
+  subdomainIds: number[]  // 需要删除的子域名ID列表
+}
+
+export interface BatchDeleteSubDomainsResponse {
+  message: string
+  deletedCount: number
+  subDomains: SubDomain[]  // 被删除的子域名列表
 }

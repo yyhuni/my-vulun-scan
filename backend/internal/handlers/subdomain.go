@@ -278,3 +278,117 @@ func GetSubDomainsByOrgID(c *gin.Context) {
 
 	response.SuccessResponse(c, result)
 }
+
+// UpdateSubDomain 更新子域名
+// @Summary 更新子域名
+// @Description 更新子域名的名称和所属域名，返回更新后的子域名信息
+// @Description
+// @Description **字段更新说明：**
+// @Description - name: 传null不更新，传值则更新子域名
+// @Description - domain_id: 传null不更新，传值则更新所属域名
+// @Description - 至少需要更新一个字段，否则直接返回原数据
+// @Tags 子域名管理
+// @Accept json
+// @Produce json
+// @Param request body models.UpdateSubDomainRequest true "更新信息"
+// @Success 200 {object} models.APIResponse{data=models.SubDomain} "更新成功"
+// @Failure 400 {object} models.APIResponse "请求参数错误"
+// @Failure 404 {object} models.APIResponse "子域名不存在"
+// @Failure 500 {object} models.APIResponse "服务器内部错误"
+// @Router /subdomains/update [post]
+func UpdateSubDomain(c *gin.Context) {
+	var req models.UpdateSubDomainRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	service := services.NewSubDomainService()
+	subDomain, err := service.UpdateSubDomain(req)
+	if err != nil {
+		if errors.Is(err, customErrors.ErrSubDomainNotFound) {
+			response.NotFoundResponse(c, "子域名不存在")
+			return
+		}
+		response.InternalServerErrorResponse(c, "更新子域名失败: "+err.Error())
+		return
+	}
+
+	response.SuccessResponse(c, subDomain)
+}
+
+// DeleteSubDomain 删除单个子域名
+// @Summary 删除单个子域名
+// @Description 删除指定ID的子域名（级联删除关联的Endpoints和Vulnerabilities）
+// @Tags 子域名管理
+// @Produce json
+// @Param id path uint true "子域名ID" example(1)
+// @Success 200 {object} models.APIResponse{data=models.SubDomain} "删除成功"
+// @Failure 400 {object} models.APIResponse "请求参数错误"
+// @Failure 404 {object} models.APIResponse "子域名不存在"
+// @Failure 500 {object} models.APIResponse "服务器内部错误"
+// @Router /subdomains/{id} [delete]
+func DeleteSubDomain(c *gin.Context) {
+	// 获取路径参数 id
+	var uri struct {
+		ID uint `uri:"id" binding:"required"`
+	}
+	if err := c.ShouldBindUri(&uri); err != nil {
+		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	// 复用批量删除逻辑，传入单个ID的数组
+	service := services.NewSubDomainService()
+	subdomains, err := service.BatchDeleteSubDomains([]uint{uri.ID})
+	if err != nil {
+		response.InternalServerErrorResponse(c, "删除子域名失败: "+err.Error())
+		return
+	}
+
+	// 返回被删除的子域名信息
+	if len(subdomains) > 0 {
+		response.SuccessResponse(c, subdomains[0])
+	} else {
+		response.SuccessResponse(c, nil)
+	}
+}
+
+// BatchDeleteSubDomains 批量删除子域名
+// @Summary 批量删除子域名
+// @Description 批量删除子域名（级联删除关联的Endpoints和Vulnerabilities）
+// @Tags 子域名管理
+// @Accept json
+// @Produce json
+// @Param request body models.BatchDeleteSubDomainsRequest true "子域名ID列表"
+// @Success 200 {object} models.APIResponse{data=models.BatchDeleteSubDomainsResponseData} "批量删除成功"
+// @Failure 400 {object} models.APIResponse "业务逻辑错误"
+// @Failure 422 {object} models.APIResponse "请求参数验证失败"
+// @Failure 500 {object} models.APIResponse "服务器内部错误"
+// @Router /subdomains/batch-delete [post]
+func BatchDeleteSubDomains(c *gin.Context) {
+	var req models.BatchDeleteSubDomainsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	if len(req.SubDomainIDs) == 0 {
+		response.BadRequestResponse(c, "子域名ID列表不能为空")
+		return
+	}
+
+	service := services.NewSubDomainService()
+	subdomains, err := service.BatchDeleteSubDomains(req.SubDomainIDs)
+	if err != nil {
+		response.InternalServerErrorResponse(c, "批量删除子域名失败: "+err.Error())
+		return
+	}
+
+	response.SuccessResponse(c, models.BatchDeleteSubDomainsResponseData{
+		Message:      "批量删除子域名成功",
+		DeletedCount: len(req.SubDomainIDs),
+		SubDomains:   subdomains,
+	})
+}

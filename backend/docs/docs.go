@@ -1215,6 +1215,70 @@ const docTemplate = `{
                 }
             }
         },
+        "/subdomains/batch-delete": {
+            "post": {
+                "description": "批量删除子域名（级联删除关联的Endpoints和Vulnerabilities）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "子域名管理"
+                ],
+                "summary": "批量删除子域名",
+                "parameters": [
+                    {
+                        "description": "子域名ID列表",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.BatchDeleteSubDomainsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "批量删除成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.BatchDeleteSubDomainsResponseData"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "业务逻辑错误",
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "请求参数验证失败",
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/subdomains/create": {
             "post": {
                 "description": "前端发送分组后的域名数据，后端自动创建根域名和子域名，需要指定组织ID",
@@ -1273,6 +1337,70 @@ const docTemplate = `{
                 }
             }
         },
+        "/subdomains/update": {
+            "post": {
+                "description": "更新子域名的名称和所属域名，返回更新后的子域名信息\n\n**字段更新说明：**\n- name: 传null不更新，传值则更新子域名\n- domain_id: 传null不更新，传值则更新所属域名\n- 至少需要更新一个字段，否则直接返回原数据",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "子域名管理"
+                ],
+                "summary": "更新子域名",
+                "parameters": [
+                    {
+                        "description": "更新信息",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.UpdateSubDomainRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "更新成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.SubDomain"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "子域名不存在",
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/subdomains/{id}": {
             "get": {
                 "description": "根据子域名ID获取子域名的详细信息",
@@ -1296,6 +1424,64 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "获取成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.SubDomain"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "子域名不存在",
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "删除指定ID的子域名（级联删除关联的Endpoints和Vulnerabilities）",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "子域名管理"
+                ],
+                "summary": "删除单个子域名",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "example": 1,
+                        "description": "子域名ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "删除成功",
                         "schema": {
                             "allOf": [
                                 {
@@ -1516,6 +1702,37 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/vulun-scan-backend_internal_models.Organization"
+                    }
+                }
+            }
+        },
+        "vulun-scan-backend_internal_models.BatchDeleteSubDomainsRequest": {
+            "type": "object",
+            "required": [
+                "subdomain_ids"
+            ],
+            "properties": {
+                "subdomain_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "vulun-scan-backend_internal_models.BatchDeleteSubDomainsResponseData": {
+            "type": "object",
+            "properties": {
+                "deleted_count": {
+                    "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "sub_domains": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/vulun-scan-backend_internal_models.SubDomain"
                     }
                 }
             }
@@ -2018,6 +2235,25 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "vulun-scan-backend_internal_models.UpdateSubDomainRequest": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "domain_id": {
+                    "description": "指针类型：nil=不更新，有值=更新所属域名",
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "指针类型：nil=不更新，有值=更新子域名",
                     "type": "string"
                 }
             }

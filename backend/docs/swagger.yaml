@@ -57,6 +57,26 @@ definitions:
           $ref: '#/definitions/vulun-scan-backend_internal_models.Organization'
         type: array
     type: object
+  vulun-scan-backend_internal_models.BatchDeleteSubDomainsRequest:
+    properties:
+      subdomain_ids:
+        items:
+          type: integer
+        type: array
+    required:
+    - subdomain_ids
+    type: object
+  vulun-scan-backend_internal_models.BatchDeleteSubDomainsResponseData:
+    properties:
+      deleted_count:
+        type: integer
+      message:
+        type: string
+      sub_domains:
+        items:
+          $ref: '#/definitions/vulun-scan-backend_internal_models.SubDomain'
+        type: array
+    type: object
   vulun-scan-backend_internal_models.CreateDomainsRequest:
     properties:
       domains:
@@ -393,6 +413,19 @@ definitions:
       id:
         type: integer
       name:
+        type: string
+    required:
+    - id
+    type: object
+  vulun-scan-backend_internal_models.UpdateSubDomainRequest:
+    properties:
+      domain_id:
+        description: 指针类型：nil=不更新，有值=更新所属域名
+        type: integer
+      id:
+        type: integer
+      name:
+        description: 指针类型：nil=不更新，有值=更新子域名
         type: string
     required:
     - id
@@ -1263,6 +1296,42 @@ paths:
       tags:
       - 子域名管理
   /subdomains/{id}:
+    delete:
+      description: 删除指定ID的子域名（级联删除关联的Endpoints和Vulnerabilities）
+      parameters:
+      - description: 子域名ID
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 删除成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.SubDomain'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+        "404":
+          description: 子域名不存在
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+      summary: 删除单个子域名
+      tags:
+      - 子域名管理
     get:
       description: 根据子域名ID获取子域名的详细信息
       parameters:
@@ -1364,6 +1433,45 @@ paths:
       tags:
       - 子域名管理
       - 子域名管理
+  /subdomains/batch-delete:
+    post:
+      consumes:
+      - application/json
+      description: 批量删除子域名（级联删除关联的Endpoints和Vulnerabilities）
+      parameters:
+      - description: 子域名ID列表
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/vulun-scan-backend_internal_models.BatchDeleteSubDomainsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 批量删除成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.BatchDeleteSubDomainsResponseData'
+              type: object
+        "400":
+          description: 业务逻辑错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+        "422":
+          description: 请求参数验证失败
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+      summary: 批量删除子域名
+      tags:
+      - 子域名管理
   /subdomains/create:
     post:
       consumes:
@@ -1397,6 +1505,51 @@ paths:
           schema:
             $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
       summary: 批量创建子域名（支持根域名分组）
+      tags:
+      - 子域名管理
+  /subdomains/update:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        更新子域名的名称和所属域名，返回更新后的子域名信息
+
+        **字段更新说明：**
+        - name: 传null不更新，传值则更新子域名
+        - domain_id: 传null不更新，传值则更新所属域名
+        - 至少需要更新一个字段，否则直接返回原数据
+      parameters:
+      - description: 更新信息
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/vulun-scan-backend_internal_models.UpdateSubDomainRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 更新成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.SubDomain'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+        "404":
+          description: 子域名不存在
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+      summary: 更新子域名
       tags:
       - 子域名管理
 swagger: "2.0"
