@@ -159,11 +159,17 @@ export const createDomainColumns = ({
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="域名" />
     ),
-    cell: ({ row }) => (
-      <div className="w-[200px] font-medium font-mono">
-        {row.getValue("name")}
-      </div>
-    ),
+    cell: ({ row }) => {
+      const domain = row.original
+      return (
+        <Link 
+          href={`/assets/domain/${domain.id}`}
+          className="w-[200px] font-medium font-mono text-primary hover:underline block"
+        >
+          {row.getValue("name")}
+        </Link>
+      )
+    },
   },
   
   // 域名描述列
