@@ -607,7 +607,7 @@ paths:
       - 域名管理
   /domains/{id}:
     get:
-      description: 根据域名ID获取域名的详细信息（不包含组织关联信息）
+      description: 根据域名ID获取域名的详细信息（包含组织关联信息）
       parameters:
       - description: 域名ID
         example: 1
@@ -625,7 +625,7 @@ paths:
             - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/vulun-scan-backend_internal_models.DomainResponseData'
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.Domain'
               type: object
         "404":
           description: 域名不存在

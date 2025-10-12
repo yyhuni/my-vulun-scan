@@ -159,17 +159,21 @@ export const createOrganizationColumns = ({
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="组织名称" />
     ),
-    cell: ({ row }) => (
-      <div className="w-[150px] font-medium">
-        <Button
-          variant="link"
-          className="p-0 h-auto font-medium text-left justify-start"
-          onClick={() => navigate(`/assets/organization/${row.original.id}`)}
-        >
-          {row.getValue("name")}
-        </Button>
-      </div>
-    ),
+    cell: ({ row }) => {
+      const name = row.getValue("name") as string
+      return (
+        <div className="w-[150px] font-medium">
+          <Button
+            variant="link"
+            className="p-0 h-auto font-medium text-left justify-start max-w-full truncate"
+            onClick={() => navigate(`/assets/organization/${row.original.id}`)}
+            title={name}
+          >
+            <span className="truncate">{name}</span>
+          </Button>
+        </div>
+      )
+    },
   },
   
   // 组织描述列

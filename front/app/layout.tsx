@@ -1,9 +1,6 @@
 import type React from "react"
 // 导入 Next.js 的元数据类型定义
 import type { Metadata } from "next"
-// 导入 Geist 字体系列 - 包括无衬线字体和等宽字体
-import { GeistSans } from "geist/font/sans"
-import { GeistMono } from "geist/font/mono"
 
 // 导入全局样式文件
 import "./globals.css"
@@ -36,15 +33,10 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    // 设置 HTML 根元素,语言为英文
-    <html lang="en">
-      {/* 
-        body 元素应用字体样式
-        - font-sans: 应用无衬线字体作为默认字体
-        - GeistSans.variable: Geist 无衬线字体的 CSS 变量
-        - GeistMono.variable: Geist 等宽字体的 CSS 变量
-      */}
-      <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
+    // 设置 HTML 根元素,语言为中文
+    <html lang="zh-CN">
+      {/* 使用系统默认字体，无需额外加载字体文件 */}
+      <body>
         {/* 使用 QueryProvider 提供 React Query 功能 */}
         <QueryProvider>
           {/* SidebarProvider 提供侧边栏的上下文状态管理 */}

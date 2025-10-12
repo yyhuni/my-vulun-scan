@@ -231,7 +231,7 @@ const docTemplate = `{
         },
         "/domains/{id}": {
             "get": {
-                "description": "根据域名ID获取域名的详细信息（不包含组织关联信息）",
+                "description": "根据域名ID获取域名的详细信息（包含组织关联信息）",
                 "produces": [
                     "application/json"
                 ],
@@ -261,7 +261,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.DomainResponseData"
+                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.Domain"
                                         }
                                     }
                                 }
