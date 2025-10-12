@@ -139,20 +139,7 @@ export function EndpointsList({ organizationId }: { organizationId: string }) {
     return <LoadingState message="加载端点数据中..." />
   }
 
-  // 空数据状态
-  if (!endpoints || endpoints.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <div className="rounded-full bg-muted p-3 mb-4">
-          <span className="text-muted-foreground">🔗</span>
-        </div>
-        <h3 className="text-lg font-semibold mb-2">暂无端点</h3>
-        <p className="text-muted-foreground text-center mb-4">
-          该组织还没有任何端点数据
-        </p>
-      </div>
-    )
-  }
+
 
   return (
     <>
