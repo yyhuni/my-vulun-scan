@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 // 导入侧边栏触发器组件
 import { SidebarTrigger } from "@/components/ui/sidebar"
+// 导入通知抽屉组件
+import { NotificationDrawer } from "@/components/notification-drawer"
 
 /**
  * 网站头部组件
@@ -25,6 +27,9 @@ export function SiteHeader() {
 
         {/* 右侧按钮区域,使用 ml-auto 推到最右边 */}
         <div className="ml-auto flex items-center gap-2">
+          {/* 通知抽屉按钮 */}
+          <NotificationDrawer />
+          
           {/* GitHub 链接按钮,在小屏幕上隐藏 */}
           <Button variant="ghost" asChild size="sm" className="hidden sm:flex">
             <a
