@@ -13,7 +13,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 // 导入图标组件
-import { MoreHorizontal, Edit, Trash2, ChevronsUpDown } from "lucide-react"
+import { MoreHorizontal, Edit, Trash2, ChevronsUpDown, Eye } from "lucide-react"
+// 导入 Next.js Link 组件
+import Link from "next/link"
 
 // 导入类型定义
 import type { Domain } from "@/types/domain.types"
@@ -27,7 +29,7 @@ interface CreateColumnsProps {
 
 /**
  * 域名行操作组件
- * 提供编辑、删除等操作
+ * 提供查看详细、编辑、删除等操作
  */
 function DomainRowActions({ 
   domain, 
@@ -50,6 +52,13 @@ function DomainRowActions({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[160px]">
+        <DropdownMenuItem asChild>
+          <Link href={`/assets/domain/${domain.id}`} className="cursor-pointer">
+            <Eye className="mr-2 h-4 w-4" />
+            查看详细
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuItem onClick={onEdit}>
           <Edit className="mr-2 h-4 w-4" />
           编辑

@@ -1,25 +1,22 @@
 "use client"
 
-import React, { useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { LoadingState } from "@/components/loading-spinner"
+import React from "react"
+import { MainAssetsList } from "@/components/assets/organization/main-assets/main-assets-list"
 
 /**
  * 组织详情页面
- * 自动重定向到主资产页面，以便于用户快速查看该组织的主资产信息
+ * 显示组织的主资产列表
  */
 export default function OrganizationDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>
 }) {
-  const resolvedParams = React.use(params)  // 获取 URL 中的 id 参数
-  const router = useRouter()
+  const resolvedParams = React.use(params)
 
-  useEffect(() => {
-    // 自动跳转到主资产页面，以便于用户快速查看该组织的主资产信息
-    router.replace(`/assets/organization/${resolvedParams.id}/main-assets`)
-  }, [resolvedParams.id, router])
-
-  return <LoadingState message="正在跳转..." />
+  return (
+    <div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
+      <MainAssetsList organizationId={resolvedParams.id} />
+    </div>
+  )
 }

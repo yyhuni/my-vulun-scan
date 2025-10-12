@@ -23,8 +23,15 @@ import type { SubDomain } from "@/types/subdomain.types"
 /**
  * 子域名列表组件（使用 React Query）
  * 用于显示和管理子域名列表
+ * 支持通过组织ID或域名ID获取数据
  */
-export function SubdomainsList({ organizationId }: { organizationId: string }) {
+export function SubdomainsList({ 
+  organizationId, 
+  domainId 
+}: { 
+  organizationId?: string
+  domainId?: string 
+}) {
   const [selectedSubdomains, setSelectedSubdomains] = useState<SubDomain[]>([])
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -45,6 +52,7 @@ export function SubdomainsList({ organizationId }: { organizationId: string }) {
     refetch
   } = useSubdomains({
     organizationId,
+    domainId,
     page: pagination.pageIndex + 1, // 转换为 1-based
     pageSize: pagination.pageSize,
     sortBy: "updated_at", // 直接使用数据库字段名，避免混淆
@@ -52,12 +60,19 @@ export function SubdomainsList({ organizationId }: { organizationId: string }) {
   })
 
   // 获取组织的域名列表（用于添加/编辑子域名时选择所属域名）
-  const { data: domainsData } = useOrganizationDomains(parseInt(organizationId), {
-    page: 1,
-    pageSize: 1000, // 获取所有域名
-    sortBy: "name",
-    sortOrder: "asc"
-  })
+  // 只在通过 organizationId 访问时才获取
+  const { data: domainsData } = useOrganizationDomains(
+    organizationId ? parseInt(organizationId) : 0, 
+    {
+      page: 1,
+      pageSize: 1000, // 获取所有域名
+      sortBy: "name",
+      sortOrder: "asc"
+    },
+    {
+      enabled: !!organizationId // 只有当 organizationId 存在时才启用
+    }
+  )
 
   // Mutations
   const deleteSubdomain = useDeleteSubdomain()
@@ -195,14 +210,16 @@ export function SubdomainsList({ organizationId }: { organizationId: string }) {
         onPaginationChange={handlePaginationChange}
       />
       
-      {/* 添加子域名对话框 */}
-      <AddSubdomainDialog
-        organizationId={organizationId}
-        domains={domainsData?.domains || []}
-        onAdd={handleAddSuccess}
-        open={isAddDialogOpen}
-        onOpenChange={setIsAddDialogOpen}
-      />
+      {/* 添加子域名对话框 - 只在通过组织访问时显示 */}
+      {organizationId && (
+        <AddSubdomainDialog
+          organizationId={organizationId}
+          domains={domainsData?.domains || []}
+          onAdd={handleAddSuccess}
+          open={isAddDialogOpen}
+          onOpenChange={setIsAddDialogOpen}
+        />
+      )}
 
       {/* 删除确认对话框 */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

@@ -1,15 +1,14 @@
 "use client"
 
 import React from "react"
-import { useRouter, usePathname, useParams } from "next/navigation"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useParams } from "next/navigation"
 import { Building2 } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useOrganization } from "@/hooks/use-organizations"
 
 /**
  * 组织详情布局
- * 为所有子页面提供共享的组织信息和导航
+ * 为主资产页面提供共享的组织信息
  */
 export default function OrganizationLayout({
   children,
@@ -17,8 +16,6 @@ export default function OrganizationLayout({
   children: React.ReactNode
 }) {
   const { id } = useParams<{ id: string }>()
-  const router = useRouter()
-  const pathname = usePathname()
 
   // 使用 React Query 获取组织数据
   const {
@@ -26,30 +23,6 @@ export default function OrganizationLayout({
     isLoading,
     error
   } = useOrganization(Number(id))
-
-  // 获取当前激活的 Tab
-  const getActiveTab = () => {
-    if (pathname.includes("/main-assets")) return "main-assets"
-    if (pathname.includes("/subdomains")) return "subdomains"
-    if (pathname.includes("/endpoints")) return "endpoints"
-    return ""
-  }
-
-  // 处理 Tab 切换
-  const handleTabChange = (value: string) => {
-    const basePath = `/assets/organization/${id}`
-    switch (value) {
-      case "main-assets":
-        router.push(`${basePath}/main-assets`)
-        break
-      case "subdomains":
-        router.push(`${basePath}/subdomains`)
-        break
-      case "endpoints":
-        router.push(`${basePath}/endpoints`)
-        break
-    }
-  }
 
   // 加载状态
   if (isLoading) {
@@ -65,16 +38,6 @@ export default function OrganizationLayout({
             <Skeleton className="h-4 w-72" />
           </div>
         </div>
-
-        {/* Tabs 导航骨架 */}
-        <div className="flex items-center justify-between px-4 lg:px-6">
-          <div className="flex gap-2">
-            <Skeleton className="h-9 w-16" />
-            <Skeleton className="h-9 w-20" />
-            <Skeleton className="h-9 w-24" />
-          </div>
-        </div>
-
       </div>
     )
   }
@@ -123,21 +86,6 @@ export default function OrganizationLayout({
           </h2>
           <p className="text-muted-foreground">{organization.description}</p>
         </div>
-      </div>
-
-      {/* Tabs 导航 */}
-      <div className="flex items-center justify-between px-4 lg:px-6">
-        <Tabs
-          value={getActiveTab()}
-          onValueChange={handleTabChange}
-          className="w-full"
-        >
-          <TabsList className="**:data-[slot=badge]:bg-muted-foreground/30 hidden **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:px-1 @4xl/main:flex">
-            <TabsTrigger value="main-assets">主资产</TabsTrigger>
-            <TabsTrigger value="subdomains">子域名</TabsTrigger>
-            <TabsTrigger value="endpoints">Endpoint</TabsTrigger>
-          </TabsList>
-        </Tabs>
       </div>
 
       {/* 子页面内容 */}

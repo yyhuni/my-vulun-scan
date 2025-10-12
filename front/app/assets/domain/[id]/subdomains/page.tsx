@@ -1,13 +1,13 @@
 "use client"
 
 import React from "react"
-import { EndpointsList } from "@/components/assets/organization/endpoints/endpoints-list"
+import { SubdomainsList } from "@/components/assets/domain/subdomains/subdomains-list"
 
 /**
- * Endpoint 页面
- * 显示组织的 Endpoint 列表
+ * 域名的子域名页面
+ * 显示域名下的子域名列表
  */
-export default function EndpointsPage({
+export default function DomainSubdomainsPage({
   params,
 }: {
   params: Promise<{ id: string }>
@@ -16,7 +16,7 @@ export default function EndpointsPage({
 
   return (
     <div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
-      <EndpointsList organizationId={resolvedParams.id} />
+      <SubdomainsList domainId={resolvedParams.id} />
     </div>
   )
 }

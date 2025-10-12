@@ -72,12 +72,18 @@ export function useOrganization(id: number) {
 /**
  * 获取组织的域名列表 Hook
  */
-export function useOrganizationDomains(id: number, params?: {
-  page?: number
-  pageSize?: number
-  sortBy?: string
-  sortOrder?: 'asc' | 'desc'
-}) {
+export function useOrganizationDomains(
+  id: number,
+  params?: {
+    page?: number
+    pageSize?: number
+    sortBy?: string
+    sortOrder?: 'asc' | 'desc'
+  },
+  options?: {
+    enabled?: boolean
+  }
+) {
   return useQuery({
     queryKey: [...organizationKeys.detail(id), 'domains', params],
     queryFn: () => OrganizationService.getOrganizationDomains(id, params),
@@ -87,7 +93,7 @@ export function useOrganizationDomains(id: number, params?: {
       }
       throw new Error(response.message || '获取组织域名列表失败')
     },
-    enabled: !!id,
+    enabled: options?.enabled !== undefined ? (options.enabled && !!id) : !!id,
     throwOnError: true,
   })
 }

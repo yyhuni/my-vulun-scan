@@ -13,8 +13,15 @@ import type { Endpoint } from "@/types/endpoint.types"
 /**
  * Endpoint 列表组件（使用 React Query）
  * 用于显示和管理 Endpoint 列表
+ * 支持通过组织ID或域名ID获取数据
  */
-export function EndpointsList({ organizationId }: { organizationId: string }) {
+export function EndpointsList({ 
+  organizationId, 
+  domainId 
+}: { 
+  organizationId?: string
+  domainId?: string 
+}) {
   const [selectedAssets, setSelectedAssets] = useState<Endpoint[]>([])
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [editingEndpoint, setEditingEndpoint] = useState<Endpoint | null>(null)
@@ -35,7 +42,8 @@ export function EndpointsList({ organizationId }: { organizationId: string }) {
     page: pagination.pageIndex + 1, // API 使用 1-based 页码
     pageSize: pagination.pageSize,
     sortBy: 'updated_at',
-    sortOrder: 'desc'
+    sortOrder: 'desc',
+    domainId: domainId ? parseInt(domainId) : undefined,
   })
   
   // 提取 endpoints 数据
@@ -158,13 +166,15 @@ export function EndpointsList({ organizationId }: { organizationId: string }) {
         totalPages={totalPages}
       />
       
-      {/* 添加 Endpoint 对话框 */}
-      <AddEndpointDialog
-        organizationId={organizationId}
-        onAdd={handleAddSuccess}
-        open={showAddDialog}
-        onOpenChange={setShowAddDialog}
-      />
+      {/* 添加 Endpoint 对话框 - 只在通过组织访问时显示 */}
+      {organizationId && (
+        <AddEndpointDialog
+          organizationId={organizationId}
+          onAdd={handleAddSuccess}
+          open={showAddDialog}
+          onOpenChange={setShowAddDialog}
+        />
+      )}
       
       {/* 编辑 Endpoint 对话框 */}
       {editingEndpoint && (
