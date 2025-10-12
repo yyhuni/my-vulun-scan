@@ -8,6 +8,89 @@
     },
     "basePath": "/api/v1",
     "paths": {
+        "/domains": {
+            "get": {
+                "description": "获取系统中的所有域名，支持分页和排序",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "域名管理"
+                ],
+                "summary": "获取所有域名列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "每页数量",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "name",
+                            "created_at",
+                            "updated_at"
+                        ],
+                        "type": "string",
+                        "default": "updated_at",
+                        "description": "排序字段",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "asc",
+                            "desc"
+                        ],
+                        "type": "string",
+                        "default": "desc",
+                        "description": "排序方向",
+                        "name": "sort_order",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "获取成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.GetAllDomainsResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/domains/create": {
             "post": {
                 "description": "批量创建域名并自动关联到指定组织（支持单个或多个域名）\n\n**幂等性行为说明：**\n- 如果域名已存在，会复用现有域名并建立新的关联关系\n- 如果域名与组织的关联已存在，会跳过（不会报错）\n- 每个新创建的域名会自动创建一个同名的根子域名\n- 重复提交相同的域名是安全的，不会产生重复数据\n\n**业务场景：**\n- 适用于从外部导入域名列表\n- 支持多个组织共享同一个域名\n- 域名在数据库中全局唯一，通过中间表实现多对多关系",
@@ -1988,6 +2071,29 @@
                 },
                 "url": {
                     "type": "string"
+                }
+            }
+        },
+        "vulun-scan-backend_internal_models.GetAllDomainsResponse": {
+            "type": "object",
+            "properties": {
+                "domains": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/vulun-scan-backend_internal_models.Domain"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "page_size": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "total_pages": {
+                    "type": "integer"
                 }
             }
         },

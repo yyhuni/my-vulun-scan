@@ -94,3 +94,20 @@ type DomainResponseData struct {
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
 }
+
+// GetAllDomainsRequest 获取所有域名请求（支持分页和排序）
+type GetAllDomainsRequest struct {
+	Page      int    `form:"page"`
+	PageSize  int    `form:"page_size"`
+	SortBy    string `form:"sort_by"`    // 排序字段: name, created_at, updated_at
+	SortOrder string `form:"sort_order"` // 排序方向: asc, desc
+}
+
+// GetAllDomainsResponse 获取所有域名响应
+type GetAllDomainsResponse struct {
+	Domains    []Domain `json:"domains"`
+	Total      int64    `json:"total"`
+	Page       int      `json:"page"`
+	PageSize   int      `json:"page_size"`
+	TotalPages int      `json:"total_pages"`
+}

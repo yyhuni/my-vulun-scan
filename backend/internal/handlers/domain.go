@@ -296,3 +296,47 @@ func BatchDeleteDomainsFromOrganization(c *gin.Context) {
 	// 全部失败
 	response.InternalServerErrorResponse(c, fmt.Sprintf("批量移除失败: %s", err.Error()))
 }
+
+// GetAllDomains 获取所有域名列表
+// @Summary 获取所有域名列表
+// @Description 获取系统中的所有域名，支持分页和排序
+// @Tags 域名管理
+// @Produce json
+// @Param page query int false "页码" default(1)
+// @Param page_size query int false "每页数量" default(10)
+// @Param sort_by query string false "排序字段" default(updated_at) Enums(name, created_at, updated_at)
+// @Param sort_order query string false "排序方向" default(desc) Enums(asc, desc)
+// @Success 200 {object} models.APIResponse{data=models.GetAllDomainsResponse} "获取成功"
+// @Failure 400 {object} models.APIResponse "请求参数错误"
+// @Failure 500 {object} models.APIResponse "服务器内部错误"
+// @Router /domains [get]
+func GetAllDomains(c *gin.Context) {
+	var req models.GetAllDomainsRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	// 设置默认值
+	if req.Page <= 0 {
+		req.Page = 1
+	}
+	if req.PageSize <= 0 {
+		req.PageSize = 10
+	}
+	if req.SortBy == "" {
+		req.SortBy = "updated_at"
+	}
+	if req.SortOrder == "" {
+		req.SortOrder = "desc"
+	}
+
+	service := services.NewDomainService()
+	result, err := service.GetAllDomains(req)
+	if err != nil {
+		response.InternalServerErrorResponse(c, "获取域名列表失败: "+err.Error())
+		return
+	}
+
+	response.SuccessResponse(c, result)
+}

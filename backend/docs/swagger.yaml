@@ -299,6 +299,21 @@ definitions:
     required:
     - url
     type: object
+  vulun-scan-backend_internal_models.GetAllDomainsResponse:
+    properties:
+      domains:
+        items:
+          $ref: '#/definitions/vulun-scan-backend_internal_models.Domain'
+        type: array
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
   vulun-scan-backend_internal_models.GetEndpointsResponse:
     properties:
       endpoints:
@@ -536,6 +551,60 @@ info:
   title: Vulun Scan Backend API
   version: "1.0"
 paths:
+  /domains:
+    get:
+      description: 获取系统中的所有域名，支持分页和排序
+      parameters:
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: 每页数量
+        in: query
+        name: page_size
+        type: integer
+      - default: updated_at
+        description: 排序字段
+        enum:
+        - name
+        - created_at
+        - updated_at
+        in: query
+        name: sort_by
+        type: string
+      - default: desc
+        description: 排序方向
+        enum:
+        - asc
+        - desc
+        in: query
+        name: sort_order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 获取成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.GetAllDomainsResponse'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+      summary: 获取所有域名列表
+      tags:
+      - 域名管理
   /domains/{id}:
     get:
       description: 根据域名ID获取域名的详细信息（不包含组织关联信息）

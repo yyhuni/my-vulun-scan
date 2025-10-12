@@ -574,3 +574,58 @@ func (s *DomainService) BatchDeleteDomainsFromOrganization(req models.BatchDelet
 
 	return successCount, failedCount, nil
 }
+
+// GetAllDomains 获取所有域名列表(支持分页和排序)
+//
+// 业务逻辑说明：
+// 1. 统计所有域名总数
+// 2. 计算总页数
+// 3. 应用排序、分页查询域名列表
+//
+// 安全考虑：
+// - 排序字段和方向会经过 buildOrderClause 验证，防止 SQL 注入
+func (s *DomainService) GetAllDomains(req models.GetAllDomainsRequest) (*models.GetAllDomainsResponse, error) {
+	var domains []models.Domain
+	var total int64
+
+	// 统计所有域名总数
+	if err := s.db.Model(&models.Domain{}).Count(&total).Error; err != nil {
+		log.Error().Err(err).Msg("Failed to count all domains")
+		return nil, err
+	}
+
+	// 计算总页数（向上取整）
+	totalPages := int((total + int64(req.PageSize) - 1) / int64(req.PageSize))
+
+	// 构建安全的排序子句（防止 SQL 注入）
+	orderClause := s.buildOrderClause(req.SortBy, req.SortOrder)
+
+	// 执行分页查询，支持动态排序
+	offset := (req.Page - 1) * req.PageSize
+	result := s.db.
+		Model(&models.Domain{}).
+		Order(orderClause).
+		Offset(offset).
+		Limit(req.PageSize).
+		Find(&domains)
+
+	if result.Error != nil {
+		log.Error().Err(result.Error).Msg("Failed to query all domains")
+		return nil, result.Error
+	}
+
+	log.Info().
+		Int("page", req.Page).
+		Int("page_size", req.PageSize).
+		Int64("total", total).
+		Int("count", len(domains)).
+		Msg("All domains retrieved successfully")
+
+	return &models.GetAllDomainsResponse{
+		Domains:    domains,
+		Total:      total,
+		Page:       req.Page,
+		PageSize:   req.PageSize,
+		TotalPages: totalPages,
+	}, nil
+}

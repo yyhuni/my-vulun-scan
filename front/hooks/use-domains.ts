@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { DomainService } from "@/services/domain.service"
 import type { Asset } from "@/types/asset.types"
-import type { Domain, GetDomainsResponse } from "@/types/domain.types"
+import type { Domain, GetDomainsResponse, GetAllDomainsParams } from "@/types/domain.types"
 import type { PaginationParams } from "@/types/common.types"
 
 // Query Keys
@@ -29,6 +29,45 @@ export function useDomain(id: number) {
       throw new Error(response.message || '获取域名详情失败')
     },
     enabled: !!id,
+  })
+}
+
+// 获取组织的域名列表
+export function useDomainsByOrgId(params: {
+  organizationId: number
+  page?: number
+  pageSize?: number
+  sortBy?: string
+  sortOrder?: string
+}) {
+  return useQuery({
+    queryKey: ['organizations', 'detail', params.organizationId, 'domains', {
+      page: params.page,
+      pageSize: params.pageSize,
+      sortBy: params.sortBy,
+      sortOrder: params.sortOrder,
+    }],
+    queryFn: () => DomainService.getDomainsByOrgId(params.organizationId, {
+      page: params.page,
+      pageSize: params.pageSize,
+      sortBy: params.sortBy,
+      sortOrder: params.sortOrder,
+    }),
+    select: (response) => {
+      if (response.state === 'success' && response.data) {
+        return {
+          domains: response.data.domains || [],
+          pagination: {
+            total: response.data.total || 0,
+            page: response.data.page || 1,
+            pageSize: response.data.pageSize || 10,
+            totalPages: response.data.totalPages || 0,
+          }
+        }
+      }
+      throw new Error(response.message || '获取域名列表失败')
+    },
+    enabled: !!params.organizationId,
   })
 }
 
@@ -209,6 +248,33 @@ export function useUpdateDomain() {
       
       const errorMessage = error?.response?.data?.message || error?.message || '更新失败'
       toast.error(errorMessage)
+    },
+  })
+}
+
+// 获取所有域名列表
+export function useAllDomains(params: GetAllDomainsParams = {}) {
+  return useQuery({
+    queryKey: ['domains', 'all', {
+      page: params.page,
+      pageSize: params.pageSize,
+      sortBy: params.sortBy,
+      sortOrder: params.sortOrder,
+    }],
+    queryFn: () => DomainService.getAllDomains(params),
+    select: (response) => {
+      if (response.state === 'success' && response.data) {
+        return {
+          domains: response.data.domains || [],
+          pagination: {
+            total: response.data.total || 0,
+            page: response.data.page || 1,
+            pageSize: response.data.pageSize || 10,
+            totalPages: response.data.totalPages || 0,
+          }
+        }
+      }
+      throw new Error(response.message || '获取域名列表失败')
     },
   })
 }

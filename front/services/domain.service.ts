@@ -1,6 +1,6 @@
 import { api } from "@/lib/api-client"
 import type { ApiResponse } from "@/types/api-response.types"
-import type { Domain, GetDomainsParams, GetDomainsResponse } from "@/types/domain.types"
+import type { Domain, GetDomainsParams, GetDomainsResponse, GetAllDomainsParams, GetAllDomainsResponse } from "@/types/domain.types"
 
 export class DomainService {
   // ========== 域名基础操作 ==========
@@ -102,6 +102,52 @@ export class DomainService {
         domainIds: data.domainIds,            // 拦截器会转换为 domain_ids
       }
     )
+    return response.data
+  }
+
+  /**
+   * 获取组织的域名列表
+   * @param organizationId - 组织ID
+   * @param params - 分页和排序参数
+   * @returns Promise<ApiResponse<GetDomainsResponse>>
+   */
+  static async getDomainsByOrgId(
+    organizationId: number,
+    params?: {
+      page?: number
+      pageSize?: number
+      sortBy?: string
+      sortOrder?: string
+    }
+  ): Promise<ApiResponse<GetDomainsResponse>> {
+    const response = await api.get<ApiResponse<GetDomainsResponse>>(
+      `/organizations/${organizationId}/domains`,
+      {
+        params: {
+          page: params?.page || 1,
+          pageSize: params?.pageSize || 10,
+          sortBy: params?.sortBy || 'updated_at',
+          sortOrder: params?.sortOrder || 'desc',
+        }
+      }
+    )
+    return response.data
+  }
+
+  /**
+   * 获取所有域名列表
+   * @param params - 分页和排序参数
+   * @returns Promise<ApiResponse<GetAllDomainsResponse>>
+   */
+  static async getAllDomains(params?: GetAllDomainsParams): Promise<ApiResponse<GetAllDomainsResponse>> {
+    const response = await api.get<ApiResponse<GetAllDomainsResponse>>('/domains', {
+      params: {
+        page: params?.page || 1,
+        pageSize: params?.pageSize || 10,
+        sortBy: params?.sortBy || 'updated_at',
+        sortOrder: params?.sortOrder || 'desc',
+      }
+    })
     return response.data
   }
 
