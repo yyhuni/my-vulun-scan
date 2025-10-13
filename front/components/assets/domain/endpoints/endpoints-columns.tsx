@@ -183,7 +183,7 @@ export const createEndpointColumns = ({
       <DataTableColumnHeader column={column} title="ID" />
     ),
     cell: ({ row }) => (
-      <div className="w-[80px] font-mono text-sm text-muted-foreground">
+      <div className="w-[80px] text-sm text-muted-foreground">
         {row.getValue("id")}
       </div>
     ),
@@ -198,7 +198,7 @@ export const createEndpointColumns = ({
     cell: ({ row }) => {
       const url = row.getValue("url") as string
       return (
-        <div className="max-w-[400px] font-mono text-sm">
+        <div className="max-w-[400px] text-sm">
           <div className="truncate" title={url}>
             {url}
           </div>
@@ -230,7 +230,7 @@ export const createEndpointColumns = ({
     cell: ({ row }) => {
       const endpoint = row.getValue("endpoint") as string
       return (
-        <div className="max-w-[200px] font-mono text-sm">
+        <div className="max-w-[200px] text-sm">
           <div className="truncate" title={endpoint}>
             {endpoint}
           </div>
@@ -258,7 +258,7 @@ export const createEndpointColumns = ({
         }
       }
       return (
-        <Badge variant="outline" className={`font-mono ${getMethodColor(method)}`}>
+        <Badge variant="outline" className={getMethodColor(method)}>
           {method}
         </Badge>
       )
@@ -301,7 +301,7 @@ export const createEndpointColumns = ({
     cell: ({ row }) => {
       const size = row.getValue("contentLength") as number | null | undefined
       return (
-        <div className="font-mono text-sm">
+        <div className="text-sm">
           {size !== null && size !== undefined ? size : "-"}
         </div>
       )

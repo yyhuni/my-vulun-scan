@@ -81,16 +81,20 @@ export function AddSubdomainDialog({
       }
     }
 
-    // 验证每个子域名是否属于当前域名
     const valid: string[] = []
     const invalid: string[] = []
-    
-    lines.forEach(subdomain => {
-      if (DomainValidator.isSubdomainOf(subdomain, domainName)) {
-        valid.push(subdomain)
-      } else {
+
+    lines.forEach((subdomain) => {
+      const basic = DomainValidator.validateSubdomain(subdomain)
+      if (!basic.isValid) {
         invalid.push(subdomain)
+        return
       }
+      if (!DomainValidator.isSubdomainOf(subdomain, domainName)) {
+        invalid.push(subdomain)
+        return
+      }
+      valid.push(subdomain)
     })
 
     return {

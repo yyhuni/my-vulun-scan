@@ -9,6 +9,7 @@ import (
 	"vulun-scan-backend/internal/models"
 	"vulun-scan-backend/internal/response"
 	"vulun-scan-backend/internal/services"
+	"vulun-scan-backend/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -349,6 +350,32 @@ func CreateSubDomainsForDomain(c *gin.Context) {
 	if len(req.Subdomains) == 0 {
 		response.BadRequestResponse(c, "子域名列表不能为空")
 		return
+	}
+
+	// 查询域名信息以进行归属校验
+	domainService := services.NewDomainService()
+	d, err := domainService.GetDomainByID(uri.ID)
+	if err != nil {
+		if errors.Is(err, customErrors.ErrDomainNotFound) {
+			response.NotFoundResponse(c, "域名不存在")
+			return
+		}
+		response.InternalServerErrorResponse(c, "获取域名信息失败: "+err.Error())
+		return
+	}
+
+	// 子域名格式校验（使用工具包）
+	if vErrs := utils.ValidateSubdomains(req.Subdomains); len(vErrs) > 0 {
+		response.ValidationErrorResponse(c, "子域名格式验证失败: "+vErrs[0].Error())
+		return
+	}
+
+	// 子域名归属校验：必须属于当前域名
+	for _, sub := range req.Subdomains {
+		if err := utils.ValidateSubdomainBelongsTo(sub, d.Name); err != nil {
+			response.ValidationErrorResponse(c, "子域名归属验证失败: "+err.Error())
+			return
+		}
 	}
 
 	// 调用服务层创建子域名

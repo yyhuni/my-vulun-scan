@@ -147,7 +147,7 @@ export const createDomainColumns = ({
       <DataTableColumnHeader column={column} title="ID" />
     ),
     cell: ({ row }) => (
-      <div className="w-[80px] font-mono text-sm text-muted-foreground">
+      <div className="w-[80px] text-sm text-muted-foreground">
         {row.getValue("id")}
       </div>
     ),
@@ -164,7 +164,7 @@ export const createDomainColumns = ({
       return (
         <Link 
           href={`/assets/domain/${domain.id}`}
-          className="w-[200px] font-medium font-mono text-primary hover:underline block"
+          className="w-[200px] font-medium text-primary hover:underline block"
         >
           {row.getValue("name")}
         </Link>

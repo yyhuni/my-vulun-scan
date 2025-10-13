@@ -6,6 +6,7 @@ import type { Metadata } from "next"
 import "./globals.css"
 import { Suspense } from "react"
 import { QueryProvider } from "@/components/providers/query-provider"
+import { Noto_Sans_SC } from "next/font/google"
 
 // 导入公共布局组件
 import { AppSidebar } from "@/components/app-sidebar"
@@ -21,6 +22,14 @@ export const metadata: Metadata = {
   generator: "v0.app", // 生成器标识
 }
 
+// 全站字体：Noto Sans SC（简体中文），兼顾中英文显示，系统字体作为回退
+const notoSans = Noto_Sans_SC({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "700"],
+  display: "swap",
+  fallback: ["system-ui", "-apple-system", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "sans-serif"],
+})
+
 /**
  * 根布局组件
  * 这是整个应用的最外层布局,所有页面都会被包裹在这个组件中
@@ -35,8 +44,7 @@ export default function RootLayout({
   return (
     // 设置 HTML 根元素,语言为中文
     <html lang="zh-CN">
-      {/* 使用系统默认字体，无需额外加载字体文件 */}
-      <body>
+      <body className={notoSans.className}>
         {/* 使用 QueryProvider 提供 React Query 功能 */}
         <QueryProvider>
           {/* SidebarProvider 提供侧边栏的上下文状态管理 */}

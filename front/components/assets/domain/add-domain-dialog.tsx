@@ -1,7 +1,7 @@
 "use client"
 
-import React, { useState } from "react"
-import { Plus, Globe } from "lucide-react"
+import React, { useState, useRef } from "react"
+import { Plus, Globe, Building2, AlertCircle, Loader2, Check, ChevronsUpDown } from "lucide-react"
 
 // 导入 UI 组件
 import { Button } from "@/components/ui/button"
@@ -18,14 +18,23 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { DomainValidator } from "@/lib/domain-validator"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
 
 // 导入 React Query Hooks
 import { useCreateDomain } from "@/hooks/use-domains"
@@ -68,10 +77,20 @@ export function AddDomainDialog({
     organizationId: "",
   })
 
+  // 组织选择器状态
+  const [openOrgPopover, setOpenOrgPopover] = useState(false)
+
   const [invalidDomains, setInvalidDomains] = useState<Array<{ index: number; originalDomain: string; error: string }>>([])
 
+  // Popover Portal 容器（挂载到对话框内部，避免滚动被锁定）
+  const popoverContainerRef = useRef<HTMLDivElement | null>(null)
+
   // 使用 React Query 获取组织列表
-  const { data: organizationsData } = useOrganizations({
+  const { 
+    data: organizationsData, 
+    isLoading: isLoadingOrganizations,
+    error: organizationsError 
+  } = useOrganizations({
     page: 1,
     pageSize: 100, // 获取足够多的组织用于选择
   })
@@ -174,6 +193,7 @@ export function AddDomainDialog({
           description: "",
           organizationId: "",
         })
+        setOpenOrgPopover(false)
       }
     }
   }
@@ -200,7 +220,7 @@ export function AddDomainDialog({
       )}
       
       {/* 对话框内容 */}
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[650px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <Globe className="h-5 w-5" />
@@ -223,7 +243,11 @@ export function AddDomainDialog({
                 id="domains"
                 value={formData.domains}
                 onChange={(e) => handleInputChange("domains", e.target.value)}
-                placeholder="请输入域名，每行一个&#10;例如：&#10;example.com&#10;test.com&#10;demo.org"
+                placeholder={`请输入域名，每行一个
+例如：
+example.com
+test.com
+demo.org`}
                 disabled={createDomain.isPending}
                 rows={5}
                 className="font-mono"
@@ -240,25 +264,133 @@ export function AddDomainDialog({
 
             {/* 所属组织选择 */}
             <div className="grid gap-2">
-              <Label htmlFor="organization">
-                所属组织 <span className="text-destructive">*</span>
+              <Label htmlFor="organization" className="flex items-center space-x-2">
+                <Building2 className="h-4 w-4" />
+                <span>所属组织 <span className="text-destructive">*</span></span>
               </Label>
-              <Select
-                value={formData.organizationId}
-                onValueChange={(value) => handleInputChange("organizationId", value)}
-                disabled={createDomain.isPending}
-              >
-                <SelectTrigger id="organization">
-                  <SelectValue placeholder="请选择组织" />
-                </SelectTrigger>
-                <SelectContent>
-                  {organizationsData?.organizations.map((org) => (
-                    <SelectItem key={org.id} value={org.id.toString()}>
-                      {org.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              
+              {/* 加载状态 */}
+              {isLoadingOrganizations && (
+                <div className="flex items-center space-x-2 px-3 py-2 border rounded-md bg-muted/50">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">正在加载组织列表...</span>
+                </div>
+              )}
+              
+              {/* 错误状态 */}
+              {organizationsError && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    加载组织列表失败，请刷新页面重试
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {/* 空状态 */}
+              {!isLoadingOrganizations && !organizationsError && organizationsData?.organizations.length === 0 && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription className="flex flex-col space-y-2">
+                    <span>暂无可用组织，请先创建组织</span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-fit"
+                      onClick={() => {
+                        // 跳转到组织管理页面
+                        window.open('/assets/organization', '_blank')
+                      }}
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      创建组织
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {/* 可搜索的组织选择器 */}
+              {!isLoadingOrganizations && !organizationsError && organizationsData && organizationsData.organizations.length > 0 && (
+                <>
+                  <div ref={popoverContainerRef}>
+                  <Popover open={openOrgPopover} onOpenChange={setOpenOrgPopover} modal={false}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={openOrgPopover}
+                        className="w-full justify-between"
+                        disabled={createDomain.isPending}
+                      >
+                        {formData.organizationId
+                          ? organizationsData.organizations.find(
+                              (org) => org.id.toString() === formData.organizationId
+                            )?.name
+                          : "请选择组织"}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[600px] p-0" align="start" container={popoverContainerRef.current}>
+                      <Command>
+                        <CommandInput placeholder="搜索组织..." />
+                        <CommandList className="max-h-[300px] overflow-y-auto">
+                          <CommandEmpty>未找到匹配的组织</CommandEmpty>
+                          <CommandGroup>
+                            {organizationsData.organizations.map((org) => (
+                              <CommandItem
+                                key={org.id}
+                                value={org.name}
+                                onSelect={() => {
+                                  handleInputChange("organizationId", org.id.toString())
+                                  setOpenOrgPopover(false)
+                                }}
+                                className="cursor-pointer"
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    formData.organizationId === org.id.toString()
+                                      ? "opacity-100"
+                                      : "opacity-0"
+                                  )}
+                                />
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{org.name}</span>
+                                  {org.description && (
+                                    <span className="text-xs text-muted-foreground truncate">
+                                      {org.description}
+                                    </span>
+                                  )}
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  </div>
+                  
+                  {/* 辅助信息 */}
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>
+                      共 {organizationsData.organizations.length} 个组织可选
+                    </span>
+                    <Button
+                      type="button"
+                      variant="link"
+                      size="sm"
+                      className="h-auto p-0 text-xs"
+                      onClick={() => {
+                        window.open('/assets/organization', '_blank')
+                      }}
+                    >
+                      管理组织 →
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
             
             {/* 域名描述输入框 */}

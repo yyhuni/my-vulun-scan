@@ -147,7 +147,7 @@ export const createOrganizationColumns = ({
       <DataTableColumnHeader column={column} title="ID" />
     ),
     cell: ({ row }) => (
-      <div className="w-[80px] font-mono text-sm text-muted-foreground">
+      <div className="w-[80px] text-sm text-muted-foreground">
         {row.getValue("id")}
       </div>
     ),
