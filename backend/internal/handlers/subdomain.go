@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	customErrors "vulun-scan-backend/internal/errors"
 	"vulun-scan-backend/internal/models"
@@ -177,7 +178,6 @@ func GetSubDomainsByDomainID(c *gin.Context) {
 // @Param sort_order query string false "排序方向: asc, desc,默认desc"
 // @Success 200 {object} models.APIResponse{data=models.GetSubDomainsResponse} "获取成功"
 // @Failure 400 {object} models.APIResponse "请求参数错误"
-// @Failure 404 {object} models.APIResponse "组织不存在"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
 // @Router /organizations/{id}/subdomains [get]
 func GetSubDomainsByOrgID(c *gin.Context) {
@@ -298,6 +298,12 @@ func BatchDeleteSubDomains(c *gin.Context) {
 	service := services.NewSubDomainService()
 	subdomains, err := service.BatchDeleteSubDomains(req.SubDomainIDs)
 	if err != nil {
+		// 如果错误信息包含"不存在"，返回 400（业务逻辑错误）
+		if strings.Contains(err.Error(), "不存在") {
+			response.BadRequestResponse(c, err.Error())
+			return
+		}
+		// 其他错误返回 500（服务器内部错误）
 		response.InternalServerErrorResponse(c, "批量删除子域名失败: "+err.Error())
 		return
 	}
@@ -358,7 +364,9 @@ func CreateSubDomainsForDomain(c *gin.Context) {
 
 	// 返回结构化数据
 	response.SuccessResponse(c, models.CreateSubDomainsResponseData{
-		SubdomainsCreated: result.SubdomainsCreated,
-		AlreadyExists:     alreadyExists,
+		SubdomainsCreated:     result.SubdomainsCreated,
+		AlreadyExists:         alreadyExists,
+		SkippedDomains:        []string{},                      // 当前场景无跳过的域名
+		TotalUniqueSubdomains: result.TotalUniqueSubdomains,    // Service 层已有此字段
 	})
 }
