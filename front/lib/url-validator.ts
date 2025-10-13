@@ -1,4 +1,5 @@
 import validator from 'validator'
+import isIp from 'is-ip'
 
 /**
  * URL 验证工具类
@@ -135,36 +136,19 @@ export class UrlValidator {
    * 验证主机名是否有效（域名或 IP 地址）
    */
   private static isValidHostname(hostname: string): boolean {
-    // 检查是否为 IPv4
-    const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/
-    if (ipv4Regex.test(hostname)) {
-      // 验证每个数字是否在 0-255 范围内
-      const parts = hostname.split('.')
-      return parts.every(part => {
-        const num = parseInt(part, 10)
-        return num >= 0 && num <= 255
-      })
+    // 1) IP 校验（支持 IPv4/IPv6）
+    if (isIp(hostname)) {
+      return true
     }
 
-    // 检查是否为 IPv6（简化版）
-    if (hostname.includes(':')) {
-      return /^[0-9a-fA-F:]+$/.test(hostname)
-    }
-
-    // 检查域名格式
-    const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
-    if (!domainRegex.test(hostname)) {
-      return false
-    }
-
-    // 检查顶级域名
-    const parts = hostname.split('.')
-    if (parts.length < 2) {
-      return false
-    }
-
-    const tld = parts[parts.length - 1]
-    return tld.length >= 2 && /^[a-zA-Z]+$/.test(tld)
+    // 2) 域名校验（使用 validator 的 FQDN 校验）
+    return validator.isFQDN(hostname, {
+      require_tld: true,
+      allow_underscores: false,
+      allow_trailing_dot: false,
+      allow_numeric_tld: false,
+      allow_wildcard: false,
+    })
   }
 
   /**

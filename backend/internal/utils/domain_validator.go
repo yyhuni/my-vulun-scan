@@ -62,8 +62,8 @@ func (v *DomainValidator) ValidateDomain(domain string) error {
 	// 去除首尾空格
 	domain = strings.TrimSpace(domain)
 
-	// 长度检查
-	if len(domain) > v.MaxLength {
+	// 长度检查（使用 govalidator）
+	if !govalidator.StringLength(domain, "0", fmt.Sprintf("%d", v.MaxLength)) {
 		return &DomainValidationError{
 			Domain: domain,
 			Reason: fmt.Sprintf("域名长度超过限制 (%d 字符)", v.MaxLength),
@@ -111,37 +111,20 @@ func (v *DomainValidator) ValidateDomains(domains []string) []error {
 
 // validateBasicFormat 基本格式验证 - 使用 govalidator
 func (v *DomainValidator) validateBasicFormat(domain string) error {
-	// 检查是否以点开头或结尾
-	if strings.HasPrefix(domain, ".") || strings.HasSuffix(domain, ".") {
-		return &DomainValidationError{
-			Domain: domain,
-			Reason: "域名不能以点开头或结尾",
-		}
-	}
-
-	// 检查是否包含连续的点
-	if strings.Contains(domain, "..") {
-		return &DomainValidationError{
-			Domain: domain,
-			Reason: "域名不能包含连续的点",
-		}
-	}
-
-	// 使用 govalidator 验证域名格式（更严格和可靠）
+	// 使用 govalidator 验证域名格式（覆盖大部分基础规则）
 	if !govalidator.IsDNSName(domain) {
 		return &DomainValidationError{
 			Domain: domain,
 			Reason: "域名格式不符合 DNS 标准",
 		}
 	}
-
 	return nil
 }
 
 // validateLabels 验证域名标签（各个部分）
 func (v *DomainValidator) validateLabels(domain string) error {
 	labels := strings.Split(domain, ".")
-	
+
 	// 至少需要两个标签（如 example.com）
 	if len(labels) < 2 {
 		return &DomainValidationError{
@@ -150,30 +133,12 @@ func (v *DomainValidator) validateLabels(domain string) error {
 		}
 	}
 
-	for i, label := range labels {
-		// 标签长度检查（RFC 1035: 每个标签最多 63 字符）
-		if len(label) == 0 {
-			return &DomainValidationError{
-				Domain: domain,
-				Reason: "域名标签不能为空",
-			}
-		}
-		
-		if len(label) > 63 {
-			return &DomainValidationError{
-				Domain: domain,
-				Reason: fmt.Sprintf("域名标签 '%s' 长度超过 63 字符", label),
-			}
-		}
-
-		// 顶级域名检查（最后一个标签）
-		if i == len(labels)-1 {
-			if err := v.validateTLD(label); err != nil {
-				return err
-			}
-		}
+	// 顶级域名检查（最后一个标签）
+	if err := v.validateTLD(labels[len(labels)-1]); err != nil {
+		return err
 	}
 
+	// 其他标签的字符/长度合法性由 govalidator.IsDNSName 覆盖
 	return nil
 }
 

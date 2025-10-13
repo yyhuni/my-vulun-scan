@@ -1152,12 +1152,6 @@
                             "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
                         }
                     },
-                    "404": {
-                        "description": "组织不存在",
-                        "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
-                        }
-                    },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {

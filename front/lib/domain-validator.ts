@@ -1,5 +1,5 @@
 import validator from 'validator'
-import * as psl from 'psl'
+import { parse as parseDomain } from 'tldts'
 
 /**
  * 域名验证工具类
@@ -36,21 +36,30 @@ export class DomainValidator {
       }
     }
 
-    // 3. 检查长度（RFC 1035 标准：最大 253 字符）
-    if (trimmedDomain.length > 253) {
+    // 3. 检查长度（使用 validator 包）
+    if (!validator.isLength(trimmedDomain, { min: 1, max: 253 })) {
       return {
         isValid: false,
         error: '域名长度不能超过 253 个字符'
       }
     }
 
-    // 4. 使用 validator.js 的 isFQDN 进行严格验证
+    // 4. 使用 tldts 做域名语义校验（优先）
+    const info = parseDomain(trimmedDomain)
+    if (!info.domain || info.isIp === true) {
+      return {
+        isValid: false,
+        error: '域名格式无效'
+      }
+    }
+
+    // 5. 使用 validator.js 的 isFQDN 兜底，确保严格性
     if (!validator.isFQDN(trimmedDomain, {
-      require_tld: true,           // 必须有顶级域名
-      allow_underscores: false,    // 不允许下划线
-      allow_trailing_dot: false,   // 不允许尾部点号
-      allow_numeric_tld: false,    // 不允许纯数字顶级域名
-      allow_wildcard: false,       // 不允许通配符
+      require_tld: true,
+      allow_underscores: false,
+      allow_trailing_dot: false,
+      allow_numeric_tld: false,
+      allow_wildcard: false,
     })) {
       return {
         isValid: false,
@@ -58,29 +67,7 @@ export class DomainValidator {
       }
     }
 
-    // 5. 检查每个标签长度（RFC 1035：每个标签最多 63 字符）
-    const labels = trimmedDomain.split('.')
-    for (const label of labels) {
-      if (label.length > 63) {
-        return {
-          isValid: false,
-          error: `域名标签 "${label}" 长度超过 63 个字符`
-        }
-      }
-    }
-
-    // 6. 检查顶级域名（至少 2 个字符，只能是字母）
-    const tld = labels[labels.length - 1]
-    if (tld.length < 2 || !/^[a-zA-Z]+$/.test(tld)) {
-      return {
-        isValid: false,
-        error: '顶级域名格式无效'
-      }
-    }
-
-    return {
-      isValid: true
-    }
+    return { isValid: true }
   }
 
   /**
@@ -160,16 +147,12 @@ export class DomainValidator {
   static extractRootDomain(subdomain: string): string | null {
     const trimmed = subdomain.trim().toLowerCase()
     if (!trimmed) return null
-    
-    // 使用 psl 解析域名
-    const parsed = psl.parse(trimmed)
-    
-    // 如果解析失败或没有域名部分，返回 null
-    if (parsed.error || !parsed.domain) {
+
+    // 使用 tldts 解析域名
+    const parsed = parseDomain(trimmed)
+    if (!parsed.domain) {
       return null
     }
-    
-    // 返回根域名（domain 字段就是我们需要的根域名）
     return parsed.domain
   }
 

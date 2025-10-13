@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { LoadingSpinner } from "@/components/loading-spinner"
+import { DomainValidator } from "@/lib/domain-validator"
 
 // 导入 React Query Hooks
 import { useCreateDomain } from "@/hooks/use-domains"
@@ -67,6 +68,8 @@ export function AddDomainDialog({
     organizationId: "",
   })
 
+  const [invalidDomains, setInvalidDomains] = useState<Array<{ index: number; originalDomain: string; error: string }>>([])
+
   // 使用 React Query 获取组织列表
   const { data: organizationsData } = useOrganizations({
     page: 1,
@@ -86,6 +89,10 @@ export function AddDomainDialog({
     }
 
     if (!formData.organizationId) {
+      return
+    }
+
+    if (invalidDomains.length > 0) {
       return
     }
 
@@ -136,6 +143,24 @@ export function AddDomainDialog({
       ...prev,
       [field]: value,
     }))
+
+    if (field === "domains") {
+      const lines = value
+        .split("\n")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0)
+
+      if (lines.length === 0) {
+        setInvalidDomains([])
+        return
+      }
+
+      const results = DomainValidator.validateDomainBatch(lines)
+      const invalid = results
+        .filter((r) => !r.isValid)
+        .map((r) => ({ index: r.index, originalDomain: r.originalDomain, error: r.error || "域名格式无效" }))
+      setInvalidDomains(invalid)
+    }
   }
 
   // 处理对话框关闭
@@ -160,7 +185,7 @@ export function AddDomainDialog({
     .filter(line => line.length > 0).length
 
   // 表单验证
-  const isFormValid = formData.domains.trim().length > 0 && formData.organizationId !== ""
+  const isFormValid = formData.domains.trim().length > 0 && formData.organizationId !== "" && invalidDomains.length === 0
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -206,6 +231,11 @@ export function AddDomainDialog({
               <div className="text-xs text-muted-foreground">
                 {domainCount} 个域名
               </div>
+              {invalidDomains.length > 0 && (
+                <div className="text-xs text-destructive">
+                  {invalidDomains.length} 个无效域名，例如 第 {invalidDomains[0].index + 1} 行: "{invalidDomains[0].originalDomain}" - {invalidDomains[0].error}
+                </div>
+              )}
             </div>
 
             {/* 所属组织选择 */}
