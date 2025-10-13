@@ -9,7 +9,7 @@ type SubDomain struct {
 	// 数据库基础字段
 	ID        uint      `json:"id" gorm:"primaryKey;autoIncrement"`
 	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime;index"`
 
 	// 核心业务字段
 	// 注意：Name 字段在应用层已统一转为小写，数据库层通过 CHECK 约束防止插入大写值

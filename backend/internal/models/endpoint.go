@@ -9,7 +9,7 @@ type Endpoint struct {
 	// 数据库基础字段
 	ID        uint      `json:"id" gorm:"primaryKey;autoIncrement"`
 	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime;index"`
 
 	// 核心业务字段
 	URL           string `json:"url" gorm:"not null;size:2048;index"`

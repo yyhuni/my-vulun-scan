@@ -39,9 +39,8 @@ func (s *EndpointService) GetEndpoints(req models.GetEndpointsRequest) (*models.
 		Preload("Domain").
 		Preload("Subdomain")
 
-	// 构建安全的排序子句
-	orderClause := s.buildOrderClause(req.SortBy, req.SortOrder)
-	query = query.Order(orderClause)
+	// 排序（统一：按更新时间倒序）
+	query = query.Order("updated_at desc")
 
 	// 分页
 	offset := (req.Page - 1) * req.PageSize
@@ -76,28 +75,6 @@ func (s *EndpointService) GetEndpoints(req models.GetEndpointsRequest) (*models.
 		Msg("Endpoints retrieved successfully")
 
 	return response, nil
-}
-
-// buildOrderClause 构建安全的排序子句（仅接受下划线字段名）
-func (s *EndpointService) buildOrderClause(sortBy, sortOrder string) string {
-	// 允许排序的字段白名单（与数据库列一致，使用下划线命名）
-	allowed := map[string]bool{
-		"url":         true,
-		"method":      true,
-		"status_code": true,
-		"created_at":  true,
-		"updated_at":  true,
-	}
-
-	if !allowed[sortBy] {
-		sortBy = "updated_at" // 默认按更新时间排序
-	}
-
-	if sortOrder != "asc" && sortOrder != "desc" {
-		sortOrder = "desc" // 默认降序
-	}
-
-	return fmt.Sprintf("%s %s", sortBy, sortOrder)
 }
 
 // GetEndpointByID 根据ID获取端点详情
@@ -301,9 +278,8 @@ func (s *EndpointService) GetEndpointsBySubdomainID(subdomainID uint, page, page
 		Preload("Domain").
 		Preload("Subdomain")
 
-	// 构建安全的排序子句
-	orderClause := s.buildOrderClause(sortBy, sortOrder)
-	query = query.Order(orderClause)
+	// 排序（统一：按更新时间倒序）
+	query = query.Order("updated_at desc")
 
 	// 分页
 	offset := (page - 1) * pageSize

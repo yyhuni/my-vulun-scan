@@ -344,8 +344,8 @@ func (s *DomainService) GetDomainsByOrgID(req models.GetDomainsByOrgIDRequest) (
 	// 例如：total=25, pageSize=10 => totalPages=3
 	totalPages := int((total + int64(req.PageSize) - 1) / int64(req.PageSize))
 
-	// 构建安全的排序子句（防止 SQL 注入）
-	orderClause := s.buildOrderClause(req.SortBy, req.SortOrder)
+	// 构建排序子句（统一：按更新时间倒序；JOIN 使用表前缀避免歧义）
+	orderClause := "domains.updated_at desc"
 
 	// 执行分页查询，支持动态排序
 	/**
@@ -388,35 +388,7 @@ func (s *DomainService) GetDomainsByOrgID(req models.GetDomainsByOrgIDRequest) (
 	}, nil
 }
 
-// buildOrderClause 构建安全的排序子句
-//
-// 安全机制：
-// - 使用白名单验证排序字段，防止 SQL 注入攻击
-// - 只允许预定义的字段进行排序
-// - 非法字段会被替换为默认值，不会报错
-//
-// 示例：
-// - 合法输入: sortBy="name", sortOrder="asc" => "domains.name asc"
-// - 非法输入: sortBy="id; DROP TABLE", sortOrder="asc" => "domains.updated_at desc"（使用默认值）
-func (s *DomainService) buildOrderClause(sortBy, sortOrder string) string {
-	// 验证排序字段（白名单机制）
-	validSortFields := map[string]bool{
-		"name":       true,
-		"created_at": true,
-		"updated_at": true,
-	}
-	if !validSortFields[sortBy] {
-		sortBy = "updated_at"
-	}
-
-	// 验证排序方向（只允许 asc 或 desc）
-	if sortOrder != "asc" && sortOrder != "desc" {
-		sortOrder = "desc" // 默认降序
-	}
-
-	// 拼接排序子句（需要加表名前缀避免歧义）
-	return fmt.Sprintf("domains.%s %s", sortBy, sortOrder)
-}
+// 已统一排序逻辑到调用点，固定使用 updated_at desc；本方法已移除。
 
 // DeleteDomainFromOrganization 从组织中删除域名，如果域名成为孤儿则彻底删除
 //
@@ -590,8 +562,8 @@ func (s *DomainService) GetAllDomains(req models.GetAllDomainsRequest) (*models.
 	// 计算总页数（向上取整）
 	totalPages := int((total + int64(req.PageSize) - 1) / int64(req.PageSize))
 
-	// 构建安全的排序子句（防止 SQL 注入）
-	orderClause := s.buildOrderClause(req.SortBy, req.SortOrder)
+	    // 构建排序子句（统一：按更新时间倒序）
+    orderClause := "updated_at desc"
 
 	// 执行分页查询，支持动态排序
 	offset := (req.Page - 1) * req.PageSize

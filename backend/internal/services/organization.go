@@ -38,7 +38,7 @@ func (s *OrganizationService) GetOrgs(req models.GetOrgsRequest) (*models.GetOrg
 	totalPages := int((total + int64(req.PageSize) - 1) / int64(req.PageSize))
 
 	// 构建排序字符串
-	orderClause := s.buildOrderClause(req.SortBy, req.SortOrder)
+	orderClause := "updated_at desc"
 
 	// 分页查询，支持动态排序
 	offset := (req.Page - 1) * req.PageSize
@@ -331,28 +331,4 @@ func (s *OrganizationService) BatchDeleteOrganizations(organizationIDs []uint) (
 		Msg("Organizations batch deleted successfully")
 
 	return int(deletedCount), nil
-}
-
-// buildOrderClause 构建排序子句
-func (s *OrganizationService) buildOrderClause(sortBy, sortOrder string) string {
-	// 允许的排序字段白名单，防止SQL注入
-	allowedSortFields := map[string]string{
-		"id":         "id",
-		"name":       "name",
-		"created_at": "created_at",
-		"updated_at": "updated_at",
-	}
-
-	// 验证排序字段
-	dbField, exists := allowedSortFields[sortBy]
-	if !exists {
-		dbField = "updated_at" // 默认字段
-	}
-
-	// 验证排序方向
-	if sortOrder != "asc" && sortOrder != "desc" {
-		sortOrder = "desc" // 默认降序
-	}
-
-	return dbField + " " + sortOrder
 }

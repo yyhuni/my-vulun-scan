@@ -9,7 +9,7 @@ type Domain struct {
 	// 数据库基础字段
 	ID        uint      `json:"id" gorm:"primaryKey;autoIncrement"`
 	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime;index"`
 
 	// 核心业务字段
 	// 注意：Name 字段在应用层已统一转为小写，数据库层通过 CHECK 约束防止插入大写值
@@ -20,7 +20,7 @@ type Domain struct {
 	Organizations []Organization `json:"organizations" gorm:"many2many:organization_domains"`
 	// HasMany 关系 - 也需要配置级联删除，确保删除 Domain 时自动删除关联的 SubDomain、Endpoint 和 Vulnerability
 	SubDomains      []SubDomain     `json:"sub_domains" gorm:"foreignKey:DomainID;constraint:OnDelete:CASCADE"`
-	Endpoints       []Endpoint      `json:"endpoints" gorm:"foreignKey:DomainID;constraint:OnDelete:CASCADE"`  // 冗余关联
+	Endpoints       []Endpoint      `json:"endpoints" gorm:"foreignKey:DomainID;constraint:OnDelete:CASCADE"` // 冗余关联
 	Vulnerabilities []Vulnerability `json:"vulnerabilities" gorm:"foreignKey:DomainID;constraint:OnDelete:CASCADE"`
 }
 

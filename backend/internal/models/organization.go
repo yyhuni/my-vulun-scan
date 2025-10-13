@@ -9,7 +9,7 @@ type Organization struct {
 	// 数据库基础字段
 	ID        uint      `json:"id" gorm:"primaryKey;autoIncrement"`
 	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime;index"`
 
 	// 核心业务字段
 	Name        string `json:"name" gorm:"uniqueIndex;not null;size:255"`
@@ -71,6 +71,6 @@ type DeleteOrgResponseData struct {
 
 // BatchDeleteOrgsResponseData 批量删除组织响应数据
 type BatchDeleteOrgsResponseData struct {
-	Message       string `json:"message"`
-	DeletedCount  int    `json:"deleted_count"`
+	Message      string `json:"message"`
+	DeletedCount int    `json:"deleted_count"`
 }
