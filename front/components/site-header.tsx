@@ -5,6 +5,8 @@ import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 // 导入通知抽屉组件
 import { NotificationDrawer } from "@/components/notification-drawer"
+// 导入主题切换组件
+import { ThemeToggle } from "@/components/theme-toggle"
 
 /**
  * 网站头部组件
@@ -29,6 +31,9 @@ export function SiteHeader() {
         <div className="ml-auto flex items-center gap-2">
           {/* 通知抽屉按钮 */}
           <NotificationDrawer />
+          
+          {/* 主题切换按钮 */}
+          <ThemeToggle />
           
           {/* GitHub 链接按钮,在小屏幕上隐藏 */}
           <Button variant="ghost" asChild size="sm" className="hidden sm:flex">
