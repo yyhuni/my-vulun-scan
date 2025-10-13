@@ -11,21 +11,18 @@ import type {
 export class EndpointService {
   // ========== Endpoint 基础操作 ==========
   /**
-   * 批量创建 Endpoint
+   * 批量创建 Endpoint（完全自动化）
    * @param data - Endpoint 创建请求对象
    * @param data.endpoints - Endpoint 详细信息数组
-   * @param data.organizationId - 组织ID
    * @returns Promise<ApiResponse<any>> - 创建成功后的 Endpoint 信息数组
+   * @description 后端会自动从 URL 中提取根域名和子域名，如果不存在则自动创建。无需手动指定任何 ID
    */
   static async createEndpoints(data: {
     endpoints: Array<CreateEndpointRequest>
-    organizationId: number
   }): Promise<ApiResponse<any>> {
     // api-client.ts 会自动将驼峰转换为下划线
     const requestData = {
-      endpoints: data.endpoints,
-      domainId: null,
-      subdomainId: null
+      endpoints: data.endpoints
     }
     
     const response = await api.post<ApiResponse<any>>('/endpoints/create', requestData)

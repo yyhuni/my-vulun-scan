@@ -94,25 +94,19 @@ func GetEndpointByID(c *gin.Context) {
 }
 
 // CreateEndpoints 批量创建端点
-// @Summary 批量创建端点
-// @Description 批量创建端点，支持单个或多个端点创建，必须关联到指定子域名。subdomain_id 为必填字段
+// @Summary 批量创建端点（自动提取域名）
+// @Description 批量创建端点，支持单个或多个端点创建。会自动从 URL 中提取 host 和根域名进行匹配，但 domain 和 subdomain 必须预先存在，否则返回错误。无需手动指定任何 ID
 // @Tags 端点管理
 // @Accept json
 // @Produce json
 // @Param request body models.CreateEndpointsRequest true "端点创建请求"
 // @Success 200 {object} models.APIResponse{data=models.CreateEndpointsResponseData} "创建成功"
-// @Failure 400 {object} models.APIResponse "请求参数错误"
+// @Failure 400 {object} models.APIResponse "请求参数错误或域名/子域名不存在"
 // @Router /endpoints/create [post]
 func CreateEndpoints(c *gin.Context) {
 	var req models.CreateEndpointsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
-		return
-	}
-
-	// 验证 subdomain_id 不能为空
-	if req.SubdomainID == 0 {
-		response.ValidationErrorResponse(c, "subdomain_id 不能为空")
 		return
 	}
 

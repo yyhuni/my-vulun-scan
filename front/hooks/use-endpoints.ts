@@ -106,34 +106,34 @@ export function useEndpointsBySubdomain(subdomainId: number, params?: Omit<GetEn
   })
 }
 
-// 创建 Endpoint
+// 创建 Endpoint（完全自动化）
 export function useCreateEndpoint() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (data: {
       endpoints: Array<CreateEndpointRequest>
-      organizationId: number
     }) => EndpointService.createEndpoints(data),
     onMutate: async () => {
       toast.loading('正在创建端点...', { id: 'create-endpoint' })
     },
-    onSuccess: (response, variables) => {
+    onSuccess: (response) => {
       // 关闭加载提示
       toast.dismiss('create-endpoint')
       
       if (response.state === 'success') {
         toast.success('创建成功')
         
-        // 刷新相关查询
+        // 刷新所有相关查询（因为可能自动创建了 domain 和 subdomain）
         queryClient.invalidateQueries({ queryKey: endpointKeys.lists() })
         
-        // 刷新该组织的端点列表
-        if (variables.organizationId) {
-          queryClient.invalidateQueries({ 
-            queryKey: ['organizations', 'detail', variables.organizationId, 'endpoints']
-          })
-        }
+        // 刷新所有域名的端点列表
+        queryClient.invalidateQueries({ 
+          predicate: (query) => {
+            const key = query.queryKey as string[]
+            return key[0] === 'endpoints' && (key[1] === 'domain' || key[1] === 'subdomain')
+          }
+        })
       } else {
         throw new Error(response.message || '创建端点失败')
       }

@@ -8,6 +8,7 @@ import { AddEndpointDialog } from "./add-endpoint-dialog"
 import { EditEndpointDialog } from "./edit-endpoint-dialog"
 import { LoadingState } from "@/components/loading-spinner"
 import { useEndpoints } from "@/hooks/use-endpoints"
+import { useDomain } from "@/hooks/use-domains"
 import type { Endpoint } from "@/types/endpoint.types"
 
 /**
@@ -31,6 +32,9 @@ export function EndpointsList({
     pageIndex: 0,
     pageSize: 10
   })
+
+  // 获取当前域名信息（用于校验）
+  const { data: currentDomain } = useDomain(domainId ? parseInt(domainId) : 0)
 
   // 使用 React Query 获取 Endpoint 数据
   const {
@@ -166,10 +170,11 @@ export function EndpointsList({
         totalPages={totalPages}
       />
       
-      {/* 添加 Endpoint 对话框 - 只在通过组织访问时显示 */}
-      {organizationId && (
+      {/* 添加 Endpoint 对话框 - 只在通过域名访问时显示 */}
+      {domainId && (
         <AddEndpointDialog
-          organizationId={organizationId}
+          domainId={domainId}
+          currentDomainName={currentDomain?.name}
           onAdd={handleAddSuccess}
           open={showAddDialog}
           onOpenChange={setShowAddDialog}

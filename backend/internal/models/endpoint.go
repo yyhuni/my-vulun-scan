@@ -33,8 +33,8 @@ type Endpoint struct {
 
 // CreateEndpointsRequest 创建端点请求
 type CreateEndpointsRequest struct {
-	Endpoints   []EndpointDetail `json:"endpoints" binding:"required"`
-	SubdomainID uint             `json:"subdomain_id" binding:"required"`
+	Endpoints []EndpointDetail `json:"endpoints" binding:"required"`
+	// DomainID 和 SubdomainID 都不再需要，会从 URL 自动提取
 }
 
 // EndpointDetail 端点详细信息

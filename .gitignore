@@ -63,7 +63,6 @@ backend/vendor/
 # ============================
 .vscode/
 .idea/
-.windsurf/
 .playwright-mcp/
 *.swp
 *.swo

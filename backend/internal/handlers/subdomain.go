@@ -391,7 +391,7 @@ func CreateSubDomainsForDomain(c *gin.Context) {
 	response.SuccessResponse(c, models.CreateSubDomainsResponseData{
 		SubdomainsCreated:     result.SubdomainsCreated,
 		AlreadyExists:         alreadyExists,
-		SkippedDomains:        []string{},                      // 当前场景无跳过的域名
-		TotalUniqueSubdomains: result.TotalUniqueSubdomains,    // Service 层已有此字段
+		SkippedDomains:        []string{},                   // 当前场景无跳过的域名
+		TotalUniqueSubdomains: result.TotalUniqueSubdomains, // Service 层已有此字段
 	})
 }

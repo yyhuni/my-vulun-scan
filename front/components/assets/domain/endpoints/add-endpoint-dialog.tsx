@@ -10,6 +10,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 // 导入 React Query Hook
 import { useCreateEndpoint } from "@/hooks/use-endpoints"
@@ -30,7 +37,8 @@ import { UrlValidator } from "@/lib/url-validator"
 
 // 组件属性类型定义
 interface AddEndpointDialogProps {
-  organizationId: string                       // 组织ID
+  domainId?: string                            // 域名ID（可选，仅用于兼容性）
+  currentDomainName?: string                   // 当前域名名称（用于校验 URL）
   onAdd: (endpoints: Endpoint[]) => void      // 添加成功回调函数
   open?: boolean                               // 外部控制对话框开关状态
   onOpenChange?: (open: boolean) => void       // 外部控制对话框开关回调
@@ -44,13 +52,15 @@ interface AddEndpointDialogProps {
  * 
  * 功能特性：
  * 1. 支持添加多个 Endpoint (每行一个URL)
- * 2. 表单验证
- * 3. 错误处理
- * 4. 加载状态
- * 5. 用户友好的交互
+ * 2. 完全自动化：从 URL 自动提取域名和子域名
+ * 3. 表单验证
+ * 4. 错误处理
+ * 5. 加载状态
+ * 6. 用户友好的交互
  */
 export function AddEndpointDialog({ 
-  organizationId, 
+  domainId,
+  currentDomainName,
   onAdd, 
   open: externalOpen, 
   onOpenChange: externalOnOpenChange 
@@ -64,6 +74,12 @@ export function AddEndpointDialog({
   const [urlsText, setUrlsText] = useState("")
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   const [parsedUrls, setParsedUrls] = useState<string[]>([])
+  
+  // 可选字段状态
+  const [method, setMethod] = useState<string>("GET")
+  const [statusCode, setStatusCode] = useState<string>("")
+  const [title, setTitle] = useState<string>("")
+  const [contentLength, setContentLength] = useState<string>("")
 
   // 使用 React Query 的创建 Endpoint mutation
   const createEndpoint = useCreateEndpoint()
@@ -87,8 +103,35 @@ export function AddEndpointDialog({
       }
     })
     
+    // 如果指定了当前域名，验证 URL 是否属于该域名
+    if (currentDomainName) {
+      urls.forEach((url, index) => {
+        try {
+          const urlObj = new URL(url)
+          const hostname = urlObj.hostname
+          
+          // 提取根域名（简单实现）
+          const getRootDomain = (host: string) => {
+            const parts = host.split('.')
+            if (parts.length <= 2) return host
+            return parts.slice(-2).join('.')
+          }
+          
+          const urlRootDomain = getRootDomain(hostname)
+          const currentRootDomain = getRootDomain(currentDomainName)
+          
+          // 检查是否匹配
+          if (urlRootDomain !== currentRootDomain) {
+            errors.push(`第 ${index + 1} 行: URL 不属于当前域名 ${currentDomainName} - ${url}`)
+          }
+        } catch {
+          // URL 解析错误已经在上面捕获
+        }
+      })
+    }
+    
     setValidationErrors(errors)
-  }, [urlsText])
+  }, [urlsText, currentDomainName])
 
 
   // 处理表单提交
@@ -114,14 +157,17 @@ export function AddEndpointDialog({
     const endpoints: CreateEndpointRequest[] = urlLines.map(url => {
       return {
         url,
+        method: method || undefined,
+        statusCode: statusCode ? parseInt(statusCode) : undefined,
+        title: title || undefined,
+        contentLength: contentLength ? parseInt(contentLength) : undefined,
       }
     })
 
     // 使用 React Query mutation
     createEndpoint.mutate(
       {
-        endpoints,
-        organizationId: parseInt(organizationId)
+        endpoints
       },
       {
         onSuccess: (response) => {
@@ -145,6 +191,10 @@ export function AddEndpointDialog({
     setUrlsText("")
     setValidationErrors([])
     setParsedUrls([])
+    setMethod("GET")
+    setStatusCode("")
+    setTitle("")
+    setContentLength("")
   }
 
   // 处理对话框关闭
@@ -178,7 +228,13 @@ export function AddEndpointDialog({
             <span>添加 Endpoint</span>
           </DialogTitle>
           <DialogDescription>
-            每行输入一个完整 URL（如 https://example.com/api/v1/users），支持批量添加。
+            每行输入一个完整 URL（如 https://example.com/api/v1/users），支持批量添加。<br />
+            {currentDomainName && (
+              <>
+                <strong>注意：URL 必须属于当前域名 {currentDomainName} 或其子域名</strong>。<br />
+              </>
+            )}
+            系统会自动从 URL 中提取根域名和子域名进行匹配，<strong>域名和子域名必须预先存在</strong>。
           </DialogDescription>
         </DialogHeader>
         
@@ -239,6 +295,102 @@ https://example.com/status`}
                 </div>
               )}
 
+            </div>
+
+            {/* 可选字段 - 折叠区域 */}
+            <div className="grid gap-2">
+              <details className="group">
+                <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground flex items-center gap-2">
+                  <span className="group-open:rotate-90 transition-transform">▶</span>
+                  更多选项（可选）
+                </summary>
+                <div className="mt-3 space-y-3 pl-5">
+                  {/* HTTP Method */}
+                  <div className="grid gap-2">
+                    <Label htmlFor="method">
+                      HTTP Method
+                    </Label>
+                    <Select
+                      value={method}
+                      onValueChange={setMethod}
+                      disabled={createEndpoint.isPending}
+                    >
+                      <SelectTrigger id="method">
+                        <SelectValue placeholder="选择 HTTP Method" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="GET">GET</SelectItem>
+                        <SelectItem value="POST">POST</SelectItem>
+                        <SelectItem value="PUT">PUT</SelectItem>
+                        <SelectItem value="DELETE">DELETE</SelectItem>
+                        <SelectItem value="PATCH">PATCH</SelectItem>
+                        <SelectItem value="HEAD">HEAD</SelectItem>
+                        <SelectItem value="OPTIONS">OPTIONS</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      默认为 GET，此设置将应用到所有输入的 URL
+                    </p>
+                  </div>
+
+                  {/* Status Code */}
+                  <div className="grid gap-2">
+                    <Label htmlFor="statusCode">
+                      HTTP 状态码
+                    </Label>
+                    <Input
+                      id="statusCode"
+                      type="number"
+                      value={statusCode}
+                      onChange={(e) => setStatusCode(e.target.value)}
+                      placeholder="例如: 200"
+                      disabled={createEndpoint.isPending}
+                      min="100"
+                      max="599"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      HTTP 响应状态码（100-599）
+                    </p>
+                  </div>
+
+                  {/* Title */}
+                  <div className="grid gap-2">
+                    <Label htmlFor="title">
+                      标题
+                    </Label>
+                    <Input
+                      id="title"
+                      type="text"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="例如: 用户列表接口"
+                      disabled={createEndpoint.isPending}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      端点的描述性标题
+                    </p>
+                  </div>
+
+                  {/* Content Length */}
+                  <div className="grid gap-2">
+                    <Label htmlFor="contentLength">
+                      内容大小（字节）
+                    </Label>
+                    <Input
+                      id="contentLength"
+                      type="number"
+                      value={contentLength}
+                      onChange={(e) => setContentLength(e.target.value)}
+                      placeholder="例如: 1024"
+                      disabled={createEndpoint.isPending}
+                      min="0"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      响应内容大小（字节数）
+                    </p>
+                  </div>
+                </div>
+              </details>
             </div>
           </div>
           
