@@ -241,7 +241,7 @@ func GetSubDomainsByOrgID(c *gin.Context) {
 // @Tags 子域名管理
 // @Produce json
 // @Param id path uint true "子域名ID" example(1)
-// @Success 200 {object} models.APIResponse{data=models.SubDomain} "删除成功"
+// @Success 200 {object} models.APIResponse{data=models.BatchDeleteSubDomainsResponseData} "删除成功"
 // @Failure 400 {object} models.APIResponse "请求参数错误"
 // @Failure 404 {object} models.APIResponse "子域名不存在"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
@@ -264,10 +264,10 @@ func DeleteSubDomain(c *gin.Context) {
 		return
 	}
 
-	// 返回删除成功信息
-	response.SuccessResponse(c, gin.H{
-		"message":       "删除子域名成功",
-		"deleted_count": deletedCount,
+	// 返回删除成功信息（统一使用结构化响应类型）
+	response.SuccessResponse(c, models.BatchDeleteSubDomainsResponseData{
+		Message:      "删除子域名成功",
+		DeletedCount: deletedCount,
 	})
 }
 

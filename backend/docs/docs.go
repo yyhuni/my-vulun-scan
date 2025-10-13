@@ -609,6 +609,38 @@ const docTemplate = `{
                 }
             }
         },
+        "/health": {
+            "get": {
+                "description": "返回服务运行状态",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "基础设施"
+                ],
+                "summary": "健康检查",
+                "responses": {
+                    "200": {
+                        "description": "健康",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.HealthResponseData"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/organizations": {
             "get": {
                 "description": "获取所有组织列表，支持分页和排序",
@@ -1518,7 +1550,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.SubDomain"
+                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.BatchDeleteSubDomainsResponseData"
                                         }
                                     }
                                 }
@@ -1724,12 +1756,6 @@ const docTemplate = `{
                 },
                 "message": {
                     "type": "string"
-                },
-                "organizations": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/vulun-scan-backend_internal_models.Organization"
-                    }
                 }
             }
         },
@@ -2169,6 +2195,17 @@ const docTemplate = `{
                     }
                 },
                 "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "vulun-scan-backend_internal_models.HealthResponseData": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
+                },
+                "timestamp": {
                     "type": "integer"
                 }
             }

@@ -52,10 +52,6 @@ definitions:
         type: integer
       message:
         type: string
-      organizations:
-        items:
-          $ref: '#/definitions/vulun-scan-backend_internal_models.Organization'
-        type: array
     type: object
   vulun-scan-backend_internal_models.BatchDeleteSubDomainsRequest:
     properties:
@@ -351,6 +347,13 @@ definitions:
           $ref: '#/definitions/vulun-scan-backend_internal_models.SubDomain'
         type: array
       total:
+        type: integer
+    type: object
+  vulun-scan-backend_internal_models.HealthResponseData:
+    properties:
+      status:
+        type: string
+      timestamp:
         type: integer
     type: object
   vulun-scan-backend_internal_models.Organization:
@@ -918,6 +921,24 @@ paths:
       summary: 批量创建端点
       tags:
       - 端点管理
+  /health:
+    get:
+      description: 返回服务运行状态
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 健康
+          schema:
+            allOf:
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.HealthResponseData'
+              type: object
+      summary: 健康检查
+      tags:
+      - 基础设施
   /organizations:
     get:
       description: 获取所有组织列表，支持分页和排序
@@ -1410,7 +1431,7 @@ paths:
             - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/vulun-scan-backend_internal_models.SubDomain'
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.BatchDeleteSubDomainsResponseData'
               type: object
         "400":
           description: 请求参数错误

@@ -215,7 +215,7 @@ func BatchDeleteOrganizations(c *gin.Context) {
 	}
 
 	service := services.NewOrganizationService()
-	organizations, err := service.BatchDeleteOrganizations(req.OrgIDs)
+	deletedCount, err := service.BatchDeleteOrganizations(req.OrgIDs)
 	if err != nil {
 		if errors.Is(err, customErrors.ErrSomeOrganizationsNotExist) {
 			response.BadRequestResponse(c, "部分组织ID不存在")
@@ -226,8 +226,7 @@ func BatchDeleteOrganizations(c *gin.Context) {
 	}
 
 	response.SuccessResponse(c, models.BatchDeleteOrgsResponseData{
-		Message:       "批量删除组织成功",
-		DeletedCount:  len(req.OrgIDs),
-		Organizations: organizations,
+		Message:      "批量删除组织成功",
+		DeletedCount: deletedCount,
 	})
 }

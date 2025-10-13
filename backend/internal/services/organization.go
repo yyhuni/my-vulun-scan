@@ -257,55 +257,47 @@ func (s *OrganizationService) DeleteOrganization(organizationID uint) error {
 //
 // 注意事项：
 // - 必须确保所有传入的组织ID都存在，否则返回错误
-// - 返回被删除的组织列表，供前端确认
-func (s *OrganizationService) BatchDeleteOrganizations(organizationIDs []uint) ([]models.Organization, error) {
+// - 大数据场景优化：不预加载实体，基于中间表收集域名ID；仅返回删除数量
+func (s *OrganizationService) BatchDeleteOrganizations(organizationIDs []uint) (int, error) {
 
 	if len(organizationIDs) == 0 {
-		return nil, fmt.Errorf("no organization IDs provided")
+		return 0, fmt.Errorf("no organization IDs provided")
 	}
 
-	var deletedOrgs []models.Organization
+	var deletedCount int64
 
 	// 使用事务确保批量删除的原子性
 	err := s.db.Transaction(func(tx *gorm.DB) error {
-		// 步骤1: 验证所有组织是否存在，并预加载关联的域名
-		if err := tx.Preload("Domains").Where("id IN ?", organizationIDs).Find(&deletedOrgs).Error; err != nil {
-			log.Error().Err(err).Msg("Failed to query organizations for batch deletion")
+		// 步骤1: 基于中间表收集所有关联的域名ID（去重）
+		var allDomainIDs []uint
+		if err := tx.Table("organization_domains").
+			Where("organization_id IN ?", organizationIDs).
+			Distinct().Pluck("domain_id", &allDomainIDs).Error; err != nil {
+			log.Error().Err(err).Msg("Failed to collect domain IDs from organization_domains")
 			return err
 		}
 
-		// 检查删除的组织数量是否与请求的ID数量一致
-		if len(deletedOrgs) != len(organizationIDs) {
-			return errors.ErrSomeOrganizationsNotExist
-		}
-
-		// 步骤2: 收集所有组织关联的域名ID
-		// 这些域名在所有组织删除后可能成为孤儿域名
-		var allDomainIDs []uint
-		for _, org := range deletedOrgs {
-			for _, domain := range org.Domains {
-				allDomainIDs = append(allDomainIDs, domain.ID)
-			}
-		}
-
-		// 步骤3: 批量清理中间表关联
-		// 手动删除 organization_domains 中间表记录，实现批量操作
+		// 步骤2: 批量清理 organization_domains 中间表关联
 		if err := tx.Exec("DELETE FROM organization_domains WHERE organization_id IN ?", organizationIDs).Error; err != nil {
 			log.Error().Err(err).Msg("Failed to delete organization-domain associations")
 			return err
 		}
 
-		// 步骤4: 批量删除组织记录
-		if err := tx.Where("id IN ?", organizationIDs).Delete(&models.Organization{}).Error; err != nil {
-			log.Error().Err(err).Msg("Failed to batch delete organizations")
-			return err
+		// 步骤3: 批量删除组织记录，并通过 RowsAffected 校验全部存在
+		res := tx.Where("id IN ?", organizationIDs).Delete(&models.Organization{})
+		if res.Error != nil {
+			log.Error().Err(res.Error).Msg("Failed to batch delete organizations")
+			return res.Error
+		}
+		deletedCount = res.RowsAffected
+		if deletedCount != int64(len(organizationIDs)) {
+			return errors.ErrSomeOrganizationsNotExist
 		}
 
-		// 步骤5: 批量查询孤儿域名（没有任何组织关联的域名）
-		// 收集了所有被删除组织的域名ID，统一检查哪些成为了孤儿域名
+		// 步骤4: 批量查询并删除孤儿域名（没有任何组织关联的域名）
 		if len(allDomainIDs) > 0 {
 			var orphanDomainIDs []uint
-			err := tx.Raw(`
+			if err := tx.Raw(`
 				SELECT d.id 
 				FROM domains d
 				WHERE d.id IN (?) 
@@ -313,14 +305,11 @@ func (s *OrganizationService) BatchDeleteOrganizations(organizationIDs []uint) (
 					SELECT 1 FROM organization_domains od 
 					WHERE od.domain_id = d.id
 				)
-			`, allDomainIDs).Scan(&orphanDomainIDs).Error
-
-			if err != nil {
+			`, allDomainIDs).Scan(&orphanDomainIDs).Error; err != nil {
 				log.Error().Err(err).Msg("Failed to query orphan domains")
 				return err
 			}
 
-			// 批量删除孤儿域名
 			if len(orphanDomainIDs) > 0 {
 				if err := tx.Delete(&models.Domain{}, orphanDomainIDs).Error; err != nil {
 					log.Error().Err(err).Msg("Failed to delete orphan domains")
@@ -334,14 +323,14 @@ func (s *OrganizationService) BatchDeleteOrganizations(organizationIDs []uint) (
 	})
 
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	log.Info().
-		Int("count", len(organizationIDs)).
+		Int64("count", deletedCount).
 		Msg("Organizations batch deleted successfully")
 
-	return deletedOrgs, nil
+	return int(deletedCount), nil
 }
 
 // buildOrderClause 构建排序子句

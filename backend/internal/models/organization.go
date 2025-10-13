@@ -71,7 +71,6 @@ type DeleteOrgResponseData struct {
 
 // BatchDeleteOrgsResponseData 批量删除组织响应数据
 type BatchDeleteOrgsResponseData struct {
-	Message       string         `json:"message"`
-	DeletedCount  int            `json:"deleted_count"`
-	Organizations []Organization `json:"organizations"`
+	Message       string `json:"message"`
+	DeletedCount  int    `json:"deleted_count"`
 }
