@@ -384,8 +384,8 @@ func CreateSubDomainsForDomain(c *gin.Context) {
 		return
 	}
 
-	// 计算已存在的子域名数量
-	alreadyExists := len(req.Subdomains) - result.SubdomainsCreated
+	// 计算已存在的子域名数量（基于去重后的总数）
+	alreadyExists := result.TotalUniqueSubdomains - result.SubdomainsCreated
 
 	// 返回结构化数据
 	response.SuccessResponse(c, models.CreateSubDomainsResponseData{
