@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useMemo } from "react"
-import { Plus, Network, AlertCircle, Info } from "lucide-react"
+import { Plus, Network, AlertCircle, Info, X } from "lucide-react"
 import { toast } from "sonner"
 
 // 导入 UI 组件
@@ -149,11 +149,24 @@ export function AddSubdomainDialog({
   const handleOpenChange = (newOpen: boolean) => {
     if (!createSubdomainMutation.isPending) {
       setOpen(newOpen)
+      // 关闭时重置表单
       if (!newOpen) {
-        // 关闭时重置表单
-        setSubdomainsText("")
+        setSubdomainsText('')
       }
     }
+  }
+
+  // 移除无效的子域名
+  const handleRemoveInvalid = () => {
+    if (domainAnalysis.valid.length === 0) {
+      setSubdomainsText('')
+      toast.info('已清空所有内容')
+      return
+    }
+    
+    // 只保留有效的子域名
+    setSubdomainsText(domainAnalysis.valid.join('\n'))
+    toast.success(`已移除 ${domainAnalysis.invalid.length} 个无效子域名`)
   }
 
   return (
@@ -234,7 +247,20 @@ export function AddSubdomainDialog({
                 {/* 无效子域名列表 */}
                 {domainAnalysis.invalid.length > 0 && (
                   <div className="space-y-2">
-                    <div className="text-xs text-destructive">无效的子域名（不属于 {domainName}）：</div>
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-destructive">无效的子域名（不属于 {domainName}）：</div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={handleRemoveInvalid}
+                        disabled={createSubdomainMutation.isPending}
+                      >
+                        <X className="h-3 w-3 mr-1" />
+                        移除无效项
+                      </Button>
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       {domainAnalysis.invalid.map((invalid, index) => (
                         <Badge key={index} variant="destructive" className="text-xs font-mono">

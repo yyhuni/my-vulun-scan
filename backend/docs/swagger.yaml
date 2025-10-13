@@ -123,17 +123,14 @@ definitions:
     required:
     - name
     type: object
-  vulun-scan-backend_internal_models.CreateSubDomainsRequest:
+  vulun-scan-backend_internal_models.CreateSubDomainsForDomainRequest:
     properties:
-      domain_groups:
+      subdomains:
         items:
-          $ref: '#/definitions/vulun-scan-backend_internal_models.DomainGroup'
+          type: string
         type: array
-      organization_id:
-        type: integer
     required:
-    - domain_groups
-    - organization_id
+    - subdomains
     type: object
   vulun-scan-backend_internal_models.CreateSubDomainsResponseData:
     properties:
@@ -214,18 +211,6 @@ definitions:
         type: string
     required:
     - name
-    type: object
-  vulun-scan-backend_internal_models.DomainGroup:
-    properties:
-      root_domain:
-        type: string
-      subdomains:
-        items:
-          type: string
-        type: array
-    required:
-    - root_domain
-    - subdomains
     type: object
   vulun-scan-backend_internal_models.DomainResponseData:
     properties:
@@ -689,6 +674,51 @@ paths:
           schema:
             $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
       summary: 获取域名的子域名列表
+      tags:
+      - 域名管理
+  /domains/{id}/subdomains/create:
+    post:
+      consumes:
+      - application/json
+      description: 为指定域名批量创建子域名，只需验证子域名是否属于该域名
+      parameters:
+      - description: 域名ID
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 子域名列表
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/vulun-scan-backend_internal_models.CreateSubDomainsForDomainRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 创建成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.CreateSubDomainsResponseData'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+        "404":
+          description: 域名不存在
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+      summary: 为指定域名批量创建子域名
       tags:
       - 域名管理
   /domains/create:
@@ -1543,41 +1573,6 @@ paths:
           schema:
             $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
       summary: 批量删除子域名
-      tags:
-      - 子域名管理
-  /subdomains/create:
-    post:
-      consumes:
-      - application/json
-      description: 前端发送分组后的域名数据，后端自动创建根域名和子域名，需要指定组织ID
-      parameters:
-      - description: 子域名创建请求（包含组织ID）
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/vulun-scan-backend_internal_models.CreateSubDomainsRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 创建成功
-          schema:
-            allOf:
-            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/vulun-scan-backend_internal_models.CreateSubDomainsResponseData'
-              type: object
-        "400":
-          description: 请求参数错误
-          schema:
-            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
-        "500":
-          description: 服务器内部错误
-          schema:
-            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
-      summary: 批量创建子域名（支持根域名分组）
       tags:
       - 子域名管理
 swagger: "2.0"

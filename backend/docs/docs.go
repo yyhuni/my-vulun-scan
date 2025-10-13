@@ -367,6 +367,78 @@ const docTemplate = `{
                 }
             }
         },
+        "/domains/{id}/subdomains/create": {
+            "post": {
+                "description": "为指定域名批量创建子域名，只需验证子域名是否属于该域名",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "域名管理"
+                ],
+                "summary": "为指定域名批量创建子域名",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "example": 1,
+                        "description": "域名ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "子域名列表",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.CreateSubDomainsForDomainRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "创建成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.CreateSubDomainsResponseData"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "域名不存在",
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/endpoints": {
             "get": {
                 "description": "获取所有端点，支持分页和排序",
@@ -1362,64 +1434,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/subdomains/create": {
-            "post": {
-                "description": "前端发送分组后的域名数据，后端自动创建根域名和子域名，需要指定组织ID",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "子域名管理"
-                ],
-                "summary": "批量创建子域名（支持根域名分组）",
-                "parameters": [
-                    {
-                        "description": "子域名创建请求（包含组织ID）",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.CreateSubDomainsRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "创建成功",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.CreateSubDomainsResponseData"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误",
-                        "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "服务器内部错误",
-                        "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/subdomains/{id}": {
             "get": {
                 "description": "根据子域名ID获取子域名的详细信息",
@@ -1826,21 +1840,17 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.CreateSubDomainsRequest": {
+        "vulun-scan-backend_internal_models.CreateSubDomainsForDomainRequest": {
             "type": "object",
             "required": [
-                "domain_groups",
-                "organization_id"
+                "subdomains"
             ],
             "properties": {
-                "domain_groups": {
+                "subdomains": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/vulun-scan-backend_internal_models.DomainGroup"
+                        "type": "string"
                     }
-                },
-                "organization_id": {
-                    "type": "integer"
                 }
             }
         },
@@ -1955,24 +1965,6 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
-                }
-            }
-        },
-        "vulun-scan-backend_internal_models.DomainGroup": {
-            "type": "object",
-            "required": [
-                "root_domain",
-                "subdomains"
-            ],
-            "properties": {
-                "root_domain": {
-                    "type": "string"
-                },
-                "subdomains": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
                 }
             }
         },

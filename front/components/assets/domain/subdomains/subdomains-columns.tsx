@@ -11,8 +11,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Eye, Trash2, ChevronsUpDown } from "lucide-react"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { MoreHorizontal, Eye, Trash2, ChevronsUpDown, Copy, Check } from "lucide-react"
 import type { SubDomain } from "@/types/subdomain.types"
+import { toast } from "sonner"
 
 // 列创建函数的参数类型
 interface CreateColumnsProps {
@@ -139,7 +146,68 @@ export const createSubdomainColumns = ({
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="子域名" />
     ),
-    cell: ({ row }) => <div className="font-medium">{row.getValue("name")}</div>,
+    cell: ({ row }) => {
+      const name = row.getValue("name") as string
+      const isLong = name.length > 50 // 判断内容是否较长
+      const [copied, setCopied] = React.useState(false)
+      
+      const handleCopy = async () => {
+        try {
+          await navigator.clipboard.writeText(name)
+          setCopied(true)
+          toast.success('已复制子域名')
+          setTimeout(() => setCopied(false), 2000) // 2秒后恢复
+        } catch (err) {
+          toast.error('复制失败')
+        }
+      }
+      
+      return (
+        <div className="flex items-center gap-2">
+          <TooltipProvider delayDuration={500} skipDelayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="font-mono text-sm max-w-[400px] truncate cursor-default inline-block">
+                  {name}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent 
+                side="top" 
+                align="start"
+                sideOffset={5}
+                className={`font-mono text-xs ${isLong ? 'max-w-[500px] break-all' : 'whitespace-nowrap'}`}
+              >
+                {name}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
+          <TooltipProvider delayDuration={500} skipDelayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={`h-6 w-6 flex-shrink-0 hover:bg-accent transition-opacity ${
+                    copied ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                  }`}
+                  onClick={handleCopy}
+                >
+                  {copied ? (
+                    <Check className="h-3 w-3 text-green-600" />
+                  ) : (
+                    <Copy className="h-3 w-3 text-muted-foreground" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p className="text-xs">{copied ? '已复制' : '复制'}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      )
+    },
   },
 
 
@@ -152,9 +220,11 @@ export const createSubdomainColumns = ({
     ),
     cell: ({ row }) => {
       const domain = row.getValue("domain") as any
+      const domainName = domain?.name || "-"
+      
       return (
-        <div className="font-mono text-sm">
-          {domain?.name || "-"}
+        <div className="font-mono text-sm max-w-[300px] truncate">
+          {domainName}
         </div>
       )
     },

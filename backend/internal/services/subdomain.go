@@ -258,6 +258,12 @@ func (s *SubDomainService) batchInsertSubdomains(subdomainsToInsert []models.Sub
 		return 0, err
 	}
 
+	// 记录插入结果
+	log.Info().
+		Int("total_to_insert", len(subdomainsToInsert)).
+		Int64("actually_inserted", totalRowsInserted).
+		Msg("批量插入子域名完成")
+
 	return totalRowsInserted, nil
 }
 
@@ -362,11 +368,10 @@ func (s *SubDomainService) BatchDeleteSubDomains(subdomainIDs []uint) ([]models.
 	return deletedSubDomains, nil
 }
 
-// CreateSubDomainsForDomain 为指定域名批量创建子域名（新接口 - 简化版）
+// CreateSubDomainsForDomain 为指定域名批量创建子域名
 //
 // 功能说明：
 // - 为指定域名批量创建子域名
-// - 自动验证子域名是否属于该域名
 // - 自动去重和跳过已存在的子域名
 // - 使用事务保证原子性
 //
@@ -386,7 +391,7 @@ func (s *SubDomainService) CreateSubDomainsForDomain(domainID uint, subdomains [
 	}
 
 	// ===== 步骤2：去重子域名 =====
-	uniqueSubdomains := make(map[string]struct{})
+	uniqueSubdomains := make(map[string]struct{}, len(subdomains)) // 预分配容量
 	for _, subdomain := range subdomains {
 		normalized := strings.TrimSpace(strings.ToLower(subdomain))
 		if normalized != "" {
@@ -394,14 +399,15 @@ func (s *SubDomainService) CreateSubDomainsForDomain(domainID uint, subdomains [
 		}
 	}
 
-	if len(uniqueSubdomains) == 0 {
+	totalUnique := len(uniqueSubdomains)
+	if totalUnique == 0 {
 		return &models.CreateSubDomainsResponse{
 			TotalUniqueSubdomains: 0,
 		}, nil
 	}
 
 	// ===== 步骤3：过滤已存在的子域名 =====
-	subdomainList := make([]string, 0, len(uniqueSubdomains))
+	subdomainList := make([]string, 0, totalUnique)
 	for subdomain := range uniqueSubdomains {
 		subdomainList = append(subdomainList, subdomain)
 	}
@@ -409,18 +415,20 @@ func (s *SubDomainService) CreateSubDomainsForDomain(domainID uint, subdomains [
 	// 查询已存在的子域名
 	var existingSubdomains []models.SubDomain
 	if err := s.db.Where("domain_id = ? AND name IN ?", domainID, subdomainList).Find(&existingSubdomains).Error; err != nil {
-		log.Error().Err(err).Msg("查询已存在子域名失败")
+		log.Error().Err(err).Uint("domain_id", domainID).Msg("查询已存在子域名失败")
 		return nil, err
 	}
 
-	// 构建已存在子域名的集合
-	existingSet := make(map[string]struct{})
+	// 构建待创建列表（跳过已存在的）
+	existingCount := len(existingSubdomains)
+	toCreate := make([]models.SubDomain, 0, totalUnique-existingCount) // 预分配容量
+	
+	// 使用 map 快速查找已存在的子域名
+	existingSet := make(map[string]struct{}, existingCount)
 	for _, existing := range existingSubdomains {
 		existingSet[existing.Name] = struct{}{}
 	}
 
-	// 过滤出需要创建的子域名
-	toCreate := make([]models.SubDomain, 0)
 	for _, subdomain := range subdomainList {
 		if _, exists := existingSet[subdomain]; !exists {
 			toCreate = append(toCreate, models.SubDomain{
@@ -432,20 +440,41 @@ func (s *SubDomainService) CreateSubDomainsForDomain(domainID uint, subdomains [
 
 	// 如果没有需要创建的子域名，直接返回
 	if len(toCreate) == 0 {
+		log.Info().
+			Uint("domain_id", domainID).
+			Str("domain_name", domain.Name).
+			Int("total_unique", totalUnique).
+			Int("already_exists", existingCount).
+			Msg("所有子域名已存在，跳过创建")
+		
 		return &models.CreateSubDomainsResponse{
 			SubdomainsCreated:     0,
-			TotalUniqueSubdomains: len(uniqueSubdomains),
+			TotalUniqueSubdomains: totalUnique,
 		}, nil
 	}
 
 	// ===== 步骤4：批量插入子域名 =====
+	log.Info().
+		Uint("domain_id", domainID).
+		Str("domain_name", domain.Name).
+		Int("to_create", len(toCreate)).
+		Int("already_exists", existingCount).
+		Msg("开始批量创建子域名")
+	
 	totalRowsInserted, err := s.batchInsertSubdomains(toCreate)
 	if err != nil {
+		log.Error().Err(err).Uint("domain_id", domainID).Msg("批量插入子域名失败")
 		return nil, err
 	}
 
+	log.Info().
+		Uint("domain_id", domainID).
+		Int64("created", totalRowsInserted).
+		Int("total_unique", totalUnique).
+		Msg("子域名创建完成")
+
 	return &models.CreateSubDomainsResponse{
 		SubdomainsCreated:     int(totalRowsInserted),
-		TotalUniqueSubdomains: len(uniqueSubdomains),
+		TotalUniqueSubdomains: totalUnique,
 	}, nil
 }
