@@ -60,7 +60,6 @@
     "@tailwindcss/postcss": "^4",
     "@tanstack/react-query-devtools": "^5.90.2",
     "@types/node": "^20.19.19",
-    "@types/psl": "^1.11.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/validator": "^13.15.3",

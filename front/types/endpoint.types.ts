@@ -52,6 +52,7 @@ export interface CreateEndpointRequest {
 // 更新 Endpoint 请求参数
 export interface UpdateEndpointRequest {
   id: number
+  url?: string
   method?: string
   statusCode?: number
   title?: string

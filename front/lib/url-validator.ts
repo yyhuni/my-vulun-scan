@@ -1,5 +1,5 @@
 import validator from 'validator'
-import isIp from 'is-ip'
+import { isIP } from 'is-ip'
 
 /**
  * URL 验证工具类
@@ -137,7 +137,7 @@ export class UrlValidator {
    */
   private static isValidHostname(hostname: string): boolean {
     // 1) IP 校验（支持 IPv4/IPv6）
-    if (isIp(hostname)) {
+    if (isIP(hostname)) {
       return true
     }
 

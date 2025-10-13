@@ -156,9 +156,6 @@ importers:
       '@types/node':
         specifier: ^20.19.19
         version: 20.19.19
-      '@types/psl':
-        specifier: ^1.11.0
-        version: 1.11.0
       '@types/react':
         specifier: ^19
         version: 19.2.0
@@ -1180,10 +1177,6 @@ packages:
 
   '@types/node@20.19.19':
     resolution: {integrity: sha512-pb1Uqj5WJP7wrcbLU7Ru4QtA0+3kAXrkutGiD26wUKzSMgNNaPARTUDQmElUXp64kh3cWdou3Q0C7qwwxqSFmg==}
-
-  '@types/psl@1.11.0':
-    resolution: {integrity: sha512-OeASqmnreaSJyxwljqCZjRIf7jpbwswaqbSPahE99PZrizNAOXEl9HRWhXvCt3fkAc/WuF8wcZ6zkDHXaE7X4g==}
-    deprecated: This is a stub types definition. psl provides its own type definitions, so you do not need this installed.
 
   '@types/react-dom@19.2.0':
     resolution: {integrity: sha512-brtBs0MnE9SMx7px208g39lRmC5uHZs96caOJfTjFcYSLHNamvaSMfJNagChVNkup2SdtOxKX1FDBkRSJe1ZAg==}
@@ -3782,10 +3775,6 @@ snapshots:
   '@types/node@20.19.19':
     dependencies:
       undici-types: 6.21.0
-
-  '@types/psl@1.11.0':
-    dependencies:
-      psl: 1.15.0
 
   '@types/react-dom@19.2.0(@types/react@19.2.0)':
     dependencies:
