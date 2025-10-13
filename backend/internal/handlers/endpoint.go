@@ -161,12 +161,6 @@ func CreateEndpoints(c *gin.Context) {
 // @Param page query int false "页码,默认1"
 // @Param page_size query int false "每页数量,默认10"
 // @Param sort_by query string false "排序字段: url, method, status_code, created_at, updated_at,默认updated_at"
-// @Tags 子域名管理
-// @Produce json
-// @Param id path uint true "子域名ID" example(1)
-// @Param page query int false "页码,默认1"
-// @Param page_size query int false "每页数量,默认10"
-// @Param sort_by query string false "排序字段: url, method, status_code, created_at, updated_at,默认updated_at"
 // @Param sort_order query string false "排序方向: asc, desc,默认desc"
 // @Success 200 {object} models.APIResponse{data=models.GetEndpointsResponse} "获取成功"
 // @Failure 400 {object} models.APIResponse "请求参数错误"
@@ -267,8 +261,9 @@ func BatchDeleteEndpoints(c *gin.Context) {
 	service := services.NewEndpointService()
 	deletedCount, err := service.BatchDeleteEndpoints(req.EndpointIDs)
 	if err != nil {
-		// 如果错误信息包含"不存在"，返回 400（业务逻辑错误）
-		if err.Error() != "" && (err.Error()[0:2] == "请求" || err.Error()[0:2] == "端点") {
+		// 使用 errors.Is 判断业务错误类型
+		if errors.Is(err, customErrors.ErrEmptyEndpointIDs) || 
+		   errors.Is(err, customErrors.ErrPartialEndpointsNotFound) {
 			response.BadRequestResponse(c, err.Error())
 			return
 		}

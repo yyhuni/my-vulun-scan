@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import { EndpointsDataTable } from "./endpoints-data-table"
 import { createEndpointColumns } from "./endpoints-columns"
 import { AddEndpointDialog } from "./add-endpoint-dialog"
-import { EditEndpointDialog } from "./edit-endpoint-dialog"
 import { LoadingState, LoadingSpinner } from "@/components/loading-spinner"
 import {
   AlertDialog,
@@ -35,7 +34,6 @@ export function EndpointsList({
 }) {
   const [selectedAssets, setSelectedAssets] = useState<Endpoint[]>([])
   const [showAddDialog, setShowAddDialog] = useState(false)
-  const [editingEndpoint, setEditingEndpoint] = useState<Endpoint | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [endpointToDelete, setEndpointToDelete] = useState<Endpoint | null>(null)
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
@@ -89,18 +87,6 @@ export function EndpointsList({
   const router = useRouter()
   const navigate = (path: string) => {
     router.push(path)
-  }
-
-  // 处理编辑资产
-  const handleEditAsset = (endpoint: Endpoint) => {
-    setEditingEndpoint(endpoint)
-  }
-
-  // 处理编辑成功回调
-  const handleEditSuccess = (updatedEndpoint: Endpoint) => {
-    // 刷新数据
-    refetch()
-    setEditingEndpoint(null)
   }
 
   // 处理删除资产
@@ -157,10 +143,9 @@ export function EndpointsList({
       createEndpointColumns({
         formatDate,
         navigate,
-        handleEdit: handleEditAsset,
         handleDelete: handleDeleteAsset,
       }),
-    [formatDate, navigate, handleEditAsset, handleDeleteAsset]
+    [formatDate, navigate, handleDeleteAsset]
   )
 
   // 错误状态
@@ -216,20 +201,6 @@ export function EndpointsList({
           onAdd={handleAddSuccess}
           open={showAddDialog}
           onOpenChange={setShowAddDialog}
-        />
-      )}
-      
-      {/* 编辑 Endpoint 对话框 */}
-      {editingEndpoint && (
-        <EditEndpointDialog
-          endpoint={editingEndpoint}
-          onEdit={handleEditSuccess}
-          open={!!editingEndpoint}
-          onOpenChange={(open) => {
-            if (!open) {
-              setEditingEndpoint(null)
-            }
-          }}
         />
       )}
 

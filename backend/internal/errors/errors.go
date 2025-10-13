@@ -21,5 +21,7 @@ var (
 	ErrSubDomainNotFound = errors.New("subdomain not found")
 
 	// Endpoint 相关错误
-	ErrEndpointNotFound = errors.New("endpoint not found")
+	ErrEndpointNotFound          = errors.New("endpoint not found")
+	ErrEmptyEndpointIDs          = errors.New("端点ID列表不能为空")
+	ErrPartialEndpointsNotFound  = errors.New("部分端点ID不存在")
 )

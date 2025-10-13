@@ -18,7 +18,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { MoreHorizontal, Eye, Edit, Trash2, Network, ChevronsUpDown, Globe, Code, Copy, Check } from "lucide-react"
+import { MoreHorizontal, Eye, Trash2, Network, ChevronsUpDown, Globe, Code, Copy, Check } from "lucide-react"
 import { IconCircleCheckFilled, IconLoader, IconAlertTriangle, IconX } from "@tabler/icons-react"
 import type { Endpoint } from "@/types/endpoint.types"
 import { toast } from "sonner"
@@ -27,7 +27,6 @@ import { toast } from "sonner"
 interface CreateColumnsProps {
   formatDate: (dateString: string) => string
   navigate: (path: string) => void
-  handleEdit: (endpoint: Endpoint) => void
   handleDelete: (endpoint: Endpoint) => void
 }
 
@@ -37,12 +36,10 @@ interface CreateColumnsProps {
 function EndpointRowActions({
   endpoint,
   onView,
-  onEdit,
   onDelete,
 }: {
   endpoint: Endpoint
   onView: () => void
-  onEdit: () => void
   onDelete: () => void
 }) {
   return (
@@ -60,10 +57,6 @@ function EndpointRowActions({
         <DropdownMenuItem onClick={onView}>
           <Eye className="mr-2 h-4 w-4" />
           查看详情
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={onEdit}>
-          <Edit className="mr-2 h-4 w-4" />
-          编辑
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
@@ -156,7 +149,6 @@ function HttpStatusBadge({ statusCode }: { statusCode: number | null | undefined
 export const createEndpointColumns = ({
   formatDate,
   navigate,
-  handleEdit,
   handleDelete,
 }: CreateColumnsProps): ColumnDef<Endpoint>[] => [
   // 选择列
@@ -455,7 +447,6 @@ export const createEndpointColumns = ({
       <EndpointRowActions
         endpoint={row.original}
         onView={() => navigate(`/assets/endpoint/${row.original.id}`)}
-        onEdit={() => handleEdit(row.original)}
         onDelete={() => handleDelete(row.original)}
       />
     ),

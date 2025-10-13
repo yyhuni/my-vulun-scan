@@ -372,7 +372,7 @@ func extractRootDomain(host string) string {
 //   - error: 如果验证失败或删除失败则返回错误
 func (s *EndpointService) BatchDeleteEndpoints(endpointIDs []uint) (int, error) {
 	if len(endpointIDs) == 0 {
-		return 0, fmt.Errorf("端点ID列表不能为空")
+		return 0, customErrors.ErrEmptyEndpointIDs
 	}
 
 	var deletedCount int64
@@ -395,7 +395,8 @@ func (s *EndpointService) BatchDeleteEndpoints(endpointIDs []uint) (int, error) 
 				Int("requested", len(endpointIDs)).
 				Int64("deleted", deletedCount).
 				Msg("部分端点ID不存在")
-			return fmt.Errorf("请求删除 %d 个端点，实际删除 %d 个，部分ID不存在", len(endpointIDs), deletedCount)
+			return fmt.Errorf("%w: 请求删除 %d 个端点，实际删除 %d 个", 
+				customErrors.ErrPartialEndpointsNotFound, len(endpointIDs), deletedCount)
 		}
 
 		log.Info().

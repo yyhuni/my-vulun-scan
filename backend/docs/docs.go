@@ -1672,41 +1672,13 @@ const docTemplate = `{
             "get": {
                 "description": "根据子域名ID获取该子域名下的端点，支持分页和排序",
                 "produces": [
-                    "application/json",
                     "application/json"
                 ],
                 "tags": [
-                    "子域名管理",
                     "子域名管理"
                 ],
                 "summary": "获取子域名的端点列表",
                 "parameters": [
-                    {
-                        "type": "integer",
-                        "example": 1,
-                        "description": "子域名ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "页码,默认1",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "每页数量,默认10",
-                        "name": "page_size",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "排序字段: url, method, status_code, created_at, updated_at,默认updated_at",
-                        "name": "sort_by",
-                        "in": "query"
-                    },
                     {
                         "type": "integer",
                         "example": 1,

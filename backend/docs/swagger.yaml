@@ -1570,30 +1570,11 @@ paths:
         in: query
         name: sort_by
         type: string
-      - description: 子域名ID
-        example: 1
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: 页码,默认1
-        in: query
-        name: page
-        type: integer
-      - description: 每页数量,默认10
-        in: query
-        name: page_size
-        type: integer
-      - description: '排序字段: url, method, status_code, created_at, updated_at,默认updated_at'
-        in: query
-        name: sort_by
-        type: string
       - description: '排序方向: asc, desc,默认desc'
         in: query
         name: sort_order
         type: string
       produces:
-      - application/json
       - application/json
       responses:
         "200":
@@ -1611,7 +1592,6 @@ paths:
             $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
       summary: 获取子域名的端点列表
       tags:
-      - 子域名管理
       - 子域名管理
   /subdomains/batch-delete:
     post:
