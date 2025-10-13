@@ -72,10 +72,6 @@ definitions:
         type: integer
       message:
         type: string
-      sub_domains:
-        items:
-          $ref: '#/definitions/vulun-scan-backend_internal_models.SubDomain'
-        type: array
     type: object
   vulun-scan-backend_internal_models.CreateDomainsRequest:
     properties:

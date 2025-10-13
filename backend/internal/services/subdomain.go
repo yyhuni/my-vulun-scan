@@ -308,64 +308,66 @@ func (s *SubDomainService) GetSubDomainByID(id uint) (*models.SubDomain, error) 
 // 功能说明：
 // 批量删除多个子域名，通过事务保证原子性
 //
-// 处理流程：
-// 1. 验证所有子域名是否存在
-// 2. 预加载子域名及其关联的域名信息
-// 3. 批量删除子域名（GORM会自动级联删除关联的Endpoints和Vulnerabilities）
+// 业务规则：
+// 1. 所有子域名ID必须存在，否则返回错误
+// 2. 关联的Endpoints和Vulnerabilities会自动级联删除（数据库外键约束）
+// 3. 删除操作在事务中执行，保证原子性
 //
-// 事务保证：
-// - 所有子域名的删除要么全部成功，要么全部失败
-// - 如果任何一个子域名删除失败，整个批量操作回滚
+// 级联删除说明：
+// - Endpoints: 子域名删除后，关联的端点也会被删除
+// - Vulnerabilities: 子域名删除后，关联的漏洞记录也会被删除
+//
+// 性能优化：
+// - 在大规模数据场景（如100W+子域名）下，去除预查询以提升性能
+// - 通过 RowsAffected 验证删除数量，减少数据库查询次数
+// - 不返回完整对象列表，只返回删除数量
 //
 // 参数：
 //   - subdomainIDs: 需要删除的子域名ID列表
 //
 // 返回：
-//   - []models.SubDomain: 被删除的子域名列表（供前端确认）
+//   - int: 实际删除的子域名数量
 //   - error: 如果验证失败或删除失败则返回错误
-func (s *SubDomainService) BatchDeleteSubDomains(subdomainIDs []uint) ([]models.SubDomain, error) {
+func (s *SubDomainService) BatchDeleteSubDomains(subdomainIDs []uint) (int, error) {
 	if len(subdomainIDs) == 0 {
-		return nil, fmt.Errorf("子域名ID列表不能为空")
+		return 0, fmt.Errorf("子域名ID列表不能为空")
 	}
 
-	var deletedSubDomains []models.SubDomain
+	var deletedCount int64
 
 	// 使用事务确保批量删除的原子性
 	err := s.db.Transaction(func(tx *gorm.DB) error {
-		// 步骤1: 验证所有子域名是否存在
-		if err := tx.Where("id IN ?", subdomainIDs).Find(&deletedSubDomains).Error; err != nil {
-			log.Error().Err(err).Msg("查询待删除子域名失败")
-			return err
+		// 批量删除子域名并检查影响行数
+		// 数据库已配置 CASCADE，会自动删除关联的 Endpoints 和 Vulnerabilities
+		result := tx.Where("id IN ?", subdomainIDs).Delete(&models.SubDomain{})
+		if result.Error != nil {
+			log.Error().Err(result.Error).Msg("批量删除子域名失败")
+			return result.Error
 		}
 
-		// 检查删除的子域名数量是否与请求的ID数量一致
-		if len(deletedSubDomains) != len(subdomainIDs) {
+		deletedCount = result.RowsAffected
+
+		// 检查删除的行数是否与请求的ID数量一致
+		if deletedCount != int64(len(subdomainIDs)) {
 			log.Warn().
 				Int("requested", len(subdomainIDs)).
-				Int("found", len(deletedSubDomains)).
+				Int64("deleted", deletedCount).
 				Msg("部分子域名ID不存在")
-			return fmt.Errorf("部分子域名ID不存在")
-		}
-
-		// 步骤2: 批量删除子域名
-		// 数据库已配置 CASCADE，会自动删除关联的 Endpoints 和 Vulnerabilities
-		if err := tx.Where("id IN ?", subdomainIDs).Delete(&models.SubDomain{}).Error; err != nil {
-			log.Error().Err(err).Msg("批量删除子域名失败")
-			return err
+			return fmt.Errorf("请求删除 %d 个子域名，实际删除 %d 个，部分ID不存在", len(subdomainIDs), deletedCount)
 		}
 
 		log.Info().
-			Int("count", len(subdomainIDs)).
+			Int64("count", deletedCount).
 			Msg("子域名批量删除成功")
 
 		return nil
 	})
 
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
-	return deletedSubDomains, nil
+	return int(deletedCount), nil
 }
 
 // CreateSubDomainsForDomain 为指定域名批量创建子域名

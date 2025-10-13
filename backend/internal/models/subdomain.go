@@ -75,8 +75,8 @@ type BatchDeleteSubDomainsRequest struct {
 }
 
 // BatchDeleteSubDomainsResponseData 批量删除子域名响应数据
+// 优化说明：在大规模数据场景下（如100W+子域名），不返回完整对象列表以提升性能
 type BatchDeleteSubDomainsResponseData struct {
-	Message      string      `json:"message"`
-	DeletedCount int         `json:"deleted_count"`
-	SubDomains   []SubDomain `json:"sub_domains"`
+	Message      string `json:"message"`
+	DeletedCount int    `json:"deleted_count"`
 }

@@ -258,18 +258,17 @@ func DeleteSubDomain(c *gin.Context) {
 
 	// 复用批量删除逻辑，传入单个ID的数组
 	service := services.NewSubDomainService()
-	subdomains, err := service.BatchDeleteSubDomains([]uint{uri.ID})
+	deletedCount, err := service.BatchDeleteSubDomains([]uint{uri.ID})
 	if err != nil {
 		response.InternalServerErrorResponse(c, "删除子域名失败: "+err.Error())
 		return
 	}
 
-	// 返回被删除的子域名信息
-	if len(subdomains) > 0 {
-		response.SuccessResponse(c, subdomains[0])
-	} else {
-		response.SuccessResponse(c, nil)
-	}
+	// 返回删除成功信息
+	response.SuccessResponse(c, gin.H{
+		"message":       "删除子域名成功",
+		"deleted_count": deletedCount,
+	})
 }
 
 // BatchDeleteSubDomains 批量删除子域名
@@ -297,7 +296,7 @@ func BatchDeleteSubDomains(c *gin.Context) {
 	}
 
 	service := services.NewSubDomainService()
-	subdomains, err := service.BatchDeleteSubDomains(req.SubDomainIDs)
+	deletedCount, err := service.BatchDeleteSubDomains(req.SubDomainIDs)
 	if err != nil {
 		// 如果错误信息包含"不存在"，返回 400（业务逻辑错误）
 		if strings.Contains(err.Error(), "不存在") {
@@ -311,8 +310,7 @@ func BatchDeleteSubDomains(c *gin.Context) {
 
 	response.SuccessResponse(c, models.BatchDeleteSubDomainsResponseData{
 		Message:      "批量删除子域名成功",
-		DeletedCount: len(req.SubDomainIDs),
-		SubDomains:   subdomains,
+		DeletedCount: deletedCount,
 	})
 }
 

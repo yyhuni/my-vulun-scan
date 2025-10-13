@@ -1755,12 +1755,6 @@ const docTemplate = `{
                 },
                 "message": {
                     "type": "string"
-                },
-                "sub_domains": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/vulun-scan-backend_internal_models.SubDomain"
-                    }
                 }
             }
         },
