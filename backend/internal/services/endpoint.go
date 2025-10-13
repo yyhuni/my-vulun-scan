@@ -117,7 +117,7 @@ func (s *EndpointService) GetEndpointByID(id uint) (*models.Endpoint, error) {
 	return &endpoint, nil
 }
 
-// CreateEndpoints 批量创建端点，从 URL 自动提取 domain 和 subdomain（必须预先存在）
+// CreateEndpoints 批量创建端点，从 URL 自动提取 domain 和 subdomain（不存在则跳过）
 func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*models.CreateEndpointsResponse, error) {
 	var createdCount int
 	var existingEndpoints []string
@@ -143,9 +143,8 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 
 			// 从 host 提取根域名
 			rootDomain := extractRootDomain(host)
-			hostToDomain[host] = rootDomain
 
-			// 如果该根域名还未处理，查询对应的 domain
+			// 如果该根域名还未处理，查询对应的 domain（不存在则跳过）
 			if _, exists := domainMap[rootDomain]; !exists {
 				var domain models.Domain
 
@@ -153,8 +152,9 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 				err := tx.Where("name = ?", rootDomain).First(&domain).Error
 
 				if err == gorm.ErrRecordNotFound {
-					// 不存在，返回错误
-					return fmt.Errorf("域名不存在: %s，请先创建该域名", rootDomain)
+					// 不存在，跳过本 URL 所属 host
+					log.Warn().Str("root_domain", rootDomain).Str("host", host).Msg("Domain not found, skip URLs under this domain")
+					continue
 				} else if err != nil {
 					log.Error().Err(err).Str("root_domain", rootDomain).Msg("Failed to query domain")
 					return err
@@ -162,9 +162,12 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 
 				domainMap[rootDomain] = domain.ID
 			}
+
+			// 仅在域名存在时记录 host 与 rootDomain 的映射
+			hostToDomain[host] = rootDomain
 		}
 
-		// 2. 对每个唯一的 host，查询对应的 subdomain
+		// 2. 对每个唯一的 host，查询对应的 subdomain（不存在则跳过）
 		for host, rootDomain := range hostToDomain {
 			if _, exists := subdomainMap[host]; !exists {
 				domainID := domainMap[rootDomain]
@@ -175,8 +178,9 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 					First(&subdomain).Error
 
 				if err == gorm.ErrRecordNotFound {
-					// 不存在，返回错误
-					return fmt.Errorf("子域名不存在: %s（所属域名: %s），请先创建该子域名", host, rootDomain)
+					// 不存在，跳过该 host
+					log.Warn().Str("host", host).Str("root_domain", rootDomain).Uint("domain_id", domainID).Msg("Subdomain not found, skip URLs under this host")
+					continue
 				} else if err != nil {
 					log.Error().Err(err).Str("host", host).Msg("Failed to query subdomain")
 					return err
@@ -337,8 +341,8 @@ func (s *EndpointService) GetEndpointsBySubdomainID(subdomainID uint, page, page
 	return response, nil
 }
 
-// extractHostFromURL 从 URL 中提取 host（包含端口）
-// 例如: https://api.example.com:8080/path -> api.example.com:8080
+// extractHostFromURL 从 URL 中提取主机名（不含端口）
+// 例如: https://api.example.com:8080/path -> api.example.com
 func extractHostFromURL(rawURL string) (string, error) {
 	parsedURL, err := url.Parse(rawURL)
 	if err != nil {

@@ -234,7 +234,7 @@ export function AddEndpointDialog({
                 <strong>注意：URL 必须属于当前域名 {currentDomainName} 或其子域名</strong>。<br />
               </>
             )}
-            系统会自动从 URL 中提取根域名和子域名进行匹配，<strong>域名和子域名必须预先存在</strong>。
+            系统会自动从 URL 中提取根域名和子域名进行匹配，<strong>若域名或子域名不存在将被跳过</strong>。
           </DialogDescription>
         </DialogHeader>
         

@@ -94,14 +94,14 @@ func GetEndpointByID(c *gin.Context) {
 }
 
 // CreateEndpoints 批量创建端点
-// @Summary 批量创建端点（自动提取域名）
-// @Description 批量创建端点，支持单个或多个端点创建。会自动从 URL 中提取 host 和根域名进行匹配，但 domain 和 subdomain 必须预先存在，否则返回错误。无需手动指定任何 ID
+// @Summary 批量创建端点（自动提取域名，缺失则跳过）
+// @Description 批量创建端点，支持单个或多个端点创建。会自动从 URL 中提取 host 和根域名进行匹配，仅对已存在的 domain 和 subdomain 创建端点；若不存在将被跳过。无需手动指定任何 ID
 // @Tags 端点管理
 // @Accept json
 // @Produce json
 // @Param request body models.CreateEndpointsRequest true "端点创建请求"
 // @Success 200 {object} models.APIResponse{data=models.CreateEndpointsResponseData} "创建成功"
-// @Failure 400 {object} models.APIResponse "请求参数错误或域名/子域名不存在"
+// @Failure 400 {object} models.APIResponse "请求参数错误"
 // @Router /endpoints/create [post]
 func CreateEndpoints(c *gin.Context) {
 	var req models.CreateEndpointsRequest
@@ -138,6 +138,10 @@ func CreateEndpoints(c *gin.Context) {
 	message := fmt.Sprintf("成功创建 %d 个端点", result.SuccessCount)
 	if len(result.ExistingEndpoints) > 0 {
 		message += fmt.Sprintf("，%d 个端点已存在", len(result.ExistingEndpoints))
+	}
+	skipped := result.TotalRequested - result.SuccessCount - len(result.ExistingEndpoints)
+	if skipped > 0 {
+		message += fmt.Sprintf("，%d 个端点因域名/子域名不存在被跳过", skipped)
 	}
 
 	response.SuccessResponse(c, models.CreateEndpointsResponseData{

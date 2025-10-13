@@ -11,11 +11,11 @@ import type {
 export class EndpointService {
   // ========== Endpoint 基础操作 ==========
   /**
-   * 批量创建 Endpoint（完全自动化）
+   * 批量创建 Endpoint（自动匹配，缺失则跳过）
    * @param data - Endpoint 创建请求对象
    * @param data.endpoints - Endpoint 详细信息数组
    * @returns Promise<ApiResponse<any>> - 创建成功后的 Endpoint 信息数组
-   * @description 后端会自动从 URL 中提取根域名和子域名，如果不存在则自动创建。无需手动指定任何 ID
+   * @description 后端会自动从 URL 中提取根域名和子域名，仅对已存在的域名/子域名创建端点；若不存在将被跳过。无需手动指定任何 ID
    */
   static async createEndpoints(data: {
     endpoints: Array<CreateEndpointRequest>

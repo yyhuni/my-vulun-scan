@@ -122,7 +122,8 @@ export function useCreateEndpoint() {
       toast.dismiss('create-endpoint')
       
       if (response.state === 'success') {
-        toast.success('创建成功')
+        const msg = (response as any)?.data?.message || response.message || '创建成功'
+        toast.success(msg)
         
         // 刷新所有相关查询（因为可能自动创建了 domain 和 subdomain）
         queryClient.invalidateQueries({ queryKey: endpointKeys.lists() })
