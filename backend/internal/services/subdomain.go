@@ -36,12 +36,12 @@ func (s *SubDomainService) GetSubDomains(page, pageSize int, sortBy, sortOrder s
 		return nil, err
 	}
 
-	// 排序字段映射（前端驼峰 -> 数据库下划线）
+	// 排序字段映射（前端下划线 -> 数据库下划线）
 	sortFieldMap := map[string]string{
-		"id":        "id",
-		"name":      "name",
-		"createdAt": "created_at",
-		"updatedAt": "updated_at",
+		"id":         "id",
+		"name":       "name",
+		"created_at": "created_at",
+		"updated_at": "updated_at",
 	}
 
 	// 获取实际的数据库字段名
@@ -95,12 +95,12 @@ func (s *SubDomainService) GetSubDomainsByDomainID(domainID uint, page, pageSize
 		return nil, err
 	}
 
-	// 排序字段映射（前端驼峰 -> 数据库下划线）
+	// 排序字段映射（前端下划线 -> 数据库下划线）
 	sortFieldMap := map[string]string{
-		"id":        "id",
-		"name":      "name",
-		"createdAt": "created_at",
-		"updatedAt": "updated_at",
+		"id":         "id",
+		"name":       "name",
+		"created_at": "created_at",
+		"updated_at": "updated_at",
 	}
 
 	// 获取实际的数据库字段名
@@ -159,12 +159,12 @@ func (s *SubDomainService) GetSubDomainsByOrgID(orgID uint, page, pageSize int, 
 		return nil, err
 	}
 
-	// 排序字段映射（前端驼峰 -> 数据库下划线）
+	// 排序字段映射（前端下划线 -> 数据库下划线）
 	sortFieldMap := map[string]string{
-		"id":        "id",
-		"name":      "name",
-		"createdAt": "created_at",
-		"updatedAt": "updated_at",
+		"id":         "id",
+		"name":       "name",
+		"created_at": "created_at",
+		"updated_at": "updated_at",
 	}
 
 	// 获取实际的数据库字段名
@@ -241,13 +241,13 @@ func (s *SubDomainService) batchInsertSubdomains(subdomainsToInsert []models.Sub
 
 			// 获取当前批次的数据
 			batch := subdomainsToInsert[i:endIndex]
-			
+
 			// 批量插入，如果记录已存在则跳过（OnConflict{DoNothing}）
 			result := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&batch)
 			if result.Error != nil {
 				return result.Error // 事务会自动回滚
 			}
-			
+
 			// 累加实际插入的记录数
 			totalRowsInserted += result.RowsAffected
 		}
@@ -422,7 +422,7 @@ func (s *SubDomainService) CreateSubDomainsForDomain(domainID uint, subdomains [
 	// 构建待创建列表（跳过已存在的）
 	existingCount := len(existingSubdomains)
 	toCreate := make([]models.SubDomain, 0, totalUnique-existingCount) // 预分配容量
-	
+
 	// 使用 map 快速查找已存在的子域名
 	existingSet := make(map[string]struct{}, existingCount)
 	for _, existing := range existingSubdomains {
@@ -446,7 +446,7 @@ func (s *SubDomainService) CreateSubDomainsForDomain(domainID uint, subdomains [
 			Int("total_unique", totalUnique).
 			Int("already_exists", existingCount).
 			Msg("所有子域名已存在，跳过创建")
-		
+
 		return &models.CreateSubDomainsResponse{
 			SubdomainsCreated:     0,
 			TotalUniqueSubdomains: totalUnique,
@@ -460,7 +460,7 @@ func (s *SubDomainService) CreateSubDomainsForDomain(domainID uint, subdomains [
 		Int("to_create", len(toCreate)).
 		Int("already_exists", existingCount).
 		Msg("开始批量创建子域名")
-	
+
 	totalRowsInserted, err := s.batchInsertSubdomains(toCreate)
 	if err != nil {
 		log.Error().Err(err).Uint("domain_id", domainID).Msg("批量插入子域名失败")

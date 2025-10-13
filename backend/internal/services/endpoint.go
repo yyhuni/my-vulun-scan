@@ -33,10 +33,12 @@ func (s *EndpointService) GetEndpoints(req models.GetEndpointsRequest) (*models.
 	}
 
 	// 构建数据查询
-	query := s.db.Model(&models.Endpoint{})
+	query := s.db.Model(&models.Endpoint{}).
+		Preload("Domain").
+		Preload("Subdomain")
 
-	// 拼接排序
-	orderClause := req.SortBy + " " + req.SortOrder // 字符串拼接
+	// 构建安全的排序子句
+	orderClause := s.buildOrderClause(req.SortBy, req.SortOrder)
 	query = query.Order(orderClause)
 
 	// 分页
@@ -72,6 +74,28 @@ func (s *EndpointService) GetEndpoints(req models.GetEndpointsRequest) (*models.
 		Msg("Endpoints retrieved successfully")
 
 	return response, nil
+}
+
+// buildOrderClause 构建安全的排序子句（仅接受下划线字段名）
+func (s *EndpointService) buildOrderClause(sortBy, sortOrder string) string {
+    // 允许排序的字段白名单（与数据库列一致，使用下划线命名）
+    allowed := map[string]bool{
+        "url":         true,
+        "method":      true,
+        "status_code": true,
+        "created_at":  true,
+        "updated_at":  true,
+    }
+
+    if !allowed[sortBy] {
+        sortBy = "updated_at" // 默认按更新时间排序
+    }
+
+    if sortOrder != "asc" && sortOrder != "desc" {
+        sortOrder = "desc" // 默认降序
+    }
+
+    return fmt.Sprintf("%s %s", sortBy, sortOrder)
 }
 
 // GetEndpointByID 根据ID获取端点详情
@@ -182,7 +206,6 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 	return response, nil
 }
 
-
 // GetEndpointsBySubdomainID 获取子域名下的端点列表
 func (s *EndpointService) GetEndpointsBySubdomainID(subdomainID uint, page, pageSize int, sortBy, sortOrder string) (*models.GetEndpointsResponse, error) {
 	// 先计算总数（使用独立的查询）
@@ -193,10 +216,14 @@ func (s *EndpointService) GetEndpointsBySubdomainID(subdomainID uint, page, page
 	}
 
 	// 构建数据查询
-	query := s.db.Model(&models.Endpoint{}).Where("subdomain_id = ?", subdomainID)
+	query := s.db.Model(&models.Endpoint{}).
+		Where("subdomain_id = ?", subdomainID).
+		Preload("Domain").
+		Preload("Subdomain")
 
-	// 应用排序
-	query = query.Order(fmt.Sprintf("%s %s", sortBy, sortOrder))
+	// 构建安全的排序子句
+	orderClause := s.buildOrderClause(sortBy, sortOrder)
+	query = query.Order(orderClause)
 
 	// 分页
 	offset := (page - 1) * pageSize
