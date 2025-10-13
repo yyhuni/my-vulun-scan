@@ -21,8 +21,7 @@ type SubDomain struct {
 	// BelongsTo 关系 - 在这里配置级联删除
 	Domain *Domain `json:"domain" gorm:"foreignKey:DomainID;constraint:OnDelete:CASCADE"`
 	// HasMany 关系 - 也需要配置级联删除，确保删除 SubDomain 时自动删除关联的 Endpoint 和 Vulnerability
-	Endpoints       []Endpoint      `json:"endpoints" gorm:"foreignKey:SubdomainID;constraint:OnDelete:CASCADE"`
-	Vulnerabilities []Vulnerability `json:"vulnerabilities" gorm:"foreignKey:SubdomainID;constraint:OnDelete:CASCADE"`
+	Endpoints []Endpoint `json:"endpoints" gorm:"foreignKey:SubdomainID;constraint:OnDelete:CASCADE"`
 }
 
 // CreateSubDomainsForDomainRequest 为指定域名创建子域名请求

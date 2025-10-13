@@ -28,7 +28,6 @@ type Endpoint struct {
 	Subdomain *SubDomain `json:"subdomain" gorm:"foreignKey:SubdomainID;constraint:OnDelete:CASCADE"`
 	Domain    *Domain    `json:"domain" gorm:"foreignKey:DomainID;constraint:OnDelete:CASCADE"` // 冗余关联
 	// HasMany 关系 - 也需要配置级联删除，确保删除 Endpoint 时自动删除关联的 Vulnerability
-	Vulnerabilities []Vulnerability `json:"vulnerabilities" gorm:"foreignKey:EndPointID;constraint:OnDelete:CASCADE"`
 }
 
 // CreateEndpointsRequest 创建端点请求
