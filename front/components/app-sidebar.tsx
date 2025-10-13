@@ -20,6 +20,7 @@ import {
   IconSettings, // 设置图标
   IconUsers, // 用户图标
   IconChevronRight, // 右箭头图标
+  IconRadar, // 雷达扫描图标
 } from "@tabler/icons-react"
 // 导入路径名 hook
 import { usePathname } from "next/navigation"
@@ -95,6 +96,21 @@ const data = {
         {
           title: "域名管理", // 域名管理
           url: "/assets/domain",
+        },
+      ],
+    },
+    {
+      title: "扫描管理", // 扫描管理
+      url: "/scan",
+      icon: IconRadar,
+      items: [
+        {
+          title: "新建扫描", // 新建扫描
+          url: "/scan/new",
+        },
+        {
+          title: "扫描历史", // 扫描历史
+          url: "/scan/history",
         },
       ],
     },

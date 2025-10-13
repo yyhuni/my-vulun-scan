@@ -2042,12 +2042,6 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "string"
-                },
-                "vulnerabilities": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/vulun-scan-backend_internal_models.Vulnerability"
-                    }
                 }
             }
         },
@@ -2137,13 +2131,6 @@ const docTemplate = `{
                 "url": {
                     "description": "核心业务字段",
                     "type": "string"
-                },
-                "vulnerabilities": {
-                    "description": "HasMany 关系 - 也需要配置级联删除，确保删除 Endpoint 时自动删除关联的 Vulnerability",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/vulun-scan-backend_internal_models.Vulnerability"
-                    }
                 }
             }
         },
@@ -2345,12 +2332,6 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "string"
-                },
-                "vulnerabilities": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/vulun-scan-backend_internal_models.Vulnerability"
-                    }
                 }
             }
         },
@@ -2386,147 +2367,6 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "vulun-scan-backend_internal_models.Vulnerability": {
-            "type": "object",
-            "properties": {
-                "affected_url": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "curl_command": {
-                    "type": "string"
-                },
-                "cve": {
-                    "type": "string"
-                },
-                "cvss": {
-                    "type": "number"
-                },
-                "cvss_metrics": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "discovered_date": {
-                    "description": "发现和状态信息",
-                    "type": "string"
-                },
-                "domain_id": {
-                    "type": "integer"
-                },
-                "domain_name": {
-                    "description": "优化字段 - 冗余域名名称减少联表查询",
-                    "type": "string"
-                },
-                "domain_relation": {
-                    "description": "关联关系",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.Domain"
-                        }
-                    ]
-                },
-                "endpoint_id": {
-                    "type": "integer"
-                },
-                "endpoint_relation": {
-                    "$ref": "#/definitions/vulun-scan-backend_internal_models.Endpoint"
-                },
-                "extracted_results": {
-                    "description": "扫描结果",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "hackerone_report_id": {
-                    "description": "外部集成",
-                    "type": "string"
-                },
-                "http_url": {
-                    "type": "string"
-                },
-                "id": {
-                    "description": "数据库基础字段",
-                    "type": "integer"
-                },
-                "impact": {
-                    "type": "string"
-                },
-                "is_gpt_used": {
-                    "type": "boolean"
-                },
-                "open_status": {
-                    "type": "boolean"
-                },
-                "organization": {
-                    "description": "组织信息",
-                    "type": "string"
-                },
-                "organization_id": {
-                    "type": "string"
-                },
-                "poc": {
-                    "description": "技术细节",
-                    "type": "string"
-                },
-                "port": {
-                    "type": "integer"
-                },
-                "remediation": {
-                    "type": "string"
-                },
-                "request": {
-                    "type": "string"
-                },
-                "response": {
-                    "type": "string"
-                },
-                "risk_score": {
-                    "type": "integer"
-                },
-                "scan_history_id": {
-                    "description": "扫描历史",
-                    "type": "integer"
-                },
-                "service": {
-                    "type": "string"
-                },
-                "severity": {
-                    "description": "-1:unknown, 0:info, 1:low, 2:medium, 3:high, 4:critical",
-                    "type": "integer"
-                },
-                "solution": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "subdomain_id": {
-                    "description": "关联关系 - 灵活归属",
-                    "type": "integer"
-                },
-                "subdomain_relation": {
-                    "$ref": "#/definitions/vulun-scan-backend_internal_models.SubDomain"
-                },
-                "target_domain": {
-                    "type": "string"
-                },
-                "title": {
-                    "description": "核心漏洞信息",
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "updated_at": {
                     "type": "string"
                 }
             }
