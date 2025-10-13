@@ -111,11 +111,16 @@
 }
 
 @layer base {
+  html, body {
+    height: 100%;
+  }
   * {
     @apply border-border outline-ring/50;
   }
   body {
     @apply bg-background text-foreground;
+    /* 禁止页面级滚动，滚动交给主内容容器 */
+    overflow: hidden;
   }
 
   /* 全局滚动条样式 - Webkit 浏览器 (Chrome, Safari, Edge) */

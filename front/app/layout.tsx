@@ -69,19 +69,19 @@ export default function RootLayout({
               {/* 应用侧边栏,使用 inset 变体样式 */}
               <AppSidebar variant="inset" />
 
-              {/* 侧边栏内嵌区域,包含主要内容 */}
-              <SidebarInset>
+              {/* 侧边栏内嵌区域,包含主要内容（固定视口高度，内部滚动） */}
+              <SidebarInset className="flex min-h-0 flex-col h-svh md:h-[calc(100svh-1rem)]">
                 {/* 网站头部 */}
                 <SiteHeader />
 
-                {/* 主内容区域,使用 flex 布局垂直排列 */}
-                <div className="flex flex-1 flex-col">
+                {/* 主内容区域：占据剩余空间，在内部滚动 */}
+                <div className="flex flex-col flex-1 min-h-0 overflow-y-auto">
                   {/* 
                     容器查询包装器
                     @container/main: 定义一个名为 main 的容器查询上下文
                     用于响应式设计,根据容器大小而非视口大小调整样式
                   */}
-                  <div className="@container/main flex flex-1 flex-col gap-2">
+                  <div className="@container/main flex-1 min-h-0 flex flex-col gap-2">
                     {/* 使用 Suspense 只包裹页面内容,避免影响侧边栏和头部 */}
                     <Suspense fallback={<LoadingState message="页面加载中..." />}>
                       {children}
