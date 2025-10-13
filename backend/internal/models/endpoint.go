@@ -77,3 +77,14 @@ type CreateEndpointsResponseData struct {
 	ExistingEndpoints []string `json:"existing_endpoints"`
 	TotalRequested    int      `json:"total_requested"`
 }
+
+// BatchDeleteEndpointsRequest 批量删除端点请求
+type BatchDeleteEndpointsRequest struct {
+	EndpointIDs []uint `json:"endpoint_ids" binding:"required"`
+}
+
+// BatchDeleteEndpointsResponseData 批量删除端点响应数据
+type BatchDeleteEndpointsResponseData struct {
+	Message      string `json:"message"`
+	DeletedCount int    `json:"deleted_count"`
+}

@@ -345,3 +345,69 @@ func extractRootDomain(host string) string {
 	// 回退：直接返回原始 host（例如 IP 或非标准域名）
 	return host
 }
+
+// BatchDeleteEndpoints 批量删除端点
+//
+// 功能说明：
+// 批量删除多个端点，通过事务保证原子性
+//
+// 业务规则：
+// 1. 所有端点ID必须存在，否则返回错误
+// 2. 关联的Vulnerabilities会自动级联删除（数据库外键约束）
+// 3. 删除操作在事务中执行，保证原子性
+//
+// 级联删除说明：
+// - Vulnerabilities: 端点删除后，关联的漏洞记录也会被删除
+//
+// 性能优化：
+// - 在大规模数据场景下，去除预查询以提升性能
+// - 通过 RowsAffected 验证删除数量，减少数据库查询次数
+// - 不返回完整对象列表，只返回删除数量
+//
+// 参数：
+//   - endpointIDs: 需要删除的端点ID列表
+//
+// 返回：
+//   - int: 实际删除的端点数量
+//   - error: 如果验证失败或删除失败则返回错误
+func (s *EndpointService) BatchDeleteEndpoints(endpointIDs []uint) (int, error) {
+	if len(endpointIDs) == 0 {
+		return 0, fmt.Errorf("端点ID列表不能为空")
+	}
+
+	var deletedCount int64
+
+	// 使用事务确保批量删除的原子性
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		// 批量删除端点并检查影响行数
+		// 数据库已配置 CASCADE，会自动删除关联的 Vulnerabilities
+		result := tx.Where("id IN ?", endpointIDs).Delete(&models.Endpoint{})
+		if result.Error != nil {
+			log.Error().Err(result.Error).Msg("批量删除端点失败")
+			return result.Error
+		}
+
+		deletedCount = result.RowsAffected
+
+		// 检查删除的行数是否与请求的ID数量一致
+		if deletedCount != int64(len(endpointIDs)) {
+			log.Warn().
+				Int("requested", len(endpointIDs)).
+				Int64("deleted", deletedCount).
+				Msg("部分端点ID不存在")
+			return fmt.Errorf("请求删除 %d 个端点，实际删除 %d 个，部分ID不存在", len(endpointIDs), deletedCount)
+		}
+
+		log.Info().
+			Int64("count", deletedCount).
+			Msg("端点批量删除成功")
+
+		return nil
+	})
+
+	if err != nil {
+		return 0, err
+	}
+
+	return int(deletedCount), nil
+}

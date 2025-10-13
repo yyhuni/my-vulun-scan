@@ -37,6 +37,22 @@ definitions:
         description: 成功移除的数量
         type: integer
     type: object
+  vulun-scan-backend_internal_models.BatchDeleteEndpointsRequest:
+    properties:
+      endpoint_ids:
+        items:
+          type: integer
+        type: array
+    required:
+    - endpoint_ids
+    type: object
+  vulun-scan-backend_internal_models.BatchDeleteEndpointsResponseData:
+    properties:
+      deleted_count:
+        type: integer
+      message:
+        type: string
+    type: object
   vulun-scan-backend_internal_models.BatchDeleteOrgsRequest:
     properties:
       organization_ids:
@@ -848,6 +864,42 @@ paths:
       tags:
       - 端点管理
   /endpoints/{id}:
+    delete:
+      description: 删除指定ID的端点（级联删除关联的Vulnerabilities）
+      parameters:
+      - description: 端点ID
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 删除成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.BatchDeleteEndpointsResponseData'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+        "404":
+          description: 端点不存在
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+      summary: 删除单个端点
+      tags:
+      - 端点管理
     get:
       description: 根据端点ID获取端点详情
       parameters:
@@ -878,6 +930,45 @@ paths:
           schema:
             $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
       summary: 获取端点详情
+      tags:
+      - 端点管理
+  /endpoints/batch-delete:
+    post:
+      consumes:
+      - application/json
+      description: 批量删除端点（级联删除关联的Vulnerabilities）
+      parameters:
+      - description: 端点ID列表
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/vulun-scan-backend_internal_models.BatchDeleteEndpointsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 批量删除成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.BatchDeleteEndpointsResponseData'
+              type: object
+        "400":
+          description: 业务逻辑错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+        "422":
+          description: 请求参数验证失败
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+      summary: 批量删除端点
       tags:
       - 端点管理
   /endpoints/create:

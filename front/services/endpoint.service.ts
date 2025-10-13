@@ -5,7 +5,9 @@ import type {
   CreateEndpointRequest, 
   UpdateEndpointRequest,
   GetEndpointsRequest,
-  GetEndpointsResponse 
+  GetEndpointsResponse,
+  BatchDeleteEndpointsRequest,
+  BatchDeleteEndpointsResponse
 } from "@/types/endpoint.types"
 
 export class EndpointService {
@@ -96,10 +98,22 @@ export class EndpointService {
   /**
    * 删除 Endpoint
    * @param id - Endpoint ID
-   * @returns Promise<ApiResponse<any>>
+   * @returns Promise<ApiResponse<BatchDeleteEndpointsResponse>>
    */
-  static async deleteEndpoint(id: number): Promise<ApiResponse<any>> {
-    const response = await api.delete<ApiResponse<any>>(`/endpoints/${id}`)
+  static async deleteEndpoint(id: number): Promise<ApiResponse<BatchDeleteEndpointsResponse>> {
+    const response = await api.delete<ApiResponse<BatchDeleteEndpointsResponse>>(`/endpoints/${id}`)
+    return response.data
+  }
+
+  /**
+   * 批量删除 Endpoint
+   * @param data - 批量删除请求对象
+   * @param data.endpointIds - Endpoint ID 列表
+   * @returns Promise<ApiResponse<BatchDeleteEndpointsResponse>>
+   */
+  static async batchDeleteEndpoints(data: BatchDeleteEndpointsRequest): Promise<ApiResponse<BatchDeleteEndpointsResponse>> {
+    // api-client.ts 会自动将请求体的驼峰转换为下划线
+    const response = await api.post<ApiResponse<BatchDeleteEndpointsResponse>>('/endpoints/batch-delete', data)
     return response.data
   }
 

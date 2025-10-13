@@ -496,6 +496,70 @@
                 }
             }
         },
+        "/endpoints/batch-delete": {
+            "post": {
+                "description": "批量删除端点（级联删除关联的Vulnerabilities）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "端点管理"
+                ],
+                "summary": "批量删除端点",
+                "parameters": [
+                    {
+                        "description": "端点ID列表",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.BatchDeleteEndpointsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "批量删除成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.BatchDeleteEndpointsResponseData"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "业务逻辑错误",
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "请求参数验证失败",
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/endpoints/create": {
             "post": {
                 "description": "批量创建端点，支持单个或多个端点创建。会自动从 URL 中提取 host 和根域名进行匹配，仅对已存在的 domain 和 subdomain 创建端点；若不存在将被跳过。无需手动指定任何 ID",
@@ -595,6 +659,64 @@
                     },
                     "404": {
                         "description": "端点不存在",
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "删除指定ID的端点（级联删除关联的Vulnerabilities）",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "端点管理"
+                ],
+                "summary": "删除单个端点",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "example": 1,
+                        "description": "端点ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "删除成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.BatchDeleteEndpointsResponseData"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "端点不存在",
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
                         "schema": {
                             "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
                         }
@@ -1692,6 +1814,31 @@
                 "success_count": {
                     "description": "成功移除的数量",
                     "type": "integer"
+                }
+            }
+        },
+        "vulun-scan-backend_internal_models.BatchDeleteEndpointsRequest": {
+            "type": "object",
+            "required": [
+                "endpoint_ids"
+            ],
+            "properties": {
+                "endpoint_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "vulun-scan-backend_internal_models.BatchDeleteEndpointsResponseData": {
+            "type": "object",
+            "properties": {
+                "deleted_count": {
+                    "type": "integer"
+                },
+                "message": {
+                    "type": "string"
                 }
             }
         },

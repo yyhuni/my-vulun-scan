@@ -203,3 +203,82 @@ func GetEndpointsBySubdomainID(c *gin.Context) {
 	}
 	response.SuccessResponse(c, result)
 }
+
+// DeleteEndpoint 删除单个端点
+// @Summary 删除单个端点
+// @Description 删除指定ID的端点（级联删除关联的Vulnerabilities）
+// @Tags 端点管理
+// @Produce json
+// @Param id path uint true "端点ID" example(1)
+// @Success 200 {object} models.APIResponse{data=models.BatchDeleteEndpointsResponseData} "删除成功"
+// @Failure 400 {object} models.APIResponse "请求参数错误"
+// @Failure 404 {object} models.APIResponse "端点不存在"
+// @Failure 500 {object} models.APIResponse "服务器内部错误"
+// @Router /endpoints/{id} [delete]
+func DeleteEndpoint(c *gin.Context) {
+	// 获取路径参数 id
+	var uri struct {
+		ID uint `uri:"id" binding:"required"`
+	}
+	if err := c.ShouldBindUri(&uri); err != nil {
+		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	// 复用批量删除逻辑，传入单个ID的数组
+	service := services.NewEndpointService()
+	deletedCount, err := service.BatchDeleteEndpoints([]uint{uri.ID})
+	if err != nil {
+		response.InternalServerErrorResponse(c, "删除端点失败: "+err.Error())
+		return
+	}
+
+	// 返回删除成功信息（统一使用结构化响应类型）
+	response.SuccessResponse(c, models.BatchDeleteEndpointsResponseData{
+		Message:      "删除端点成功",
+		DeletedCount: deletedCount,
+	})
+}
+
+// BatchDeleteEndpoints 批量删除端点
+// @Summary 批量删除端点
+// @Description 批量删除端点（级联删除关联的Vulnerabilities）
+// @Tags 端点管理
+// @Accept json
+// @Produce json
+// @Param request body models.BatchDeleteEndpointsRequest true "端点ID列表"
+// @Success 200 {object} models.APIResponse{data=models.BatchDeleteEndpointsResponseData} "批量删除成功"
+// @Failure 400 {object} models.APIResponse "业务逻辑错误"
+// @Failure 422 {object} models.APIResponse "请求参数验证失败"
+// @Failure 500 {object} models.APIResponse "服务器内部错误"
+// @Router /endpoints/batch-delete [post]
+func BatchDeleteEndpoints(c *gin.Context) {
+	var req models.BatchDeleteEndpointsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	if len(req.EndpointIDs) == 0 {
+		response.BadRequestResponse(c, "端点ID列表不能为空")
+		return
+	}
+
+	service := services.NewEndpointService()
+	deletedCount, err := service.BatchDeleteEndpoints(req.EndpointIDs)
+	if err != nil {
+		// 如果错误信息包含"不存在"，返回 400（业务逻辑错误）
+		if err.Error() != "" && (err.Error()[0:2] == "请求" || err.Error()[0:2] == "端点") {
+			response.BadRequestResponse(c, err.Error())
+			return
+		}
+		// 其他错误返回 500（服务器内部错误）
+		response.InternalServerErrorResponse(c, "批量删除端点失败: "+err.Error())
+		return
+	}
+
+	response.SuccessResponse(c, models.BatchDeleteEndpointsResponseData{
+		Message:      "批量删除端点成功",
+		DeletedCount: deletedCount,
+	})
+}

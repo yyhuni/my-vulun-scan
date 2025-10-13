@@ -12,9 +12,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Eye, Edit, Trash2, Network, ChevronsUpDown, Globe, Code } from "lucide-react"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { MoreHorizontal, Eye, Edit, Trash2, Network, ChevronsUpDown, Globe, Code, Copy, Check } from "lucide-react"
 import { IconCircleCheckFilled, IconLoader, IconAlertTriangle, IconX } from "@tabler/icons-react"
 import type { Endpoint } from "@/types/endpoint.types"
+import { toast } from "sonner"
 
 // 列创建函数的参数类型
 interface CreateColumnsProps {
@@ -197,11 +204,63 @@ export const createEndpointColumns = ({
     ),
     cell: ({ row }) => {
       const url = row.getValue("url") as string
+      const isLong = url.length > 60
+      const [copied, setCopied] = React.useState(false)
+      
+      const handleCopy = async () => {
+        try {
+          await navigator.clipboard.writeText(url)
+          setCopied(true)
+          toast.success('已复制 URL')
+          setTimeout(() => setCopied(false), 2000)
+        } catch (err) {
+          toast.error('复制失败')
+        }
+      }
+      
       return (
-        <div className="max-w-[400px] text-sm">
-          <div className="truncate" title={url}>
-            {url}
-          </div>
+        <div className="flex items-center gap-2 group">
+          <TooltipProvider delayDuration={500} skipDelayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="text-sm font-mono max-w-[400px] truncate cursor-default inline-block">
+                  {url}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent 
+                side="top" 
+                align="start"
+                sideOffset={5}
+                className={`text-xs font-mono ${isLong ? 'max-w-[500px] break-all' : 'whitespace-nowrap'}`}
+              >
+                {url}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
+          <TooltipProvider delayDuration={500} skipDelayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={`h-6 w-6 flex-shrink-0 hover:bg-accent transition-opacity ${
+                    copied ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                  }`}
+                  onClick={handleCopy}
+                >
+                  {copied ? (
+                    <Check className="h-3 w-3 text-green-600" />
+                  ) : (
+                    <Copy className="h-3 w-3 text-muted-foreground" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p className="text-xs">{copied ? '已复制' : '复制'}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       )
     },
@@ -229,11 +288,63 @@ export const createEndpointColumns = ({
     ),
     cell: ({ row }) => {
       const endpoint = row.getValue("endpoint") as string
+      const isLong = endpoint.length > 30
+      const [copied, setCopied] = React.useState(false)
+      
+      const handleCopy = async () => {
+        try {
+          await navigator.clipboard.writeText(endpoint)
+          setCopied(true)
+          toast.success('已复制 Endpoint')
+          setTimeout(() => setCopied(false), 2000)
+        } catch (err) {
+          toast.error('复制失败')
+        }
+      }
+      
       return (
-        <div className="max-w-[200px] text-sm">
-          <div className="truncate" title={endpoint}>
-            {endpoint}
-          </div>
+        <div className="flex items-center gap-2 group">
+          <TooltipProvider delayDuration={500} skipDelayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="text-sm font-mono max-w-[200px] truncate cursor-default inline-block">
+                  {endpoint}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent 
+                side="top" 
+                align="start"
+                sideOffset={5}
+                className={`text-xs font-mono ${isLong ? 'max-w-[400px] break-all' : 'whitespace-nowrap'}`}
+              >
+                {endpoint}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
+          <TooltipProvider delayDuration={500} skipDelayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={`h-6 w-6 flex-shrink-0 hover:bg-accent transition-opacity ${
+                    copied ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                  }`}
+                  onClick={handleCopy}
+                >
+                  {copied ? (
+                    <Check className="h-3 w-3 text-green-600" />
+                  ) : (
+                    <Copy className="h-3 w-3 text-muted-foreground" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p className="text-xs">{copied ? '已复制' : '复制'}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       )
     },
@@ -282,12 +393,28 @@ export const createEndpointColumns = ({
     ),
     cell: ({ row }) => {
       const title = row.getValue("title") as string
+      if (!title) return <div className="text-sm text-muted-foreground">-</div>
+      
+      const isLong = title.length > 30
+      
       return (
-        <div className="max-w-[200px]">
-          <div className="truncate font-medium" title={title}>
-            {title}
-          </div>
-        </div>
+        <TooltipProvider delayDuration={500} skipDelayDuration={0}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="text-sm font-medium max-w-[200px] truncate cursor-default inline-block">
+                {title}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent 
+              side="top" 
+              align="start"
+              sideOffset={5}
+              className={`text-xs ${isLong ? 'max-w-[400px] break-all' : 'whitespace-nowrap'}`}
+            >
+              {title}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       )
     },
   },

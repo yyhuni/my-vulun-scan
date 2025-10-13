@@ -27,6 +27,14 @@ func SetupEndpointRoutes(api *gin.RouterGroup) {
 		//   "subdomain_id": 2
 		// }
 		endpoints.POST("/create", handlers.CreateEndpoints)
+
+		// 删除单个端点
+		// 示例：DELETE /endpoints/1
+		endpoints.DELETE("/:id", handlers.DeleteEndpoint)
+
+		// 批量删除端点 - 支持一次删除多个端点
+		// 请求体示例：{"endpoint_ids": [1, 2, 3]}
+		endpoints.POST("/batch-delete", handlers.BatchDeleteEndpoints)
 	}
 
 	// 子域名相关的端点路由

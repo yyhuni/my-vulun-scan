@@ -8,7 +8,9 @@ import type {
   CreateEndpointRequest,
   UpdateEndpointRequest,
   GetEndpointsRequest,
-  GetEndpointsResponse 
+  GetEndpointsResponse,
+  BatchDeleteEndpointsRequest,
+  BatchDeleteEndpointsResponse
 } from "@/types/endpoint.types"
 
 // Query Keys
@@ -228,6 +230,93 @@ export function useUpdateEndpoint() {
       }
       
       const errorMessage = error?.response?.data?.message || error?.message || '更新失败'
+      toast.error(errorMessage)
+    },
+  })
+}
+
+// 删除单个 Endpoint
+export function useDeleteEndpoint() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: number) => EndpointService.deleteEndpoint(id),
+    onMutate: (id) => {
+      toast.loading('正在删除端点...', { id: `delete-endpoint-${id}` })
+    },
+    onSuccess: (response, id) => {
+      toast.dismiss(`delete-endpoint-${id}`)
+      
+      if (response.state === 'success') {
+        const data = response.data as BatchDeleteEndpointsResponse
+        toast.success(data.message || '删除成功')
+        
+        // 刷新相关查询
+        queryClient.invalidateQueries({ queryKey: endpointKeys.lists() })
+        queryClient.invalidateQueries({ queryKey: endpointKeys.detail(id) })
+        
+        // 刷新所有域名和子域名的端点列表
+        queryClient.invalidateQueries({ 
+          predicate: (query) => {
+            const key = query.queryKey as string[]
+            return key[0] === 'endpoints' && (key[1] === 'domain' || key[1] === 'subdomain')
+          }
+        })
+      } else {
+        throw new Error(response.message || '删除端点失败')
+      }
+    },
+    onError: (error: any, id) => {
+      toast.dismiss(`delete-endpoint-${id}`)
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.error('删除端点失败:', error)
+      }
+      
+      const errorMessage = error?.response?.data?.message || error?.message || '删除失败'
+      toast.error(errorMessage)
+    },
+  })
+}
+
+// 批量删除 Endpoint
+export function useBatchDeleteEndpoints() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (data: BatchDeleteEndpointsRequest) => EndpointService.batchDeleteEndpoints(data),
+    onMutate: () => {
+      toast.loading('正在批量删除端点...', { id: 'batch-delete-endpoints' })
+    },
+    onSuccess: (response) => {
+      toast.dismiss('batch-delete-endpoints')
+      
+      if (response.state === 'success') {
+        const data = response.data as BatchDeleteEndpointsResponse
+        toast.success(data.message || `已删除 ${data.deletedCount} 个端点`)
+        
+        // 刷新相关查询
+        queryClient.invalidateQueries({ queryKey: endpointKeys.lists() })
+        
+        // 刷新所有域名和子域名的端点列表
+        queryClient.invalidateQueries({ 
+          predicate: (query) => {
+            const key = query.queryKey as string[]
+            return key[0] === 'endpoints' && (key[1] === 'domain' || key[1] === 'subdomain')
+          }
+        })
+      } else {
+        throw new Error(response.message || '批量删除端点失败')
+      }
+    },
+    onError: (error: any) => {
+      toast.dismiss('batch-delete-endpoints')
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.error('批量删除端点失败:', error)
+      }
+      
+      const errorMessage = error?.response?.data?.message || error?.message || '批量删除失败'
       toast.error(errorMessage)
     },
   })

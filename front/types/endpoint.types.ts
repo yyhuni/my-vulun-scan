@@ -60,3 +60,14 @@ export interface UpdateEndpointRequest {
   domain?: string
   subdomain?: string
 }
+
+// 批量删除 Endpoint 请求参数
+export interface BatchDeleteEndpointsRequest {
+  endpointIds: number[]
+}
+
+// 批量删除 Endpoint 响应数据
+export interface BatchDeleteEndpointsResponse {
+  message: string
+  deletedCount: number
+}

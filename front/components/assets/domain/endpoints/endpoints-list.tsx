@@ -6,8 +6,18 @@ import { EndpointsDataTable } from "./endpoints-data-table"
 import { createEndpointColumns } from "./endpoints-columns"
 import { AddEndpointDialog } from "./add-endpoint-dialog"
 import { EditEndpointDialog } from "./edit-endpoint-dialog"
-import { LoadingState } from "@/components/loading-spinner"
-import { useEndpoints } from "@/hooks/use-endpoints"
+import { LoadingState, LoadingSpinner } from "@/components/loading-spinner"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { useEndpoints, useDeleteEndpoint, useBatchDeleteEndpoints } from "@/hooks/use-endpoints"
 import { useDomain } from "@/hooks/use-domains"
 import type { Endpoint } from "@/types/endpoint.types"
 
@@ -26,6 +36,9 @@ export function EndpointsList({
   const [selectedAssets, setSelectedAssets] = useState<Endpoint[]>([])
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [editingEndpoint, setEditingEndpoint] = useState<Endpoint | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [endpointToDelete, setEndpointToDelete] = useState<Endpoint | null>(null)
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
   
   // 分页状态管理
   const [pagination, setPagination] = useState({
@@ -35,6 +48,10 @@ export function EndpointsList({
 
   // 获取当前域名信息（用于校验）
   const { data: currentDomain } = useDomain(domainId ? parseInt(domainId) : 0)
+
+  // 删除相关 hooks
+  const deleteEndpoint = useDeleteEndpoint()
+  const batchDeleteEndpoints = useBatchDeleteEndpoints()
 
   // 使用 React Query 获取 Endpoint 数据
   const {
@@ -88,8 +105,18 @@ export function EndpointsList({
 
   // 处理删除资产
   const handleDeleteAsset = (endpoint: Endpoint) => {
-    // TODO: 实现删除功能
-    console.info(`删除端点功能开发中: ${endpoint.url}`)
+    setEndpointToDelete(endpoint)
+    setDeleteDialogOpen(true)
+  }
+
+  // 确认删除端点
+  const confirmDelete = async () => {
+    if (!endpointToDelete) return
+
+    setDeleteDialogOpen(false)
+    setEndpointToDelete(null)
+    
+    deleteEndpoint.mutate(endpointToDelete.id)
   }
 
   // 处理批量删除
@@ -97,8 +124,19 @@ export function EndpointsList({
     if (selectedAssets.length === 0) {
       return
     }
-    // TODO: 实现批量删除功能
-    console.info(`批量删除功能开发中，选中 ${selectedAssets.length} 个端点`)
+    setBulkDeleteDialogOpen(true)
+  }
+
+  // 确认批量删除
+  const confirmBulkDelete = async () => {
+    if (selectedAssets.length === 0) return
+
+    const endpointIds = selectedAssets.map(endpoint => endpoint.id)
+    
+    setBulkDeleteDialogOpen(false)
+    setSelectedAssets([])
+    
+    batchDeleteEndpoints.mutate({ endpointIds })
   }
 
   // 处理添加 Endpoint
@@ -194,6 +232,74 @@ export function EndpointsList({
           }}
         />
       )}
+
+      {/* 删除确认对话框 */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认删除</AlertDialogTitle>
+            <AlertDialogDescription>
+              此操作无法撤销。这将永久删除端点 "{endpointToDelete?.url}" 及其相关数据（包括关联的 Vulnerabilities）。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteEndpoint.isPending}
+            >
+              {deleteEndpoint.isPending ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  删除中...
+                </>
+              ) : (
+                "删除"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 批量删除确认对话框 */}
+      <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认批量删除</AlertDialogTitle>
+            <AlertDialogDescription>
+              此操作无法撤销。这将永久删除以下 {selectedAssets.length} 个端点及其相关数据（包括关联的 Vulnerabilities）。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="mt-2 p-2 bg-muted rounded-md max-h-60 overflow-y-auto">
+            <ul className="text-sm space-y-1">
+              {selectedAssets.map((endpoint) => (
+                <li key={endpoint.id} className="flex items-center flex-wrap">
+                  <span className="font-medium text-xs mr-2">{endpoint.method || 'GET'}</span>
+                  <span className="font-mono text-xs truncate flex-1">{endpoint.url}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmBulkDelete} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={batchDeleteEndpoints.isPending}
+            >
+              {batchDeleteEndpoints.isPending ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  删除中...
+                </>
+              ) : (
+                `删除 ${selectedAssets.length} 个端点`
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }
