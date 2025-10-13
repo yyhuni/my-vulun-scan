@@ -60,8 +60,6 @@ export function EndpointsList({
   } = useEndpoints({
     page: pagination.pageIndex + 1, // API 使用 1-based 页码
     pageSize: pagination.pageSize,
-    sortBy: 'updated_at',
-    sortOrder: 'desc',
     domainId: domainId ? parseInt(domainId) : undefined,
   })
   
@@ -186,7 +184,7 @@ export function EndpointsList({
         onSelectionChange={setSelectedAssets}
         searchPlaceholder="搜索 Endpoint..."
         searchColumn="url"
-        addButtonText="添加 Endpoint"
+        addButtonText="Add Endpoint"
         pagination={pagination}
         onPaginationChange={setPagination}
         totalCount={totalCount}

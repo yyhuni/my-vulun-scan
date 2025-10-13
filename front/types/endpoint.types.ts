@@ -20,8 +20,6 @@ export interface Endpoint {
 export interface GetEndpointsRequest {
   page?: number
   pageSize?: number
-  sortBy?: string
-  sortOrder?: 'asc' | 'desc'
   domainId?: number
   subdomainId?: number
   method?: string

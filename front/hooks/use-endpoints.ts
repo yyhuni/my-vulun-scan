@@ -45,8 +45,6 @@ export function useEndpoints(params?: GetEndpointsRequest) {
   const defaultParams: GetEndpointsRequest = {
     page: 1,
     pageSize: 10,
-    sortBy: 'updated_at',
-    sortOrder: 'desc',
     ...params
   }
   
@@ -67,8 +65,6 @@ export function useEndpointsByDomain(domainId: number, params?: Omit<GetEndpoint
   const defaultParams: GetEndpointsRequest = {
     page: 1,
     pageSize: 10,
-    sortBy: 'updated_at',
-    sortOrder: 'desc',
     ...params
   }
   
@@ -90,8 +86,6 @@ export function useEndpointsBySubdomain(subdomainId: number, params?: Omit<GetEn
   const defaultParams: GetEndpointsRequest = {
     page: 1,
     pageSize: 10,
-    sortBy: 'updated_at',
-    sortOrder: 'desc',
     ...params
   }
   

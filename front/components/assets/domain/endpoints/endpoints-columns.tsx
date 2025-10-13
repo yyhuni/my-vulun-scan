@@ -186,6 +186,7 @@ export const createEndpointColumns = ({
         {row.getValue("id")}
       </div>
     ),
+    enableSorting: false,
   },
 
   // URL 列
@@ -256,6 +257,7 @@ export const createEndpointColumns = ({
         </div>
       )
     },
+    enableSorting: false,
   },
 
   // Endpoint 列（从 URL 中提取路径）
@@ -340,6 +342,7 @@ export const createEndpointColumns = ({
         </div>
       )
     },
+    enableSorting: false,
   },
 
   // HTTP 方法列
@@ -366,6 +369,7 @@ export const createEndpointColumns = ({
         </Badge>
       )
     },
+    enableSorting: false,
   },
 
   // 状态码列
@@ -375,6 +379,7 @@ export const createEndpointColumns = ({
       <DataTableColumnHeader column={column} title="状态码" />
     ),
     cell: ({ row }) => <HttpStatusBadge statusCode={row.getValue("statusCode")} />,
+    enableSorting: false,
   },
 
   // 标题列
@@ -409,6 +414,7 @@ export const createEndpointColumns = ({
         </TooltipProvider>
       )
     },
+    enableSorting: false,
   },
 
   // 内容长度列
@@ -425,6 +431,7 @@ export const createEndpointColumns = ({
         </div>
       )
     },
+    enableSorting: false,
   },
 
   // 更新时间列
@@ -438,6 +445,7 @@ export const createEndpointColumns = ({
         {formatDate(row.getValue("updatedAt"))}
       </div>
     ),
+    enableSorting: false,
   },
 
   // 操作列

@@ -248,7 +248,7 @@ export function AddEndpointDialog({
         <DialogTrigger asChild>
           <Button size="sm">
             <Plus className="h-4 w-4 mr-2" />
-            添加 Endpoint
+            Add Endpoint
           </Button>
         </DialogTrigger>
       )}
@@ -258,7 +258,7 @@ export function AddEndpointDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <Link className="h-5 w-5" />
-            <span>添加 Endpoint</span>
+            <span>Add Endpoint</span>
           </DialogTitle>
           <DialogDescription>
             每行输入一个完整 URL（如 https://example.com/api/v1/users），支持批量添加。<br />
