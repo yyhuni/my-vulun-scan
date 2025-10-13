@@ -82,14 +82,14 @@ function DataTableColumnHeader({
   title: string
 }) {
   if (!column.getCanSort()) {
-    return <div className="-ml-3 font-medium">{title}</div>
+    return <div className="font-medium">{title}</div>
   }
 
   return (
     <Button
       variant="ghost"
       onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-      className="-ml-3 h-8 data-[state=open]:bg-accent hover:bg-muted"
+      className="h-8 data-[state=open]:bg-accent hover:bg-muted"
     >
       {title}
       <ChevronsUpDown className="h-4 w-4" />
