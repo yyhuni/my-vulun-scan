@@ -349,7 +349,6 @@ demo.org`}
                               >
                                 <Check
                                   className={cn(
-                                    
                                     formData.organizationId === org.id.toString()
                                       ? "opacity-100"
                                       : "opacity-0"
