@@ -64,8 +64,11 @@ export function useCreateTool() {
       if (response.state === 'success') {
         toast.success('创建成功')
         
-        // 刷新工具列表
-        queryClient.invalidateQueries({ queryKey: toolKeys.lists() })
+        // 刷新工具列表和分类列表
+        queryClient.invalidateQueries({ 
+          queryKey: toolKeys.all,
+          refetchType: 'active' 
+        })
       } else {
         throw new Error(response.message || '创建工具失败')
       }

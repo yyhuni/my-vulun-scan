@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { IconPlus, IconSettings } from "@tabler/icons-react"
 import { ToolCard } from "@/components/tools/tool-card"
+import { AddToolDialog } from "@/components/tools/add-tool-dialog"
 import { useTools, useCategories } from "@/hooks/use-tools"
 import { CategoryNameMap } from "@/types/tool.types"
 
@@ -44,12 +45,6 @@ export default function ToolsPage() {
     // TODO: 实现检查更新逻辑
   }
 
-  // 处理添加新工具
-  const handleAddNewTool = () => {
-    console.log("Add new tool")
-    // TODO: 实现添加新工具逻辑
-  }
-
   // 加载状态
   if (isLoading) {
     return (
@@ -86,10 +81,7 @@ export default function ToolsPage() {
           <Button variant="outline" size="icon">
             <IconSettings className="h-5 w-5" />
           </Button>
-          <Button onClick={handleAddNewTool}>
-            <IconPlus  />
-            Add new tool
-          </Button>
+          <AddToolDialog />
         </div>
       </div>
 

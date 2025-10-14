@@ -6,6 +6,9 @@ export interface Tool {
   version: string           // 版本号
   description: string       // 工具描述
   categoryNames: string[]   // 分类标签数组（支持多个）
+  installCommand: string    // 安装命令
+  updateCommand: string     // 更新命令
+  versionCommand: string    // 版本查询命令
   createdAt: string
   updatedAt: string
 }
@@ -43,7 +46,10 @@ export interface CreateToolRequest {
   repoUrl?: string
   version?: string
   description?: string
-  categoryNames?: string[]  // 分类标签数组
+  categoryNames?: string[]    // 分类标签数组
+  installCommand: string      // 安装命令（必填）
+  updateCommand: string       // 更新命令（必填）
+  versionCommand: string      // 版本查询命令（必填）
 }
 
 // 获取分类列表响应

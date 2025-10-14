@@ -56,11 +56,11 @@ func GetTools(c *gin.Context) {
 
 // CreateTool 创建工具
 // @Summary 创建工具
-// @Description 创建新的安全扫描工具，支持多个分类标签
+// @Description 创建新的安全扫描工具，支持多个分类标签，包含安装、更新和版本查询命令配置
 // @Tags 工具管理
 // @Accept json
 // @Produce json
-// @Param tool body models.CreateToolRequest true "工具信息" example({"name": "nmap", "repo_url": "https://github.com/nmap/nmap", "version": "7.94", "description": "Network exploration tool and security scanner", "category_names": ["port", "vulnerability", "network"]})
+// @Param tool body models.CreateToolRequest true "工具信息" example({"name": "nuclei", "repo_url": "https://github.com/projectdiscovery/nuclei", "version": "v3.0.0", "description": "Fast and customisable vulnerability scanner", "category_names": ["vulnerability"], "install_command": "go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest", "update_command": "go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest", "version_command": "nuclei -version"})
 // @Success 200 {object} models.APIResponse{data=models.ToolResponseData} "创建成功"
 // @Failure 422 {object} models.APIResponse "请求参数验证失败"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"

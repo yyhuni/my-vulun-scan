@@ -12,11 +12,14 @@ type Tool struct {
 	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime;index"`
 
 	// 核心业务字段
-	Name          string   `json:"name" gorm:"not null;index;size:255"`
-	RepoURL       string   `json:"repo_url" gorm:"size:512"`
-	Version       string   `json:"version" gorm:"size:100"`
-	Description   string   `json:"description" gorm:"type:text"`
-	CategoryNames []string `json:"category_names" gorm:"type:jsonb;serializer:json"` // 工具分类标签数组
+	Name           string   `json:"name" gorm:"not null;index;size:255"`
+	RepoURL        string   `json:"repo_url" gorm:"size:512"`
+	Version        string   `json:"version" gorm:"size:100"`
+	Description    string   `json:"description" gorm:"type:text"`
+	CategoryNames  []string `json:"category_names" gorm:"type:jsonb;serializer:json"`  // 工具分类标签数组
+	InstallCommand string   `json:"install_command" gorm:"type:text;not null"`         // 安装命令
+	UpdateCommand  string   `json:"update_command" gorm:"type:text;not null"`          // 更新命令
+	VersionCommand string   `json:"version_command" gorm:"size:500;not null"`          // 版本查询命令
 }
 
 // GetToolsRequest 获取工具列表请求
@@ -38,11 +41,14 @@ type GetToolsResponse struct {
 
 // CreateToolRequest 创建工具请求
 type CreateToolRequest struct {
-	Name          string   `json:"name" binding:"required"`
-	RepoURL       string   `json:"repo_url"`
-	Version       string   `json:"version"`
-	Description   string   `json:"description"`
-	CategoryNames []string `json:"category_names"` // 工具分类标签数组
+	Name           string   `json:"name" binding:"required"`
+	RepoURL        string   `json:"repo_url"`
+	Version        string   `json:"version"`
+	Description    string   `json:"description"`
+	CategoryNames  []string `json:"category_names"`                 // 工具分类标签数组
+	InstallCommand string   `json:"install_command" binding:"required"` // 安装命令（必填）
+	UpdateCommand  string   `json:"update_command" binding:"required"`  // 更新命令（必填）
+	VersionCommand string   `json:"version_command" binding:"required"` // 版本查询命令（必填）
 }
 
 // ToolResponseData 工具响应数据（用于创建、更新、获取单个工具）
