@@ -18,7 +18,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { MoreHorizontal, Eye, Trash2, Network, ChevronsUpDown, Globe, Code, Copy, Check } from "lucide-react"
+import { MoreHorizontal, Eye, Trash2, Network, ChevronsUpDown, ChevronUp, ChevronDown, Globe, Code, Copy, Check } from "lucide-react"
 import { IconCircleCheckFilled, IconLoader, IconAlertTriangle, IconX } from "@tabler/icons-react"
 import type { Endpoint } from "@/types/endpoint.types"
 import { toast } from "sonner"
@@ -85,6 +85,8 @@ function DataTableColumnHeader({
     return <div className="font-medium">{title}</div>
   }
 
+  const isSorted = column.getIsSorted()
+
   return (
     <Button
       variant="ghost"
@@ -92,7 +94,13 @@ function DataTableColumnHeader({
       className="h-8 data-[state=open]:bg-accent hover:bg-muted"
     >
       {title}
-      <ChevronsUpDown className="h-4 w-4" />
+      {isSorted === "asc" ? (
+        <ChevronUp className="h-4 w-4" />
+      ) : isSorted === "desc" ? (
+        <ChevronDown className="h-4 w-4" />
+      ) : (
+        <ChevronsUpDown className="h-4 w-4" />
+      )}
     </Button>
   )
 }

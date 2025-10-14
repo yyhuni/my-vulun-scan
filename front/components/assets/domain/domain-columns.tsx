@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 // 导入图标组件
-import { MoreHorizontal, Edit, Trash2, ChevronsUpDown, Eye } from "lucide-react"
+import { MoreHorizontal, Edit, Trash2, ChevronsUpDown, ChevronUp, ChevronDown, Eye } from "lucide-react"
 // 导入 Next.js Link 组件
 import Link from "next/link"
 
@@ -91,6 +91,8 @@ function DataTableColumnHeader({
     return <div className="-ml-3 font-medium">{title}</div>
   }
 
+  const isSorted = column.getIsSorted()
+
   return (
     <Button
       variant="ghost"
@@ -98,7 +100,13 @@ function DataTableColumnHeader({
       className="-ml-3 h-8 data-[state=open]:bg-accent"
     >
       {title}
-      <ChevronsUpDown className="h-4 w-4" />
+      {isSorted === "asc" ? (
+        <ChevronUp className="h-4 w-4" />
+      ) : isSorted === "desc" ? (
+        <ChevronDown className="h-4 w-4" />
+      ) : (
+        <ChevronsUpDown className="h-4 w-4" />
+      )}
     </Button>
   )
 }
