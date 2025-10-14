@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { IconRadar, IconChevronRight, IconSearch, IconCheck } from "@tabler/icons-react"
+import { IconRadar, IconChevronRight, IconChevronLeft, IconSearch, IconCheck } from "@tabler/icons-react"
 import { useRouter } from "next/navigation"
 import { useOrganizations } from "@/hooks/use-organizations"
 import type { Organization } from "@/types/organization.types"
@@ -28,7 +28,7 @@ export default function NewScanPage() {
   const [currentStep, setCurrentStep] = useState(1)
   
   // 扫描配置状态
-  const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null)
+  const [selectedOrganizations, setSelectedOrganizations] = useState<Organization[]>([])
   const [scanName, setScanName] = useState("")
   const [scanType, setScanType] = useState("")
   const [description, setDescription] = useState("")
@@ -56,6 +56,13 @@ export default function NewScanPage() {
   const totalCount = organizationsData?.pagination?.total || 0
   const totalPages = organizationsData?.pagination?.totalPages || 0
 
+  // 上一步
+  const handlePrevious = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1)
+    }
+  }
+
   // 下一步
   const handleNext = () => {
     if (currentStep < STEPS.length) {
@@ -67,8 +74,8 @@ export default function NewScanPage() {
   const handleSubmit = () => {
     // TODO: 调用 API 创建扫描任务
     console.log({
-      organizationId: selectedOrganization?.id,
-      organizationName: selectedOrganization?.name,
+      organizationIds: selectedOrganizations.map(org => org.id),
+      organizations: selectedOrganizations.map(org => org.name),
       scanName,
       scanType,
       description,
@@ -81,7 +88,7 @@ export default function NewScanPage() {
   const canProceed = () => {
     switch (currentStep) {
       case 1:
-        return selectedOrganization !== null
+        return selectedOrganizations.length > 0
       case 2:
         return scanName.trim() !== "" && scanType !== ""
       case 3:
@@ -125,17 +132,26 @@ export default function NewScanPage() {
           )}
 
           {/* 中间：已选择提示（仅步骤1且已选择时显示） */}
-          {currentStep === 1 && selectedOrganization && (
+          {currentStep === 1 && selectedOrganizations.length > 0 && (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/5 border border-primary/20 rounded-md">
               <IconCheck className="size-4 text-primary flex-shrink-0" />
               <span className="text-sm whitespace-nowrap">
-                已选择: <span className="font-medium">{selectedOrganization.name}</span>
+                已选择: <span className="font-medium">{selectedOrganizations.length} 个组织</span>
               </span>
             </div>
           )}
 
           {/* 右侧：操作按钮 */}
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            {/* 上一步按钮（步骤2和3显示） */}
+            {currentStep > 1 && (
+              <Button variant="outline" onClick={handlePrevious}>
+                <IconChevronLeft className="size-4 mr-2" />
+                上一步
+              </Button>
+            )}
+            
+            {/* 下一步/启动扫描按钮 */}
             {currentStep < STEPS.length ? (
               <Button onClick={handleNext} disabled={!canProceed()}>
                 下一步
@@ -156,8 +172,8 @@ export default function NewScanPage() {
           {currentStep === 1 && (
             <OrganizationSelectionTable
               organizations={organizations}
-              selectedOrganization={selectedOrganization}
-              onSelect={setSelectedOrganization}
+              selectedOrganizations={selectedOrganizations}
+              onSelectionChange={setSelectedOrganizations}
               isLoading={isLoading}
               searchQuery={searchQuery}
               pagination={pagination}
@@ -182,7 +198,7 @@ export default function NewScanPage() {
           {/* 步骤 3: 确认信息 */}
           {currentStep === 3 && (
             <ScanConfirmation
-              organization={selectedOrganization}
+              organizations={selectedOrganizations}
               scanName={scanName}
               scanType={scanType}
               description={description}

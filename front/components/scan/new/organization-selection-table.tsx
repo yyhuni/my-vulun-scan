@@ -31,8 +31,8 @@ import type { Organization } from "@/types/organization.types"
 
 interface OrganizationSelectionTableProps {
   organizations: Organization[]
-  selectedOrganization: Organization | null
-  onSelect: (org: Organization) => void
+  selectedOrganizations: Organization[]
+  onSelectionChange: (orgs: Organization[]) => void
   isLoading?: boolean
   searchQuery?: string
   pagination?: { pageIndex: number; pageSize: number }
@@ -43,12 +43,12 @@ interface OrganizationSelectionTableProps {
 
 /**
  * 组织选择表格组件
- * 用于扫描任务创建时选择目标组织
+ * 用于扫描任务创建时选择目标组织（支持多选）
  */
 export function OrganizationSelectionTable({
   organizations,
-  selectedOrganization,
-  onSelect,
+  selectedOrganizations,
+  onSelectionChange,
   isLoading = false,
   searchQuery = "",
   pagination,
@@ -57,6 +57,40 @@ export function OrganizationSelectionTable({
   totalPages = 0,
 }: OrganizationSelectionTableProps) {
   const router = useRouter()
+
+  // 检查组织是否被选中
+  const isSelected = (orgId: number) => {
+    return selectedOrganizations.some(org => org.id === orgId)
+  }
+
+  // 切换组织选中状态
+  const toggleOrganization = (org: Organization) => {
+    if (isSelected(org.id)) {
+      onSelectionChange(selectedOrganizations.filter(o => o.id !== org.id))
+    } else {
+      onSelectionChange([...selectedOrganizations, org])
+    }
+  }
+
+  // 全选/取消全选当前页
+  const toggleAll = () => {
+    const currentPageOrgIds = filteredOrganizations.map(org => org.id)
+    const allCurrentPageSelected = currentPageOrgIds.every(id => isSelected(id))
+    
+    if (allCurrentPageSelected) {
+      // 取消选中当前页的所有组织
+      onSelectionChange(selectedOrganizations.filter(org => !currentPageOrgIds.includes(org.id)))
+    } else {
+      // 选中当前页的所有组织
+      const newSelections = [...selectedOrganizations]
+      filteredOrganizations.forEach(org => {
+        if (!isSelected(org.id)) {
+          newSelections.push(org)
+        }
+      })
+      onSelectionChange(newSelections)
+    }
+  }
 
   // 如果有搜索功能，在客户端过滤；否则使用服务端提供的数据
   const filteredOrganizations = React.useMemo(() => {
@@ -103,13 +137,39 @@ export function OrganizationSelectionTable({
     )
   }
 
+  // 检查当前页是否全选
+  const isAllCurrentPageSelected = filteredOrganizations.length > 0 && 
+    filteredOrganizations.every(org => isSelected(org.id))
+  const isSomeCurrentPageSelected = filteredOrganizations.some(org => isSelected(org.id))
+
   return (
     <div className="space-y-4">
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-12 text-center">选择</TableHead>
+              <TableHead className="w-12">
+                <div className="flex items-center justify-center">
+                  <div
+                    className={cn(
+                      "flex items-center justify-center w-5 h-5 rounded border-2 transition-colors cursor-pointer",
+                      isAllCurrentPageSelected
+                        ? "bg-primary border-primary"
+                        : isSomeCurrentPageSelected
+                        ? "bg-primary/50 border-primary"
+                        : "border-muted-foreground/25"
+                    )}
+                    onClick={toggleAll}
+                  >
+                    {isAllCurrentPageSelected && (
+                      <IconCheck className="size-3 text-primary-foreground" />
+                    )}
+                    {isSomeCurrentPageSelected && !isAllCurrentPageSelected && (
+                      <div className="w-2 h-0.5 bg-primary-foreground" />
+                    )}
+                  </div>
+                </div>
+              </TableHead>
               <TableHead>组织名称</TableHead>
               <TableHead>描述</TableHead>
               <TableHead className="w-32">域名数量</TableHead>
@@ -132,23 +192,23 @@ export function OrganizationSelectionTable({
                   key={org.id}
                   className={cn(
                     "cursor-pointer",
-                    selectedOrganization?.id === org.id
+                    isSelected(org.id)
                       ? "bg-primary/5 hover:bg-primary/10"
                       : "hover:bg-muted/50"
                   )}
-                  onClick={() => onSelect(org)}
+                  onClick={() => toggleOrganization(org)}
                 >
                   <TableCell>
                     <div className="flex items-center justify-center">
                       <div
                         className={cn(
                           "flex items-center justify-center w-5 h-5 rounded border-2 transition-colors",
-                          selectedOrganization?.id === org.id
+                          isSelected(org.id)
                             ? "bg-primary border-primary"
                             : "border-muted-foreground/25"
                         )}
                       >
-                        {selectedOrganization?.id === org.id && (
+                        {isSelected(org.id) && (
                           <IconCheck className="size-3 text-primary-foreground" />
                         )}
                       </div>
