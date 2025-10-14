@@ -150,7 +150,7 @@ export function EditOrganizationDialog({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
-            <Building2 className="h-5 w-5" />
+            <Building2 />
             <span>编辑组织</span>
           </DialogTitle>
           <DialogDescription>
@@ -233,12 +233,12 @@ export function EditOrganizationDialog({
             >
               {updateOrganization.isPending ? (
                 <>
-                  <LoadingSpinner size="sm" className="mr-2" />
+                  <LoadingSpinner/>
                   更新中...
                 </>
               ) : (
                 <>
-                  <Edit className="h-4 w-4 mr-2" />
+                  <Edit/>
                   更新组织
                 </>
               )}

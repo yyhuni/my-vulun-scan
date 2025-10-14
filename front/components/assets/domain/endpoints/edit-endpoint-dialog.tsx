@@ -218,7 +218,7 @@ export function EditEndpointDialog({
         <DialogTrigger asChild>
           {trigger || (
             <Button variant="ghost" size="sm">
-              <Edit className="h-4 w-4" />
+              <Edit />
             </Button>
           )}
         </DialogTrigger>
@@ -228,11 +228,11 @@ export function EditEndpointDialog({
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
-            <Edit className="h-5 w-5" />
+            <Edit />
             <span>编辑 Endpoint</span>
             {hasChanges && (
               <Badge variant="secondary" className="text-xs">
-                <AlertCircle className="h-3 w-3 mr-1" />
+                <AlertCircle />
                 有未保存的更改
               </Badge>
             )}
@@ -271,7 +271,7 @@ export function EditEndpointDialog({
                   <SelectContent>
                     {HTTP_METHODS.map((m) => (
                       <SelectItem key={m} value={m}>
-                        <Badge variant="outline" className="mr-2">{m}</Badge>
+                        <Badge variant="outline" >{m}</Badge>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -332,7 +332,7 @@ export function EditEndpointDialog({
             {validationErrors.length > 0 && (
               <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3">
                 <div className="flex items-center gap-2 mb-2">
-                  <AlertCircle className="h-4 w-4 text-destructive" />
+                  <AlertCircle className="text-destructive" />
                   <span className="text-sm font-medium text-destructive">请修复以下问题</span>
                 </div>
                 <ul className="text-xs text-destructive space-y-1">
@@ -347,7 +347,7 @@ export function EditEndpointDialog({
             {hasChanges && validationErrors.length === 0 && (
               <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
                 <div className="flex items-center gap-2 mb-2">
-                  <CheckCircle2 className="h-4 w-4 text-blue-600" />
+                  <CheckCircle2 className="text-blue-600" />
                   <span className="text-sm font-medium text-blue-800">预览更改</span>
                 </div>
                 <div className="text-xs bg-white rounded px-2 py-1 border">
@@ -395,12 +395,12 @@ export function EditEndpointDialog({
             >
               {updateEndpoint.isPending ? (
                 <>
-                  <LoadingSpinner size="sm" className="mr-2" />
+                  <LoadingSpinner/>
                   保存中...
                 </>
               ) : (
                 <>
-                  <Save className="h-4 w-4 mr-2" />
+                  <Save/>
                   保存更改
                 </>
               )}

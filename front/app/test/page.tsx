@@ -61,11 +61,11 @@ export default function TestPage() {
             <Label>按钮中的加载效果：</Label>
             <div className="flex space-x-2">
               <Button onClick={handleButtonTest} disabled={buttonLoading}>
-                {buttonLoading && <LoadingSpinner size="sm" className="mr-2" />}
+                {buttonLoading && <LoadingSpinner/>}
                 {buttonLoading ? "处理中..." : "点击测试"}
               </Button>
               <Button variant="outline" disabled>
-                <LoadingSpinner size="sm" className="mr-2" />
+                <LoadingSpinner/>
                 禁用状态
               </Button>
             </div>

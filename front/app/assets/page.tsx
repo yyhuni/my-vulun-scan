@@ -95,7 +95,7 @@ export default function AssetsOverviewPage() {
                 <CardTitle className="text-sm font-medium">
                   {stat.title}
                 </CardTitle>
-                <stat.icon className="h-4 w-4 text-muted-foreground" />
+                <stat.icon className="text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stat.value}</div>
@@ -121,7 +121,7 @@ export default function AssetsOverviewPage() {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <module.icon className="h-5 w-5" />
+                      <module.icon />
                       <CardTitle className="text-lg">{module.title}</CardTitle>
                     </div>
                     {module.status === "coming-soon" && (
@@ -137,7 +137,7 @@ export default function AssetsOverviewPage() {
                     <Link href={module.href}>
                       <Button className="w-full">
                         进入管理
-                        <ArrowRight className="h-4 w-4 ml-2" />
+                        <ArrowRight />
                       </Button>
                     </Link>
                   ) : (
@@ -165,20 +165,20 @@ export default function AssetsOverviewPage() {
             <div className="flex flex-wrap gap-2">
               <Link href="/assets/organization">
                 <Button variant="outline" size="sm">
-                  <Building2 className="h-4 w-4 mr-2" />
+                  <Building2 />
                   管理组织
                 </Button>
               </Link>
               <Button variant="outline" size="sm" disabled>
-                <Users className="h-4 w-4 mr-2" />
+                <Users />
                 添加用户
               </Button>
               <Button variant="outline" size="sm" disabled>
-                <Server className="h-4 w-4 mr-2" />
+                <Server />
                 设备监控
               </Button>
               <Button variant="outline" size="sm" disabled>
-                <Shield className="h-4 w-4 mr-2" />
+                <Shield />
                 安全检查
               </Button>
             </div>

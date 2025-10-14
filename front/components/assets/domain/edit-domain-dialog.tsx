@@ -142,7 +142,7 @@ export function EditDomainDialog({
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
-            <Globe className="h-5 w-5" />
+            <Globe />
             <span>编辑域名</span>
           </DialogTitle>
           <DialogDescription>
@@ -222,12 +222,12 @@ export function EditDomainDialog({
             >
               {updateDomain.isPending ? (
                 <>
-                  <LoadingSpinner size="sm" className="mr-2" />
+                  <LoadingSpinner/>
                   更新中...
                 </>
               ) : (
                 <>
-                  <Edit className="h-4 w-4 mr-2" />
+                  <Edit/>
                   更新域名
                 </>
               )}

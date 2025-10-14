@@ -213,7 +213,7 @@ export function AddDomainDialog({
       {externalOpen === undefined && (
         <DialogTrigger asChild>
           <Button size="sm">
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus />
             添加域名
           </Button>
         </DialogTrigger>
@@ -223,7 +223,7 @@ export function AddDomainDialog({
       <DialogContent className="sm:max-w-[650px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
-            <Globe className="h-5 w-5" />
+            <Globe />
             <span>添加新域名</span>
           </DialogTitle>
           <DialogDescription>
@@ -265,14 +265,14 @@ demo.org`}
             {/* 所属组织选择 */}
             <div className="grid gap-2">
               <Label htmlFor="organization" className="flex items-center space-x-2">
-                <Building2 className="h-4 w-4" />
+                <Building2 />
                 <span>所属组织 <span className="text-destructive">*</span></span>
               </Label>
               
               {/* 加载状态 */}
               {isLoadingOrganizations && (
                 <div className="flex items-center space-x-2 px-3 py-2 border rounded-md bg-muted/50">
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  <Loader2 className="animate-spin text-muted-foreground" />
                   <span className="text-sm text-muted-foreground">正在加载组织列表...</span>
                 </div>
               )}
@@ -280,7 +280,7 @@ demo.org`}
               {/* 错误状态 */}
               {organizationsError && (
                 <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
+                  <AlertCircle />
                   <AlertDescription>
                     加载组织列表失败，请刷新页面重试
                   </AlertDescription>
@@ -290,7 +290,7 @@ demo.org`}
               {/* 空状态 */}
               {!isLoadingOrganizations && !organizationsError && organizationsData?.organizations.length === 0 && (
                 <Alert>
-                  <AlertCircle className="h-4 w-4" />
+                  <AlertCircle />
                   <AlertDescription className="flex flex-col space-y-2">
                     <span>暂无可用组织，请先创建组织</span>
                     <Button
@@ -303,7 +303,7 @@ demo.org`}
                         window.open('/assets/organization', '_blank')
                       }}
                     >
-                      <Plus className="h-3 w-3 mr-1" />
+                      <Plus />
                       创建组织
                     </Button>
                   </AlertDescription>
@@ -328,7 +328,7 @@ demo.org`}
                               (org) => org.id.toString() === formData.organizationId
                             )?.name
                           : "请选择组织"}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        <ChevronsUpDown className="shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-[600px] p-0" align="start" container={popoverContainerRef.current}>
@@ -349,7 +349,7 @@ demo.org`}
                               >
                                 <Check
                                   className={cn(
-                                    "mr-2 h-4 w-4",
+                                    
                                     formData.organizationId === org.id.toString()
                                       ? "opacity-100"
                                       : "opacity-0"
@@ -427,12 +427,12 @@ demo.org`}
             >
               {createDomain.isPending ? (
                 <>
-                  <LoadingSpinner size="sm" className="mr-2" />
+                  <LoadingSpinner/>
                   创建中...
                 </>
               ) : (
                 <>
-                  <Plus className="h-4 w-4 mr-2" />
+                  <Plus />
                   创建域名
                 </>
               )}

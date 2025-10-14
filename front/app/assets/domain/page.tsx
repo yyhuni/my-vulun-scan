@@ -15,7 +15,7 @@ export default function DomainPage() {
       <div className="flex items-center justify-between px-4 lg:px-6">
         <div>
           <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Globe className="h-6 w-6" />
+            <Globe />
             域名管理
           </h2>
           <p className="text-muted-foreground">

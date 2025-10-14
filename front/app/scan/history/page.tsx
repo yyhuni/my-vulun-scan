@@ -115,7 +115,7 @@ function StatusBadge({ status }: { status: ScanStatus }) {
 
   return (
     <Badge variant="outline" className={className}>
-      <Icon className="size-3 mr-1" />
+      <Icon />
       {label}
     </Badge>
   )
@@ -292,14 +292,14 @@ export default function ScanHistoryPage() {
                             size="sm"
                             onClick={() => viewDetails(scan.id)}
                           >
-                            <IconEye className="size-4" />
+                            <IconEye />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => deleteScan(scan.id)}
                           >
-                            <IconTrash className="size-4" />
+                            <IconTrash />
                           </Button>
                         </div>
                       </TableCell>

@@ -80,7 +80,7 @@ export default function DomainLayout({
       <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
-            <Globe className="h-12 w-12 mx-auto text-destructive mb-4" />
+            <Globe className="mx-auto text-destructive mb-4" />
             <h3 className="text-lg font-semibold mb-2">加载失败</h3>
             <p className="text-muted-foreground">
               {error.message || "获取域名数据时出现错误"}
@@ -96,7 +96,7 @@ export default function DomainLayout({
       <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
-            <Globe className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <Globe className="mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">域名不存在</h3>
             <p className="text-muted-foreground">
               未找到ID为 {id} 的域名
@@ -113,7 +113,7 @@ export default function DomainLayout({
       <div className="flex items-center justify-between px-4 lg:px-6">
         <div>
           <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Globe className="h-6 w-6" />
+            <Globe />
             {domain.name}
           </h2>
           <p className="text-muted-foreground">{domain.description || "暂无描述"}</p>

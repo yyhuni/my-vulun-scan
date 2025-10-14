@@ -167,7 +167,7 @@ export function OrganizationList() {
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <div className="rounded-full bg-destructive/10 p-3 mb-4">
-          <Trash2 className="h-6 w-6 text-destructive" />
+          <Trash2 className="text-destructive" />
         </div>
         <h3 className="text-lg font-semibold mb-2">加载失败</h3>
         <p className="text-muted-foreground text-center mb-4">
@@ -225,7 +225,7 @@ export function OrganizationList() {
             >
               {deleteOrganization.isPending ? (
                 <>
-                  <LoadingSpinner size="sm" className="mr-2" />
+                  <LoadingSpinner/>
                   删除中...
                 </>
               ) : (
@@ -276,7 +276,7 @@ export function OrganizationList() {
             >
               {batchDeleteOrganizations.isPending ? (
                 <>
-                  <LoadingSpinner size="sm" className="mr-2" />
+                  <LoadingSpinner/>
                   删除中...
                 </>
               ) : (

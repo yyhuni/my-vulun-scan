@@ -220,7 +220,7 @@ export function EndpointsList({
             >
               {deleteEndpoint.isPending ? (
                 <>
-                  <LoadingSpinner size="sm" className="mr-2" />
+                  <LoadingSpinner/>
                   删除中...
                 </>
               ) : (
@@ -259,7 +259,7 @@ export function EndpointsList({
             >
               {batchDeleteEndpoints.isPending ? (
                 <>
-                  <LoadingSpinner size="sm" className="mr-2" />
+                  <LoadingSpinner/>
                   删除中...
                 </>
               ) : (

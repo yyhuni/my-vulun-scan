@@ -307,7 +307,7 @@ export function OrganizationSelectionTable({
                 disabled={pagination.pageIndex === 0}
               >
                 <span className="sr-only">第一页</span>
-                <IconChevronsLeft className="h-4 w-4" />
+                <IconChevronsLeft />
               </Button>
               <Button
                 variant="outline"
@@ -316,7 +316,7 @@ export function OrganizationSelectionTable({
                 disabled={pagination.pageIndex === 0}
               >
                 <span className="sr-only">上一页</span>
-                <IconChevronLeft className="h-4 w-4" />
+                <IconChevronLeft />
               </Button>
               <Button
                 variant="outline"
@@ -325,7 +325,7 @@ export function OrganizationSelectionTable({
                 disabled={pagination.pageIndex >= totalPages - 1}
               >
                 <span className="sr-only">下一页</span>
-                <IconChevronRight className="h-4 w-4" />
+                <IconChevronRight />
               </Button>
               <Button
                 variant="outline"
@@ -334,7 +334,7 @@ export function OrganizationSelectionTable({
                 disabled={pagination.pageIndex >= totalPages - 1}
               >
                 <span className="sr-only">最后一页</span>
-                <IconChevronsRight className="h-4 w-4" />
+                <IconChevronsRight />
               </Button>
             </div>
           </div>

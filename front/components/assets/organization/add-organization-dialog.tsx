@@ -134,7 +134,7 @@ export function AddOrganizationDialog({
       {externalOpen === undefined && (
         <DialogTrigger asChild>
           <Button size="sm">
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus />
             添加组织
           </Button>
         </DialogTrigger>
@@ -144,7 +144,7 @@ export function AddOrganizationDialog({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
-            <Building2 className="h-5 w-5" />
+            <Building2 />
             <span>添加新组织</span>
           </DialogTitle>
           <DialogDescription>
@@ -208,12 +208,12 @@ export function AddOrganizationDialog({
             >
               {createOrganization.isPending ? (
                 <>
-                  <LoadingSpinner size="sm" className="mr-2" />
+                  <LoadingSpinner/>
                   创建中...
                 </>
               ) : (
                 <>
-                  <Plus className="h-4 w-4 mr-2" />
+                  <Plus />
                   创建组织
                 </>
               )}

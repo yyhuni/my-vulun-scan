@@ -47,20 +47,20 @@ function DomainRowActions({
           variant="ghost"
           className="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
         >
-          <MoreHorizontal className="h-4 w-4" />
+          <MoreHorizontal />
           <span className="sr-only">打开菜单</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[160px]">
         <DropdownMenuItem asChild>
           <Link href={`/assets/domain/${domain.id}`} className="cursor-pointer">
-            <Eye className="mr-2 h-4 w-4" />
+            <Eye />
             查看详细
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={onEdit}>
-          <Edit className="mr-2 h-4 w-4" />
+          <Edit />
           编辑
         </DropdownMenuItem>
         <DropdownMenuSeparator />
@@ -68,7 +68,7 @@ function DomainRowActions({
           onClick={onDelete}
           className="text-destructive focus:text-destructive"
         >
-          <Trash2 className="mr-2 h-4 w-4" />
+          <Trash2 />
           删除
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -101,11 +101,11 @@ function DataTableColumnHeader({
     >
       {title}
       {isSorted === "asc" ? (
-        <ChevronUp className="h-4 w-4" />
+        <ChevronUp />
       ) : isSorted === "desc" ? (
-        <ChevronDown className="h-4 w-4" />
+        <ChevronDown />
       ) : (
-        <ChevronsUpDown className="h-4 w-4" />
+        <ChevronsUpDown />
       )}
     </Button>
   )

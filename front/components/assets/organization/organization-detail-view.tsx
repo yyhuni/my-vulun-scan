@@ -73,7 +73,7 @@ export function OrganizationDetailView({ organizationId }: OrganizationDetailVie
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-primary/10 rounded-lg">
-                <IconBuilding className="h-6 w-6 text-primary" />
+                <IconBuilding className="text-primary" />
               </div>
               <div>
                 <CardTitle className="text-2xl">{organization.name}</CardTitle>
@@ -90,7 +90,7 @@ export function OrganizationDetailView({ organizationId }: OrganizationDetailVie
           {organization.description && (
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <IconFileText className="h-4 w-4" />
+                <IconFileText />
                 <span>Description</span>
               </div>
               <p className="text-sm pl-6">{organization.description}</p>
@@ -102,7 +102,7 @@ export function OrganizationDetailView({ organizationId }: OrganizationDetailVie
             {/* 创建时间 */}
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <IconCalendar className="h-4 w-4" />
+                <IconCalendar />
                 <span>Created At</span>
               </div>
               <p className="text-sm pl-6 font-mono">{formatDate(organization.createdAt)}</p>
@@ -111,7 +111,7 @@ export function OrganizationDetailView({ organizationId }: OrganizationDetailVie
             {/* 更新时间 */}
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <IconClock className="h-4 w-4" />
+                <IconClock />
                 <span>Updated At</span>
               </div>
               <p className="text-sm pl-6 font-mono">{formatDate(organization.updatedAt)}</p>

@@ -48,7 +48,7 @@ export default function OrganizationLayout({
       <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
-            <Building2 className="h-12 w-12 mx-auto text-destructive mb-4" />
+            <Building2 className="mx-auto text-destructive mb-4" />
             <h3 className="text-lg font-semibold mb-2">加载失败</h3>
             <p className="text-muted-foreground">
               {error.message || "获取组织数据时出现错误"}
@@ -64,7 +64,7 @@ export default function OrganizationLayout({
       <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
-            <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <Building2 className="mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">组织不存在</h3>
             <p className="text-muted-foreground">
               未找到ID为 {id} 的组织
@@ -81,7 +81,7 @@ export default function OrganizationLayout({
       <div className="flex items-center justify-between px-4 lg:px-6">
         <div>
           <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Building2 className="h-6 w-6" />
+            <Building2 />
             {organization.name}
           </h2>
           <p className="text-muted-foreground">{organization.description}</p>

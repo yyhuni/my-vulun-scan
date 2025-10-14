@@ -252,7 +252,7 @@ export function SubdomainsList({
             >
               {deleteSubdomain.isPending ? (
                 <>
-                  <LoadingSpinner size="sm" className="mr-2" />
+                  <LoadingSpinner/>
                   删除中...
                 </>
               ) : (
@@ -293,7 +293,7 @@ export function SubdomainsList({
             >
               {batchDeleteSubdomains.isPending ? (
                 <>
-                  <LoadingSpinner size="sm" className="mr-2" />
+                  <LoadingSpinner/>
                   删除中...
                 </>
               ) : (

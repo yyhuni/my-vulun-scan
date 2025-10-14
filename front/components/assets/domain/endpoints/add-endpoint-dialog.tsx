@@ -247,7 +247,7 @@ export function AddEndpointDialog({
       {externalOpen === undefined && (
         <DialogTrigger asChild>
           <Button size="sm">
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus />
             Add Endpoint
           </Button>
         </DialogTrigger>
@@ -257,7 +257,7 @@ export function AddEndpointDialog({
       <DialogContent className="sm:max-w-[700px] max-h-[95vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
-            <Link className="h-5 w-5" />
+            <Link />
             <span>Add Endpoint</span>
           </DialogTitle>
           <DialogDescription>
@@ -323,7 +323,7 @@ https://example.com/status`}
             {validationErrors.length > 0 && (
               <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3">
                 <div className="flex items-center gap-2 mb-2">
-                  <AlertCircle className="h-4 w-4 text-destructive" />
+                  <AlertCircle className="text-destructive" />
                   <span className="text-sm font-medium text-destructive">URL 格式错误</span>
                 </div>
                 <ul className="text-xs text-destructive space-y-1">
@@ -468,12 +468,12 @@ https://example.com/status`}
             >
               {createEndpoint.isPending ? (
                 <>
-                  <LoadingSpinner size="sm" className="mr-2" />
+                  <LoadingSpinner/>
                   创建中...
                 </>
               ) : (
                 <>
-                  <Plus className="h-4 w-4 mr-2" />
+                  <Plus />
                   添加 {parsedUrls.length > 0 ? `${parsedUrls.length} 个` : ''} URL
                 </>
               )}

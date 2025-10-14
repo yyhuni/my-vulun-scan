@@ -114,7 +114,7 @@ const confirmBulkDelete = async () => {
       >
         {deleteEndpoint.isPending ? (
           <>
-            <LoadingSpinner size="sm" className="mr-2" />
+            <LoadingSpinner/>
             删除中...
           </>
         ) : (
@@ -158,7 +158,7 @@ const confirmBulkDelete = async () => {
       >
         {batchDeleteEndpoints.isPending ? (
           <>
-            <LoadingSpinner size="sm" className="mr-2" />
+            <LoadingSpinner/>
             删除中...
           </>
         ) : (

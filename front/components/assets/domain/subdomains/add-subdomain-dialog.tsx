@@ -179,7 +179,7 @@ export function AddSubdomainDialog({
       {externalOpen === undefined && (
         <DialogTrigger asChild>
           <Button size="sm">
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus />
             添加子域名
           </Button>
         </DialogTrigger>
@@ -189,7 +189,7 @@ export function AddSubdomainDialog({
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
-            <Network className="h-5 w-5" />
+            <Network />
             <span>添加子域名</span>
           </DialogTitle>
           <DialogDescription>
@@ -216,7 +216,7 @@ export function AddSubdomainDialog({
               />
               <div className="flex justify-between items-center text-xs">
                 <span className="text-muted-foreground flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
+                  <AlertCircle />
                   所有子域名必须属于 {domainName}
                 </span>
                 <span className="font-medium text-primary">
@@ -229,7 +229,7 @@ export function AddSubdomainDialog({
             {domainAnalysis.totalCount > 0 && (
               <div className="grid gap-3 p-4 bg-muted/50 rounded-lg border">
                 <div className="flex items-center gap-2">
-                  <Info className="h-4 w-4 text-blue-500" />
+                  <Info className="text-blue-500" />
                   <span className="text-sm font-medium">验证结果</span>
                 </div>
                 
@@ -261,7 +261,7 @@ export function AddSubdomainDialog({
                         onClick={handleRemoveInvalid}
                         disabled={createSubdomainMutation.isPending}
                       >
-                        <X className="h-3 w-3 mr-1" />
+                        <X />
                         移除无效项
                       </Button>
                     </div>
@@ -294,12 +294,12 @@ export function AddSubdomainDialog({
             >
               {createSubdomainMutation.isPending ? (
                 <>
-                  <LoadingSpinner size="sm" className="mr-2" />
+                  <LoadingSpinner/>
                   创建中...
                 </>
               ) : (
                 <>
-                  <Plus className="h-4 w-4 mr-2" />
+                  <Plus />
                   创建子域名
                 </>
               )}

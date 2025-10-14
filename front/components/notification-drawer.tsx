@@ -115,9 +115,9 @@ export function NotificationDrawer() {
       )} />
     }
     if (type === "scan") {
-      return <Activity className="h-5 w-5 text-blue-500" />
+      return <Activity className="text-blue-500" />
     }
-    return <Info className="h-5 w-5 text-gray-500" />
+    return <Info className="text-gray-500" />
   }
 
   // 获取严重等级徽章
@@ -191,7 +191,7 @@ export function NotificationDrawer() {
                       console.log("标记已读:", notification.id)
                     }}
                   >
-                    <Check className="mr-1 h-3 w-3" />
+                    <Check />
                     标记已读
                   </Button>
                   <Button
@@ -203,7 +203,7 @@ export function NotificationDrawer() {
                       console.log("删除:", notification.id)
                     }}
                   >
-                    <Trash2 className="mr-1 h-3 w-3" />
+                    <Trash2 />
                     删除
                   </Button>
                 </div>
@@ -249,7 +249,7 @@ export function NotificationDrawer() {
                   console.log("全部标记为已读")
                 }}
               >
-                <CheckCheck className="mr-2 h-4 w-4" />
+                <CheckCheck />
                 全部已读
               </Button>
             </div>
