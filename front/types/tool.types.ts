@@ -5,7 +5,7 @@ export interface Tool {
   repoUrl: string          // 仓库地址
   version: string           // 版本号
   description: string       // 工具描述
-  categoryName: string      // 分类名称
+  categoryNames: string[]   // 分类标签数组（支持多个）
   createdAt: string
   updatedAt: string
 }
@@ -43,7 +43,7 @@ export interface CreateToolRequest {
   repoUrl?: string
   version?: string
   description?: string
-  categoryName?: string
+  categoryNames?: string[]  // 分类标签数组
 }
 
 // 获取分类列表响应

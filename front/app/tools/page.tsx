@@ -28,10 +28,12 @@ export default function ToolsPage() {
 
   const tools = data?.tools || []
   
-  // 按分类筛选工具
+  // 按分类筛选工具（支持多标签）
   const filteredTools = useMemo(() => {
     if (activeCategoryId === "all") return tools
-    return tools.filter(tool => tool.categoryName === activeCategoryId)
+    return tools.filter(tool => 
+      tool.categoryNames && tool.categoryNames.includes(activeCategoryId)
+    )
   }, [tools, activeCategoryId])
   
   const isLoading = categoriesLoading || toolsLoading
@@ -107,7 +109,9 @@ export default function ToolsPage() {
             
             {/* 动态分类标签 */}
             {categories.map((categoryName) => {
-              const count = tools.filter(t => t.categoryName === categoryName).length
+              const count = tools.filter(t => 
+                t.categoryNames && t.categoryNames.includes(categoryName)
+              ).length
               return (
                 <TabsTrigger key={categoryName} value={categoryName}>
                   {CategoryNameMap[categoryName] || categoryName} ({count})

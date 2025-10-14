@@ -20,20 +20,44 @@ func NewCategoryService() *CategoryService {
 	}
 }
 
-// GetCategories 获取所有可用的工具分类（从 tools 表去重获取）
+// GetCategories 获取所有可用的工具分类（从 tools 表的 JSONB 数组中提取去重）
 func (s *CategoryService) GetCategories() (*models.GetCategoriesResponse, error) {
-	var categories []string
+	var tools []models.Tool
 
-	// 从 tools 表中查询所有不重复的 category_name，过滤掉空值
+	// 查询所有工具的分类数组
 	result := s.db.Model(&models.Tool{}).
-		Distinct("category_name").
-		Where("category_name != ?", "").
-		Order("category_name ASC").
-		Pluck("category_name", &categories)
+		Select("category_names").
+		Where("category_names IS NOT NULL").
+		Find(&tools)
 
 	if result.Error != nil {
-		log.Error().Err(result.Error).Msg("Failed to query categories")
+		log.Error().Err(result.Error).Msg("Failed to query tools")
 		return nil, result.Error
+	}
+
+	// 使用 map 去重收集所有分类
+	categoryMap := make(map[string]bool)
+	for _, tool := range tools {
+		for _, category := range tool.CategoryNames {
+			if category != "" {
+				categoryMap[category] = true
+			}
+		}
+	}
+
+	// 转换为数组并排序
+	categories := make([]string, 0, len(categoryMap))
+	for category := range categoryMap {
+		categories = append(categories, category)
+	}
+
+	// 简单排序
+	for i := 0; i < len(categories)-1; i++ {
+		for j := i + 1; j < len(categories); j++ {
+			if categories[i] > categories[j] {
+				categories[i], categories[j] = categories[j], categories[i]
+			}
+		}
 	}
 
 	log.Info().

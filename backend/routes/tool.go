@@ -26,7 +26,7 @@ func SetupToolRoutes(api *gin.RouterGroup) {
 		tools.GET("", handlers.GetTools)
 
 		// 创建工具
-		// 请求体示例：{"name": "Nuclei", "repo_url": "https://github.com/projectdiscovery/nuclei", "version": "v3.0.0", "description": "Fast and customisable vulnerability scanner", "category_name": "vulnerability"}
+		// 请求体示例：{"name": "Nuclei", "repo_url": "https://github.com/projectdiscovery/nuclei", "version": "v3.0.0", "description": "Fast and customisable vulnerability scanner", "category_names": ["vulnerability"]}
 		tools.POST("/create", handlers.CreateTool)
 	}
 }

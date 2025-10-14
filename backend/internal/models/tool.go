@@ -12,11 +12,11 @@ type Tool struct {
 	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime;index"`
 
 	// 核心业务字段
-	Name         string `json:"name" gorm:"not null;index;size:255"`
-	RepoURL      string `json:"repo_url" gorm:"size:512"`
-	Version      string `json:"version" gorm:"size:100"`
-	Description  string `json:"description" gorm:"type:text"`
-	CategoryName string `json:"category_name" gorm:"index;size:50"` // 工具分类名称
+	Name          string   `json:"name" gorm:"not null;index;size:255"`
+	RepoURL       string   `json:"repo_url" gorm:"size:512"`
+	Version       string   `json:"version" gorm:"size:100"`
+	Description   string   `json:"description" gorm:"type:text"`
+	CategoryNames []string `json:"category_names" gorm:"type:jsonb;serializer:json"` // 工具分类标签数组
 }
 
 // GetToolsRequest 获取工具列表请求
@@ -38,11 +38,11 @@ type GetToolsResponse struct {
 
 // CreateToolRequest 创建工具请求
 type CreateToolRequest struct {
-	Name         string `json:"name" binding:"required"`
-	RepoURL      string `json:"repo_url"`
-	Version      string `json:"version"`
-	Description  string `json:"description"`
-	CategoryName string `json:"category_name"` // 工具分类名称
+	Name          string   `json:"name" binding:"required"`
+	RepoURL       string   `json:"repo_url"`
+	Version       string   `json:"version"`
+	Description   string   `json:"description"`
+	CategoryNames []string `json:"category_names"` // 工具分类标签数组
 }
 
 // ToolResponseData 工具响应数据（用于创建、更新、获取单个工具）

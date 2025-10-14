@@ -30,24 +30,15 @@ export function ToolCard({ tool, onCheckUpdate }: ToolCardProps) {
   const displayName = tool.name.charAt(0).toUpperCase() + tool.name.slice(1)
   
   return (
-    <Card className="relative flex flex-col h-full hover:shadow-lg transition-shadow">
-      {/* 分类标签 */}
-      {tool.categoryName && (
-        <div className="absolute top-3 right-3 z-10">
-          <Badge variant="secondary" className="text-xs">
-            {CategoryNameMap[tool.categoryName] || tool.categoryName}
-          </Badge>
-        </div>
-      )}
-
-      <CardHeader className="pt-6 pb-4">
+    <Card className="flex flex-col h-full hover:shadow-lg transition-shadow">
+      <CardHeader className=" space-y-2">
         {/* 工具名称 */}
         <CardTitle className="text-center text-2xl font-bold">
           {displayName}
         </CardTitle>
 
         {/* GitHub/仓库链接 */}
-        <div className="flex items-center justify-center gap-3 mt-3">
+        <div className="flex items-center justify-center">
           {tool.repoUrl && (
             <Link 
               href={tool.repoUrl}
@@ -60,28 +51,50 @@ export function ToolCard({ tool, onCheckUpdate }: ToolCardProps) {
             </Link>
           )}
         </div>
+
+        {/* 分类标签（居中显示，超出显示省略号）*/}
+        {tool.categoryNames && tool.categoryNames.length > 0 && (
+          <div className="flex items-center justify-center pt-1">
+            <div className="flex flex-wrap gap-1 justify-center max-w-full">
+              {tool.categoryNames.slice(0, 3).map((categoryName) => (
+                <Badge key={categoryName} variant="secondary" className="text-xs whitespace-nowrap">
+                  {CategoryNameMap[categoryName] || categoryName}
+                </Badge>
+              ))}
+              {tool.categoryNames.length > 3 && (
+                <Badge variant="secondary" className="text-xs">
+                  ...
+                </Badge>
+              )}
+            </div>
+          </div>
+        )}
       </CardHeader>
 
-      <CardContent className="flex-1 pb-4">
-        {/* 当前版本 */}
-        <div className="mb-4">
-          <p className="text-sm text-muted-foreground mb-2 font-medium">Current Installed Version</p>
-          <p className="text-primary font-semibold text-sm">{tool.version}</p>
+      <CardContent className="flex-1 flex flex-col">
+        {/* 当前安装版本 */}
+        <div className="mb-2">
+          <div className="text-xs text-muted-foreground text-center mb-1">
+            Current Installed Version
+          </div>
+          <div className="text-center font-semibold text-base">
+            {tool.version || 'N/A'}
+          </div>
         </div>
 
         {/* 工具描述 */}
-        <div className="text-sm text-muted-foreground leading-relaxed">
-          <HighlightedDescription description={tool.description} />
-        </div>
+        <CardDescription className="flex-1 text-center line-clamp-3 text-sm leading-snug">
+          {tool.description || 'No description available'}
+        </CardDescription>
       </CardContent>
 
-      <CardFooter className="pt-0">
-        <Button 
-          className="w-full"
+      <CardFooter >
+        <Button
           variant="default"
+          className="w-full"
           onClick={() => onCheckUpdate?.(tool.id)}
         >
-          <IconRefresh className="h-4 w-4 mr-2" />
+          <IconRefresh/>
           Check Update
         </Button>
       </CardFooter>

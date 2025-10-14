@@ -65,11 +65,11 @@ func (s *ToolService) GetTools(req models.GetToolsRequest) (*models.GetToolsResp
 func (s *ToolService) CreateTool(req models.CreateToolRequest) (*models.Tool, error) {
 
 	tool := models.Tool{
-		Name:         req.Name,
-		RepoURL:      req.RepoURL,
-		Version:      req.Version,
-		Description:  req.Description,
-		CategoryName: req.CategoryName,
+		Name:          req.Name,
+		RepoURL:       req.RepoURL,
+		Version:       req.Version,
+		Description:   req.Description,
+		CategoryNames: req.CategoryNames,
 	}
 
 	result := s.db.Create(&tool)
