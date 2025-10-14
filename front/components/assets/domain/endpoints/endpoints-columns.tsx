@@ -82,7 +82,7 @@ function DataTableColumnHeader({
   title: string
 }) {
   if (!column.getCanSort()) {
-    return <div className="font-medium">{title}</div>
+    return <div className="-ml-3 font-medium">{title}</div>
   }
 
   const isSorted = column.getIsSorted()
@@ -91,7 +91,7 @@ function DataTableColumnHeader({
     <Button
       variant="ghost"
       onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-      className="h-8 data-[state=open]:bg-accent hover:bg-muted"
+      className="-ml-3 h-8 data-[state=open]:bg-accent hover:bg-muted"
     >
       {title}
       {isSorted === "asc" ? (
@@ -190,11 +190,10 @@ export const createEndpointColumns = ({
       <DataTableColumnHeader column={column} title="ID" />
     ),
     cell: ({ row }) => (
-      <div className="w-[80px] text-sm text-muted-foreground">
+      <div className="text-sm text-muted-foreground">
         {row.getValue("id")}
       </div>
     ),
-    enableSorting: false,
   },
 
   // URL 列
@@ -220,11 +219,11 @@ export const createEndpointColumns = ({
       }
       
       return (
-        <div className="flex items-center gap-2 group">
+        <div className="flex items-center gap-2 group max-w-md">
           <TooltipProvider delayDuration={500} skipDelayDuration={0}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="text-sm font-mono max-w-[400px] truncate cursor-default inline-block">
+                <div className="text-sm font-mono truncate cursor-default min-w-0 flex-1">
                   {url}
                 </div>
               </TooltipTrigger>
@@ -265,7 +264,6 @@ export const createEndpointColumns = ({
         </div>
       )
     },
-    enableSorting: false,
   },
 
   // Endpoint 列（从 URL 中提取路径）
@@ -305,11 +303,11 @@ export const createEndpointColumns = ({
       }
       
       return (
-        <div className="flex items-center gap-2 group">
+        <div className="flex items-center gap-2 group max-w-sm">
           <TooltipProvider delayDuration={500} skipDelayDuration={0}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="text-sm font-mono max-w-[200px] truncate cursor-default inline-block">
+                <div className="text-sm font-mono truncate cursor-default min-w-0 flex-1">
                   {endpoint}
                 </div>
               </TooltipTrigger>
@@ -350,7 +348,6 @@ export const createEndpointColumns = ({
         </div>
       )
     },
-    enableSorting: false,
   },
 
   // HTTP 方法列
@@ -377,7 +374,6 @@ export const createEndpointColumns = ({
         </Badge>
       )
     },
-    enableSorting: false,
   },
 
   // 状态码列
@@ -387,7 +383,6 @@ export const createEndpointColumns = ({
       <DataTableColumnHeader column={column} title="状态码" />
     ),
     cell: ({ row }) => <HttpStatusBadge statusCode={row.getValue("statusCode")} />,
-    enableSorting: false,
   },
 
   // 标题列
@@ -406,7 +401,7 @@ export const createEndpointColumns = ({
         <TooltipProvider delayDuration={500} skipDelayDuration={0}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="text-sm font-medium max-w-[200px] truncate cursor-default inline-block">
+              <div className="text-sm font-medium truncate cursor-default block max-w-xs">
                 {title}
               </div>
             </TooltipTrigger>
@@ -422,7 +417,6 @@ export const createEndpointColumns = ({
         </TooltipProvider>
       )
     },
-    enableSorting: false,
   },
 
   // 内容长度列
@@ -439,7 +433,6 @@ export const createEndpointColumns = ({
         </div>
       )
     },
-    enableSorting: false,
   },
 
   // 更新时间列
@@ -453,7 +446,6 @@ export const createEndpointColumns = ({
         {formatDate(row.getValue("updatedAt"))}
       </div>
     ),
-    enableSorting: false,
   },
 
   // 操作列

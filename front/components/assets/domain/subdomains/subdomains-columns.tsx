@@ -142,7 +142,7 @@ export const createSubdomainColumns = ({
       <DataTableColumnHeader column={column} title="ID" />
     ),
     cell: ({ row }) => (
-      <div className="w-[80px] text-sm text-muted-foreground">
+      <div className="text-sm text-muted-foreground">
         {row.getValue("id")}
       </div>
     ),
@@ -171,11 +171,11 @@ export const createSubdomainColumns = ({
       }
       
       return (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 max-w-md">
           <TooltipProvider delayDuration={500} skipDelayDuration={0}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="text-sm font-medium max-w-[400px] truncate cursor-default inline-block">
+                <div className="text-sm font-medium truncate cursor-default min-w-0 flex-1">
                   {name}
                 </div>
               </TooltipTrigger>
@@ -231,7 +231,7 @@ export const createSubdomainColumns = ({
       const domainName = domain?.name || "-"
       
       return (
-        <div className="text-sm max-w-[300px] truncate">
+        <div className="text-sm truncate">
           {domainName}
         </div>
       )

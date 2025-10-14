@@ -51,7 +51,7 @@ function DomainRowActions({
           <span className="sr-only">打开菜单</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[160px]">
+      <DropdownMenuContent align="end">
         <DropdownMenuItem asChild>
           <Link href={`/assets/domain/${domain.id}`} className="cursor-pointer">
             <Eye />
@@ -97,7 +97,7 @@ function DataTableColumnHeader({
     <Button
       variant="ghost"
       onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-      className="-ml-3 h-8 data-[state=open]:bg-accent"
+      className="-ml-3 h-8 data-[state=open]:bg-accent hover:bg-muted"
     >
       {title}
       {isSorted === "asc" ? (
@@ -155,7 +155,7 @@ export const createDomainColumns = ({
       <DataTableColumnHeader column={column} title="ID" />
     ),
     cell: ({ row }) => (
-      <div className="w-[80px] text-sm text-muted-foreground">
+      <div className="text-sm text-muted-foreground">
         {row.getValue("id")}
       </div>
     ),
@@ -172,7 +172,7 @@ export const createDomainColumns = ({
       return (
         <Link 
           href={`/assets/domain/${domain.id}`}
-          className="w-[200px] font-medium text-primary hover:underline block"
+          className="font-medium text-primary hover:underline block"
         >
           {row.getValue("name")}
         </Link>
@@ -189,8 +189,8 @@ export const createDomainColumns = ({
     cell: ({ row }) => {
       const description = row.getValue("description") as string
       return (
-        <div className="flex space-x-2">
-          <span className="max-w-[300px] truncate text-muted-foreground">
+        <div className="max-w-md">
+          <span className="block truncate text-muted-foreground">
             {description || "-"}
           </span>
         </div>
@@ -222,7 +222,7 @@ export const createDomainColumns = ({
             <Badge 
               key={org.id} 
               variant="secondary" 
-              className="justify-start max-w-[200px] truncate text-xs"
+              className="justify-start truncate text-xs"
               title={org.name}
             >
               {org.name}

@@ -95,7 +95,7 @@ function DataTableColumnHeader({
     <Button
       variant="ghost"
       onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-      className="-ml-3 h-8 data-[state=open]:bg-accent"
+      className="-ml-3 h-8 data-[state=open]:bg-accent hover:bg-muted"
     >
       {title}
       {isSorted === "asc" ? (
@@ -155,7 +155,7 @@ export const createOrganizationColumns = ({
       <DataTableColumnHeader column={column} title="ID" />
     ),
     cell: ({ row }) => (
-      <div className="w-[80px] text-sm text-muted-foreground">
+      <div className="text-sm text-muted-foreground">
         {row.getValue("id")}
       </div>
     ),
@@ -170,7 +170,7 @@ export const createOrganizationColumns = ({
     cell: ({ row }) => {
       const name = row.getValue("name") as string
       return (
-        <div className="w-[150px] font-medium">
+        <div className="font-medium">
           <Button
             variant="link"
             className="p-0 h-auto font-medium text-left justify-start max-w-full truncate"
@@ -193,8 +193,8 @@ export const createOrganizationColumns = ({
     cell: ({ row }) => {
       const description = row.getValue("description") as string
       return (
-        <div className="flex space-x-2">
-          <span className="max-w-[300px] truncate text-muted-foreground">
+        <div className="max-w-md">
+          <span className="block truncate text-muted-foreground">
             {description || "-"}
           </span>
         </div>
