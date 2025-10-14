@@ -83,7 +83,7 @@ export function NavUser({
           </DropdownMenuTrigger>
           {/* 下拉菜单内容 */}
           <DropdownMenuContent
-            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg" // 宽度和圆角
+            className="rounded-lg"                                     // 圆角
             side={isMobile ? "bottom" : "right"}                        // 移动端下方，桌面端右侧
             align="end"                                                 // 端对齐
             sideOffset={4}                                             // 偏移4像素

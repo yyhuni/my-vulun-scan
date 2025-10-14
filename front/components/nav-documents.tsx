@@ -80,7 +80,7 @@ export function NavDocuments({
               </DropdownMenuTrigger>
               {/* 下拉菜单内容 */}
               <DropdownMenuContent
-                className="w-24 rounded-lg"                      // 宽度和圆角
+                className="rounded-lg"                           // 圆角
                 side={isMobile ? "bottom" : "right"}             // 移动端下方，桌面端右侧
                 align={isMobile ? "end" : "start"}               // 对齐方式
               >

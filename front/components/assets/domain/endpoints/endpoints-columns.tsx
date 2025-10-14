@@ -53,7 +53,7 @@ function EndpointRowActions({
           <span className="sr-only">打开菜单</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[160px]">
+      <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={onView}>
           <Eye />
           查看详情

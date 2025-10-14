@@ -194,7 +194,7 @@ export function SubdomainsDataTable({
                 <IconChevronDown />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[150px]">
+            <DropdownMenuContent align="end">
               {table
                 .getAllColumns()
                 .filter(

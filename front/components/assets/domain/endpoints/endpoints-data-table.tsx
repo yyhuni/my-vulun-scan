@@ -191,7 +191,7 @@ export function EndpointsDataTable({
                 <IconChevronDown />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[150px]">
+            <DropdownMenuContent align="end">
               {table
                 .getAllColumns()
                 .filter(
