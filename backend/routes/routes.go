@@ -32,4 +32,7 @@ func SetupRoutes(api *gin.RouterGroup) {
 
 	// 设置端点路由
 	SetupEndpointRoutes(api)
+
+	// 设置工具路由
+	SetupToolRoutes(api)
 }

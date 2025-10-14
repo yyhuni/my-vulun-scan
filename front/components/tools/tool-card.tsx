@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { IconBrandGithub, IconScale, IconRefresh } from "@tabler/icons-react"
 import type { Tool } from "@/types/tool.types"
+import { CategoryNameMap } from "@/types/tool.types"
 import Link from "next/link"
 
 interface ToolCardProps {
@@ -25,35 +26,37 @@ function HighlightedDescription({ description }: { description: string }) {
  * 显示单个扫描工具的信息
  */
 export function ToolCard({ tool, onCheckUpdate }: ToolCardProps) {
+  // 从 name 生成首字母大写的 displayName
+  const displayName = tool.name.charAt(0).toUpperCase() + tool.name.slice(1)
+  
   return (
     <Card className="relative flex flex-col h-full hover:shadow-lg transition-shadow">
-      {/* 默认工具标签 */}
-      {tool.isDefault && (
-        <div className="absolute top-3 left-3 z-10">
-          <Badge>
-            Default Tool
+      {/* 分类标签 */}
+      {tool.categoryName && (
+        <div className="absolute top-3 right-3 z-10">
+          <Badge variant="secondary" className="text-xs">
+            {CategoryNameMap[tool.categoryName] || tool.categoryName}
           </Badge>
         </div>
       )}
 
-      <CardHeader className="pt-8 pb-4">
+      <CardHeader className="pt-6 pb-4">
         {/* 工具名称 */}
         <CardTitle className="text-center text-2xl font-bold">
-          {tool.displayName}
+          {displayName}
         </CardTitle>
 
-
-        {/* GitHub 和 License 链接 */}
+        {/* GitHub/仓库链接 */}
         <div className="flex items-center justify-center gap-3 mt-3">
-          {tool.githubUrl && (
+          {tool.repoUrl && (
             <Link 
-              href={tool.githubUrl}
+              href={tool.repoUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1 text-sm text-primary hover:underline"
             >
               <IconBrandGithub className="h-4 w-4" />
-              <span>Github</span>
+              <span>Repository</span>
             </Link>
           )}
         </div>

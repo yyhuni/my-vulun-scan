@@ -1,19 +1,31 @@
-// 工具类型定义
+// 工具类型定义（匹配后端 API）
 export interface Tool {
   id: number
   name: string              // 工具名称
-  displayName: string       // 显示名称
+  repoUrl: string          // 仓库地址
+  version: string           // 版本号
   description: string       // 工具描述
-  version: string           // 当前安装版本
-  logo?: string             // 工具 Logo URL
-  githubUrl?: string        // GitHub 链接
-  licenseUrl?: string       // License 链接
-  license?: string          // License 类型
-  isDefault: boolean        // 是否为默认工具
-  category?: string         // 工具类别
-  status: 'active' | 'inactive' | 'updating'  // 工具状态
+  categoryName: string      // 分类名称
   createdAt: string
   updatedAt: string
+}
+
+// 工具分类名称到中文的映射
+export const CategoryNameMap: Record<string, string> = {
+  subdomain: '子域名扫描',
+  vulnerability: '漏洞扫描',
+  port: '端口扫描',
+  directory: '目录扫描',
+  dns: 'DNS解析',
+  http: 'HTTP探测',
+  crawler: '网页爬虫',
+  recon: '信息收集',
+  fuzzer: '模糊测试',
+  wordlist: '字典生成',
+  screenshot: '截图工具',
+  exploit: '漏洞利用',
+  network: '网络扫描',
+  other: '其他',
 }
 
 // 工具列表响应类型
@@ -28,26 +40,24 @@ export interface ToolsResponse {
 // 创建工具请求类型
 export interface CreateToolRequest {
   name: string
-  displayName: string
-  description: string
-  version: string
-  githubUrl?: string
-  licenseUrl?: string
-  license?: string
-  isDefault?: boolean
-  category?: string
+  repoUrl?: string
+  version?: string
+  description?: string
+  categoryName?: string
 }
 
-// 更新工具请求类型
-export interface UpdateToolRequest {
-  displayName?: string
-  description?: string
-  version?: string
-  githubUrl?: string
-  licenseUrl?: string
-  license?: string
-  category?: string
-  status?: 'active' | 'inactive' | 'updating'
+// 获取分类列表响应
+export interface CategoriesResponse {
+  categories: string[]  // 分类名称数组
+  total: number
+}
+
+// 工具查询参数
+export interface GetToolsParams {
+  page?: number
+  pageSize?: number
+  sortBy?: string
+  sortOrder?: 'asc' | 'desc'
 }
 
 // 工具过滤类型

@@ -8,5 +8,6 @@ func GetAllModels() []interface{} {
 		&OrganizationDomain{},
 		&SubDomain{},
 		&Endpoint{},
+		&Tool{},
 	}
 }

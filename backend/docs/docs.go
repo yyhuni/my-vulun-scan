@@ -15,6 +15,44 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/categories": {
+            "get": {
+                "description": "从工具表中获取所有已使用的分类名称（去重）",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "工具管理"
+                ],
+                "summary": "获取所有工具分类",
+                "responses": {
+                    "200": {
+                        "description": "获取成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/models.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.GetCategoriesResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/domains": {
             "get": {
                 "description": "获取系统中的所有域名，支持分页和排序",
@@ -70,13 +108,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                    "$ref": "#/definitions/models.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.GetAllDomainsResponse"
+                                            "$ref": "#/definitions/models.GetAllDomainsResponse"
                                         }
                                     }
                                 }
@@ -86,13 +124,13 @@ const docTemplate = `{
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -118,7 +156,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.CreateDomainsRequest"
+                            "$ref": "#/definitions/models.CreateDomainsRequest"
                         }
                     }
                 ],
@@ -128,7 +166,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                    "$ref": "#/definitions/models.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -136,7 +174,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/vulun-scan-backend_internal_models.Domain"
+                                                "$ref": "#/definitions/models.Domain"
                                             }
                                         }
                                     }
@@ -147,19 +185,19 @@ const docTemplate = `{
                     "400": {
                         "description": "请求参数错误（如域名列表为空、参数格式错误等）",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "404": {
                         "description": "指定的组织不存在",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -185,7 +223,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.UpdateDomainRequest"
+                            "$ref": "#/definitions/models.UpdateDomainRequest"
                         }
                     }
                 ],
@@ -195,13 +233,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                    "$ref": "#/definitions/models.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.DomainResponseData"
+                                            "$ref": "#/definitions/models.DomainResponseData"
                                         }
                                     }
                                 }
@@ -211,19 +249,19 @@ const docTemplate = `{
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "404": {
                         "description": "域名不存在",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -255,13 +293,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                    "$ref": "#/definitions/models.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.Domain"
+                                            "$ref": "#/definitions/models.Domain"
                                         }
                                     }
                                 }
@@ -271,13 +309,13 @@ const docTemplate = `{
                     "404": {
                         "description": "域名不存在",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -333,13 +371,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                    "$ref": "#/definitions/models.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.GetSubDomainsResponse"
+                                            "$ref": "#/definitions/models.GetSubDomainsResponse"
                                         }
                                     }
                                 }
@@ -349,19 +387,19 @@ const docTemplate = `{
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "404": {
                         "description": "域名不存在",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -395,7 +433,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.CreateSubDomainsForDomainRequest"
+                            "$ref": "#/definitions/models.CreateSubDomainsForDomainRequest"
                         }
                     }
                 ],
@@ -405,13 +443,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                    "$ref": "#/definitions/models.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.CreateSubDomainsResponseData"
+                                            "$ref": "#/definitions/models.CreateSubDomainsResponseData"
                                         }
                                     }
                                 }
@@ -421,19 +459,19 @@ const docTemplate = `{
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "404": {
                         "description": "域名不存在",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -481,13 +519,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                    "$ref": "#/definitions/models.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.GetEndpointsResponse"
+                                            "$ref": "#/definitions/models.GetEndpointsResponse"
                                         }
                                     }
                                 }
@@ -497,7 +535,7 @@ const docTemplate = `{
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -523,7 +561,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.BatchDeleteEndpointsRequest"
+                            "$ref": "#/definitions/models.BatchDeleteEndpointsRequest"
                         }
                     }
                 ],
@@ -533,13 +571,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                    "$ref": "#/definitions/models.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.BatchDeleteEndpointsResponseData"
+                                            "$ref": "#/definitions/models.BatchDeleteEndpointsResponseData"
                                         }
                                     }
                                 }
@@ -549,19 +587,19 @@ const docTemplate = `{
                     "400": {
                         "description": "业务逻辑错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "422": {
                         "description": "请求参数验证失败",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -587,7 +625,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.CreateEndpointsRequest"
+                            "$ref": "#/definitions/models.CreateEndpointsRequest"
                         }
                     }
                 ],
@@ -597,13 +635,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                    "$ref": "#/definitions/models.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.CreateEndpointsResponseData"
+                                            "$ref": "#/definitions/models.CreateEndpointsResponseData"
                                         }
                                     }
                                 }
@@ -613,7 +651,7 @@ const docTemplate = `{
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -645,13 +683,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                    "$ref": "#/definitions/models.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.Endpoint"
+                                            "$ref": "#/definitions/models.Endpoint"
                                         }
                                     }
                                 }
@@ -661,13 +699,13 @@ const docTemplate = `{
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "404": {
                         "description": "端点不存在",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -697,13 +735,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                    "$ref": "#/definitions/models.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.BatchDeleteEndpointsResponseData"
+                                            "$ref": "#/definitions/models.BatchDeleteEndpointsResponseData"
                                         }
                                     }
                                 }
@@ -713,19 +751,19 @@ const docTemplate = `{
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "404": {
                         "description": "端点不存在",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -789,13 +827,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                    "$ref": "#/definitions/models.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.GetOrgsResponse"
+                                            "$ref": "#/definitions/models.GetOrgsResponse"
                                         }
                                     }
                                 }
@@ -805,13 +843,13 @@ const docTemplate = `{
                     "422": {
                         "description": "请求参数验证失败",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -837,7 +875,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.BatchDeleteOrgsRequest"
+                            "$ref": "#/definitions/models.BatchDeleteOrgsRequest"
                         }
                     }
                 ],
@@ -847,13 +885,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                    "$ref": "#/definitions/models.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.BatchDeleteOrgsResponseData"
+                                            "$ref": "#/definitions/models.BatchDeleteOrgsResponseData"
                                         }
                                     }
                                 }
@@ -863,19 +901,19 @@ const docTemplate = `{
                     "400": {
                         "description": "业务逻辑错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "422": {
                         "description": "请求参数验证失败",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -901,7 +939,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.CreateOrgRequest"
+                            "$ref": "#/definitions/models.CreateOrgRequest"
                         }
                     }
                 ],
@@ -911,13 +949,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                    "$ref": "#/definitions/models.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.Organization"
+                                            "$ref": "#/definitions/models.Organization"
                                         }
                                     }
                                 }
@@ -927,13 +965,13 @@ const docTemplate = `{
                     "422": {
                         "description": "请求参数验证失败",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -959,7 +997,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.DeleteOrgRequest"
+                            "$ref": "#/definitions/models.DeleteOrgRequest"
                         }
                     }
                 ],
@@ -969,13 +1007,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                    "$ref": "#/definitions/models.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.DeleteOrgResponseData"
+                                            "$ref": "#/definitions/models.DeleteOrgResponseData"
                                         }
                                     }
                                 }
@@ -985,19 +1023,19 @@ const docTemplate = `{
                     "404": {
                         "description": "组织不存在",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "422": {
                         "description": "请求参数验证失败",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -1023,7 +1061,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.UpdateOrgRequest"
+                            "$ref": "#/definitions/models.UpdateOrgRequest"
                         }
                     }
                 ],
@@ -1033,13 +1071,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                    "$ref": "#/definitions/models.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.Organization"
+                                            "$ref": "#/definitions/models.Organization"
                                         }
                                     }
                                 }
@@ -1049,19 +1087,19 @@ const docTemplate = `{
                     "404": {
                         "description": "组织不存在",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "422": {
                         "description": "请求参数验证失败",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -1093,13 +1131,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                    "$ref": "#/definitions/models.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.Organization"
+                                            "$ref": "#/definitions/models.Organization"
                                         }
                                     }
                                 }
@@ -1109,13 +1147,13 @@ const docTemplate = `{
                     "404": {
                         "description": "组织不存在",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -1184,13 +1222,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                    "$ref": "#/definitions/models.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.GetOrgDomainsResponse"
+                                            "$ref": "#/definitions/models.GetOrgDomainsResponse"
                                         }
                                     }
                                 }
@@ -1200,13 +1238,13 @@ const docTemplate = `{
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -1262,13 +1300,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                    "$ref": "#/definitions/models.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.GetSubDomainsResponse"
+                                            "$ref": "#/definitions/models.GetSubDomainsResponse"
                                         }
                                     }
                                 }
@@ -1278,13 +1316,13 @@ const docTemplate = `{
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -1310,7 +1348,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.BatchDeleteDomainsRequest"
+                            "$ref": "#/definitions/models.BatchDeleteDomainsRequest"
                         }
                     }
                 ],
@@ -1320,13 +1358,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                    "$ref": "#/definitions/models.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.BatchDeleteDomainsResponseData"
+                                            "$ref": "#/definitions/models.BatchDeleteDomainsResponseData"
                                         }
                                     }
                                 }
@@ -1336,13 +1374,13 @@ const docTemplate = `{
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -1382,13 +1420,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                    "$ref": "#/definitions/models.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.DeleteDomainResponseData"
+                                            "$ref": "#/definitions/models.DeleteDomainResponseData"
                                         }
                                     }
                                 }
@@ -1398,19 +1436,19 @@ const docTemplate = `{
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "404": {
                         "description": "组织、域名或关联不存在",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -1458,13 +1496,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                    "$ref": "#/definitions/models.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.GetSubDomainsResponse"
+                                            "$ref": "#/definitions/models.GetSubDomainsResponse"
                                         }
                                     }
                                 }
@@ -1474,13 +1512,13 @@ const docTemplate = `{
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -1506,7 +1544,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.BatchDeleteSubDomainsRequest"
+                            "$ref": "#/definitions/models.BatchDeleteSubDomainsRequest"
                         }
                     }
                 ],
@@ -1516,13 +1554,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                    "$ref": "#/definitions/models.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.BatchDeleteSubDomainsResponseData"
+                                            "$ref": "#/definitions/models.BatchDeleteSubDomainsResponseData"
                                         }
                                     }
                                 }
@@ -1532,19 +1570,19 @@ const docTemplate = `{
                     "400": {
                         "description": "业务逻辑错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "422": {
                         "description": "请求参数验证失败",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -1576,13 +1614,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                    "$ref": "#/definitions/models.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.SubDomain"
+                                            "$ref": "#/definitions/models.SubDomain"
                                         }
                                     }
                                 }
@@ -1592,19 +1630,19 @@ const docTemplate = `{
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "404": {
                         "description": "子域名不存在",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -1634,13 +1672,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                    "$ref": "#/definitions/models.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.BatchDeleteSubDomainsResponseData"
+                                            "$ref": "#/definitions/models.BatchDeleteSubDomainsResponseData"
                                         }
                                     }
                                 }
@@ -1650,19 +1688,19 @@ const docTemplate = `{
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "404": {
                         "description": "子域名不存在",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     },
                     "500": {
                         "description": "服务器内部错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -1718,13 +1756,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                    "$ref": "#/definitions/models.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.GetEndpointsResponse"
+                                            "$ref": "#/definitions/models.GetEndpointsResponse"
                                         }
                                     }
                                 }
@@ -1734,7 +1772,151 @@ const docTemplate = `{
                     "400": {
                         "description": "请求参数错误",
                         "schema": {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/tools": {
+            "get": {
+                "description": "获取所有安全扫描工具列表，支持分页和排序",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "工具管理"
+                ],
+                "summary": "获取工具列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "example": 1,
+                        "description": "页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "example": 10,
+                        "description": "每页数量",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "id",
+                            "name",
+                            "created_at",
+                            "updated_at"
+                        ],
+                        "type": "string",
+                        "default": "updated_at",
+                        "description": "排序字段",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "asc",
+                            "desc"
+                        ],
+                        "type": "string",
+                        "default": "desc",
+                        "description": "排序方向",
+                        "name": "sort_order",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "获取成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/models.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.GetToolsResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "422": {
+                        "description": "请求参数验证失败",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/tools/create": {
+            "post": {
+                "description": "创建新的安全扫描工具",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "工具管理"
+                ],
+                "summary": "创建工具",
+                "parameters": [
+                    {
+                        "description": "工具信息",
+                        "name": "tool",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateToolRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "创建成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/models.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.ToolResponseData"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "422": {
+                        "description": "请求参数验证失败",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIResponse"
                         }
                     }
                 }
@@ -1742,7 +1924,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "vulun-scan-backend_internal_models.APIResponse": {
+        "models.APIResponse": {
             "type": "object",
             "properties": {
                 "code": {
@@ -1762,7 +1944,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.BatchDeleteDomainsRequest": {
+        "models.BatchDeleteDomainsRequest": {
             "type": "object",
             "required": [
                 "domain_ids",
@@ -1780,7 +1962,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.BatchDeleteDomainsResponseData": {
+        "models.BatchDeleteDomainsResponseData": {
             "type": "object",
             "properties": {
                 "failed_count": {
@@ -1796,7 +1978,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.BatchDeleteEndpointsRequest": {
+        "models.BatchDeleteEndpointsRequest": {
             "type": "object",
             "required": [
                 "endpoint_ids"
@@ -1810,7 +1992,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.BatchDeleteEndpointsResponseData": {
+        "models.BatchDeleteEndpointsResponseData": {
             "type": "object",
             "properties": {
                 "deleted_count": {
@@ -1821,7 +2003,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.BatchDeleteOrgsRequest": {
+        "models.BatchDeleteOrgsRequest": {
             "type": "object",
             "required": [
                 "organization_ids"
@@ -1835,7 +2017,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.BatchDeleteOrgsResponseData": {
+        "models.BatchDeleteOrgsResponseData": {
             "type": "object",
             "properties": {
                 "deleted_count": {
@@ -1846,7 +2028,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.BatchDeleteSubDomainsRequest": {
+        "models.BatchDeleteSubDomainsRequest": {
             "type": "object",
             "required": [
                 "subdomain_ids"
@@ -1860,7 +2042,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.BatchDeleteSubDomainsResponseData": {
+        "models.BatchDeleteSubDomainsResponseData": {
             "type": "object",
             "properties": {
                 "deleted_count": {
@@ -1871,7 +2053,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.CreateDomainsRequest": {
+        "models.CreateDomainsRequest": {
             "type": "object",
             "required": [
                 "domains",
@@ -1881,7 +2063,7 @@ const docTemplate = `{
                 "domains": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/vulun-scan-backend_internal_models.DomainDetail"
+                        "$ref": "#/definitions/models.DomainDetail"
                     }
                 },
                 "organization_id": {
@@ -1889,7 +2071,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.CreateEndpointsRequest": {
+        "models.CreateEndpointsRequest": {
             "type": "object",
             "required": [
                 "endpoints"
@@ -1898,12 +2080,12 @@ const docTemplate = `{
                 "endpoints": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/vulun-scan-backend_internal_models.EndpointDetail"
+                        "$ref": "#/definitions/models.EndpointDetail"
                     }
                 }
             }
         },
-        "vulun-scan-backend_internal_models.CreateEndpointsResponseData": {
+        "models.CreateEndpointsResponseData": {
             "type": "object",
             "properties": {
                 "existing_endpoints": {
@@ -1923,7 +2105,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.CreateOrgRequest": {
+        "models.CreateOrgRequest": {
             "type": "object",
             "required": [
                 "name"
@@ -1937,7 +2119,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.CreateSubDomainsForDomainRequest": {
+        "models.CreateSubDomainsForDomainRequest": {
             "type": "object",
             "required": [
                 "subdomains"
@@ -1951,7 +2133,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.CreateSubDomainsResponseData": {
+        "models.CreateSubDomainsResponseData": {
             "type": "object",
             "properties": {
                 "already_exists": {
@@ -1975,7 +2157,31 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.DeleteDomainResponseData": {
+        "models.CreateToolRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "category_name": {
+                    "description": "工具分类名称",
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "repo_url": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.DeleteDomainResponseData": {
             "type": "object",
             "properties": {
                 "message": {
@@ -1983,7 +2189,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.DeleteOrgRequest": {
+        "models.DeleteOrgRequest": {
             "type": "object",
             "required": [
                 "id"
@@ -1994,7 +2200,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.DeleteOrgResponseData": {
+        "models.DeleteOrgResponseData": {
             "type": "object",
             "properties": {
                 "message": {
@@ -2002,7 +2208,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.Domain": {
+        "models.Domain": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -2015,7 +2221,7 @@ const docTemplate = `{
                     "description": "冗余关联",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/vulun-scan-backend_internal_models.Endpoint"
+                        "$ref": "#/definitions/models.Endpoint"
                     }
                 },
                 "id": {
@@ -2030,14 +2236,14 @@ const docTemplate = `{
                     "description": "关联关系 - 级联删除配置在 OrganizationDomain 中间表定义",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/vulun-scan-backend_internal_models.Organization"
+                        "$ref": "#/definitions/models.Organization"
                     }
                 },
                 "sub_domains": {
                     "description": "HasMany 关系 - 也需要配置级联删除，确保删除 Domain 时自动删除关联的 SubDomain、Endpoint 和 Vulnerability",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/vulun-scan-backend_internal_models.SubDomain"
+                        "$ref": "#/definitions/models.SubDomain"
                     }
                 },
                 "updated_at": {
@@ -2045,7 +2251,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.DomainDetail": {
+        "models.DomainDetail": {
             "type": "object",
             "required": [
                 "name"
@@ -2059,7 +2265,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.DomainResponseData": {
+        "models.DomainResponseData": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -2079,7 +2285,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.Endpoint": {
+        "models.Endpoint": {
             "type": "object",
             "properties": {
                 "content_length": {
@@ -2092,7 +2298,7 @@ const docTemplate = `{
                     "description": "冗余关联",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.Domain"
+                            "$ref": "#/definitions/models.Domain"
                         }
                     ]
                 },
@@ -2114,7 +2320,7 @@ const docTemplate = `{
                     "description": "关联关系\nBelongsTo 关系 - 在这里配置级联删除",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.SubDomain"
+                            "$ref": "#/definitions/models.SubDomain"
                         }
                     ]
                 },
@@ -2134,7 +2340,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.EndpointDetail": {
+        "models.EndpointDetail": {
             "type": "object",
             "required": [
                 "url"
@@ -2157,13 +2363,13 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.GetAllDomainsResponse": {
+        "models.GetAllDomainsResponse": {
             "type": "object",
             "properties": {
                 "domains": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/vulun-scan-backend_internal_models.Domain"
+                        "$ref": "#/definitions/models.Domain"
                     }
                 },
                 "page": {
@@ -2180,13 +2386,29 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.GetEndpointsResponse": {
+        "models.GetCategoriesResponse": {
+            "type": "object",
+            "properties": {
+                "categories": {
+                    "description": "分类名称列表",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "total": {
+                    "description": "分类数量",
+                    "type": "integer"
+                }
+            }
+        },
+        "models.GetEndpointsResponse": {
             "type": "object",
             "properties": {
                 "endpoints": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/vulun-scan-backend_internal_models.Endpoint"
+                        "$ref": "#/definitions/models.Endpoint"
                     }
                 },
                 "page": {
@@ -2203,13 +2425,13 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.GetOrgDomainsResponse": {
+        "models.GetOrgDomainsResponse": {
             "type": "object",
             "properties": {
                 "domains": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/vulun-scan-backend_internal_models.Domain"
+                        "$ref": "#/definitions/models.Domain"
                     }
                 },
                 "page": {
@@ -2226,13 +2448,13 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.GetOrgsResponse": {
+        "models.GetOrgsResponse": {
             "type": "object",
             "properties": {
                 "organizations": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/vulun-scan-backend_internal_models.Organization"
+                        "$ref": "#/definitions/models.Organization"
                     }
                 },
                 "page": {
@@ -2249,7 +2471,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.GetSubDomainsResponse": {
+        "models.GetSubDomainsResponse": {
             "type": "object",
             "properties": {
                 "page": {
@@ -2261,7 +2483,7 @@ const docTemplate = `{
                 "sub_domains": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/vulun-scan-backend_internal_models.SubDomain"
+                        "$ref": "#/definitions/models.SubDomain"
                     }
                 },
                 "total": {
@@ -2269,7 +2491,30 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.Organization": {
+        "models.GetToolsResponse": {
+            "type": "object",
+            "properties": {
+                "page": {
+                    "type": "integer"
+                },
+                "page_size": {
+                    "type": "integer"
+                },
+                "tools": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Tool"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "total_pages": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.Organization": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -2282,7 +2527,7 @@ const docTemplate = `{
                     "description": "关联关系 - 级联删除配置在 OrganizationDomain 中间表定义",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/vulun-scan-backend_internal_models.Domain"
+                        "$ref": "#/definitions/models.Domain"
                     }
                 },
                 "id": {
@@ -2298,7 +2543,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.SubDomain": {
+        "models.SubDomain": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -2308,7 +2553,7 @@ const docTemplate = `{
                     "description": "关联关系\nBelongsTo 关系 - 在这里配置级联删除",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/vulun-scan-backend_internal_models.Domain"
+                            "$ref": "#/definitions/models.Domain"
                         }
                     ]
                 },
@@ -2319,7 +2564,7 @@ const docTemplate = `{
                     "description": "HasMany 关系 - 也需要配置级联删除，确保删除 SubDomain 时自动删除关联的 Endpoint 和 Vulnerability",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/vulun-scan-backend_internal_models.Endpoint"
+                        "$ref": "#/definitions/models.Endpoint"
                     }
                 },
                 "id": {
@@ -2335,7 +2580,47 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.UpdateDomainRequest": {
+        "models.Tool": {
+            "type": "object",
+            "properties": {
+                "category_name": {
+                    "description": "工具分类名称",
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "description": "数据库基础字段",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "核心业务字段",
+                    "type": "string"
+                },
+                "repo_url": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.ToolResponseData": {
+            "type": "object",
+            "properties": {
+                "tool": {
+                    "$ref": "#/definitions/models.Tool"
+                }
+            }
+        },
+        "models.UpdateDomainRequest": {
             "type": "object",
             "required": [
                 "id"
@@ -2354,7 +2639,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.UpdateOrgRequest": {
+        "models.UpdateOrgRequest": {
             "type": "object",
             "required": [
                 "id"

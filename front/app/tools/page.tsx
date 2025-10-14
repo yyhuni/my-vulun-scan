@@ -1,158 +1,40 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { IconPlus, IconSettings } from "@tabler/icons-react"
 import { ToolCard } from "@/components/tools/tool-card"
-import type { Tool, ToolFilter } from "@/types/tool.types"
-
-// 模拟工具数据
-const MOCK_TOOLS: Tool[] = [
-  {
-    id: 1,
-    name: "subfinder",
-    displayName: "Subfinder",
-    description: "Subfinder is a subdomain discovery tool that discovers valid subdomains for websites by using passive online sources.",
-    version: "v2.6.3",
-    logo: "/tools/subfinder.svg",
-    githubUrl: "https://github.com/projectdiscovery/subfinder",
-    licenseUrl: "https://github.com/projectdiscovery/subfinder/blob/main/LICENSE",
-    license: "MIT",
-    isDefault: true,
-    category: "subdomain",
-    status: "active",
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: 2,
-    name: "nuclei",
-    displayName: "Nuclei",
-    description: "Nuclei is used to send requests across targets based on a template that leading to zero false positives and providing fast scanning on large number of hosts. Nuclei offers scanning for a variety of protocols like TCP, DNS, HTTP, File, etc. With powerful and flexible templating, all kinds of security checks can be modeled with Nuclei.",
-    version: "v3.3.0",
-    logo: "/tools/nuclei.svg",
-    githubUrl: "https://github.com/projectdiscovery/nuclei",
-    licenseUrl: "https://github.com/projectdiscovery/nuclei/blob/main/LICENSE",
-    license: "MIT",
-    isDefault: true,
-    category: "vulnerability",
-    status: "active",
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: 3,
-    name: "httpx",
-    displayName: "httpx",
-    description: "httpx is a fast and multi-purpose HTTP toolkit allow to run multiple probers using retryablehttp library, it is designed to maintain the result reliability with increased threads.",
-    version: "v1.7.1",
-    logo: "/tools/httpx.svg",
-    githubUrl: "https://github.com/projectdiscovery/httpx",
-    licenseUrl: "https://github.com/projectdiscovery/httpx/blob/main/LICENSE",
-    license: "MIT",
-    isDefault: true,
-    category: "http",
-    status: "active",
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: 4,
-    name: "naabu",
-    displayName: "Naabu",
-    description: "Naabu is a port scanning tool written in Go that allows you to enumerate valid ports for hosts in a fast and reliable manner. It is a really simple tool that does fast SYN/CONNECT scans on the host/list of hosts and lists all ports that return a reply.",
-    version: "v2.3.0",
-    logo: "/tools/naabu.svg",
-    githubUrl: "https://github.com/projectdiscovery/naabu",
-    licenseUrl: "https://github.com/projectdiscovery/naabu/blob/main/LICENSE",
-    license: "MIT",
-    isDefault: true,
-    category: "port-scan",
-    status: "active",
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: 5,
-    name: "katana",
-    displayName: "Katana",
-    description: "A next-generation crawling and spidering framework.",
-    version: "v1.0.3",
-    logo: "/tools/katana.svg",
-    githubUrl: "https://github.com/projectdiscovery/katana",
-    licenseUrl: "https://github.com/projectdiscovery/katana/blob/main/LICENSE",
-    license: "MIT",
-    isDefault: true,
-    category: "crawler",
-    status: "active",
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: 6,
-    name: "alterx",
-    displayName: "alterx",
-    description: "Fast and customizable subdomain wordlist generator using DSL.",
-    version: "v0.0.2",
-    logo: "/tools/alterx.svg",
-    githubUrl: "https://github.com/projectdiscovery/alterx",
-    licenseUrl: "https://github.com/projectdiscovery/alterx/blob/main/LICENSE",
-    license: "MIT",
-    isDefault: true,
-    category: "subdomain",
-    status: "active",
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: 7,
-    name: "dnsx",
-    displayName: "dnsx",
-    description: "A fast and multi-purpose DNS toolkit allow to run multiple DNS queries.",
-    version: "v1.2.1",
-    logo: "/tools/dnsx.svg",
-    githubUrl: "https://github.com/projectdiscovery/dnsx",
-    licenseUrl: "https://github.com/projectdiscovery/dnsx/blob/main/LICENSE",
-    license: "MIT",
-    isDefault: true,
-    category: "dns",
-    status: "active",
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: 8,
-    name: "sublist3r",
-    displayName: "Sublist3r",
-    description: "Fast subdomains enumeration tool for penetration testers.",
-    version: "v1.1",
-    logo: "/tools/sublist3r.svg",
-    githubUrl: "https://github.com/aboul3la/Sublist3r",
-    licenseUrl: "https://github.com/aboul3la/Sublist3r/blob/master/LICENSE",
-    license: "GPL-2.0",
-    isDefault: true,
-    category: "subdomain",
-    status: "active",
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
-  },
-]
+import { useTools, useCategories } from "@/hooks/use-tools"
+import { CategoryNameMap } from "@/types/tool.types"
 
 /**
  * 工具管理页面
  * 展示和管理扫描工具集
  */
 export default function ToolsPage() {
-  const [activeFilter, setActiveFilter] = useState<ToolFilter>("all")
-
-  // 根据过滤条件筛选工具
-  const filteredTools = MOCK_TOOLS.filter((tool) => {
-    if (activeFilter === "all") return true
-    if (activeFilter === "default") return tool.isDefault
-    if (activeFilter === "custom") return !tool.isDefault
-    return true
+  const [activeCategoryId, setActiveCategoryId] = useState<string>("all")
+  
+  // 获取分类列表
+  const { data: categories = [], isLoading: categoriesLoading } = useCategories()
+  
+  // 获取工具列表
+  const { data, isLoading: toolsLoading, error } = useTools({
+    page: 1,
+    pageSize: 100, // 获取所有工具
+    sortBy: 'name',
+    sortOrder: 'asc'
   })
+
+  const tools = data?.tools || []
+  
+  // 按分类筛选工具
+  const filteredTools = useMemo(() => {
+    if (activeCategoryId === "all") return tools
+    return tools.filter(tool => tool.categoryName === activeCategoryId)
+  }, [tools, activeCategoryId])
+  
+  const isLoading = categoriesLoading || toolsLoading
 
   // 处理检查更新
   const handleCheckUpdate = (toolId: number) => {
@@ -164,6 +46,28 @@ export default function ToolsPage() {
   const handleAddNewTool = () => {
     console.log("Add new tool")
     // TODO: 实现添加新工具逻辑
+  }
+
+  // 加载状态
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <p className="text-muted-foreground">加载工具列表中...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // 错误状态
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <p className="text-destructive">加载失败: {error.message}</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -191,66 +95,64 @@ export default function ToolsPage() {
       <div className="px-4 lg:px-6">
         <Tabs 
           defaultValue="all" 
-          value={activeFilter}
-          onValueChange={(value) => setActiveFilter(value as ToolFilter)}
+          value={activeCategoryId}
+          onValueChange={setActiveCategoryId}
           className="flex-1"
         >
           <TabsList className="mb-6">
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="default">Default</TabsTrigger>
-            <TabsTrigger value="custom">Custom</TabsTrigger>
+            {/* All 标签 */}
+            <TabsTrigger value="all">
+              All ({tools.length})
+            </TabsTrigger>
+            
+            {/* 动态分类标签 */}
+            {categories.map((categoryName) => {
+              const count = tools.filter(t => t.categoryName === categoryName).length
+              return (
+                <TabsTrigger key={categoryName} value={categoryName}>
+                  {CategoryNameMap[categoryName] || categoryName} ({count})
+                </TabsTrigger>
+              )
+            })}
           </TabsList>
 
+          {/* All 标签内容 */}
           <TabsContent value="all" className="mt-0">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredTools.map((tool) => (
-              <ToolCard 
-                key={tool.id} 
-                tool={tool}
-                onCheckUpdate={handleCheckUpdate}
-              />
-            ))}
-          </div>
-          {filteredTools.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">暂无工具</p>
+              {filteredTools.map((tool) => (
+                <ToolCard 
+                  key={tool.id} 
+                  tool={tool}
+                  onCheckUpdate={handleCheckUpdate}
+                />
+              ))}
             </div>
-          )}
-        </TabsContent>
+            {filteredTools.length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">暂无工具</p>
+              </div>
+            )}
+          </TabsContent>
 
-        <TabsContent value="default" className="mt-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredTools.map((tool) => (
-              <ToolCard 
-                key={tool.id} 
-                tool={tool}
-                onCheckUpdate={handleCheckUpdate}
-              />
-            ))}
-          </div>
-          {filteredTools.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">暂无默认工具</p>
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="custom" className="mt-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredTools.map((tool) => (
-              <ToolCard 
-                key={tool.id} 
-                tool={tool}
-                onCheckUpdate={handleCheckUpdate}
-              />
-            ))}
-          </div>
-          {filteredTools.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">暂无自定义工具</p>
-            </div>
-          )}
-        </TabsContent>
+          {/* 动态分类标签内容 */}
+          {categories.map((categoryName) => (
+            <TabsContent key={categoryName} value={categoryName} className="mt-0">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {filteredTools.map((tool) => (
+                  <ToolCard 
+                    key={tool.id} 
+                    tool={tool}
+                    onCheckUpdate={handleCheckUpdate}
+                  />
+                ))}
+              </div>
+              {filteredTools.length === 0 && (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">该分类暂无工具</p>
+                </div>
+              )}
+            </TabsContent>
+          ))}
         </Tabs>
       </div>
     </div>
