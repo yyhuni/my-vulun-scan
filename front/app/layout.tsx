@@ -61,8 +61,8 @@ export default function RootLayout({
               // 自定义 CSS 变量,设置侧边栏宽度和头部高度
               style={
                 {
-                  "--sidebar-width": "calc(var(--spacing) * 72)", // 侧边栏宽度为 72 个间距单位
-                  "--header-height": "calc(var(--spacing) * 12)", // 头部高度为 12 个间距单位
+                  "--sidebar-width": "calc(var(--spacing) * 70)", // 侧边栏宽度为 70 个间距单位
+                  "--header-height": "calc(var(--spacing) * 11)", // 头部高度为 11 个间距单位
                 } as React.CSSProperties
               }
             >

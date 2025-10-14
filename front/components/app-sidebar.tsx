@@ -21,6 +21,7 @@ import {
   IconUsers, // 用户图标
   IconChevronRight, // 右箭头图标
   IconRadar, // 雷达扫描图标
+  IconTool, // 工具图标
 } from "@tabler/icons-react"
 // 导入路径名 hook
 import { usePathname } from "next/navigation"
@@ -112,7 +113,16 @@ const data = {
           title: "扫描历史", // 扫描历史
           url: "/scan/history",
         },
+        {
+          title: "扫描策略", // 扫描策略
+          url: "/scan/strategy",
+        },
       ],
+    },
+    {
+      title: "工具管理", // 工具管理
+      url: "/tools",
+      icon: IconTool,
     },
   ],
   // 次要导航菜单项
