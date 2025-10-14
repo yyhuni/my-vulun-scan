@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/tooltip"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Select,
   SelectContent,
@@ -25,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { IconCheck, IconBuilding, IconChevronLeft, IconChevronRight, IconChevronsLeft, IconChevronsRight } from "@tabler/icons-react"
+import { IconBuilding, IconChevronLeft, IconChevronRight, IconChevronsLeft, IconChevronsRight } from "@tabler/icons-react"
 import { useRouter } from "next/navigation"
 import type { Organization } from "@/types/organization.types"
 
@@ -150,24 +151,14 @@ export function OrganizationSelectionTable({
             <TableRow>
               <TableHead className="w-12">
                 <div className="flex items-center justify-center">
-                  <div
-                    className={cn(
-                      "flex items-center justify-center w-5 h-5 rounded border-2 transition-colors cursor-pointer",
-                      isAllCurrentPageSelected
-                        ? "bg-primary border-primary"
-                        : isSomeCurrentPageSelected
-                        ? "bg-primary/50 border-primary"
-                        : "border-muted-foreground/25"
-                    )}
-                    onClick={toggleAll}
-                  >
-                    {isAllCurrentPageSelected && (
-                      <IconCheck className="size-3 text-primary-foreground" />
-                    )}
-                    {isSomeCurrentPageSelected && !isAllCurrentPageSelected && (
-                      <div className="w-2 h-0.5 bg-primary-foreground" />
-                    )}
-                  </div>
+                  <Checkbox
+                    checked={
+                      isAllCurrentPageSelected ||
+                      (isSomeCurrentPageSelected && "indeterminate")
+                    }
+                    onCheckedChange={toggleAll}
+                    aria-label="Select all"
+                  />
                 </div>
               </TableHead>
               <TableHead>组织名称</TableHead>
@@ -198,20 +189,13 @@ export function OrganizationSelectionTable({
                   )}
                   onClick={() => toggleOrganization(org)}
                 >
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-center">
-                      <div
-                        className={cn(
-                          "flex items-center justify-center w-5 h-5 rounded border-2 transition-colors",
-                          isSelected(org.id)
-                            ? "bg-primary border-primary"
-                            : "border-muted-foreground/25"
-                        )}
-                      >
-                        {isSelected(org.id) && (
-                          <IconCheck className="size-3 text-primary-foreground" />
-                        )}
-                      </div>
+                      <Checkbox
+                        checked={isSelected(org.id)}
+                        onCheckedChange={() => toggleOrganization(org)}
+                        aria-label="Select row"
+                      />
                     </div>
                   </TableCell>
                   <TableCell>
