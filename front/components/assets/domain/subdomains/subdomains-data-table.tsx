@@ -189,9 +189,9 @@ export function SubdomainsDataTable({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
-                <IconLayoutColumns className="mr-2 h-4 w-4" />
+                <IconLayoutColumns />
                 Columns
-                <IconChevronDown className="ml-2 h-4 w-4" />
+                <IconChevronDown />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[150px]">
@@ -234,7 +234,7 @@ export function SubdomainsDataTable({
                   : "text-destructive hover:text-destructive hover:bg-destructive/10"
               }
             >
-              <IconTrash className="mr-2 h-4 w-4" />
+              <IconTrash />
               Delete
             </Button>
           )}
@@ -242,7 +242,7 @@ export function SubdomainsDataTable({
           {/* 添加新子域名按钮 */}
           {onAddNew && (
             <Button onClick={onAddNew} size="sm">
-              <IconPlus className="mr-2 h-4 w-4" />
+              <IconPlus />
               {addButtonText}
             </Button>
           )}
@@ -353,7 +353,7 @@ export function SubdomainsDataTable({
               disabled={!table.getCanPreviousPage()}
             >
               <span className="sr-only">Go to first page</span>
-              <IconChevronsLeft className="h-4 w-4" />
+              <IconChevronsLeft />
             </Button>
             <Button
               variant="outline"
@@ -362,7 +362,7 @@ export function SubdomainsDataTable({
               disabled={!table.getCanPreviousPage()}
             >
               <span className="sr-only">Go to previous page</span>
-              <IconChevronLeft className="h-4 w-4" />
+              <IconChevronLeft />
             </Button>
             <Button
               variant="outline"
@@ -371,7 +371,7 @@ export function SubdomainsDataTable({
               disabled={!table.getCanNextPage()}
             >
               <span className="sr-only">Go to next page</span>
-              <IconChevronRight className="h-4 w-4" />
+              <IconChevronRight />
             </Button>
             <Button
               variant="outline"
@@ -380,7 +380,7 @@ export function SubdomainsDataTable({
               disabled={!table.getCanNextPage()}
             >
               <span className="sr-only">Go to last page</span>
-              <IconChevronsRight className="h-4 w-4" />
+              <IconChevronsRight />
             </Button>
           </div>
         </div>

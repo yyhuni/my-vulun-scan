@@ -162,7 +162,7 @@ export default function ScanHistoryPage() {
             </div>
           </div>
           <Button onClick={() => router.push("/scan/new")}>
-            <IconPlus className="size-4 mr-2" />
+            <IconPlus />
             新建扫描
           </Button>
         </div>

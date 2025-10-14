@@ -146,7 +146,7 @@ export default function NewScanPage() {
             {/* 上一步按钮（步骤2和3显示） */}
             {currentStep > 1 && (
               <Button variant="outline" onClick={handlePrevious}>
-                <IconChevronLeft className="size-4 mr-2" />
+                <IconChevronLeft />
                 上一步
               </Button>
             )}
@@ -155,11 +155,11 @@ export default function NewScanPage() {
             {currentStep < STEPS.length ? (
               <Button onClick={handleNext} disabled={!canProceed()}>
                 下一步
-                <IconChevronRight className="size-4 ml-2" />
+                <IconChevronRight />
               </Button>
             ) : (
               <Button onClick={handleSubmit}>
-                <IconRadar className="size-4 mr-2" />
+                <IconRadar />
                 启动扫描
               </Button>
             )}
