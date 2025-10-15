@@ -1,6 +1,7 @@
 import { ColumnDef } from "@tanstack/react-table"
 import { PaginationParams, PaginationInfo } from "./common.types"
 import type { Organization } from "./organization.types"
+import type { BatchCreateResponse } from "./api-response.types"
 
 // 域名相关类型定义
 
@@ -64,3 +65,6 @@ export interface DomainDataTableProps {
   paginationInfo?: PaginationInfo
   onPaginationChange?: (pagination: { pageIndex: number; pageSize: number }) => void
 }
+
+// 域名批量创建响应（复用通用类型）
+export type BatchCreateDomainsResponse = BatchCreateResponse

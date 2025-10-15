@@ -217,8 +217,10 @@ func DeleteSubDomain(c *gin.Context) {
 
 	// 返回删除成功信息（统一使用结构化响应类型）
 	response.SuccessResponse(c, models.BatchDeleteSubDomainsResponseData{
-		Message:      "删除子域名成功",
-		DeletedCount: deletedCount,
+		BaseBatchDeleteResponse: models.BaseBatchDeleteResponse{
+			Message:      "删除子域名成功",
+			DeletedCount: deletedCount,
+		},
 	})
 }
 
@@ -260,8 +262,10 @@ func BatchDeleteSubDomains(c *gin.Context) {
 	}
 
 	response.SuccessResponse(c, models.BatchDeleteSubDomainsResponseData{
-		Message:      "批量删除子域名成功",
-		DeletedCount: deletedCount,
+		BaseBatchDeleteResponse: models.BaseBatchDeleteResponse{
+			Message:      "批量删除子域名成功",
+			DeletedCount: deletedCount,
+		},
 	})
 }
 

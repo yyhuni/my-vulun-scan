@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	customErrors "vulun-scan-backend/internal/errors"
 	"vulun-scan-backend/internal/models"
@@ -31,7 +32,7 @@ import (
 // @Accept json
 // @Produce json
 // @Param request body models.CreateDomainsRequest true "域名创建请求，包含域名列表和组织ID"
-// @Success 200 {object} models.APIResponse{data=[]models.Domain} "创建成功，返回创建的域名列表（包括新创建和已存在的）"
+// @Success 200 {object} models.APIResponse{data=models.CreateDomainsResponse} "创建成功，返回统计信息"
 // @Failure 400 {object} models.APIResponse "请求参数错误（如域名列表为空、参数格式错误等）"
 // @Failure 404 {object} models.APIResponse "指定的组织不存在"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
@@ -48,26 +49,55 @@ func CreateDomains(c *gin.Context) {
 		return
 	}
 
-	// 验证域名格式
-	var domainNames []string
+	// 步骤1: 去重 + 标准化（使用 map 自动去重，保留第一次出现的域名）
+	domainMap := make(map[string]models.DomainDetail)
+
 	for _, detail := range req.Domains {
-		domainNames = append(domainNames, detail.Name)
+		// 标准化域名（转小写 + 去空格）
+		normalizedName := strings.ToLower(strings.TrimSpace(detail.Name))
+
+		// 只保留第一次出现的域名和描述（FIFO 策略）
+		if _, exists := domainMap[normalizedName]; !exists {
+			domainMap[normalizedName] = models.DomainDetail{
+				Name:        normalizedName,
+				Description: detail.Description,
+			}
+		}
 	}
 
-	// 批量验证域名格式
+	// 步骤2: 提取域名列表用于验证
+	domainNames := make([]string, 0, len(domainMap))
+	for name := range domainMap {
+		domainNames = append(domainNames, name)
+	}
+
+	// 步骤3: 批量验证域名格式
 	if validationErrors := utils.ValidateDomains(domainNames); len(validationErrors) > 0 {
-		response.ValidationErrorResponse(c, "域名格式验证失败: "+validationErrors[0].Error())
+		var errorMessages []string
+		for _, err := range validationErrors {
+			errorMessages = append(errorMessages, err.Error())
+		}
+		response.ValidationErrorResponse(c, "域名格式验证失败:\n"+strings.Join(errorMessages, "\n"))
 		return
 	}
 
+	// 步骤4: 构建去重后的请求（直接使用 domainMap）
+	deduplicatedDomains := make([]models.DomainDetail, 0, len(domainMap))
+	for _, detail := range domainMap {
+		deduplicatedDomains = append(deduplicatedDomains, detail)
+	}
+
+	// 更新请求，使用去重后的域名列表
+	req.Domains = deduplicatedDomains
+
 	service := services.NewDomainService()
-	domains, err := service.CreateDomains(req)
+	result, err := service.CreateDomains(req)
 	if err != nil {
 		response.InternalServerErrorResponse(c, "创建域名失败: "+err.Error())
 		return
 	}
 
-	response.SuccessResponse(c, domains)
+	response.SuccessResponse(c, result)
 }
 
 // GetDomainByID 获取单个域名详情
@@ -251,7 +281,9 @@ func DeleteDomainFromOrganization(c *gin.Context) {
 	}
 
 	response.SuccessResponse(c, models.DeleteDomainResponseData{
-		Message: fmt.Sprintf("成功从组织 ID: %d 移除域名 ID: %d", uri.OrganizationID, uri.DomainID),
+		BaseDeleteResponse: models.BaseDeleteResponse{
+			Message: fmt.Sprintf("成功从组织 ID: %d 移除域名 ID: %d", uri.OrganizationID, uri.DomainID),
+		},
 	})
 }
 

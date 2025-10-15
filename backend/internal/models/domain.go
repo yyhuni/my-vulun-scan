@@ -23,10 +23,14 @@ type Domain struct {
 	Endpoints  []Endpoint  `json:"endpoints" gorm:"foreignKey:DomainID;constraint:OnDelete:CASCADE"` // 冗余关联
 }
 
-// CreateDomainsRequest 创建域名请求
+// CreateDomainsRequest 创建域名请求与响应
 type CreateDomainsRequest struct {
 	Domains []DomainDetail `json:"domains" binding:"required"`
 	OrgID   uint           `json:"organization_id" binding:"required"`
+}
+
+type CreateDomainsResponse struct {
+	BaseBatchCreateResponse
 }
 
 // DomainDetail 域名详细信息
@@ -63,16 +67,13 @@ type GetDomainsByOrgIDRequest struct {
 
 // GetOrgDomainsResponse 获取组织域名响应
 type GetOrgDomainsResponse struct {
-	Domains    []Domain `json:"domains"`
-	Total      int64    `json:"total"`
-	Page       int      `json:"page"`
-	PageSize   int      `json:"page_size"`
-	TotalPages int      `json:"total_pages"`
+	Domains []Domain `json:"domains"`
+	BasePaginationResponse
 }
 
 // DeleteDomainResponseData 从组织移除域名响应数据
 type DeleteDomainResponseData struct {
-	Message string `json:"message"`
+	BaseDeleteResponse
 }
 
 // BatchDeleteDomainsRequest 批量从组织移除域名请求
@@ -105,9 +106,6 @@ type GetAllDomainsRequest struct {
 
 // GetAllDomainsResponse 获取所有域名响应
 type GetAllDomainsResponse struct {
-	Domains    []Domain `json:"domains"`
-	Total      int64    `json:"total"`
-	Page       int      `json:"page"`
-	PageSize   int      `json:"page_size"`
-	TotalPages int      `json:"total_pages"`
+	Domains []Domain `json:"domains"`
+	BasePaginationResponse
 }

@@ -39,10 +39,7 @@ type GetSubDomainsRequest struct {
 // GetSubDomainsResponse 获取子域名列表响应
 type GetSubDomainsResponse struct {
 	SubDomains []SubDomain `json:"sub_domains"`
-	Total      int64       `json:"total"`
-	Page       int         `json:"page"`
-	PageSize   int         `json:"page_size"`
-	TotalPages int         `json:"total_pages"`
+	BasePaginationResponse
 }
 
 // CreateSubDomainsResponse 创建子域名响应（service 层使用）
@@ -63,10 +60,7 @@ type CreateSubDomainsResponseData struct {
 // GetOrgSubDomainsResponse 获取组织子域名响应
 type GetOrgSubDomainsResponse struct {
 	SubDomains []SubDomain `json:"sub_domains"`
-	Total      int         `json:"total"`
-	Page       int         `json:"page"`
-	PageSize   int         `json:"page_size"`
-	TotalPages int         `json:"total_pages"`
+	BasePaginationResponse
 }
 
 // BatchDeleteSubDomainsRequest 批量删除子域名请求
@@ -77,6 +71,5 @@ type BatchDeleteSubDomainsRequest struct {
 // BatchDeleteSubDomainsResponseData 批量删除子域名响应数据
 // 优化说明：在大规模数据场景下（如100W+子域名），不返回完整对象列表以提升性能
 type BatchDeleteSubDomainsResponseData struct {
-	Message      string `json:"message"`
-	DeletedCount int    `json:"deleted_count"`
+	BaseBatchDeleteResponse
 }

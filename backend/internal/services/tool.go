@@ -53,11 +53,13 @@ func (s *ToolService) GetTools(req models.GetToolsRequest) (*models.GetToolsResp
 		Msg("Tools retrieved successfully")
 
 	return &models.GetToolsResponse{
-		Tools:      tools,
-		Total:      total,
-		Page:       req.Page,
-		PageSize:   req.PageSize,
-		TotalPages: totalPages,
+		Tools: tools,
+		BasePaginationResponse: models.BasePaginationResponse{
+			Total:      total,
+			Page:       req.Page,
+			PageSize:   req.PageSize,
+			TotalPages: totalPages,
+		},
 	}, nil
 }
 

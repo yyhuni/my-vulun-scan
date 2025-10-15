@@ -61,10 +61,12 @@ func (s *SubDomainService) GetSubDomains(page, pageSize int, sortBy, sortOrder s
 
 	response := &models.GetSubDomainsResponse{
 		SubDomains: subDomains,
-		Total:      total,
-		Page:       page,
-		PageSize:   pageSize,
-		TotalPages: totalPages,
+		BasePaginationResponse: models.BasePaginationResponse{
+			Total:      total,
+			Page:       page,
+			PageSize:   pageSize,
+			TotalPages: totalPages,
+		},
 	}
 
 	log.Info().
@@ -114,10 +116,12 @@ func (s *SubDomainService) GetSubDomainsByDomainID(domainID uint, page, pageSize
 
 	response := &models.GetSubDomainsResponse{
 		SubDomains: subDomains,
-		Total:      total,
-		Page:       page,
-		PageSize:   pageSize,
-		TotalPages: totalPages,
+		BasePaginationResponse: models.BasePaginationResponse{
+			Total:      total,
+			Page:       page,
+			PageSize:   pageSize,
+			TotalPages: totalPages,
+		},
 	}
 
 	log.Info().
@@ -172,10 +176,12 @@ func (s *SubDomainService) GetSubDomainsByOrgID(orgID uint, page, pageSize int, 
 
 	response := &models.GetSubDomainsResponse{
 		SubDomains: subDomains,
-		Total:      total,
-		Page:       page,
-		PageSize:   pageSize,
-		TotalPages: totalPages,
+		BasePaginationResponse: models.BasePaginationResponse{
+			Total:      total,
+			Page:       page,
+			PageSize:   pageSize,
+			TotalPages: totalPages,
+		},
 	}
 
 	log.Info().
@@ -266,9 +272,11 @@ func (s *SubDomainService) GetSubDomainsByDomain(domainID uint, page, pageSize i
 
     response := &models.GetSubDomainsResponse{
         SubDomains: subDomains,
-        Total:      total,
-        Page:       page,
-        PageSize:   pageSize,
+        BasePaginationResponse: models.BasePaginationResponse{
+            Total:    total,
+            Page:     page,
+            PageSize: pageSize,
+        },
     }
 
     log.Info().

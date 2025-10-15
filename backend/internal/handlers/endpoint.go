@@ -243,8 +243,10 @@ func DeleteEndpoint(c *gin.Context) {
 
 	// 返回删除成功信息（统一使用结构化响应类型）
 	response.SuccessResponse(c, models.BatchDeleteEndpointsResponseData{
-		Message:      "删除端点成功",
-		DeletedCount: deletedCount,
+		BaseBatchDeleteResponse: models.BaseBatchDeleteResponse{
+			Message:      "删除端点成功",
+			DeletedCount: deletedCount,
+		},
 	})
 }
 
@@ -287,7 +289,9 @@ func BatchDeleteEndpoints(c *gin.Context) {
 	}
 
 	response.SuccessResponse(c, models.BatchDeleteEndpointsResponseData{
-		Message:      "批量删除端点成功",
-		DeletedCount: deletedCount,
+		BaseBatchDeleteResponse: models.BaseBatchDeleteResponse{
+			Message:      "批量删除端点成功",
+			DeletedCount: deletedCount,
+		},
 	})
 }

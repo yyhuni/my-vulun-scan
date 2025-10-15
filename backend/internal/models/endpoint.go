@@ -53,11 +53,8 @@ type GetEndpointsRequest struct {
 
 // GetEndpointsResponse 获取端点列表响应
 type GetEndpointsResponse struct {
-	Endpoints  []Endpoint `json:"endpoints"`
-	Total      int64      `json:"total"`
-	Page       int        `json:"page"`
-	PageSize   int        `json:"page_size"`
-	TotalPages int        `json:"total_pages"`
+	Endpoints []Endpoint `json:"endpoints"`
+	BasePaginationResponse
 }
 
 // CreateEndpointsResponse 创建端点响应（service 层使用）
@@ -82,6 +79,5 @@ type BatchDeleteEndpointsRequest struct {
 
 // BatchDeleteEndpointsResponseData 批量删除端点响应数据
 type BatchDeleteEndpointsResponseData struct {
-	Message      string `json:"message"`
-	DeletedCount int    `json:"deleted_count"`
+	BaseBatchDeleteResponse
 }

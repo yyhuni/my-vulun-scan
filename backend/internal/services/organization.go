@@ -57,10 +57,12 @@ func (s *OrganizationService) GetOrgs(req models.GetOrgsRequest) (*models.GetOrg
 
 	return &models.GetOrgsResponse{
 		Organizations: organizations,
-		Total:         total,
-		Page:          req.Page,
-		PageSize:      req.PageSize,
-		TotalPages:    totalPages,
+		BasePaginationResponse: models.BasePaginationResponse{
+			Total:      total,
+			Page:       req.Page,
+			PageSize:   req.PageSize,
+			TotalPages: totalPages,
+		},
 	}, nil
 }
 

@@ -90,8 +90,17 @@ export function useCreateDomain() {
       // 关闭加载提示
       toast.dismiss('create-domain')
       
-      if (response.state === 'success') {
-        toast.success('创建成功')
+      if (response.state === 'success' && response.data) {
+        const { newCreated, alreadyExisted } = response.data
+        
+        // 前端自己构造提示消息
+        if (alreadyExisted > 0) {
+          toast.warning(
+            `成功创建 ${newCreated} 个域名（${alreadyExisted} 个已存在）`
+          )
+        } else {
+          toast.success(`成功创建 ${newCreated} 个域名`)
+        }
         
         // 刷新相关查询
         queryClient.invalidateQueries({ queryKey: domainKeys.lists() })

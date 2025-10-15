@@ -51,10 +51,7 @@ type GetOrgsRequest struct {
 // GetOrgsResponse 获取组织列表响应
 type GetOrgsResponse struct {
 	Organizations []Organization `json:"organizations"`
-	Total         int64          `json:"total"`
-	Page          int            `json:"page"`
-	PageSize      int            `json:"page_size"`
-	TotalPages    int            `json:"total_pages"`
+	BasePaginationResponse
 }
 
 // OrgResponseData 组织响应数据（用于创建、更新、获取单个组织）
@@ -64,11 +61,10 @@ type OrgResponseData struct {
 
 // DeleteOrgResponseData 删除组织响应数据
 type DeleteOrgResponseData struct {
-	Message string `json:"message"`
+	BaseDeleteResponse
 }
 
 // BatchDeleteOrgsResponseData 批量删除组织响应数据
 type BatchDeleteOrgsResponseData struct {
-	Message      string `json:"message"`
-	DeletedCount int    `json:"deleted_count"`
+	BaseBatchDeleteResponse
 }

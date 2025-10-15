@@ -30,11 +30,8 @@ type GetToolsRequest struct {
 
 // GetToolsResponse 获取工具列表响应
 type GetToolsResponse struct {
-	Tools      []Tool `json:"tools"`
-	Total      int64  `json:"total"`
-	Page       int    `json:"page"`
-	PageSize   int    `json:"page_size"`
-	TotalPages int    `json:"total_pages"`
+	Tools []Tool `json:"tools"`
+	BasePaginationResponse
 }
 
 // CreateToolRequest 创建工具请求

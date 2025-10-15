@@ -58,11 +58,13 @@ func (s *EndpointService) GetEndpoints(req models.GetEndpointsRequest) (*models.
 	}
 
 	response := &models.GetEndpointsResponse{
-		Endpoints:  endpoints,
-		Total:      total,
-		Page:       req.Page,
-		PageSize:   req.PageSize,
-		TotalPages: totalPages,
+		Endpoints: endpoints,
+		BasePaginationResponse: models.BasePaginationResponse{
+			Total:      total,
+			Page:       req.Page,
+			PageSize:   req.PageSize,
+			TotalPages: totalPages,
+		},
 	}
 
 	log.Info().
@@ -306,11 +308,13 @@ func (s *EndpointService) GetEndpointsByDomainID(domainID uint, page, pageSize i
 	}
 
 	response := &models.GetEndpointsResponse{
-		Endpoints:  endpoints,
-		Total:      total,
-		Page:       page,
-		PageSize:   pageSize,
-		TotalPages: totalPages,
+		Endpoints: endpoints,
+		BasePaginationResponse: models.BasePaginationResponse{
+			Total:      total,
+			Page:       page,
+			PageSize:   pageSize,
+			TotalPages: totalPages,
+		},
 	}
 
 	log.Info().
@@ -358,11 +362,13 @@ func (s *EndpointService) GetEndpointsBySubdomainID(subdomainID uint, page, page
 	}
 
 	response := &models.GetEndpointsResponse{
-		Endpoints:  endpoints,
-		Total:      total,
-		Page:       page,
-		PageSize:   pageSize,
-		TotalPages: totalPages,
+		Endpoints: endpoints,
+		BasePaginationResponse: models.BasePaginationResponse{
+			Total:      total,
+			Page:       page,
+			PageSize:   pageSize,
+			TotalPages: totalPages,
+		},
 	}
 
 	log.Info().

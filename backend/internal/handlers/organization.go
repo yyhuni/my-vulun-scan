@@ -173,7 +173,9 @@ func DeleteOrganization(c *gin.Context) {
 	}
 
 	response.SuccessResponse(c, models.DeleteOrgResponseData{
-		Message: "组织删除成功",
+		BaseDeleteResponse: models.BaseDeleteResponse{
+			Message: "组织删除成功",
+		},
 	})
 }
 
@@ -213,7 +215,9 @@ func BatchDeleteOrganizations(c *gin.Context) {
 	}
 
 	response.SuccessResponse(c, models.BatchDeleteOrgsResponseData{
-		Message:      "批量删除组织成功",
-		DeletedCount: deletedCount,
+		BaseBatchDeleteResponse: models.BaseBatchDeleteResponse{
+			Message:      "批量删除组织成功",
+			DeletedCount: deletedCount,
+		},
 	})
 }

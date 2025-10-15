@@ -26,13 +26,19 @@ func NewDomainService() *DomainService {
 
 // CreateDomains 批量创建域名并关联到组织
 //
+// 前置处理（Handler 层）：
+// - 域名已去重（相同域名只保留一个）
+// - 域名已标准化（统一转为小写并去除空格）
+// - 域名格式已验证（符合 DNS 规范）
+//
 // 业务逻辑说明：
 // 1. 验证目标组织是否存在（避免无效关联）
 // 2. 批量查询已存在的域名（1次查询代替N次）
 // 3. 批量创建新域名（1次插入代替N次）
-// 4. 批量查询已存在的关联关系（1次查询代替N次）
-// 5. 批量创建新关联关系（1次插入代替N次）
-// 6. 返回所有处理过的域名列表（包括新创建和已存在的）
+// 4. 为新域名自动创建根子域名（IsRoot=true）
+// 5. 批量查询已存在的关联关系（1次查询代替N次）
+// 6. 批量创建新关联关系（1次插入代替N次）
+// 7. 返回统计信息（总数、新建数、已存在数）
 //
 // 设计考虑：
 // - 使用事务确保数据一致性：要么全部成功，要么全部回滚
@@ -43,11 +49,10 @@ func NewDomainService() *DomainService {
 // 注意事项：
 // - 如果组织不存在会立即返回错误
 // - 事务失败会自动回滚，不会产生脏数据
-func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models.Domain, error) {
+func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) (*models.CreateDomainsResponse, error) {
 
-	// 预分配结果切片容量，避免动态扩容
-	resultDomains := make([]models.Domain, 0, len(req.Domains))
 	var newDomainsCount int // 用于统计新创建的域名数量
+	var totalProcessed int  // 实际处理的域名数量（去重后）
 
 	// 步骤1: 验证组织是否存在
 	var org models.Organization
@@ -61,15 +66,16 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 	}
 
 	// 步骤2: 使用事务处理批量创建和关联
+	// 注意：Handler 层已经完成了去重和标准化，这里直接使用
+	totalProcessed = len(req.Domains)
+
 	err := s.db.Transaction(func(tx *gorm.DB) error {
-		// 步骤2.1: 收集所有域名名称并构建映射（统一转为小写）
+		// 步骤2.1: 收集所有域名名称（Handler 层已去重和标准化）
 		domainNames := make([]string, 0, len(req.Domains))
 		domainDetailMap := make(map[string]models.DomainDetail)
 		for _, detail := range req.Domains {
-			// 将域名转为小写，确保数据一致性
-			normalizedName := strings.ToLower(strings.TrimSpace(detail.Name))
-			domainNames = append(domainNames, normalizedName)
-			domainDetailMap[normalizedName] = detail
+			domainNames = append(domainNames, detail.Name)
+			domainDetailMap[detail.Name] = detail
 		}
 
 		// 步骤2.2: 批量查询已存在的域名（1次查询）
@@ -88,14 +94,12 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 		}
 
 		// 步骤2.4: 找出需要创建的新域名
-		// 预估容量：最多不超过请求的域名数量
-		newDomains := make([]models.Domain, 0, len(req.Domains))
-		for _, detail := range req.Domains {
-			// 使用标准化后的小写域名
-			normalizedName := strings.ToLower(strings.TrimSpace(detail.Name))
-			if _, exists := existingDomainMap[normalizedName]; !exists {
+		newDomains := make([]models.Domain, 0, len(domainDetailMap))
+		for domainName, detail := range domainDetailMap {
+			// 检查域名是否已存在
+			if _, exists := existingDomainMap[domainName]; !exists {
 				newDomains = append(newDomains, models.Domain{
-					Name:        normalizedName, // 存储小写域名
+					Name:        domainName, // Handler 层已标准化
 					Description: detail.Description,
 				})
 			}
@@ -108,7 +112,8 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 				return err
 			}
 			newDomainsCount = len(newDomains) // 记录新创建的域名数量
-			log.Info().Int("count", len(newDomains)).Msg("Domains created successfully")
+			// 使用 Debug 级别，避免事务回滚时误导（真正的成功日志在事务外）
+			log.Debug().Int("count", len(newDomains)).Msg("Domains created in transaction")
 
 			// 步骤2.5.1: 为每个新创建的域名自动创建根子域名
 			// 预分配切片容量，避免动态扩容带来的性能开销
@@ -126,7 +131,8 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 				log.Error().Err(err).Int("count", len(rootSubdomains)).Msg("Failed to create root subdomains")
 				return err
 			}
-			log.Info().Int("count", len(rootSubdomains)).Msg("Root subdomains created successfully")
+			// 使用 Debug 级别，避免事务回滚时误导（真正的成功日志在事务外）
+			log.Debug().Int("count", len(rootSubdomains)).Msg("Root subdomains created in transaction")
 
 			// 将新创建的域名也加入映射
 			for _, domain := range newDomains {
@@ -151,23 +157,19 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 			existingAssocMap[assoc.DomainID] = true
 		}
 
-		// 步骤2.8: 找出需要创建的新关联并构建结果列表
-		// 预估容量：最多不超过请求的域名数量
-		newAssocs := make([]models.OrganizationDomain, 0, len(req.Domains))
-		for _, detail := range req.Domains {
-			// ✅ 使用标准化的域名作为 key（与前面步骤一致）
-			normalizedName := strings.ToLower(strings.TrimSpace(detail.Name))
-			
-			// ✅ 检查域名是否存在于 map 中
-			domain, exists := existingDomainMap[normalizedName]
+		// 步骤2.8: 找出需要创建的新关联
+		newAssocs := make([]models.OrganizationDomain, 0, len(domainDetailMap))
+		for domainName := range domainDetailMap {
+			// 检查域名是否存在于 map 中
+			domain, exists := existingDomainMap[domainName]
 			if !exists {
 				// 理论上不应该发生，因为前面已经创建了所有域名
 				// 但为了安全，记录错误并跳过
 				log.Error().
-					Str("domain", normalizedName).
+					Str("domain", domainName).
 					Uint("organization_id", req.OrgID).
 					Msg("Domain not found in map, this should not happen")
-				continue  // 跳过不存在的域名，避免使用零值
+				continue
 			}
 
 			// 如果该域名未关联到组织，添加到待创建列表
@@ -177,9 +179,6 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 					DomainID:       domain.ID,
 				})
 			}
-
-			// 添加到结果列表（保持请求顺序）
-			resultDomains = append(resultDomains, domain)
 		}
 
 		// 步骤2.9: 批量创建新关联（1次插入）
@@ -188,10 +187,11 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 				log.Error().Err(err).Int("count", len(newAssocs)).Msg("Failed to batch create associations")
 				return err
 			}
-			log.Info().
+			// 使用 Debug 级别，避免事务回滚时误导（真正的成功日志在事务外）
+			log.Debug().
 				Uint("organization_id", req.OrgID).
 				Int("count", len(newAssocs)).
-				Msg("Associations created successfully")
+				Msg("Associations created in transaction")
 		}
 
 		return nil
@@ -201,13 +201,27 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 		return nil, err
 	}
 
+	// 计算已存在的域名数量
+	alreadyExisted := totalProcessed - newDomainsCount
+
 	log.Info().
 		Uint("organization_id", req.OrgID).
-		Int("total_domains", len(resultDomains)).
+		Int("total_processed", totalProcessed).
 		Int("new_domains", newDomainsCount).
+		Int("already_existed", alreadyExisted).
 		Msg("Domains created and associated successfully")
 
-	return resultDomains, nil
+	// 构建响应数据
+	response := &models.CreateDomainsResponse{
+		BaseBatchCreateResponse: models.BaseBatchCreateResponse{
+			Message:        fmt.Sprintf("成功处理 %d 个域名，新创建 %d 个，%d 个已存在", totalProcessed, newDomainsCount, alreadyExisted),
+			TotalRequested: totalProcessed,
+			NewCreated:     newDomainsCount,
+			AlreadyExisted: alreadyExisted,
+		},
+	}
+
+	return response, nil
 }
 
 // GetDomainByID 根据ID获取域名信息（包含组织关联信息）
@@ -393,11 +407,13 @@ func (s *DomainService) GetDomainsByOrgID(req models.GetDomainsByOrgIDRequest) (
 		Msg("Domains retrieved successfully")
 
 	return &models.GetOrgDomainsResponse{
-		Domains:    domains,
-		Total:      total,
-		Page:       req.Page,
-		PageSize:   req.PageSize,
-		TotalPages: totalPages,
+		Domains: domains,
+		BasePaginationResponse: models.BasePaginationResponse{
+			Total:      total,
+			Page:       req.Page,
+			PageSize:   req.PageSize,
+			TotalPages: totalPages,
+		},
 	}, nil
 }
 
@@ -701,8 +717,8 @@ func (s *DomainService) GetAllDomains(req models.GetAllDomainsRequest) (*models.
 	// 计算总页数（向上取整）
 	totalPages := int((total + int64(req.PageSize) - 1) / int64(req.PageSize))
 
-	    // 构建排序子句（统一：按更新时间倒序）
-    orderClause := "updated_at desc"
+	// 构建排序子句（统一：按更新时间倒序）
+	orderClause := "updated_at desc"
 
 	// 执行分页查询，支持动态排序
 	offset := (req.Page - 1) * req.PageSize
@@ -727,10 +743,12 @@ func (s *DomainService) GetAllDomains(req models.GetAllDomainsRequest) (*models.
 		Msg("All domains retrieved successfully")
 
 	return &models.GetAllDomainsResponse{
-		Domains:    domains,
-		Total:      total,
-		Page:       req.Page,
-		PageSize:   req.PageSize,
-		TotalPages: totalPages,
+		Domains: domains,
+		BasePaginationResponse: models.BasePaginationResponse{
+			Total:      total,
+			Page:       req.Page,
+			PageSize:   req.PageSize,
+			TotalPages: totalPages,
+		},
 	}, nil
 }

@@ -1,6 +1,6 @@
 import { api } from "@/lib/api-client"
 import type { ApiResponse } from "@/types/api-response.types"
-import type { Domain, GetDomainsParams, GetDomainsResponse, GetAllDomainsParams, GetAllDomainsResponse } from "@/types/domain.types"
+import type { Domain, GetDomainsParams, GetDomainsResponse, GetAllDomainsParams, GetAllDomainsResponse, BatchCreateDomainsResponse } from "@/types/domain.types"
 
 export class DomainService {
   // ========== 域名基础操作 ==========
@@ -10,7 +10,7 @@ export class DomainService {
    * @param data - 域名创建请求对象
    * @param data.domains - 域名详细信息数组
    * @param data.organizationId - 组织ID
-   * @returns Promise<ApiResponse<Domain[]>> - 创建成功后的域名信息数组
+   * @returns Promise<ApiResponse<BatchCreateDomainsResponse>> - 创建统计信息
    */
   static async createDomains(data: {
     domains: Array<{
@@ -18,8 +18,8 @@ export class DomainService {
       description?: string
     }>
     organizationId: number
-  }): Promise<ApiResponse<Domain[]>> {
-    const response = await api.post<ApiResponse<Domain[]>>('/domains/create', {
+  }): Promise<ApiResponse<BatchCreateDomainsResponse>> {
+    const response = await api.post<ApiResponse<BatchCreateDomainsResponse>>('/domains/create', {
       domains: data.domains,
       organizationId: data.organizationId  // ✅ 使用驼峰命名，拦截器会自动转换为 organization_id
     })
