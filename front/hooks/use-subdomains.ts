@@ -105,23 +105,23 @@ export function useCreateSubdomainForDomain() {
       toast.dismiss('create-subdomain-for-domain')
       
       if (response.state === 'success' && response.data) {
-        const { subdomainsCreated, alreadyExists } = response.data
+        const { newCreated, alreadyExisted } = response.data
         
         // 打印后端响应
         console.log('创建子域名成功')
         console.log('后端响应:', response)
         
         // 根据不同情况构建友好的消息
-        if (subdomainsCreated > 0) {
-          let message = `✅ 成功创建 ${subdomainsCreated} 个子域名`
+        if (newCreated > 0) {
+          let message = `✅ 成功创建 ${newCreated} 个子域名`
           
-          if (alreadyExists > 0) {
-            message += `\n⚠️ ${alreadyExists} 个已存在`
+          if (alreadyExisted > 0) {
+            message += `\n⚠️ ${alreadyExisted} 个已存在`
           }
           
           toast.success(message, { duration: 4000 })
-        } else if (alreadyExists > 0) {
-          toast.info(`📝 所有 ${alreadyExists} 个子域名已存在`, { duration: 3000 })
+        } else if (alreadyExisted > 0) {
+          toast.info(`📝 所有 ${alreadyExisted} 个子域名已存在`, { duration: 3000 })
         } else {
           toast.success('操作成功')
         }

@@ -1,4 +1,5 @@
 import type { Domain } from './domain.types'
+import type { BatchCreateResponse } from './api-response.types'
 
 export interface SubDomain {
   id: number
@@ -35,11 +36,9 @@ export interface CreateSubDomainsRequest {
   }>
 }
 
-export interface CreateSubDomainsResponse {
-  subdomainsCreated: number     // 实际创建的子域名数量
-  alreadyExists: number          // 已存在的子域名数量
-  skippedDomains: string[]       // 被跳过的根域名列表
-  totalUniqueSubdomains: number  // 请求的唯一子域名总数
+// 创建子域名响应（继承通用批量创建响应）
+export interface CreateSubDomainsResponse extends BatchCreateResponse {
+  // 继承的字段：message, totalRequested, newCreated, alreadyExisted
 }
 
 export interface BatchDeleteSubDomainsRequest {

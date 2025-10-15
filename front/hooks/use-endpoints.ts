@@ -119,13 +119,21 @@ export function useCreateEndpoint() {
       // 关闭加载提示
       toast.dismiss('create-endpoint')
       
-      if (response.state === 'success') {
+      if (response.state === 'success' && response.data) {
+        const { newCreated, alreadyExisted } = response.data
+        
         // 打印后端响应
         console.log('创建端点成功')
         console.log('后端响应:', response)
         
         // 前端自己构造成功提示消息
-        toast.success('端点创建成功')
+        if (alreadyExisted > 0) {
+          toast.warning(
+            `成功创建 ${newCreated} 个端点（${alreadyExisted} 个已存在）`
+          )
+        } else {
+          toast.success(`成功创建 ${newCreated} 个端点`)
+        }
         
         // 刷新所有相关查询（因为可能自动创建了 domain 和 subdomain）
         queryClient.invalidateQueries({ queryKey: endpointKeys.lists() })

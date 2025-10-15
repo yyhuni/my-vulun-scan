@@ -1,6 +1,8 @@
 // Endpoint 专用数据类型定义
 // 注意：后端返回 snake_case，但 api-client.ts 会自动转换为 camelCase
 
+import type { BatchCreateResponse } from './api-response.types'
+
 export interface Endpoint {
   id: number
   url: string
@@ -43,6 +45,11 @@ export interface CreateEndpointRequest {
   contentLength?: number | null    // 可选
   domain?: string                  // 可选
   subdomain?: string               // 可选
+}
+
+// 创建 Endpoint 响应（继承通用批量创建响应）
+export interface CreateEndpointsResponse extends BatchCreateResponse {
+  // 继承的字段：message, totalRequested, newCreated, alreadyExisted
 }
 
 // 更新 Endpoint 请求参数
