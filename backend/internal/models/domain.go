@@ -51,11 +51,9 @@ type DeleteDomainRequest struct {
 
 // GetDomainsByOrgIDRequest 获取组织域名请求(支持分页和排序)
 type GetDomainsByOrgIDRequest struct {
-	OrgID     uint   `uri:"id" binding:"required"` // 组织ID（路径参数）
-	Page      int    `form:"page"`
-	PageSize  int    `form:"page_size"`
-	SortBy    string `form:"sort_by"`    // 排序字段: name, created_at, updated_at
-	SortOrder string `form:"sort_order"` // 排序方向: asc, desc
+	OrgID uint `uri:"id" binding:"required"` // 组织ID（路径参数）
+	BasePaginationRequest
+	// 允许的排序字段: name, created_at, updated_at
 }
 
 // GetOrgDomainsResponse 获取组织域名响应
@@ -96,10 +94,8 @@ type DomainResponseData struct {
 
 // GetAllDomainsRequest 获取所有域名请求（支持分页和排序）
 type GetAllDomainsRequest struct {
-	Page      int    `form:"page"`
-	PageSize  int    `form:"page_size"`
-	SortBy    string `form:"sort_by"`    // 排序字段: name, created_at, updated_at
-	SortOrder string `form:"sort_order"` // 排序方向: asc, desc
+	BasePaginationRequest
+	// 允许的排序字段: name, created_at, updated_at
 }
 
 // GetAllDomainsResponse 获取所有域名响应

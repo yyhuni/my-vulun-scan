@@ -13,22 +13,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// setEndpointDefaults 设置端点查询参数默认值
-func setEndpointDefaults(page, pageSize *int, sortBy, sortOrder *string) {
-	if *page <= 0 {
-		*page = 1
-	}
-	if *pageSize <= 0 {
-		*pageSize = 10
-	}
-	if *sortBy == "" {
-		*sortBy = "updated_at"
-	}
-	if *sortOrder == "" {
-		*sortOrder = "desc"
-	}
-}
-
 // GetEndpoints 获取所有端点列表
 // @Summary 获取所有端点列表
 // @Description 获取所有端点，支持分页。固定按更新时间降序排列。如需按域名或子域名过滤，请使用 /domains/:id/endpoints 或 /subdomains/:id/endpoints
@@ -47,7 +31,7 @@ func GetEndpoints(c *gin.Context) {
 	}
 
 	// 设置默认值
-	setEndpointDefaults(&req.Page, &req.PageSize, &req.SortBy, &req.SortOrder)
+	req.SetDefaults()
 
 	// 调用 service 层获取数据
 	endpointService := services.NewEndpointService()
@@ -170,19 +154,14 @@ func GetEndpointsByDomainID(c *gin.Context) {
 		return
 	}
 
-	var query struct {
-		Page      int    `form:"page"`
-		PageSize  int    `form:"page_size"`
-		SortBy    string `form:"sort_by"`
-		SortOrder string `form:"sort_order"`
-	}
+	var query models.BasePaginationRequest
 	if err := c.ShouldBindQuery(&query); err != nil {
 		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
 		return
 	}
 
 	// 设置默认值
-	setEndpointDefaults(&query.Page, &query.PageSize, &query.SortBy, &query.SortOrder)
+	query.SetDefaults()
 
 	result, err := services.NewEndpointService().GetEndpointsByDomainID(
 		uri.ID, query.Page, query.PageSize, query.SortBy, query.SortOrder,
@@ -214,19 +193,14 @@ func GetEndpointsBySubdomainID(c *gin.Context) {
 		return
 	}
 
-	var query struct {
-		Page      int    `form:"page"`
-		PageSize  int    `form:"page_size"`
-		SortBy    string `form:"sort_by"`
-		SortOrder string `form:"sort_order"`
-	}
+	var query models.BasePaginationRequest
 	if err := c.ShouldBindQuery(&query); err != nil {
 		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
 		return
 	}
 
 	// 设置默认值
-	setEndpointDefaults(&query.Page, &query.PageSize, &query.SortBy, &query.SortOrder)
+	query.SetDefaults()
 
 	result, err := services.NewEndpointService().GetEndpointsBySubdomainID(
 		uri.ID, query.Page, query.PageSize, query.SortBy, query.SortOrder,

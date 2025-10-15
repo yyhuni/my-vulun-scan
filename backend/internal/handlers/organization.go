@@ -68,18 +68,7 @@ func GetOrgs(c *gin.Context) {
 	}
 
 	// 设置默认值
-	if req.Page <= 0 {
-		req.Page = 1
-	}
-	if req.PageSize <= 0 {
-		req.PageSize = 10
-	}
-	if req.SortBy == "" {
-		req.SortBy = "updated_at"
-	}
-	if req.SortOrder == "" {
-		req.SortOrder = "desc"
-	}
+	req.SetDefaults()
 
 	result, err := service.GetOrgs(req)
 	if err != nil {

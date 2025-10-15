@@ -33,18 +33,7 @@ func GetSubDomains(c *gin.Context) {
 	}
 
 	// 设置默认值
-	if req.Page <= 0 {
-		req.Page = 1
-	}
-	if req.PageSize <= 0 {
-		req.PageSize = 10
-	}
-	if req.SortBy == "" {
-		req.SortBy = "updated_at"
-	}
-	if req.SortOrder == "" {
-		req.SortOrder = "desc"
-	}
+	req.SetDefaults()
 
 	result, err := services.NewSubDomainService().GetSubDomains(
 		req.Page,
@@ -122,30 +111,14 @@ func GetSubDomainsByDomainID(c *gin.Context) {
 	}
 
 	// 绑定查询参数（分页、排序）
-	var queryParams struct {
-		Page      int    `form:"page"`
-		PageSize  int    `form:"page_size"`
-		SortBy    string `form:"sort_by"`
-		SortOrder string `form:"sort_order"`
-	}
+	var queryParams models.BasePaginationRequest
 	if err := c.ShouldBindQuery(&queryParams); err != nil {
 		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
 		return
 	}
 
 	// 设置默认值
-	if queryParams.Page <= 0 {
-		queryParams.Page = 1
-	}
-	if queryParams.PageSize <= 0 {
-		queryParams.PageSize = 10
-	}
-	if queryParams.SortBy == "" {
-		queryParams.SortBy = "updated_at"
-	}
-	if queryParams.SortOrder == "" {
-		queryParams.SortOrder = "desc"
-	}
+	queryParams.SetDefaults()
 
 	// 调用服务层获取子域名列表
 	result, err := service.GetSubDomainsByDomainID(
@@ -188,30 +161,14 @@ func GetSubDomainsByOrgID(c *gin.Context) {
 	}
 
 	// 绑定查询参数（分页、排序）
-	var queryParams struct {
-		Page      int    `form:"page"`
-		PageSize  int    `form:"page_size"`
-		SortBy    string `form:"sort_by"`
-		SortOrder string `form:"sort_order"`
-	}
+	var queryParams models.BasePaginationRequest
 	if err := c.ShouldBindQuery(&queryParams); err != nil {
 		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
 		return
 	}
 
 	// 设置默认值
-	if queryParams.Page <= 0 {
-		queryParams.Page = 1
-	}
-	if queryParams.PageSize <= 0 {
-		queryParams.PageSize = 10
-	}
-	if queryParams.SortBy == "" {
-		queryParams.SortBy = "updated_at"
-	}
-	if queryParams.SortOrder == "" {
-		queryParams.SortOrder = "desc"
-	}
+	queryParams.SetDefaults()
 
 	// 调用服务层获取子域名列表
 	result, err := service.GetSubDomainsByOrgID(

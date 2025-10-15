@@ -44,10 +44,8 @@ type BatchDeleteOrgsRequest struct {
 
 // GetOrgsRequest 获取组织列表请求
 type GetOrgsRequest struct {
-	Page      int    `json:"page" form:"page"`
-	PageSize  int    `json:"page_size" form:"page_size"`
-	SortBy    string `json:"sort_by" form:"sort_by"`       // 排序字段：id, name, created_at, updated_at
-	SortOrder string `json:"sort_order" form:"sort_order"` // 排序方向：asc, desc
+	BasePaginationRequest
+	// 允许的排序字段：id, name, created_at, updated_at
 }
 
 // GetOrgsResponse 获取组织列表响应
