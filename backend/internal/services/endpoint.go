@@ -105,11 +105,11 @@ func (s *EndpointService) GetEndpointByID(id uint) (*models.Endpoint, error) {
 // 6. 批量创建新的 Endpoint 记录
 //
 // 关键设计决策：
-// - URL 唯一性：Endpoint 的唯一标识是 URL，而不是 (URL + Method) 组合
-// - 精确匹配：优先精确匹配完整 host 到 Subdomain，避免跨域关联问题
-//   例如：https://media.org20-primary.com/api 只会关联到 media.org20-primary.com 这个 Subdomain
-//   不会错误关联到 org20-primary.com 或其他域名
-// - 自动跳过：如果 URL 的 host 在系统中不存在对应的 Subdomain，则自动跳过该 URL
+//   - URL 唯一性：Endpoint 的唯一标识是 URL，而不是 (URL + Method) 组合
+//   - 精确匹配：优先精确匹配完整 host 到 Subdomain，避免跨域关联问题
+//     例如：https://media.org20-primary.com/api 只会关联到 media.org20-primary.com 这个 Subdomain
+//     不会错误关联到 org20-primary.com 或其他域名
+//   - 自动跳过：如果 URL 的 host 在系统中不存在对应的 Subdomain，则自动跳过该 URL
 //
 // 幂等性保证：
 // - 重复提交相同 URL 的 Endpoint 不会报错，只会记录到 ExistingEndpoints 列表

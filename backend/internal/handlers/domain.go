@@ -155,14 +155,12 @@ func UpdateDomain(c *gin.Context) {
 
 // GetDomainsByOrgID 获取组织的域名列表
 // @Summary 获取组织的域名列表
-// @Description 获取指定组织的所有域名，支持分页和排序。注意：返回的域名不包含子域名信息
+// @Description 获取指定组织的所有域名，支持分页。固定按更新时间降序排列。注意：返回的域名不包含子域名信息
 // @Tags 域名管理
 // @Produce json
 // @Param id path uint true "组织ID" example(1)
 // @Param page query int false "页码" default(1)
 // @Param page_size query int false "每页数量" default(10)
-// @Param sort_by query string false "排序字段" default(updated_at) Enums(name, created_at, updated_at)
-// @Param sort_order query string false "排序方向" default(desc) Enums(asc, desc)
 // @Success 200 {object} models.APIResponse{data=models.GetOrgDomainsResponse} "获取成功"
 // @Failure 400 {object} models.APIResponse "请求参数错误"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
@@ -299,13 +297,11 @@ func BatchDeleteDomainsFromOrganization(c *gin.Context) {
 
 // GetAllDomains 获取所有域名列表
 // @Summary 获取所有域名列表
-// @Description 获取系统中的所有域名，支持分页和排序
+// @Description 获取系统中的所有域名，支持分页。固定按更新时间降序排列
 // @Tags 域名管理
 // @Produce json
 // @Param page query int false "页码" default(1)
 // @Param page_size query int false "每页数量" default(10)
-// @Param sort_by query string false "排序字段" default(updated_at) Enums(name, created_at, updated_at)
-// @Param sort_order query string false "排序方向" default(desc) Enums(asc, desc)
 // @Success 200 {object} models.APIResponse{data=models.GetAllDomainsResponse} "获取成功"
 // @Failure 400 {object} models.APIResponse "请求参数错误"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
