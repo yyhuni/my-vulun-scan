@@ -20,13 +20,19 @@ export const organizationKeys = {
  * - 自动错误处理
  * - 支持分页和排序
  * - 自动缓存和重新验证
+ * - 支持条件查询（enabled 选项）
  */
-export function useOrganizations(params?: {
-  page?: number
-  pageSize?: number
-  sortBy?: string
-  sortOrder?: 'asc' | 'desc'
-}) {
+export function useOrganizations(
+  params?: {
+    page?: number
+    pageSize?: number
+    sortBy?: string
+    sortOrder?: 'asc' | 'desc'
+  },
+  options?: {
+    enabled?: boolean
+  }
+) {
   return useQuery({
     queryKey: organizationKeys.list(params),
     queryFn: () => OrganizationService.getOrganizations(params || {}),
@@ -47,6 +53,7 @@ export function useOrganizations(params?: {
       }
       throw new Error(response.message || '获取组织列表失败')
     },
+    enabled: options?.enabled !== undefined ? options.enabled : true,
     throwOnError: true,
   })
 }

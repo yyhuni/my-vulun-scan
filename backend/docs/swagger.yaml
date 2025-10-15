@@ -58,8 +58,10 @@ definitions:
   vulun-scan-backend_internal_models.BatchDeleteEndpointsResponseData:
     properties:
       deleted_count:
+        description: 实际删除的数量
         type: integer
       message:
+        description: 操作结果描述
         type: string
     type: object
   vulun-scan-backend_internal_models.BatchDeleteOrgsRequest:
@@ -74,8 +76,10 @@ definitions:
   vulun-scan-backend_internal_models.BatchDeleteOrgsResponseData:
     properties:
       deleted_count:
+        description: 实际删除的数量
         type: integer
       message:
+        description: 操作结果描述
         type: string
     type: object
   vulun-scan-backend_internal_models.BatchDeleteSubDomainsRequest:
@@ -90,8 +94,10 @@ definitions:
   vulun-scan-backend_internal_models.BatchDeleteSubDomainsResponseData:
     properties:
       deleted_count:
+        description: 实际删除的数量
         type: integer
       message:
+        description: 操作结果描述
         type: string
     type: object
   vulun-scan-backend_internal_models.CreateDomainsRequest:
@@ -105,6 +111,21 @@ definitions:
     required:
     - domains
     - organization_id
+    type: object
+  vulun-scan-backend_internal_models.CreateDomainsResponse:
+    properties:
+      already_existed:
+        description: 已存在的数量
+        type: integer
+      message:
+        description: 详细说明
+        type: string
+      new_created:
+        description: 新创建的数量
+        type: integer
+      total_requested:
+        description: 请求创建的总数量
+        type: integer
     type: object
   vulun-scan-backend_internal_models.CreateEndpointsRequest:
     properties:
@@ -196,6 +217,7 @@ definitions:
   vulun-scan-backend_internal_models.DeleteDomainResponseData:
     properties:
       message:
+        description: 操作结果描述
         type: string
     type: object
   vulun-scan-backend_internal_models.DeleteOrgRequest:
@@ -208,6 +230,7 @@ definitions:
   vulun-scan-backend_internal_models.DeleteOrgResponseData:
     properties:
       message:
+        description: 操作结果描述
         type: string
     type: object
   vulun-scan-backend_internal_models.Domain:
@@ -326,12 +349,16 @@ definitions:
           $ref: '#/definitions/vulun-scan-backend_internal_models.Domain'
         type: array
       page:
+        description: 当前页码
         type: integer
       page_size:
+        description: 每页数量
         type: integer
       total:
+        description: 总记录数
         type: integer
       total_pages:
+        description: 总页数
         type: integer
     type: object
   vulun-scan-backend_internal_models.GetCategoriesResponse:
@@ -352,12 +379,16 @@ definitions:
           $ref: '#/definitions/vulun-scan-backend_internal_models.Endpoint'
         type: array
       page:
+        description: 当前页码
         type: integer
       page_size:
+        description: 每页数量
         type: integer
       total:
+        description: 总记录数
         type: integer
       total_pages:
+        description: 总页数
         type: integer
     type: object
   vulun-scan-backend_internal_models.GetOrgDomainsResponse:
@@ -367,12 +398,16 @@ definitions:
           $ref: '#/definitions/vulun-scan-backend_internal_models.Domain'
         type: array
       page:
+        description: 当前页码
         type: integer
       page_size:
+        description: 每页数量
         type: integer
       total:
+        description: 总记录数
         type: integer
       total_pages:
+        description: 总页数
         type: integer
     type: object
   vulun-scan-backend_internal_models.GetOrgsResponse:
@@ -382,42 +417,54 @@ definitions:
           $ref: '#/definitions/vulun-scan-backend_internal_models.Organization'
         type: array
       page:
+        description: 当前页码
         type: integer
       page_size:
+        description: 每页数量
         type: integer
       total:
+        description: 总记录数
         type: integer
       total_pages:
+        description: 总页数
         type: integer
     type: object
   vulun-scan-backend_internal_models.GetSubDomainsResponse:
     properties:
       page:
+        description: 当前页码
         type: integer
       page_size:
+        description: 每页数量
         type: integer
       sub_domains:
         items:
           $ref: '#/definitions/vulun-scan-backend_internal_models.SubDomain'
         type: array
       total:
+        description: 总记录数
         type: integer
       total_pages:
+        description: 总页数
         type: integer
     type: object
   vulun-scan-backend_internal_models.GetToolsResponse:
     properties:
       page:
+        description: 当前页码
         type: integer
       page_size:
+        description: 每页数量
         type: integer
       tools:
         items:
           $ref: '#/definitions/vulun-scan-backend_internal_models.Tool'
         type: array
       total:
+        description: 总记录数
         type: integer
       total_pages:
+        description: 总页数
         type: integer
     type: object
   vulun-scan-backend_internal_models.HealthStatusResponseData:
@@ -840,15 +887,13 @@ paths:
       - application/json
       responses:
         "200":
-          description: 创建成功，返回创建的域名列表（包括新创建和已存在的）
+          description: 创建成功，返回统计信息
           schema:
             allOf:
             - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/vulun-scan-backend_internal_models.Domain'
-                  type: array
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.CreateDomainsResponse'
               type: object
         "400":
           description: 请求参数错误（如域名列表为空、参数格式错误等）

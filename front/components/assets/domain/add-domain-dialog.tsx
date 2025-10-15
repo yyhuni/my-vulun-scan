@@ -97,15 +97,20 @@ export function AddDomainDialog({
     }
   }, [presetOrganizationId])
 
-  // 使用 React Query 获取组织列表
+  // 使用 React Query 获取组织列表（仅在没有预设组织ID时才请求）
   const { 
     data: organizationsData, 
     isLoading: isLoadingOrganizations,
     error: organizationsError 
-  } = useOrganizations({
-    page: 1,
-    pageSize: 100, // 获取足够多的组织用于选择
-  })
+  } = useOrganizations(
+    {
+      page: 1,
+      pageSize: 100, // 获取足够多的组织用于选择
+    },
+    {
+      enabled: !presetOrganizationId, // 有预设组织ID时不请求
+    }
+  )
 
   // 使用 React Query 的创建域名 mutation
   const createDomain = useCreateDomain()

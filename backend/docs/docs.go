@@ -197,7 +197,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "创建成功，返回创建的域名列表（包括新创建和已存在的）",
+                        "description": "创建成功，返回统计信息",
                         "schema": {
                             "allOf": [
                                 {
@@ -207,10 +207,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/vulun-scan-backend_internal_models.Domain"
-                                            }
+                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.CreateDomainsResponse"
                                         }
                                     }
                                 }
@@ -2030,9 +2027,11 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "deleted_count": {
+                    "description": "实际删除的数量",
                     "type": "integer"
                 },
                 "message": {
+                    "description": "操作结果描述",
                     "type": "string"
                 }
             }
@@ -2055,9 +2054,11 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "deleted_count": {
+                    "description": "实际删除的数量",
                     "type": "integer"
                 },
                 "message": {
+                    "description": "操作结果描述",
                     "type": "string"
                 }
             }
@@ -2080,9 +2081,11 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "deleted_count": {
+                    "description": "实际删除的数量",
                     "type": "integer"
                 },
                 "message": {
+                    "description": "操作结果描述",
                     "type": "string"
                 }
             }
@@ -2101,6 +2104,27 @@ const docTemplate = `{
                     }
                 },
                 "organization_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "vulun-scan-backend_internal_models.CreateDomainsResponse": {
+            "type": "object",
+            "properties": {
+                "already_existed": {
+                    "description": "已存在的数量",
+                    "type": "integer"
+                },
+                "message": {
+                    "description": "详细说明",
+                    "type": "string"
+                },
+                "new_created": {
+                    "description": "新创建的数量",
+                    "type": "integer"
+                },
+                "total_requested": {
+                    "description": "请求创建的总数量",
                     "type": "integer"
                 }
             }
@@ -2237,6 +2261,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "message": {
+                    "description": "操作结果描述",
                     "type": "string"
                 }
             }
@@ -2256,6 +2281,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "message": {
+                    "description": "操作结果描述",
                     "type": "string"
                 }
             }
@@ -2425,15 +2451,19 @@ const docTemplate = `{
                     }
                 },
                 "page": {
+                    "description": "当前页码",
                     "type": "integer"
                 },
                 "page_size": {
+                    "description": "每页数量",
                     "type": "integer"
                 },
                 "total": {
+                    "description": "总记录数",
                     "type": "integer"
                 },
                 "total_pages": {
+                    "description": "总页数",
                     "type": "integer"
                 }
             }
@@ -2464,15 +2494,19 @@ const docTemplate = `{
                     }
                 },
                 "page": {
+                    "description": "当前页码",
                     "type": "integer"
                 },
                 "page_size": {
+                    "description": "每页数量",
                     "type": "integer"
                 },
                 "total": {
+                    "description": "总记录数",
                     "type": "integer"
                 },
                 "total_pages": {
+                    "description": "总页数",
                     "type": "integer"
                 }
             }
@@ -2487,15 +2521,19 @@ const docTemplate = `{
                     }
                 },
                 "page": {
+                    "description": "当前页码",
                     "type": "integer"
                 },
                 "page_size": {
+                    "description": "每页数量",
                     "type": "integer"
                 },
                 "total": {
+                    "description": "总记录数",
                     "type": "integer"
                 },
                 "total_pages": {
+                    "description": "总页数",
                     "type": "integer"
                 }
             }
@@ -2510,15 +2548,19 @@ const docTemplate = `{
                     }
                 },
                 "page": {
+                    "description": "当前页码",
                     "type": "integer"
                 },
                 "page_size": {
+                    "description": "每页数量",
                     "type": "integer"
                 },
                 "total": {
+                    "description": "总记录数",
                     "type": "integer"
                 },
                 "total_pages": {
+                    "description": "总页数",
                     "type": "integer"
                 }
             }
@@ -2527,9 +2569,11 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "page": {
+                    "description": "当前页码",
                     "type": "integer"
                 },
                 "page_size": {
+                    "description": "每页数量",
                     "type": "integer"
                 },
                 "sub_domains": {
@@ -2539,9 +2583,11 @@ const docTemplate = `{
                     }
                 },
                 "total": {
+                    "description": "总记录数",
                     "type": "integer"
                 },
                 "total_pages": {
+                    "description": "总页数",
                     "type": "integer"
                 }
             }
@@ -2550,9 +2596,11 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "page": {
+                    "description": "当前页码",
                     "type": "integer"
                 },
                 "page_size": {
+                    "description": "每页数量",
                     "type": "integer"
                 },
                 "tools": {
@@ -2562,9 +2610,11 @@ const docTemplate = `{
                     }
                 },
                 "total": {
+                    "description": "总记录数",
                     "type": "integer"
                 },
                 "total_pages": {
+                    "description": "总页数",
                     "type": "integer"
                 }
             }
