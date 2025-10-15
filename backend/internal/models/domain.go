@@ -23,14 +23,15 @@ type Domain struct {
 	Endpoints  []Endpoint  `json:"endpoints" gorm:"foreignKey:DomainID;constraint:OnDelete:CASCADE"` // 冗余关联
 }
 
-// CreateDomainsRequest 创建域名请求与响应
+// CreateDomainsRequest 创建域名请求
 type CreateDomainsRequest struct {
 	Domains []DomainDetail `json:"domains" binding:"required"`
 	OrgID   uint           `json:"organization_id" binding:"required"`
 }
 
-type CreateDomainsResponse struct {
-	BaseBatchCreateResponse
+// CreateDomainsResponseData 创建域名响应数据
+type CreateDomainsResponseData struct {
+	BaseBatchCreateResponseData
 }
 
 // DomainDetail 域名详细信息
@@ -84,7 +85,12 @@ type BatchDeleteDomainsRequest struct {
 
 // BatchDeleteDomainsResponseData 批量移除域名响应数据
 type BatchDeleteDomainsResponseData struct {
-	BaseBatchDeleteResponse
+	BaseBatchDeleteResponseData
+}
+
+// BatchDeleteDomainsDirectResponseData 批量直接删除域名响应数据
+type BatchDeleteDomainsDirectResponseData struct {
+	BaseBatchDeleteResponseData
 }
 
 // DomainResponseData 域名详情响应数据（不包含组织信息）

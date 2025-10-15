@@ -8,16 +8,16 @@ type APIResponse struct {
 	Data    interface{} `json:"data"`    // 响应数据
 }
 
-// BaseBatchCreateResponse 通用批量创建响应基础结构
-type BaseBatchCreateResponse struct {
+// BaseBatchCreateResponseData 通用批量创建响应基础结构
+type BaseBatchCreateResponseData struct {
 	Message        string `json:"message"`         // 详细说明
 	TotalRequested int    `json:"total_requested"` // 请求创建的总数量
 	NewCreated     int    `json:"new_created"`     // 新创建的数量
 	AlreadyExisted int    `json:"already_existed"` // 已存在的数量
 }
 
-// BaseBatchDeleteResponse 通用批量删除响应基础结构
-type BaseBatchDeleteResponse struct {
+// BaseBatchDeleteResponseData 通用批量删除响应基础结构
+type BaseBatchDeleteResponseData struct {
 	Message      string `json:"message"`       // 操作结果描述
 	DeletedCount int    `json:"deleted_count"` // 实际删除的数量
 }

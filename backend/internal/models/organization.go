@@ -66,5 +66,5 @@ type DeleteOrgResponseData struct {
 
 // BatchDeleteOrgsResponseData 批量删除组织响应数据
 type BatchDeleteOrgsResponseData struct {
-	BaseBatchDeleteResponse
+	BaseBatchDeleteResponseData
 }

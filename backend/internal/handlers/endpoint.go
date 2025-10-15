@@ -82,7 +82,7 @@ func GetEndpointByID(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body models.CreateEndpointsRequest true "端点创建请求"
-// @Success 200 {object} models.APIResponse{data=models.CreateEndpointsResponse} "创建成功，返回统计信息"
+// @Success 200 {object} models.APIResponse{data=models.CreateEndpointsResponseData} "创建成功，返回统计信息"
 // @Failure 400 {object} models.APIResponse "请求参数错误"
 // @Router /endpoints/create [post]
 func CreateEndpoints(c *gin.Context) {
@@ -230,7 +230,7 @@ func DeleteEndpoint(c *gin.Context) {
 
 	// 返回删除成功信息（统一使用结构化响应类型）
 	response.SuccessResponse(c, models.BatchDeleteEndpointsResponseData{
-		BaseBatchDeleteResponse: models.BaseBatchDeleteResponse{
+		BaseBatchDeleteResponseData: models.BaseBatchDeleteResponseData{
 			Message:      "删除端点成功",
 			DeletedCount: deletedCount,
 		},
@@ -265,8 +265,8 @@ func BatchDeleteEndpoints(c *gin.Context) {
 	deletedCount, err := service.BatchDeleteEndpoints(req.EndpointIDs)
 	if err != nil {
 		// 使用 errors.Is 判断业务错误类型
-		if errors.Is(err, customErrors.ErrEmptyEndpointIDs) || 
-		   errors.Is(err, customErrors.ErrPartialEndpointsNotFound) {
+		if errors.Is(err, customErrors.ErrEmptyEndpointIDs) ||
+			errors.Is(err, customErrors.ErrPartialEndpointsNotFound) {
 			response.BadRequestResponse(c, err.Error())
 			return
 		}
@@ -276,7 +276,7 @@ func BatchDeleteEndpoints(c *gin.Context) {
 	}
 
 	response.SuccessResponse(c, models.BatchDeleteEndpointsResponseData{
-		BaseBatchDeleteResponse: models.BaseBatchDeleteResponse{
+		BaseBatchDeleteResponseData: models.BaseBatchDeleteResponseData{
 			Message:      "批量删除端点成功",
 			DeletedCount: deletedCount,
 		},

@@ -243,66 +243,66 @@ func (s *SubDomainService) batchInsertSubdomains(subdomainsToInsert []models.Sub
 
 // GetSubDomainsByDomain 根据域名ID获取所有子域名
 func (s *SubDomainService) GetSubDomainsByDomain(domainID uint, page, pageSize int, sortBy, sortOrder string) (*models.GetSubDomainsResponse, error) {
-    // 基于域名过滤
-    query := s.db.Model(&models.SubDomain{}).Where("domain_id = ?", domainID)
+	// 基于域名过滤
+	query := s.db.Model(&models.SubDomain{}).Where("domain_id = ?", domainID)
 
-    // 统计总数
-    var total int64
-    if err := query.Count(&total).Error; err != nil {
-        log.Error().Err(err).Uint("domain_id", domainID).Msg("Failed to count sub domains by domain")
-        return nil, err
-    }
+	// 统计总数
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		log.Error().Err(err).Uint("domain_id", domainID).Msg("Failed to count sub domains by domain")
+		return nil, err
+	}
 
-    // 排序（统一：updated_at DESC）
-    query = query.Order("updated_at DESC")
+	// 排序（统一：updated_at DESC）
+	query = query.Order("updated_at DESC")
 
-    // 分页
-    offset := (page - 1) * pageSize
-    query = query.Offset(offset).Limit(pageSize)
+	// 分页
+	offset := (page - 1) * pageSize
+	query = query.Offset(offset).Limit(pageSize)
 
-    // 预加载关联数据
-    query = query.Preload("Domain")
+	// 预加载关联数据
+	query = query.Preload("Domain")
 
-    // 查询数据
-    var subDomains []models.SubDomain
-    if err := query.Find(&subDomains).Error; err != nil {
-        log.Error().Err(err).Uint("domain_id", domainID).Msg("Failed to query sub domains by domain")
-        return nil, err
-    }
+	// 查询数据
+	var subDomains []models.SubDomain
+	if err := query.Find(&subDomains).Error; err != nil {
+		log.Error().Err(err).Uint("domain_id", domainID).Msg("Failed to query sub domains by domain")
+		return nil, err
+	}
 
-    response := &models.GetSubDomainsResponse{
-        SubDomains: subDomains,
-        BasePaginationResponse: models.BasePaginationResponse{
-            Total:    total,
-            Page:     page,
-            PageSize: pageSize,
-        },
-    }
+	response := &models.GetSubDomainsResponse{
+		SubDomains: subDomains,
+		BasePaginationResponse: models.BasePaginationResponse{
+			Total:    total,
+			Page:     page,
+			PageSize: pageSize,
+		},
+	}
 
-    log.Info().
-        Uint("domain_id", domainID).
-        Int("page", page).
-        Int("page_size", pageSize).
-        Int64("total", total).
-        Int("count", len(subDomains)).
-        Msg("Sub domains by domain retrieved successfully")
+	log.Info().
+		Uint("domain_id", domainID).
+		Int("page", page).
+		Int("page_size", pageSize).
+		Int64("total", total).
+		Int("count", len(subDomains)).
+		Msg("Sub domains by domain retrieved successfully")
 
-    return response, nil
+	return response, nil
 }
 
 // GetSubDomainByID 根据ID获取子域名详情
 func (s *SubDomainService) GetSubDomainByID(id uint) (*models.SubDomain, error) {
 
-    var subDomain models.SubDomain
-    result := s.db.Preload("Domain").First(&subDomain, id)
-    if result.Error != nil {
-        if result.Error == gorm.ErrRecordNotFound {
-            log.Warn().Uint("id", id).Msg("Sub domain not found")
-            return nil, errors.ErrSubDomainNotFound
-        }
-        log.Error().Err(result.Error).Uint("id", id).Msg("Failed to get sub domain by ID")
-        return nil, result.Error
-    }
+	var subDomain models.SubDomain
+	result := s.db.Preload("Domain").First(&subDomain, id)
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+			log.Warn().Uint("id", id).Msg("Sub domain not found")
+			return nil, errors.ErrSubDomainNotFound
+		}
+		log.Error().Err(result.Error).Uint("id", id).Msg("Failed to get sub domain by ID")
+		return nil, result.Error
+	}
 
 	log.Info().Uint("id", id).Str("name", subDomain.Name).Msg("Sub domain retrieved successfully")
 	return &subDomain, nil
@@ -407,9 +407,9 @@ func (s *SubDomainService) BatchDeleteSubDomains(subdomainIDs []uint) (int, erro
 //   - subdomains: 子域名列表（完整域名格式，如 www.example.com）
 //
 // 返回：
-//   - *models.CreateSubDomainsResponse: 创建结果
+//   - *models.CreateSubDomainsResponseData: 创建结果
 //   - error: 错误信息
-func (s *SubDomainService) CreateSubDomainsForDomain(domainID uint, subdomains []string) (*models.CreateSubDomainsResponse, error) {
+func (s *SubDomainService) CreateSubDomainsForDomain(domainID uint, subdomains []string) (*models.CreateSubDomainsResponseData, error) {
 	// ===== 步骤1：获取域名信息 =====
 	var domain models.Domain
 	if err := s.db.First(&domain, domainID).Error; err != nil {
@@ -428,8 +428,8 @@ func (s *SubDomainService) CreateSubDomainsForDomain(domainID uint, subdomains [
 
 	totalUnique := len(uniqueSubdomains)
 	if totalUnique == 0 {
-		return &models.CreateSubDomainsResponse{
-			BaseBatchCreateResponse: models.BaseBatchCreateResponse{
+		return &models.CreateSubDomainsResponseData{
+			BaseBatchCreateResponseData: models.BaseBatchCreateResponseData{
 				Message:        "所有子域名已存在，跳过创建",
 				TotalRequested: 0,
 				NewCreated:     0,
@@ -461,8 +461,8 @@ func (s *SubDomainService) CreateSubDomainsForDomain(domainID uint, subdomains [
 			Int("total_unique", totalUnique).
 			Msg("所有子域名已存在，跳过创建")
 
-		return &models.CreateSubDomainsResponse{
-			BaseBatchCreateResponse: models.BaseBatchCreateResponse{
+		return &models.CreateSubDomainsResponseData{
+			BaseBatchCreateResponseData: models.BaseBatchCreateResponseData{
 				Message:        fmt.Sprintf("所有 %d 个子域名已存在，跳过创建", totalUnique),
 				TotalRequested: totalUnique,
 				NewCreated:     0,
@@ -494,8 +494,8 @@ func (s *SubDomainService) CreateSubDomainsForDomain(domainID uint, subdomains [
 		Int("already_existed", alreadyExisted).
 		Msg("子域名创建完成")
 
-	return &models.CreateSubDomainsResponse{
-		BaseBatchCreateResponse: models.BaseBatchCreateResponse{
+	return &models.CreateSubDomainsResponseData{
+		BaseBatchCreateResponseData: models.BaseBatchCreateResponseData{
 			Message:        fmt.Sprintf("成功处理 %d 个子域名，新创建 %d 个，%d 个已存在", totalUnique, int(totalRowsInserted), alreadyExisted),
 			TotalRequested: totalUnique,
 			NewCreated:     int(totalRowsInserted),

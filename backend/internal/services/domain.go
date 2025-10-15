@@ -49,7 +49,7 @@ func NewDomainService() *DomainService {
 // 注意事项：
 // - 如果组织不存在会立即返回错误
 // - 事务失败会自动回滚，不会产生脏数据
-func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) (*models.CreateDomainsResponse, error) {
+func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) (*models.CreateDomainsResponseData, error) {
 
 	var newDomainsCount int // 用于统计新创建的域名数量
 	var totalProcessed int  // 实际处理的域名数量（去重后）
@@ -212,8 +212,8 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) (*models.
 		Msg("Domains created and associated successfully")
 
 	// 构建响应数据
-	response := &models.CreateDomainsResponse{
-		BaseBatchCreateResponse: models.BaseBatchCreateResponse{
+	response := &models.CreateDomainsResponseData{
+		BaseBatchCreateResponseData: models.BaseBatchCreateResponseData{
 			Message:        fmt.Sprintf("成功处理 %d 个域名，新创建 %d 个，%d 个已存在", totalProcessed, newDomainsCount, alreadyExisted),
 			TotalRequested: totalProcessed,
 			NewCreated:     newDomainsCount,
@@ -626,13 +626,26 @@ func (s *DomainService) BatchDeleteDomainsFromOrganization(orgID uint, domainIDs
 // 1. 删除所有 organization_domains 关联关系
 // 2. 批量删除域名本身（级联删除 SubDomain 和 Endpoint）
 //
+// 原子性说明：
+// - 严格原子性：所有域名ID必须存在，否则事务回滚
+// - 部分ID不存在时返回错误，不会删除任何数据
+// - 保证批量操作的一致性：全部成功或全部失败
+//
 // 优化说明：
 // - 单次事务完成所有操作
-// - 不检查组织关联，直接删除
+// - 自动级联删除相关资源（SubDomain, Endpoint, Vulnerability）
+//
+// 适用场景：
+// - 直接删除域名，不关心组织关联
+// - 系统管理员清理数据
+// - 需要彻底移除某些域名
 // - 适用于前端批量操作场景
 //
+// 参数：
+//   - domainIDs: 域名ID列表
+//
 // 返回：
-//   - int: 成功删除的域名数量
+//   - int: 实际删除的域名数量
 //   - error: 错误信息
 func (s *DomainService) BatchDeleteDomainsDirect(domainIDs []uint) (int, error) {
 	// 参数验证
@@ -664,16 +677,13 @@ func (s *DomainService) BatchDeleteDomainsDirect(domainIDs []uint) (int, error) 
 
 		deletedCount = result.RowsAffected
 
-		// 记录删除结果（允许部分删除）
-		if deletedCount == 0 {
-			log.Warn().
-				Uints("domain_ids", domainIDs).
-				Msg("No domains found to delete")
-		} else if deletedCount < int64(len(domainIDs)) {
+		// 检查删除的行数是否与请求的ID数量一致（严格原子性）
+		if deletedCount != int64(len(domainIDs)) {
 			log.Warn().
 				Int("requested", len(domainIDs)).
 				Int64("deleted", deletedCount).
-				Msg("部分域名不存在，仅删除存在的域名")
+				Msg("部分域名ID不存在")
+			return fmt.Errorf("请求删除 %d 个域名，实际删除 %d 个，部分ID不存在", len(domainIDs), deletedCount)
 		}
 
 		log.Info().

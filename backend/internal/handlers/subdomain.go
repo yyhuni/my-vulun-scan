@@ -217,7 +217,7 @@ func DeleteSubDomain(c *gin.Context) {
 
 	// 返回删除成功信息（统一使用结构化响应类型）
 	response.SuccessResponse(c, models.BatchDeleteSubDomainsResponseData{
-		BaseBatchDeleteResponse: models.BaseBatchDeleteResponse{
+		BaseBatchDeleteResponseData: models.BaseBatchDeleteResponseData{
 			Message:      "删除子域名成功",
 			DeletedCount: deletedCount,
 		},
@@ -262,7 +262,7 @@ func BatchDeleteSubDomains(c *gin.Context) {
 	}
 
 	response.SuccessResponse(c, models.BatchDeleteSubDomainsResponseData{
-		BaseBatchDeleteResponse: models.BaseBatchDeleteResponse{
+		BaseBatchDeleteResponseData: models.BaseBatchDeleteResponseData{
 			Message:      "批量删除子域名成功",
 			DeletedCount: deletedCount,
 		},
@@ -277,7 +277,7 @@ func BatchDeleteSubDomains(c *gin.Context) {
 // @Produce json
 // @Param id path uint true "域名ID" example(1)
 // @Param request body models.CreateSubDomainsForDomainRequest true "子域名列表"
-// @Success 200 {object} models.APIResponse{data=models.CreateSubDomainsResponse} "创建成功，返回统计信息"
+// @Success 200 {object} models.APIResponse{data=models.CreateSubDomainsResponseData} "创建成功，返回统计信息"
 // @Failure 400 {object} models.APIResponse "请求参数错误"
 // @Failure 404 {object} models.APIResponse "域名不存在"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"

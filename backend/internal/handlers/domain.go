@@ -32,7 +32,7 @@ import (
 // @Accept json
 // @Produce json
 // @Param request body models.CreateDomainsRequest true "域名创建请求，包含域名列表和组织ID"
-// @Success 200 {object} models.APIResponse{data=models.CreateDomainsResponse} "创建成功，返回统计信息"
+// @Success 200 {object} models.APIResponse{data=models.CreateDomainsResponseData} "创建成功，返回统计信息"
 // @Failure 400 {object} models.APIResponse "请求参数错误（如域名列表为空、参数格式错误等）"
 // @Failure 404 {object} models.APIResponse "指定的组织不存在"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
@@ -326,7 +326,7 @@ func BatchDeleteDomainsFromOrganization(c *gin.Context) {
 	}
 
 	response.SuccessResponse(c, models.BatchDeleteDomainsResponseData{
-		BaseBatchDeleteResponse: models.BaseBatchDeleteResponse{
+		BaseBatchDeleteResponseData: models.BaseBatchDeleteResponseData{
 			Message:      fmt.Sprintf("批量移除成功，删除 %d 个域名关联", deletedCount),
 			DeletedCount: deletedCount,
 		},
@@ -348,8 +348,8 @@ func BatchDeleteDomainsFromOrganization(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body models.BatchDeleteDomainsDirectRequest true "批量删除请求"
-// @Success 200 {object} models.APIResponse{data=object} "删除成功"
-// @Failure 400 {object} models.APIResponse "请求参数错误"
+// @Success 200 {object} models.APIResponse{data=models.BatchDeleteDomainsDirectResponseData} "批量删除成功"
+// @Failure 400 {object} models.APIResponse "请求参数错误或部分ID不存在"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
 // @Router /domains/batch-delete [post]
 func BatchDeleteDomainsDirect(c *gin.Context) {
@@ -371,9 +371,11 @@ func BatchDeleteDomainsDirect(c *gin.Context) {
 		return
 	}
 
-	response.SuccessResponse(c, gin.H{
-		"message":       fmt.Sprintf("成功删除 %d 个域名", deletedCount),
-		"deleted_count": deletedCount,
+	response.SuccessResponse(c, models.BatchDeleteDomainsDirectResponseData{
+		BaseBatchDeleteResponseData: models.BaseBatchDeleteResponseData{
+			Message:      fmt.Sprintf("成功删除 %d 个域名", deletedCount),
+			DeletedCount: deletedCount,
+		},
 	})
 }
 

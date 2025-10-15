@@ -129,7 +129,7 @@ func (s *EndpointService) GetEndpointByID(id uint) (*models.Endpoint, error) {
 // - 前提条件：Domain 创建时会自动创建同名 Subdomain（在 CreateDomains 方法中实现）
 // - 如果需要创建子域名（如 media.baidu.com），需要先调用 CreateSubDomainsForDomain 接口
 // - 事务失败会自动回滚，不会产生脏数据
-func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*models.CreateEndpointsResponse, error) {
+func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*models.CreateEndpointsResponseData, error) {
 	var createdCount int
 	var existingEndpoints []string
 
@@ -263,8 +263,8 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 	alreadyExisted := len(existingEndpoints)
 	totalRequested := len(req.Endpoints)
 
-	response := &models.CreateEndpointsResponse{
-		BaseBatchCreateResponse: models.BaseBatchCreateResponse{
+	response := &models.CreateEndpointsResponseData{
+		BaseBatchCreateResponseData: models.BaseBatchCreateResponseData{
 			Message:        fmt.Sprintf("成功处理 %d 个端点，新创建 %d 个，%d 个已存在", totalRequested, createdCount, alreadyExisted),
 			TotalRequested: totalRequested,
 			NewCreated:     createdCount,

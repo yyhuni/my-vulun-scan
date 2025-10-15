@@ -215,7 +215,7 @@ func BatchDeleteOrganizations(c *gin.Context) {
 	}
 
 	response.SuccessResponse(c, models.BatchDeleteOrgsResponseData{
-		BaseBatchDeleteResponse: models.BaseBatchDeleteResponse{
+		BaseBatchDeleteResponseData: models.BaseBatchDeleteResponseData{
 			Message:      "批量删除组织成功",
 			DeletedCount: deletedCount,
 		},

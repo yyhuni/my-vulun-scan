@@ -42,9 +42,9 @@ type GetSubDomainsResponse struct {
 	BasePaginationResponse
 }
 
-// CreateSubDomainsResponse 创建子域名响应
-type CreateSubDomainsResponse struct {
-	BaseBatchCreateResponse
+// CreateSubDomainsResponseData 创建子域名响应数据
+type CreateSubDomainsResponseData struct {
+	BaseBatchCreateResponseData
 }
 
 // GetOrgSubDomainsResponse 获取组织子域名响应
@@ -61,5 +61,5 @@ type BatchDeleteSubDomainsRequest struct {
 // BatchDeleteSubDomainsResponseData 批量删除子域名响应数据
 // 优化说明：在大规模数据场景下（如100W+子域名），不返回完整对象列表以提升性能
 type BatchDeleteSubDomainsResponseData struct {
-	BaseBatchDeleteResponse
+	BaseBatchDeleteResponseData
 }

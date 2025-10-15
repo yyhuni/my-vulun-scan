@@ -57,9 +57,9 @@ type GetEndpointsResponse struct {
 	BasePaginationResponse
 }
 
-// CreateEndpointsResponse 创建端点响应
-type CreateEndpointsResponse struct {
-	BaseBatchCreateResponse
+// CreateEndpointsResponseData 创建端点响应数据
+type CreateEndpointsResponseData struct {
+	BaseBatchCreateResponseData
 }
 
 // BatchDeleteEndpointsRequest 批量删除端点请求
@@ -69,5 +69,5 @@ type BatchDeleteEndpointsRequest struct {
 
 // BatchDeleteEndpointsResponseData 批量删除端点响应数据
 type BatchDeleteEndpointsResponseData struct {
-	BaseBatchDeleteResponse
+	BaseBatchDeleteResponseData
 }
