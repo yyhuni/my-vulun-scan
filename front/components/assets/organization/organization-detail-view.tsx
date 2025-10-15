@@ -5,7 +5,11 @@ import { useOrganization } from "@/hooks/use-organizations"
 import { LoadingState } from "@/components/loading-spinner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { IconBuilding, IconCalendar, IconClock, IconFileText } from "@tabler/icons-react"
+import { Button } from "@/components/ui/button"
+import { IconBuilding, IconCalendar, IconClock, IconFileText, IconWorld } from "@tabler/icons-react"
+import Link from "next/link"
+import { AddDomainDialog } from "@/components/assets/domain/add-domain-dialog"
+import { Plus } from "lucide-react"
 
 interface OrganizationDetailViewProps {
   organizationId: string
@@ -17,6 +21,9 @@ interface OrganizationDetailViewProps {
  */
 export function OrganizationDetailView({ organizationId }: OrganizationDetailViewProps) {
   const { data: organization, isLoading, error, refetch } = useOrganization(parseInt(organizationId))
+  
+  // 添加域名对话框状态
+  const [isAddDomainDialogOpen, setIsAddDomainDialogOpen] = React.useState(false)
 
   // 格式化日期
   const formatDate = (dateString: string): string => {
@@ -128,8 +135,84 @@ export function OrganizationDetailView({ organizationId }: OrganizationDetailVie
         </CardContent>
       </Card>
 
-      {/* 统计信息卡片（可选，如果后端有相关数据） */}
-      {/* 可以在这里添加关联的域名数量、子域名数量等统计信息 */}
+      {/* 域名列表卡片 */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-500/10 rounded-lg">
+                <IconWorld className="text-blue-500" />
+              </div>
+              <div>
+                <CardTitle>主资产（域名）</CardTitle>
+                <CardDescription>
+                  {organization.domains && organization.domains.length > 0
+                    ? `共 ${organization.domains.length} 个域名`
+                    : "暂无绑定域名"}
+                </CardDescription>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => setIsAddDomainDialogOpen(true)}
+            >
+              <Plus />
+              添加域名
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {organization.domains && organization.domains.length > 0 ? (
+            <div className="space-y-2">
+              {organization.domains.map((domain) => (
+                <div
+                  key={domain.id}
+                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="p-1.5 bg-blue-500/10 rounded">
+                      <IconWorld className="h-4 w-4 text-blue-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <Link
+                        href={`/assets/domain/${domain.id}`}
+                        className="font-medium text-primary hover:underline block truncate"
+                      >
+                        {domain.name}
+                      </Link>
+                      {domain.description && (
+                        <p className="text-sm text-muted-foreground truncate mt-0.5">
+                          {domain.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <Badge variant="secondary" className="ml-2 shrink-0">
+                    ID: {domain.id}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <IconWorld className="h-12 w-12 mx-auto mb-3 opacity-20" />
+              <p>暂无绑定的域名</p>
+              <p className="text-sm mt-1">可以在域名管理页面将域名关联到此组织</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      
+      {/* 添加域名对话框 */}
+      <AddDomainDialog
+        open={isAddDomainDialogOpen}
+        onOpenChange={setIsAddDomainDialogOpen}
+        presetOrganizationId={organization.id}
+        onAdd={() => {
+          // 添加成功后刷新组织数据
+          refetch()
+        }}
+      />
     </div>
   )
 }

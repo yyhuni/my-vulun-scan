@@ -165,13 +165,8 @@ export function useUpdateOrganization() {
       toast.dismiss(`update-${id}`)
       
       if (response.state === 'success' && response.data) {
-        // 更新缓存中的组织详情
-        queryClient.setQueryData(
-          organizationKeys.detail(id),
-          response.data
-        )
-        
-        // 刷新组织列表
+        // 刷新组织详情和列表（使用 invalidateQueries 确保数据一致性）
+        queryClient.invalidateQueries({ queryKey: organizationKeys.detail(id) })
         queryClient.invalidateQueries({ queryKey: organizationKeys.lists() })
         
         // 显示成功提示

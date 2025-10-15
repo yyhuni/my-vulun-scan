@@ -48,6 +48,7 @@ interface AddDomainDialogProps {
   onAdd?: (domains: Domain[]) => void  // 添加成功回调函数（可选）
   open?: boolean                        // 外部控制对话框开关状态
   onOpenChange?: (open: boolean) => void // 外部控制对话框开关回调
+  presetOrganizationId?: number         // 预设的组织ID（可选）
 }
 
 /**
@@ -63,7 +64,8 @@ interface AddDomainDialogProps {
 export function AddDomainDialog({ 
   onAdd, 
   open: externalOpen, 
-  onOpenChange: externalOnOpenChange 
+  onOpenChange: externalOnOpenChange,
+  presetOrganizationId
 }: AddDomainDialogProps) {
   // 对话框开关状态 - 支持外部控制
   const [internalOpen, setInternalOpen] = useState(false)
@@ -74,7 +76,7 @@ export function AddDomainDialog({
   const [formData, setFormData] = useState({
     domains: "",  // 域名列表，每行一个
     description: "",
-    organizationId: "",
+    organizationId: presetOrganizationId ? presetOrganizationId.toString() : "",
   })
 
   // 组织选择器状态
@@ -84,6 +86,16 @@ export function AddDomainDialog({
 
   // Popover Portal 容器（挂载到对话框内部，避免滚动被锁定）
   const popoverContainerRef = useRef<HTMLDivElement | null>(null)
+  
+  // 同步 presetOrganizationId 的变化
+  React.useEffect(() => {
+    if (presetOrganizationId) {
+      setFormData(prev => ({
+        ...prev,
+        organizationId: presetOrganizationId.toString()
+      }))
+    }
+  }, [presetOrganizationId])
 
   // 使用 React Query 获取组织列表
   const { 
@@ -187,13 +199,14 @@ export function AddDomainDialog({
     if (!createDomain.isPending) {
       setOpen(newOpen)
       if (!newOpen) {
-        // 关闭时重置表单
+        // 关闭时重置表单，但保留预设的组织ID
         setFormData({
           domains: "",
           description: "",
-          organizationId: "",
+          organizationId: presetOrganizationId ? presetOrganizationId.toString() : "",
         })
         setOpenOrgPopover(false)
+        setInvalidDomains([])
       }
     }
   }
@@ -262,7 +275,8 @@ demo.org`}
               )}
             </div>
 
-            {/* 所属组织选择 */}
+            {/* 所属组织选择 - 如果预设了组织ID则隐藏 */}
+            {!presetOrganizationId && (
             <div className="grid gap-2">
               <Label htmlFor="organization" className="flex items-center space-x-2">
                 <Building2 />
@@ -391,6 +405,7 @@ demo.org`}
                 </>
               )}
             </div>
+            )}
             
             {/* 域名描述输入框 */}
             <div className="grid gap-2">

@@ -69,13 +69,18 @@ func (s *OrganizationService) GetOrgByID(id uint) (*models.Organization, error) 
 
 	var org models.Organization
 
-	result := s.db.First(&org, "id = ?", id)
+	result := s.db.Preload("Domains").First(&org, "id = ?", id)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
 			return nil, errors.ErrOrganizationNotFound
 		}
 		log.Error().Err(result.Error).Msg("Failed to query organization")
 		return nil, result.Error
+	}
+
+	// 保证空列表返回 [] 而不是 null
+	if org.Domains == nil {
+		org.Domains = []models.Domain{}
 	}
 
 	log.Info().Uint("id", id).Msg("Organization retrieved successfully")
@@ -134,12 +139,25 @@ func (s *OrganizationService) UpdateOrg(req models.UpdateOrgRequest) (*models.Or
 		return nil, result.Error
 	}
 
+	// 重新查询并预加载关联数据，保持与 GetOrgByID 的数据结构一致
+	var updatedOrg models.Organization
+	result = s.db.Preload("Domains").First(&updatedOrg, org.ID)
+	if result.Error != nil {
+		log.Error().Err(result.Error).Msg("Failed to reload organization after update")
+		return nil, result.Error
+	}
+
+	// 保证空列表返回 [] 而不是 null
+	if updatedOrg.Domains == nil {
+		updatedOrg.Domains = []models.Domain{}
+	}
+
 	log.Info().
-		Uint("id", org.ID).
-		Str("name", org.Name).
+		Uint("id", updatedOrg.ID).
+		Str("name", updatedOrg.Name).
 		Msg("Organization updated successfully")
 
-	return &org, nil
+	return &updatedOrg, nil
 }
 
 // DeleteOrganization 删除组织
