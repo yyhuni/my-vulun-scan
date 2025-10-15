@@ -534,17 +534,16 @@ func (s *DomainService) DeleteDomainFromOrganization(req models.DeleteDomainRequ
 // - 批量操作减少数据库往返次数
 //
 // 参数：
-//   - orgID: 组织ID（从路径参数获取）
+//   - orgID: 组织ID
 //   - domainIDs: 域名ID列表
 //
 // 返回：
-//   - int: 成功删除的关联数量
-//   - int: 失败数量（始终为0，兼容旧接口）
+//   - int: 实际删除的关联数量
 //   - error: 错误信息
-func (s *DomainService) BatchDeleteDomainsFromOrganization(orgID uint, domainIDs []uint) (int, int, error) {
+func (s *DomainService) BatchDeleteDomainsFromOrganization(orgID uint, domainIDs []uint) (int, error) {
 	// 参数验证：检查域名ID列表是否为空
 	if len(domainIDs) == 0 {
-		return 0, 0, fmt.Errorf("域名ID列表不能为空")
+		return 0, fmt.Errorf("域名ID列表不能为空")
 	}
 
 	var deletedCount int64
@@ -566,24 +565,14 @@ func (s *DomainService) BatchDeleteDomainsFromOrganization(orgID uint, domainIDs
 
 		deletedCount = result.RowsAffected
 
-		// 记录删除结果（允许部分删除）
-		if deletedCount == 0 {
-			log.Warn().
-				Uint("organization_id", orgID).
-				Uints("domain_ids", domainIDs).
-				Msg("No domain associations found to delete")
-			// 注意：不返回错误，允许继续执行（可能是幂等操作）
-		} else if deletedCount < int64(len(domainIDs)) {
+		// 检查删除的行数是否与请求的ID数量一致
+		if deletedCount != int64(len(domainIDs)) {
 			log.Warn().
 				Int("requested", len(domainIDs)).
 				Int64("deleted", deletedCount).
-				Msg("部分域名关联不存在，仅删除存在的关联")
+				Msg("部分域名关联不存在")
+			return fmt.Errorf("请求删除 %d 个域名关联，实际删除 %d 个，部分ID不存在", len(domainIDs), deletedCount)
 		}
-
-		log.Info().
-			Int64("deleted_associations", deletedCount).
-			Uint("organization_id", orgID).
-			Msg("Domain associations deleted successfully")
 
 		// 步骤2: 批量查询孤儿域名（没有任何组织关联的域名）
 		var orphanDomainIDs []uint
@@ -621,12 +610,14 @@ func (s *DomainService) BatchDeleteDomainsFromOrganization(orgID uint, domainIDs
 	})
 
 	if err != nil {
-		return 0, 0, err
+		return 0, err
 	}
 
-	// 返回格式：(成功数, 失败数=0, error)
-	// 失败数始终为0，因为是原子操作
-	return int(deletedCount), 0, nil
+	log.Info().
+		Int("deleted_count", int(deletedCount)).
+		Msg("Batch delete domains from organization completed successfully")
+
+	return int(deletedCount), nil
 }
 
 // BatchDeleteDomainsDirect 批量删除域名（不依赖组织）

@@ -286,14 +286,14 @@ func DeleteDomainFromOrganization(c *gin.Context) {
 
 // BatchDeleteDomainsFromOrganization 批量从组织中移除域名
 // @Summary 批量从组织中移除域名
-// @Description 批量解除指定组织与多个域名的关联关系，如果域名成为孤儿（没有任何组织关联）则自动删除该域名
+// @Description 批量解除指定组织与多个域名的关联关系，如果域名成为孤儿（没有任何组织关联）则自动删除该域名。所有域名ID必须存在，否则返回错误
 // @Tags 域名管理
 // @Accept json
 // @Produce json
 // @Param organization_id path uint true "组织ID" example(1)
 // @Param request body models.BatchDeleteDomainsRequest true "批量移除请求，包含域名ID列表"
-// @Success 200 {object} models.APIResponse{data=models.BatchDeleteDomainsResponseData} "移除成功，返回成功和失败的统计信息"
-// @Failure 400 {object} models.APIResponse "请求参数错误"
+// @Success 200 {object} models.APIResponse{data=models.BatchDeleteDomainsResponseData} "批量删除成功"
+// @Failure 400 {object} models.APIResponse "请求参数错误或部分ID不存在"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
 // @Router /organizations/{organization_id}/domains/batch-remove [post]
 func BatchDeleteDomainsFromOrganization(c *gin.Context) {
@@ -319,20 +319,18 @@ func BatchDeleteDomainsFromOrganization(c *gin.Context) {
 	}
 
 	service := services.NewDomainService()
-	successCount, failedCount, err := service.BatchDeleteDomainsFromOrganization(uri.OrganizationID, req.DomainIDs)
-
-	// 即使部分失败，只要有成功的就返回成功
-	if successCount > 0 {
-		response.SuccessResponse(c, models.BatchDeleteDomainsResponseData{
-			Message:      fmt.Sprintf("批量移除完成：成功 %d 个，失败 %d 个", successCount, failedCount),
-			SuccessCount: successCount,
-			FailedCount:  failedCount,
-		})
+	deletedCount, err := service.BatchDeleteDomainsFromOrganization(uri.OrganizationID, req.DomainIDs)
+	if err != nil {
+		response.InternalServerErrorResponse(c, fmt.Sprintf("批量移除失败: %s", err.Error()))
 		return
 	}
 
-	// 全部失败
-	response.InternalServerErrorResponse(c, fmt.Sprintf("批量移除失败: %s", err.Error()))
+	response.SuccessResponse(c, models.BatchDeleteDomainsResponseData{
+		BaseBatchDeleteResponse: models.BaseBatchDeleteResponse{
+			Message:      fmt.Sprintf("批量移除成功，删除 %d 个域名关联", deletedCount),
+			DeletedCount: deletedCount,
+		},
+	})
 }
 
 // BatchDeleteDomainsDirect 批量删除域名（不依赖组织）
