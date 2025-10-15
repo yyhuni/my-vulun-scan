@@ -104,22 +104,4 @@ export class EndpointService {
     return response.data
   }
 
-  /**
-   * 解除组织与 Endpoint 的关联
-   * @param data - 解除关联请求对象
-   * @param data.organizationId - 组织ID
-   * @param data.endpointId - Endpoint ID
-   * @returns Promise<ApiResponse<any>>
-   */
-  static async removeFromOrganization(data: {
-    organizationId: number
-    endpointId: number
-  }): Promise<ApiResponse<any>> {
-    const response = await api.post<ApiResponse<any>>('/endpoints/remove-from-organization', {
-      organizationId: data.organizationId,
-      endpointId: data.endpointId
-    })
-    return response.data
-  }
-
 }

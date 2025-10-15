@@ -151,47 +151,6 @@ export function useCreateEndpoint() {
   })
 }
 
-// 解除组织与 Endpoint 的关联
-export function useRemoveEndpointFromOrganization() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (data: { organizationId: number; endpointId: number }) => 
-      EndpointService.removeFromOrganization(data),
-    onMutate: ({ organizationId, endpointId }) => {
-      toast.loading('正在解除关联...', { id: `remove-${organizationId}-${endpointId}` })
-    },
-    onSuccess: (response, { organizationId, endpointId }) => {
-      toast.dismiss(`remove-${organizationId}-${endpointId}`)
-      
-      if (response.state === 'success') {
-        toast.success('解除关联成功')
-        
-        // 刷新相关查询
-        queryClient.invalidateQueries({ queryKey: endpointKeys.lists() })
-        
-        // 刷新组织的端点列表
-        queryClient.invalidateQueries({ 
-          queryKey: ['organizations', 'detail', organizationId, 'endpoints'] 
-        })
-      } else {
-        throw new Error(response.message || '解除关联失败')
-      }
-    },
-    onError: (error: any, { organizationId, endpointId }) => {
-      toast.dismiss(`remove-${organizationId}-${endpointId}`)
-      
-      if (process.env.NODE_ENV === 'development') {
-        console.error('解除关联失败:', error)
-      }
-      
-      const errorMessage = error?.response?.data?.message || error?.message || '解除关联失败'
-      toast.error(errorMessage)
-    },
-  })
-}
-
-
 // 删除单个 Endpoint
 export function useDeleteEndpoint() {
   const queryClient = useQueryClient()
