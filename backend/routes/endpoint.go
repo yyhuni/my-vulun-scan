@@ -13,6 +13,7 @@ func SetupEndpointRoutes(api *gin.RouterGroup) {
 	{
 		// 获取所有端点列表 - 支持分页和排序
 		// 示例：GET /endpoints?page=1&page_size=10&sort_by=created_at&sort_order=desc
+		// 注意：如需按域名或子域名过滤，请使用专用路由 /domains/:id/endpoints 或 /subdomains/:id/endpoints
 		endpoints.GET("", handlers.GetEndpoints)
 
 		// 按ID查询单个端点
@@ -44,6 +45,14 @@ func SetupEndpointRoutes(api *gin.RouterGroup) {
 		// 批量删除端点 - 支持一次删除多个端点
 		// 请求体示例：{"endpoint_ids": [1, 2, 3]}
 		endpoints.POST("/batch-delete", handlers.BatchDeleteEndpoints)
+	}
+
+	// 域名相关的端点路由
+	domains := api.Group("/domains")
+	{
+		// 获取指定域名下的端点列表
+		// 示例：GET /domains/1/endpoints?page=1&page_size=10&sort_by=created_at&sort_order=desc
+		domains.GET("/:id/endpoints", handlers.GetEndpointsByDomainID)
 	}
 
 	// 子域名相关的端点路由

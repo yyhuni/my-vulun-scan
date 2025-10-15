@@ -449,6 +449,9 @@ definitions:
       id:
         description: 数据库基础字段
         type: integer
+      is_root:
+        description: 是否为根子域名（Domain自动创建的同名子域名），根子域名不允许删除
+        type: boolean
       name:
         description: |-
           核心业务字段
@@ -633,6 +636,51 @@ paths:
           schema:
             $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
       summary: 获取单个域名详情
+      tags:
+      - 域名管理
+  /domains/{id}/endpoints:
+    get:
+      description: 根据域名ID获取该域名下的所有端点（包括所有子域名的端点）
+      parameters:
+      - description: 域名ID
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 页码,默认1
+        in: query
+        name: page
+        type: integer
+      - description: 每页数量,默认10
+        in: query
+        name: page_size
+        type: integer
+      - description: '排序字段: url, method, status_code, created_at, updated_at,默认updated_at'
+        in: query
+        name: sort_by
+        type: string
+      - description: '排序方向: asc, desc,默认desc'
+        in: query
+        name: sort_order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 获取成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.GetEndpointsResponse'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+      summary: 获取指定域名下的端点列表
       tags:
       - 域名管理
   /domains/{id}/subdomains:
@@ -833,7 +881,7 @@ paths:
       - 域名管理
   /endpoints:
     get:
-      description: 获取所有端点，支持分页和排序
+      description: 获取所有端点，支持分页和排序。如需按域名或子域名过滤，请使用 /domains/:id/endpoints 或 /subdomains/:id/endpoints
       parameters:
       - description: 页码,默认1
         in: query

@@ -21,8 +21,10 @@ export const endpointKeys = {
     [...endpointKeys.lists(), params] as const,
   details: () => [...endpointKeys.all, 'detail'] as const,
   detail: (id: number) => [...endpointKeys.details(), id] as const,
-  byDomain: (domainId: number) => [...endpointKeys.all, 'domain', domainId] as const,
-  bySubdomain: (subdomainId: number) => [...endpointKeys.all, 'subdomain', subdomainId] as const,
+  byDomain: (domainId: number, params: GetEndpointsRequest) => 
+    [...endpointKeys.all, 'domain', domainId, params] as const,
+  bySubdomain: (subdomainId: number, params: GetEndpointsRequest) => 
+    [...endpointKeys.all, 'subdomain', subdomainId, params] as const,
 }
 
 // 获取单个 Endpoint 详情
@@ -60,7 +62,7 @@ export function useEndpoints(params?: GetEndpointsRequest) {
   })
 }
 
-// 根据域名ID获取 Endpoint 列表
+// 根据域名ID获取 Endpoint 列表（使用专用路由）
 export function useEndpointsByDomain(domainId: number, params?: Omit<GetEndpointsRequest, 'domainId'>) {
   const defaultParams: GetEndpointsRequest = {
     page: 1,
@@ -69,7 +71,7 @@ export function useEndpointsByDomain(domainId: number, params?: Omit<GetEndpoint
   }
   
   return useQuery({
-    queryKey: endpointKeys.byDomain(domainId),
+    queryKey: endpointKeys.byDomain(domainId, defaultParams),
     queryFn: () => EndpointService.getEndpointsByDomainId(domainId, defaultParams),
     select: (response) => {
       if (response.state === 'success' && response.data) {
@@ -81,7 +83,7 @@ export function useEndpointsByDomain(domainId: number, params?: Omit<GetEndpoint
   })
 }
 
-// 根据子域名ID获取 Endpoint 列表
+// 根据子域名ID获取 Endpoint 列表（使用专用路由）
 export function useEndpointsBySubdomain(subdomainId: number, params?: Omit<GetEndpointsRequest, 'subdomainId'>) {
   const defaultParams: GetEndpointsRequest = {
     page: 1,
@@ -90,7 +92,7 @@ export function useEndpointsBySubdomain(subdomainId: number, params?: Omit<GetEn
   }
   
   return useQuery({
-    queryKey: endpointKeys.bySubdomain(subdomainId),
+    queryKey: endpointKeys.bySubdomain(subdomainId, defaultParams),
     queryFn: () => EndpointService.getEndpointsBySubdomainId(subdomainId, defaultParams),
     select: (response) => {
       if (response.state === 'success' && response.data) {

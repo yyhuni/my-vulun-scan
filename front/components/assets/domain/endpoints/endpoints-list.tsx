@@ -16,7 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { useEndpoints, useDeleteEndpoint, useBatchDeleteEndpoints } from "@/hooks/use-endpoints"
+import { useEndpointsByDomain, useDeleteEndpoint, useBatchDeleteEndpoints } from "@/hooks/use-endpoints"
 import { useDomain } from "@/hooks/use-domains"
 import type { Endpoint } from "@/types/endpoint.types"
 
@@ -51,16 +51,15 @@ export function EndpointsList({
   const deleteEndpoint = useDeleteEndpoint()
   const batchDeleteEndpoints = useBatchDeleteEndpoints()
 
-  // 使用 React Query 获取 Endpoint 数据
+  // 使用 React Query 获取 Endpoint 数据（使用专用路由）
   const {
     data: endpointsResponse,
     isLoading,
     error,
     refetch
-  } = useEndpoints({
+  } = useEndpointsByDomain(domainId ? parseInt(domainId) : 0, {
     page: pagination.pageIndex + 1, // API 使用 1-based 页码
     pageSize: pagination.pageSize,
-    domainId: domainId ? parseInt(domainId) : undefined,
   })
   
   // 提取 endpoints 数据

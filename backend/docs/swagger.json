@@ -314,6 +314,78 @@
                 }
             }
         },
+        "/domains/{id}/endpoints": {
+            "get": {
+                "description": "根据域名ID获取该域名下的所有端点（包括所有子域名的端点）",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "域名管理"
+                ],
+                "summary": "获取指定域名下的端点列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "example": 1,
+                        "description": "域名ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码,默认1",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页数量,默认10",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "排序字段: url, method, status_code, created_at, updated_at,默认updated_at",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "排序方向: asc, desc,默认desc",
+                        "name": "sort_order",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "获取成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.GetEndpointsResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/domains/{id}/subdomains": {
             "get": {
                 "description": "根据域名ID获取该域名下的所有子域名（支持分页和排序）",
@@ -472,7 +544,7 @@
         },
         "/endpoints": {
             "get": {
-                "description": "获取所有端点，支持分页和排序",
+                "description": "获取所有端点，支持分页和排序。如需按域名或子域名过滤，请使用 /domains/:id/endpoints 或 /subdomains/:id/endpoints",
                 "produces": [
                     "application/json"
                 ],
@@ -2581,6 +2653,10 @@
                 "id": {
                     "description": "数据库基础字段",
                     "type": "integer"
+                },
+                "is_root": {
+                    "description": "是否为根子域名（Domain自动创建的同名子域名），根子域名不允许删除",
+                    "type": "boolean"
                 },
                 "name": {
                     "description": "核心业务字段\n注意：Name 字段在应用层已统一转为小写，数据库层通过 CHECK 约束防止插入大写值\n\u003c-:create 表示该字段只在创建时可写，创建后只读",

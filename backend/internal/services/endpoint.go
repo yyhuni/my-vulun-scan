@@ -27,7 +27,7 @@ func NewEndpointService() *EndpointService {
 
 // GetEndpoints 获取所有端点列表
 func (s *EndpointService) GetEndpoints(req models.GetEndpointsRequest) (*models.GetEndpointsResponse, error) {
-	// 先计算总数（使用独立的查询）
+	// 先计算总数
 	var total int64
 	if err := s.db.Model(&models.Endpoint{}).Count(&total).Error; err != nil {
 		log.Error().Err(err).Msg("Failed to count endpoints")
@@ -270,6 +270,60 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 		Int("existing_count", len(existingEndpoints)).
 		Int("total_requested", len(req.Endpoints)).
 		Msg("Endpoints creation completed")
+
+	return response, nil
+}
+
+// GetEndpointsByDomainID 获取域名下的端点列表（包括所有子域名的端点）
+func (s *EndpointService) GetEndpointsByDomainID(domainID uint, page, pageSize int, sortBy, sortOrder string) (*models.GetEndpointsResponse, error) {
+	// 先计算总数（使用独立的查询）
+	var total int64
+	if err := s.db.Model(&models.Endpoint{}).Where("domain_id = ?", domainID).Count(&total).Error; err != nil {
+		log.Error().Err(err).Uint("domain_id", domainID).Msg("Failed to count endpoints by domain ID")
+		return nil, err
+	}
+
+	// 构建数据查询
+	query := s.db.Model(&models.Endpoint{}).
+		Where("domain_id = ?", domainID).
+		Preload("Domain").
+		Preload("Subdomain")
+
+	// 排序（统一：按更新时间倒序）
+	query = query.Order("updated_at desc")
+
+	// 分页
+	offset := (page - 1) * pageSize
+	query = query.Offset(offset).Limit(pageSize)
+
+	// 执行查询
+	var endpoints []models.Endpoint
+	if err := query.Find(&endpoints).Error; err != nil {
+		log.Error().Err(err).Uint("domain_id", domainID).Msg("Failed to query endpoints by domain ID")
+		return nil, err
+	}
+
+	// 计算总页数
+	totalPages := 0
+	if pageSize > 0 {
+		totalPages = int((total + int64(pageSize) - 1) / int64(pageSize))
+	}
+
+	response := &models.GetEndpointsResponse{
+		Endpoints:  endpoints,
+		Total:      total,
+		Page:       page,
+		PageSize:   pageSize,
+		TotalPages: totalPages,
+	}
+
+	log.Info().
+		Uint("domain_id", domainID).
+		Int("page", page).
+		Int("page_size", pageSize).
+		Int64("total", total).
+		Int("count", len(endpoints)).
+		Msg("Endpoints by domain ID retrieved successfully")
 
 	return response, nil
 }

@@ -31,7 +31,7 @@ func setEndpointDefaults(page, pageSize *int, sortBy, sortOrder *string) {
 
 // GetEndpoints 获取所有端点列表
 // @Summary 获取所有端点列表
-// @Description 获取所有端点，支持分页和排序
+// @Description 获取所有端点，支持分页和排序。如需按域名或子域名过滤，请使用 /domains/:id/endpoints 或 /subdomains/:id/endpoints
 // @Tags 端点管理
 // @Produce json
 // @Param page query int false "页码,默认1"
@@ -150,6 +150,52 @@ func CreateEndpoints(c *gin.Context) {
 		ExistingEndpoints: result.ExistingEndpoints,
 		TotalRequested:    result.TotalRequested,
 	})
+}
+
+// GetEndpointsByDomainID 获取指定域名下的端点列表
+// @Summary 获取指定域名下的端点列表
+// @Description 根据域名ID获取该域名下的所有端点（包括所有子域名的端点）
+// @Tags 域名管理
+// @Produce json
+// @Param id path uint true "域名ID" example(1)
+// @Param page query int false "页码,默认1"
+// @Param page_size query int false "每页数量,默认10"
+// @Param sort_by query string false "排序字段: url, method, status_code, created_at, updated_at,默认updated_at"
+// @Param sort_order query string false "排序方向: asc, desc,默认desc"
+// @Success 200 {object} models.APIResponse{data=models.GetEndpointsResponse} "获取成功"
+// @Failure 400 {object} models.APIResponse "请求参数错误"
+// @Router /domains/{id}/endpoints [get]
+func GetEndpointsByDomainID(c *gin.Context) {
+	var uri struct {
+		ID uint `uri:"id" binding:"required"`
+	}
+	if err := c.ShouldBindUri(&uri); err != nil {
+		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	var query struct {
+		Page      int    `form:"page"`
+		PageSize  int    `form:"page_size"`
+		SortBy    string `form:"sort_by"`
+		SortOrder string `form:"sort_order"`
+	}
+	if err := c.ShouldBindQuery(&query); err != nil {
+		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	// 设置默认值
+	setEndpointDefaults(&query.Page, &query.PageSize, &query.SortBy, &query.SortOrder)
+
+	result, err := services.NewEndpointService().GetEndpointsByDomainID(
+		uri.ID, query.Page, query.PageSize, query.SortBy, query.SortOrder,
+	)
+	if err != nil {
+		response.InternalServerErrorResponse(c, "获取域名端点列表失败: "+err.Error())
+		return
+	}
+	response.SuccessResponse(c, result)
 }
 
 // GetEndpointsBySubdomainID 获取子域名下的端点

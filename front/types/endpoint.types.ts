@@ -20,10 +20,8 @@ export interface Endpoint {
 export interface GetEndpointsRequest {
   page?: number
   pageSize?: number
-  domainId?: number
-  subdomainId?: number
-  method?: string
-  statusCode?: number
+  sortBy?: string
+  sortOrder?: string
 }
 
 // Endpoint 列表响应数据
