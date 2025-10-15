@@ -77,8 +77,8 @@ type DeleteDomainResponseData struct {
 }
 
 // BatchDeleteDomainsRequest 批量从组织移除域名请求
+// 注意：organization_id 从路径参数获取，不在请求体中
 type BatchDeleteDomainsRequest struct {
-	OrgID     uint   `json:"organization_id" binding:"required"`
 	DomainIDs []uint `json:"domain_ids" binding:"required"`
 }
 

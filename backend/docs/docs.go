@@ -1384,7 +1384,15 @@ const docTemplate = `{
                 "summary": "批量从组织中移除域名",
                 "parameters": [
                     {
-                        "description": "批量移除请求，包含组织ID和域名ID列表",
+                        "type": "integer",
+                        "example": 1,
+                        "description": "组织ID",
+                        "name": "organization_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "批量移除请求，包含域名ID列表",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -1978,8 +1986,7 @@ const docTemplate = `{
         "vulun-scan-backend_internal_models.BatchDeleteDomainsRequest": {
             "type": "object",
             "required": [
-                "domain_ids",
-                "organization_id"
+                "domain_ids"
             ],
             "properties": {
                 "domain_ids": {
@@ -1987,9 +1994,6 @@ const docTemplate = `{
                     "items": {
                         "type": "integer"
                     }
-                },
-                "organization_id": {
-                    "type": "integer"
                 }
             }
         },

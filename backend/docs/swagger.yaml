@@ -29,11 +29,8 @@ definitions:
         items:
           type: integer
         type: array
-      organization_id:
-        type: integer
     required:
     - domain_ids
-    - organization_id
     type: object
   vulun-scan-backend_internal_models.BatchDeleteDomainsResponseData:
     properties:
@@ -1350,7 +1347,13 @@ paths:
       - application/json
       description: 批量解除指定组织与多个域名的关联关系，如果域名成为孤儿（没有任何组织关联）则自动删除该域名
       parameters:
-      - description: 批量移除请求，包含组织ID和域名ID列表
+      - description: 组织ID
+        example: 1
+        in: path
+        name: organization_id
+        required: true
+        type: integer
+      - description: 批量移除请求，包含域名ID列表
         in: body
         name: request
         required: true

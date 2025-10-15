@@ -533,13 +533,17 @@ func (s *DomainService) DeleteDomainFromOrganization(req models.DeleteDomainRequ
 // - 保证原子性：全部成功或全部失败
 // - 批量操作减少数据库往返次数
 //
+// 参数：
+//   - orgID: 组织ID（从路径参数获取）
+//   - domainIDs: 域名ID列表
+//
 // 返回：
 //   - int: 成功删除的关联数量
 //   - int: 失败数量（始终为0，兼容旧接口）
 //   - error: 错误信息
-func (s *DomainService) BatchDeleteDomainsFromOrganization(req models.BatchDeleteDomainsRequest) (int, int, error) {
+func (s *DomainService) BatchDeleteDomainsFromOrganization(orgID uint, domainIDs []uint) (int, int, error) {
 	// 参数验证：检查域名ID列表是否为空
-	if len(req.DomainIDs) == 0 {
+	if len(domainIDs) == 0 {
 		return 0, 0, fmt.Errorf("域名ID列表不能为空")
 	}
 
@@ -549,13 +553,13 @@ func (s *DomainService) BatchDeleteDomainsFromOrganization(req models.BatchDelet
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		// 步骤1: 批量删除 organization_domains 关联关系
 		result := tx.Where("organization_id = ? AND domain_id IN ?",
-			req.OrgID, req.DomainIDs).
+			orgID, domainIDs).
 			Delete(&models.OrganizationDomain{})
 
 		if result.Error != nil {
 			log.Error().
 				Err(result.Error).
-				Uint("organization_id", req.OrgID).
+				Uint("organization_id", orgID).
 				Msg("Failed to batch delete domain associations")
 			return result.Error
 		}
@@ -565,20 +569,20 @@ func (s *DomainService) BatchDeleteDomainsFromOrganization(req models.BatchDelet
 		// 记录删除结果（允许部分删除）
 		if deletedCount == 0 {
 			log.Warn().
-				Uint("organization_id", req.OrgID).
-				Uints("domain_ids", req.DomainIDs).
+				Uint("organization_id", orgID).
+				Uints("domain_ids", domainIDs).
 				Msg("No domain associations found to delete")
 			// 注意：不返回错误，允许继续执行（可能是幂等操作）
-		} else if deletedCount < int64(len(req.DomainIDs)) {
+		} else if deletedCount < int64(len(domainIDs)) {
 			log.Warn().
-				Int("requested", len(req.DomainIDs)).
+				Int("requested", len(domainIDs)).
 				Int64("deleted", deletedCount).
 				Msg("部分域名关联不存在，仅删除存在的关联")
 		}
 
 		log.Info().
 			Int64("deleted_associations", deletedCount).
-			Uint("organization_id", req.OrgID).
+			Uint("organization_id", orgID).
 			Msg("Domain associations deleted successfully")
 
 		// 步骤2: 批量查询孤儿域名（没有任何组织关联的域名）
@@ -591,7 +595,7 @@ func (s *DomainService) BatchDeleteDomainsFromOrganization(req models.BatchDelet
 				SELECT 1 FROM organization_domains od 
 				WHERE od.domain_id = d.id
 			)
-		`, req.DomainIDs).Scan(&orphanDomainIDs).Error; err != nil {
+		`, domainIDs).Scan(&orphanDomainIDs).Error; err != nil {
 			log.Error().Err(err).Msg("Failed to query orphan domains")
 			return err
 		}

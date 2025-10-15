@@ -265,9 +265,6 @@ func DeleteDomainFromOrganization(c *gin.Context) {
 	err := service.DeleteDomainFromOrganization(req)
 	if err != nil {
 		switch err.Error() {
-		case "organization not found":
-			response.NotFoundResponse(c, fmt.Sprintf("组织 ID: %d 不存在", uri.OrganizationID))
-			return
 		case "domain not found":
 			response.NotFoundResponse(c, fmt.Sprintf("域名 ID: %d 不存在", uri.DomainID))
 			return
@@ -293,12 +290,23 @@ func DeleteDomainFromOrganization(c *gin.Context) {
 // @Tags 域名管理
 // @Accept json
 // @Produce json
-// @Param request body models.BatchDeleteDomainsRequest true "批量移除请求，包含组织ID和域名ID列表"
+// @Param organization_id path uint true "组织ID" example(1)
+// @Param request body models.BatchDeleteDomainsRequest true "批量移除请求，包含域名ID列表"
 // @Success 200 {object} models.APIResponse{data=models.BatchDeleteDomainsResponseData} "移除成功，返回成功和失败的统计信息"
 // @Failure 400 {object} models.APIResponse "请求参数错误"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
 // @Router /organizations/{organization_id}/domains/batch-remove [post]
 func BatchDeleteDomainsFromOrganization(c *gin.Context) {
+	// 1. 绑定路径参数
+	var uri struct {
+		OrganizationID uint `uri:"organization_id" binding:"required"`
+	}
+	if err := c.ShouldBindUri(&uri); err != nil {
+		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	// 2. 绑定请求体
 	var req models.BatchDeleteDomainsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
@@ -311,7 +319,7 @@ func BatchDeleteDomainsFromOrganization(c *gin.Context) {
 	}
 
 	service := services.NewDomainService()
-	successCount, failedCount, err := service.BatchDeleteDomainsFromOrganization(req)
+	successCount, failedCount, err := service.BatchDeleteDomainsFromOrganization(uri.OrganizationID, req.DomainIDs)
 
 	// 即使部分失败，只要有成功的就返回成功
 	if successCount > 0 {

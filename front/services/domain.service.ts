@@ -83,7 +83,7 @@ export class DomainService {
   /**
    * 批量从组织中移除域名
    * @param data - 批量移除请求对象
-   * @param data.organizationId - 组织ID
+   * @param data.organizationId - 组织ID（用于路径参数）
    * @param data.domainIds - 域名ID数组
    * @returns Promise<ApiResponse<{ message: string; successCount: number; failedCount: number }>>
    */
@@ -98,8 +98,7 @@ export class DomainService {
     const response = await api.post<ApiResponse<any>>(
       `/organizations/${data.organizationId}/domains/batch-remove`,
       {
-        organizationId: data.organizationId,  // 拦截器会转换为 organization_id
-        domainIds: data.domainIds,            // 拦截器会转换为 domain_ids
+        domainIds: data.domainIds,  // 拦截器会转换为 domain_ids
       }
     )
     return response.data
