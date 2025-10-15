@@ -69,7 +69,7 @@ function DomainRowActions({
           className="text-destructive focus:text-destructive"
         >
           <Trash2 />
-          删除
+          Delete
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -20,6 +20,8 @@ import {
 } from "@/components/ui/tooltip"
 // 导入图标组件
 import { MoreHorizontal, Eye, Edit, Trash2, ChevronsUpDown, ChevronUp, ChevronDown } from "lucide-react"
+// 导入 Next.js Link 组件
+import Link from "next/link"
 
 // 导入类型定义
 import type { Organization } from "@/types/organization.types"
@@ -174,33 +176,14 @@ export const createOrganizationColumns = ({
       <DataTableColumnHeader column={column} title="组织名称" />
     ),
     cell: ({ row }) => {
-      const name = row.getValue("name") as string
-      const isLong = name.length > 30 // 判断内容是否较长
-      
+      const organization = row.original
       return (
-        <div className="font-medium max-w-xs">
-          <TooltipProvider delayDuration={500} skipDelayDuration={0}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="link"
-                  className="p-0 h-auto font-medium text-left justify-start max-w-full truncate"
-                  onClick={() => navigate(`/assets/organization/${row.original.id}`)}
-                >
-                  <span className="truncate">{name}</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent 
-                side="top" 
-                align="start"
-                sideOffset={5}
-                className={`text-xs ${isLong ? 'max-w-md break-all' : 'whitespace-nowrap'}`}
-              >
-                {name}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
+        <Link 
+          href={`/assets/organization/${organization.id}`}
+          className="font-medium text-primary hover:underline block"
+        >
+          {row.getValue("name")}
+        </Link>
       )
     },
   },

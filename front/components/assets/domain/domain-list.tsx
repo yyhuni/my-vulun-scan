@@ -216,7 +216,7 @@ export function DomainList() {
               onClick={confirmDelete} 
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              删除
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -260,7 +260,7 @@ export function DomainList() {
               onClick={confirmBulkDelete} 
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              删除 {selectedDomains.length} 个域名
+              Delete {selectedDomains.length} Domains
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

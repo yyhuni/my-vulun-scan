@@ -207,7 +207,7 @@ export function DomainDataTable({
               }
             >
               <IconTrash />
-              删除
+              Delete
             </Button>
           )}
 
