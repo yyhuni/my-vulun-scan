@@ -94,7 +94,41 @@ func (s *EndpointService) GetEndpointByID(id uint) (*models.Endpoint, error) {
 	return &endpoint, nil
 }
 
-// CreateEndpoints 批量创建端点，从 URL 自动提取 domain 和 subdomain（不存在则跳过）
+// CreateEndpoints 批量创建端点，从 URL 自动提取并关联 domain 和 subdomain
+//
+// 核心业务逻辑：
+// 1. 从所有请求的 URL 中提取唯一的 host（如 baidu.com、media.baidu.com）
+// 2. 批量查询这些 host 对应的 Subdomain 记录（因为系统设计：每个 Domain 都会自动创建同名 Subdomain）
+// 3. 建立 host 到 (subdomain_id, domain_id) 的映射关系
+// 4. 批量查询现有的 Endpoint 记录（基于 URL 去重，URL 是唯一标识）
+// 5. 过滤掉已存在的 Endpoint 和找不到 Subdomain 的 Endpoint
+// 6. 批量创建新的 Endpoint 记录
+//
+// 关键设计决策：
+// - URL 唯一性：Endpoint 的唯一标识是 URL，而不是 (URL + Method) 组合
+// - 精确匹配：优先精确匹配完整 host 到 Subdomain，避免跨域关联问题
+//   例如：https://media.org20-primary.com/api 只会关联到 media.org20-primary.com 这个 Subdomain
+//   不会错误关联到 org20-primary.com 或其他域名
+// - 自动跳过：如果 URL 的 host 在系统中不存在对应的 Subdomain，则自动跳过该 URL
+//
+// 幂等性保证：
+// - 重复提交相同 URL 的 Endpoint 不会报错，只会记录到 ExistingEndpoints 列表
+// - 返回值中包含成功创建数、已存在数、总请求数，便于调用方了解处理结果
+//
+// 数据一致性：
+// - 使用事务确保批量创建的原子性，要么全部成功，要么全部回滚
+// - SubdomainID 和 DomainID 都设置为 not null，确保 Endpoint 必定关联到有效的 Domain 和 Subdomain
+//
+// 性能优化：
+// - 批量查询 Subdomain，避免 N+1 查询问题（1次查询代替 N 次）
+// - 批量查询现有 Endpoint，避免逐个检查（1次查询代替 N 次）
+// - 批量创建新 Endpoint，每批最多 100 条（1次插入代替 N 次）
+// - 使用 map 结构快速查找，避免嵌套循环
+//
+// 注意事项：
+// - 前提条件：Domain 创建时会自动创建同名 Subdomain（在 CreateDomains 方法中实现）
+// - 如果需要创建子域名（如 media.baidu.com），需要先调用 CreateSubDomainsForDomain 接口
+// - 事务失败会自动回滚，不会产生脏数据
 func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*models.CreateEndpointsResponse, error) {
 	var createdCount int
 	var existingEndpoints []string
@@ -105,97 +139,77 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 
 	// 使用事务确保批量创建的原子性
 	err := s.db.Transaction(func(tx *gorm.DB) error {
-		// 1. 从 URL 提取所有唯一的 host 和根域名
-		domainMap := make(map[string]uint)      // rootDomain -> domain_id
-		subdomainMap := make(map[string]uint)   // host -> subdomain_id
-		hostToDomain := make(map[string]string) // host -> rootDomain
-
+		// 1. 提取所有唯一的 host
+		uniqueHosts := make(map[string]bool)
 		for _, detail := range req.Endpoints {
-			// 解析 URL 提取 host
 			host, err := extractHostFromURL(detail.URL)
 			if err != nil {
 				log.Warn().Err(err).Str("url", detail.URL).Msg("Failed to extract host from URL, skipping")
 				continue
 			}
-
-			// 从 host 提取根域名
-			rootDomain := extractRootDomain(host)
-
-			// 如果该根域名还未处理，查询对应的 domain（不存在则跳过）
-			if _, exists := domainMap[rootDomain]; !exists {
-				var domain models.Domain
-
-				// 查询是否存在该域名
-				err := tx.Where("name = ?", rootDomain).First(&domain).Error
-
-				if err == gorm.ErrRecordNotFound {
-					// 不存在，跳过本 URL 所属 host
-					log.Warn().Str("root_domain", rootDomain).Str("host", host).Msg("Domain not found, skip URLs under this domain")
-					continue
-				} else if err != nil {
-					log.Error().Err(err).Str("root_domain", rootDomain).Msg("Failed to query domain")
-					return err
-				}
-
-				domainMap[rootDomain] = domain.ID
-			}
-
-			// 仅在域名存在时记录 host 与 rootDomain 的映射
-			hostToDomain[host] = rootDomain
+			uniqueHosts[host] = true
 		}
 
-		// 2. 对每个唯一的 host，查询对应的 subdomain（不存在则跳过）
-		for host, rootDomain := range hostToDomain {
-			if _, exists := subdomainMap[host]; !exists {
-				domainID := domainMap[rootDomain]
-				var subdomain models.SubDomain
+		// 2. 批量查询所有 host 对应的 Subdomain（每个 Domain 都会自动创建同名 Subdomain）
+		var hosts []string
+		for host := range uniqueHosts {
+			hosts = append(hosts, host)
+		}
 
-				// 查询是否存在该子域名
-				err := tx.Where("name = ? AND domain_id = ?", host, domainID).
-					First(&subdomain).Error
+		var subdomains []models.SubDomain
+		if err := tx.Where("name IN ?", hosts).Find(&subdomains).Error; err != nil {
+			log.Error().Err(err).Msg("Failed to query subdomains")
+			return err
+		}
 
-				if err == gorm.ErrRecordNotFound {
-					// 不存在，跳过该 host
-					log.Warn().Str("host", host).Str("root_domain", rootDomain).Uint("domain_id", domainID).Msg("Subdomain not found, skip URLs under this host")
-					continue
-				} else if err != nil {
-					log.Error().Err(err).Str("host", host).Msg("Failed to query subdomain")
-					return err
-				}
+		// 3. 创建 host 到 subdomain_id 和 domain_id 的映射
+		hostInfo := make(map[string]struct {
+			subdomainID uint
+			domainID    uint
+		})
 
-				subdomainMap[host] = subdomain.ID
+		for _, subdomain := range subdomains {
+			hostInfo[subdomain.Name] = struct {
+				subdomainID uint
+				domainID    uint
+			}{
+				subdomainID: subdomain.ID,
+				domainID:    subdomain.DomainID,
+			}
+			log.Debug().Str("host", subdomain.Name).Uint("subdomain_id", subdomain.ID).Uint("domain_id", subdomain.DomainID).Msg("Found subdomain for host")
+		}
+
+		// 4. 记录未找到的 host（这些域名不在系统中）
+		for host := range uniqueHosts {
+			if _, found := hostInfo[host]; !found {
+				log.Warn().Str("host", host).Msg("Subdomain not found in system, URLs with this host will be skipped")
 			}
 		}
 
-		// 3. 批量查询现有端点，避免N+1问题
+		// 5. 批量查询现有端点
 		var urls []string
-		var methods []string
 		for _, detail := range req.Endpoints {
 			urls = append(urls, detail.URL)
-			methods = append(methods, detail.Method)
 		}
 
 		var existingEndpointsInDB []models.Endpoint
 		if err := tx.Model(&models.Endpoint{}).
-			Where("url IN ? AND method IN ?", urls, methods).
+			Where("url IN ?", urls).
 			Find(&existingEndpointsInDB).Error; err != nil {
 			log.Error().Err(err).Msg("Failed to query existing endpoints")
 			return err
 		}
 
-		// 4. 创建现有端点的映射，便于快速查找
+		// 6. 创建现有端点的映射，便于快速查找（只基于URL）
 		existingMap := make(map[string]bool)
 		for _, existing := range existingEndpointsInDB {
-			key := fmt.Sprintf("%s|%s", existing.URL, existing.Method)
-			existingMap[key] = true
+			existingMap[existing.URL] = true
 		}
 
-		// 5. 准备需要创建的端点
+		// 7. 准备需要创建的端点
 		var newEndpoints []models.Endpoint
 		for _, detail := range req.Endpoints {
-			key := fmt.Sprintf("%s|%s", detail.URL, detail.Method)
-
-			if existingMap[key] {
+			if existingMap[detail.URL] {
 				// 已存在，记录到列表
 				existingEndpoints = append(existingEndpoints, fmt.Sprintf("%s %s", detail.Method, detail.URL))
 				log.Info().Str("url", detail.URL).Str("method", detail.Method).Msg("Endpoint already exists")
@@ -207,30 +221,27 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 					continue
 				}
 
-				subdomainID, exists := subdomainMap[host]
+				info, exists := hostInfo[host]
 				if !exists {
-					log.Warn().Str("url", detail.URL).Str("host", host).Msg("Subdomain ID not found, skipping")
+					log.Warn().Str("url", detail.URL).Str("host", host).Msg("Host not found in domain/subdomain, skipping")
 					continue
 				}
 
-				rootDomain := hostToDomain[host]
-				domainID := domainMap[rootDomain]
-
-				// 不存在，准备创建
+				// 准备创建
 				newEndpoint := models.Endpoint{
 					URL:           detail.URL,
 					Method:        detail.Method,
 					StatusCode:    detail.StatusCode,
 					Title:         detail.Title,
 					ContentLength: detail.ContentLength,
-					SubdomainID:   subdomainID,
-					DomainID:      domainID,
+					SubdomainID:   info.subdomainID,
+					DomainID:      info.domainID,
 				}
 				newEndpoints = append(newEndpoints, newEndpoint)
 			}
 		}
 
-		// 6. 批量创建新端点
+		// 8. 批量创建新端点
 		if len(newEndpoints) > 0 {
 			if err := tx.CreateInBatches(newEndpoints, 100).Error; err != nil {
 				log.Error().Err(err).Msg("Failed to create endpoints")
