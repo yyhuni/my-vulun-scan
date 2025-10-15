@@ -128,6 +128,10 @@ export function useCreateOrganization() {
       toast.dismiss('create-organization')
       
       if (response.state === 'success' && response.data) {
+        // 打印后端响应
+        console.log('创建组织成功')
+        console.log('后端响应:', response)
+        
         // 刷新组织列表
         queryClient.invalidateQueries({ queryKey: organizationKeys.lists() })
         
@@ -143,13 +147,11 @@ export function useCreateOrganization() {
       // 关闭加载提示
       toast.dismiss('create-organization')
       
-      if (process.env.NODE_ENV === 'development') {
-        console.error('创建组织失败:', error)
-      }
+      console.error('创建组织失败:', error)
+      console.error('后端响应:', error?.response?.data || error)
       
-      // 显示具体的错误信息
-      const errorMessage = error?.response?.data?.message || error?.message || '创建失败'
-      toast.error(errorMessage)
+      // 前端自己构造错误提示
+      toast.error('创建组织失败，请稍后重试')
     },
   })
 }
@@ -172,6 +174,10 @@ export function useUpdateOrganization() {
       toast.dismiss(`update-${id}`)
       
       if (response.state === 'success' && response.data) {
+        // 打印后端响应
+        console.log('更新组织成功')
+        console.log('后端响应:', response)
+        
         // 刷新组织详情和列表（使用 invalidateQueries 确保数据一致性）
         queryClient.invalidateQueries({ queryKey: organizationKeys.detail(id) })
         queryClient.invalidateQueries({ queryKey: organizationKeys.lists() })
@@ -188,12 +194,11 @@ export function useUpdateOrganization() {
       // 关闭加载提示
       toast.dismiss(`update-${id}`)
       
-      if (process.env.NODE_ENV === 'development') {
-        console.error('更新组织失败:', error)
-      }
+      console.error('更新组织失败:', error)
+      console.error('后端响应:', error?.response?.data || error)
       
-      const errorMessage = error?.response?.data?.message || error?.message || '更新失败'
-      toast.error(errorMessage)
+      // 前端自己构造错误提示
+      toast.error('更新组织失败，请稍后重试')
     },
   })
 }
@@ -238,6 +243,10 @@ export function useDeleteOrganization() {
       toast.dismiss(`delete-${deletedId}`)
       
       if (response.state === 'success') {
+        // 打印后端响应
+        console.log('删除组织成功')
+        console.log('后端响应:', response)
+        
         toast.success('删除成功')
       } else {
         throw new Error(response.message || '删除组织失败')
@@ -254,12 +263,11 @@ export function useDeleteOrganization() {
         })
       }
       
-      if (process.env.NODE_ENV === 'development') {
-        console.error('删除组织失败:', error)
-      }
+      console.error('删除组织失败:', error)
+      console.error('后端响应:', error?.response?.data || error)
       
-      const errorMessage = error?.response?.data?.message || error?.message || '删除失败'
-      toast.error(errorMessage)
+      // 前端自己构造错误提示
+      toast.error('删除组织失败，请稍后重试')
     },
     onSettled: () => {
       // 无论成功失败都刷新数据
@@ -311,6 +319,10 @@ export function useBatchDeleteOrganizations() {
       toast.dismiss('batch-delete')
       
       if (response.state === 'success') {
+        // 打印后端响应
+        console.log('批量删除组织成功')
+        console.log('后端响应:', response)
+        
         toast.success('批量删除成功')
       } else {
         throw new Error(response.message || '批量删除组织失败')
@@ -327,12 +339,11 @@ export function useBatchDeleteOrganizations() {
         })
       }
       
-      if (process.env.NODE_ENV === 'development') {
-        console.error('批量删除组织失败:', error)
-      }
+      console.error('批量删除组织失败:', error)
+      console.error('后端响应:', error?.response?.data || error)
       
-      const errorMessage = error?.response?.data?.message || error?.message || '批量删除失败'
-      toast.error(errorMessage)
+      // 前端自己构造错误提示
+      toast.error('批量删除失败，请稍后重试')
     },
     onSettled: () => {
       // 无论成功失败都刷新数据

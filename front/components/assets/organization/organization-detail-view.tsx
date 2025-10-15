@@ -2,14 +2,25 @@
 
 import React from "react"
 import { useOrganization } from "@/hooks/use-organizations"
+import { useDeleteDomainFromOrganization } from "@/hooks/use-domains"
 import { LoadingState } from "@/components/loading-spinner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { IconBuilding, IconCalendar, IconClock, IconFileText, IconWorld } from "@tabler/icons-react"
+import { IconBuilding, IconCalendar, IconClock, IconFileText, IconWorld, IconTrash } from "@tabler/icons-react"
 import Link from "next/link"
 import { AddDomainDialog } from "@/components/assets/domain/add-domain-dialog"
 import { Plus } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface OrganizationDetailViewProps {
   organizationId: string
@@ -24,6 +35,12 @@ export function OrganizationDetailView({ organizationId }: OrganizationDetailVie
   
   // 添加域名对话框状态
   const [isAddDomainDialogOpen, setIsAddDomainDialogOpen] = React.useState(false)
+  
+  // 移除域名确认对话框状态
+  const [domainToRemove, setDomainToRemove] = React.useState<{ id: number; name: string } | null>(null)
+  
+  // 移除域名的 mutation
+  const deleteDomainMutation = useDeleteDomainFromOrganization()
 
   // 格式化日期
   const formatDate = (dateString: string): string => {
@@ -36,6 +53,24 @@ export function OrganizationDetailView({ organizationId }: OrganizationDetailVie
       second: "2-digit",
       hour12: false,
     })
+  }
+
+  // 处理移除域名
+  const handleRemoveDomain = () => {
+    if (!domainToRemove) return
+    
+    deleteDomainMutation.mutate(
+      {
+        organizationId: parseInt(organizationId),
+        domainId: domainToRemove.id,
+      },
+      {
+        onSuccess: () => {
+          setDomainToRemove(null)
+          refetch() // 刷新组织详情
+        },
+      }
+    )
   }
 
   // 错误状态
@@ -148,7 +183,21 @@ export function OrganizationDetailView({ organizationId }: OrganizationDetailVie
                       )}
                     </div>
                   </div>
-                  <Badge variant="secondary" className="ml-2 shrink-0">ID: {domain.id}</Badge>
+                  <div className="flex items-center gap-2 ml-2 shrink-0">
+                    <Badge variant="secondary">ID: {domain.id}</Badge>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        setDomainToRemove({ id: domain.id, name: domain.name })
+                      }}
+                      title="从组织中移除"
+                    >
+                      <IconTrash className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -170,6 +219,37 @@ export function OrganizationDetailView({ organizationId }: OrganizationDetailVie
           refetch()
         }}
       />
+
+      {/* 移除域名确认对话框 */}
+      <AlertDialog open={!!domainToRemove} onOpenChange={(open) => !open && setDomainToRemove(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认移除域名</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>确定要从此组织中移除域名吗？</p>
+              {domainToRemove && (
+                <div className="p-3 bg-muted rounded-md">
+                  <p className="font-medium text-foreground">{domainToRemove.name}</p>
+                  <p className="text-sm text-muted-foreground mt-1">ID: {domainToRemove.id}</p>
+                </div>
+              )}
+              <p className="text-sm">
+                <strong>注意：</strong>如果该域名不再归属于任何组织，系统将自动删除该域名及其所有关联数据（子域名、端点等）。
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteDomainMutation.isPending}>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRemoveDomain}
+              disabled={deleteDomainMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteDomainMutation.isPending ? "移除中..." : "确认移除"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

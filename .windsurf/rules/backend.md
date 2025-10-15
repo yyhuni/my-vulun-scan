@@ -22,4 +22,4 @@ trigger: always_on
 21.后端数据库模型不允许用omitempty省略 json，防止 debug 时候很难查找溯源
 22.域名校验验证应该放在 hanlder 层
 23.前端非必要不要采用window.location.href去跳转，而是用Next.js 客户端路由
-24.前端应该自己控制用户提示的内容和风格，而不是直接使用后端的 message
+24.前端 toast应该自己控制用户提示的内容和风格，而不是直接使用后端的 message来打印，同时也要控制台打印后端的响应体

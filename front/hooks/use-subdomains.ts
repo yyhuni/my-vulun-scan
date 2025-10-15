@@ -107,6 +107,10 @@ export function useCreateSubdomainForDomain() {
       if (response.state === 'success' && response.data) {
         const { subdomainsCreated, alreadyExists } = response.data
         
+        // 打印后端响应
+        console.log('创建子域名成功')
+        console.log('后端响应:', response)
+        
         // 根据不同情况构建友好的消息
         if (subdomainsCreated > 0) {
           let message = `✅ 成功创建 ${subdomainsCreated} 个子域名`
@@ -131,12 +135,11 @@ export function useCreateSubdomainForDomain() {
     onError: (error: any) => {
       toast.dismiss('create-subdomain-for-domain')
       
-      if (process.env.NODE_ENV === 'development') {
-        console.error('创建子域名失败:', error)
-      }
+      console.error('创建子域名失败:', error)
+      console.error('后端响应:', error?.response?.data || error)
       
-      const errorMessage = error?.response?.data?.message || error?.message || '创建失败'
-      toast.error(errorMessage)
+      // 前端自己构造错误提示
+      toast.error('创建子域名失败，请稍后重试')
     },
   })
 }
@@ -155,6 +158,10 @@ export function useDeleteSubdomain() {
       toast.dismiss(`delete-subdomain-${id}`)
       
       if (response.state === 'success') {
+        // 打印后端响应
+        console.log('删除子域名成功')
+        console.log('后端响应:', response)
+        
         toast.success('✅ 删除成功')
         queryClient.invalidateQueries({ queryKey: subdomainKeys.lists() })
       } else {
@@ -163,11 +170,10 @@ export function useDeleteSubdomain() {
     },
     onError: (error: any, id) => {
       toast.dismiss(`delete-subdomain-${id}`)
-      if (process.env.NODE_ENV === 'development') {
-        console.error('删除子域名失败:', error)
-      }
-      const errorMessage = error?.response?.data?.message || error?.message || '删除失败'
-      toast.error(errorMessage)
+      console.error('删除子域名失败:', error)
+      console.error('后端响应:', error?.response?.data || error)
+      // 前端自己构造错误提示
+      toast.error('删除子域名失败，请稍后重试')
     },
   })
 }
@@ -185,6 +191,10 @@ export function useBatchDeleteSubdomains() {
       toast.dismiss('batch-delete-subdomains')
       
       if (response.state === 'success' && response.data) {
+        // 打印后端响应
+        console.log('批量删除子域名成功')
+        console.log('后端响应:', response)
+        
         const { deletedCount } = response.data
         toast.success(`✅ 成功删除 ${deletedCount} 个子域名`)
         queryClient.invalidateQueries({ queryKey: subdomainKeys.lists() })
@@ -194,11 +204,10 @@ export function useBatchDeleteSubdomains() {
     },
     onError: (error: any) => {
       toast.dismiss('batch-delete-subdomains')
-      if (process.env.NODE_ENV === 'development') {
-        console.error('批量删除子域名失败:', error)
-      }
-      const errorMessage = error?.response?.data?.message || error?.message || '批量删除失败'
-      toast.error(errorMessage)
+      console.error('批量删除子域名失败:', error)
+      console.error('后端响应:', error?.response?.data || error)
+      // 前端自己构造错误提示
+      toast.error('批量删除失败，请稍后重试')
     },
   })
 }

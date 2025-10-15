@@ -120,8 +120,12 @@ export function useCreateEndpoint() {
       toast.dismiss('create-endpoint')
       
       if (response.state === 'success') {
-        const msg = (response as any)?.data?.message || response.message || '创建成功'
-        toast.success(msg)
+        // 打印后端响应
+        console.log('创建端点成功')
+        console.log('后端响应:', response)
+        
+        // 前端自己构造成功提示消息
+        toast.success('端点创建成功')
         
         // 刷新所有相关查询（因为可能自动创建了 domain 和 subdomain）
         queryClient.invalidateQueries({ queryKey: endpointKeys.lists() })
@@ -134,19 +138,18 @@ export function useCreateEndpoint() {
           }
         })
       } else {
-        throw new Error(response.message || '创建端点失败')
+        throw new Error('创建端点失败')
       }
     },
     onError: (error: any) => {
       // 关闭加载提示
       toast.dismiss('create-endpoint')
       
-      if (process.env.NODE_ENV === 'development') {
-        console.error('创建端点失败:', error)
-      }
+      console.error('创建端点失败:', error)
+      console.error('后端响应:', error?.response?.data || error)
       
-      const errorMessage = error?.response?.data?.message || error?.message || '创建失败'
-      toast.error(errorMessage)
+      // 前端自己构造错误提示
+      toast.error('创建端点失败，请稍后重试')
     },
   })
 }
@@ -164,8 +167,11 @@ export function useDeleteEndpoint() {
       toast.dismiss(`delete-endpoint-${id}`)
       
       if (response.state === 'success') {
-        const data = response.data as BatchDeleteEndpointsResponse
-        toast.success(data.message || '删除成功')
+        // 打印后端响应
+        console.log('删除端点成功')
+        console.log('后端响应:', response)
+        
+        toast.success('删除成功')
         
         // 刷新相关查询
         queryClient.invalidateQueries({ queryKey: endpointKeys.lists() })
@@ -185,12 +191,11 @@ export function useDeleteEndpoint() {
     onError: (error: any, id) => {
       toast.dismiss(`delete-endpoint-${id}`)
       
-      if (process.env.NODE_ENV === 'development') {
-        console.error('删除端点失败:', error)
-      }
+      console.error('删除端点失败:', error)
+      console.error('后端响应:', error?.response?.data || error)
       
-      const errorMessage = error?.response?.data?.message || error?.message || '删除失败'
-      toast.error(errorMessage)
+      // 前端自己构造错误提示
+      toast.error('删除端点失败，请稍后重试')
     },
   })
 }
@@ -207,9 +212,13 @@ export function useBatchDeleteEndpoints() {
     onSuccess: (response) => {
       toast.dismiss('batch-delete-endpoints')
       
-      if (response.state === 'success') {
-        const data = response.data as BatchDeleteEndpointsResponse
-        toast.success(data.message || `已删除 ${data.deletedCount} 个端点`)
+      if (response.state === 'success' && response.data) {
+        // 打印后端响应
+        console.log('批量删除端点成功')
+        console.log('后端响应:', response)
+        
+        const { deletedCount } = response.data
+        toast.success(`成功删除 ${deletedCount} 个端点`)
         
         // 刷新相关查询
         queryClient.invalidateQueries({ queryKey: endpointKeys.lists() })
@@ -228,12 +237,11 @@ export function useBatchDeleteEndpoints() {
     onError: (error: any) => {
       toast.dismiss('batch-delete-endpoints')
       
-      if (process.env.NODE_ENV === 'development') {
-        console.error('批量删除端点失败:', error)
-      }
+      console.error('批量删除端点失败:', error)
+      console.error('后端响应:', error?.response?.data || error)
       
-      const errorMessage = error?.response?.data?.message || error?.message || '批量删除失败'
-      toast.error(errorMessage)
+      // 前端自己构造错误提示
+      toast.error('批量删除失败，请稍后重试')
     },
   })
 }

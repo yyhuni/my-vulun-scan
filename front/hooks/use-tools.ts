@@ -62,6 +62,10 @@ export function useCreateTool() {
       toast.dismiss('create-tool')
       
       if (response.state === 'success') {
+        // 打印后端响应
+        console.log('创建工具成功')
+        console.log('后端响应:', response)
+        
         toast.success('创建成功')
         
         // 刷新工具列表和分类列表
@@ -76,12 +80,11 @@ export function useCreateTool() {
     onError: (error: any) => {
       toast.dismiss('create-tool')
       
-      if (process.env.NODE_ENV === 'development') {
-        console.error('创建工具失败:', error)
-      }
+      console.error('创建工具失败:', error)
+      console.error('后端响应:', error?.response?.data || error)
       
-      const errorMessage = error?.response?.data?.message || error?.message || '创建失败'
-      toast.error(errorMessage)
+      // 前端自己构造错误提示
+      toast.error('创建工具失败，请稍后重试')
     },
   })
 }

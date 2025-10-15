@@ -93,6 +93,10 @@ export function useCreateDomain() {
       if (response.state === 'success' && response.data) {
         const { newCreated, alreadyExisted } = response.data
         
+        // 打印后端响应
+        console.log('创建域名成功')
+        console.log('后端响应:', response)
+        
         // 前端自己构造提示消息
         if (alreadyExisted > 0) {
           toast.warning(
@@ -122,12 +126,11 @@ export function useCreateDomain() {
       // 关闭加载提示
       toast.dismiss('create-domain')
       
-      if (process.env.NODE_ENV === 'development') {
-        console.error('创建域名失败:', error)
-      }
+      console.error('创建域名失败:', error)
+      console.error('后端响应:', error?.response?.data || error)
       
-      const errorMessage = error?.response?.data?.message || error?.message || '创建失败'
-      toast.error(errorMessage)
+      // 前端自己构造错误提示
+      toast.error('创建域名失败，请稍后重试')
     },
   })
 }
@@ -146,9 +149,12 @@ export function useDeleteDomainFromOrganization() {
       toast.dismiss(`delete-${organizationId}-${domainId}`)
       
       if (response.state === 'success') {
-        // 使用后端返回的详细消息，如果没有则使用默认消息
-        const successMessage = response.data?.message || `成功从组织 ID: ${organizationId} 移除域名 ID: ${domainId}`
-        toast.success(successMessage)
+        // 打印后端响应
+        console.log('移除域名成功')
+        console.log('后端响应:', response)
+        
+        // 前端自己构造成功提示消息
+        toast.success('域名已成功移除')
         
         // 刷新相关查询
         queryClient.invalidateQueries({ queryKey: domainKeys.lists() })
@@ -167,12 +173,11 @@ export function useDeleteDomainFromOrganization() {
     onError: (error: any, { organizationId, domainId }) => {
       toast.dismiss(`delete-${organizationId}-${domainId}`)
       
-      if (process.env.NODE_ENV === 'development') {
-        console.error('移除域名失败:', error)
-      }
+      console.error('移除域名失败:', error)
+      console.error('后端响应:', error?.response?.data || error)
       
-      const errorMessage = error?.response?.data?.message || error?.message || '移除失败'
-      toast.error(errorMessage)
+      // 前端自己构造错误提示
+      toast.error('移除域名失败，请稍后重试')
     },
   })
 }
@@ -191,15 +196,18 @@ export function useBatchDeleteDomainsFromOrganization() {
       toast.dismiss(`batch-delete-${organizationId}`)
       
       if (response.state === 'success') {
-        // 使用后端返回的详细消息
-        const message = response.data?.message || '批量移除完成'
+        // 打印后端响应
+        console.log('批量移除域名成功')
+        console.log('后端响应:', response)
+        
+        // 前端自己构造成功提示消息
         const successCount = response.data?.successCount || 0
         const failedCount = response.data?.failedCount || 0
         
         if (failedCount > 0) {
-          toast.warning(`${message}（成功：${successCount}，失败：${failedCount}）`)
+          toast.warning(`批量移除完成（成功：${successCount}，失败：${failedCount}）`)
         } else {
-          toast.success(message)
+          toast.success(`成功移除 ${successCount} 个域名`)
         }
         
         // 刷新相关查询
@@ -219,12 +227,11 @@ export function useBatchDeleteDomainsFromOrganization() {
     onError: (error: any, { organizationId }) => {
       toast.dismiss(`batch-delete-${organizationId}`)
       
-      if (process.env.NODE_ENV === 'development') {
-        console.error('批量移除域名失败:', error)
-      }
+      console.error('批量移除域名失败:', error)
+      console.error('后端响应:', error?.response?.data || error)
       
-      const errorMessage = error?.response?.data?.message || error?.message || '批量移除失败'
-      toast.error(errorMessage)
+      // 前端自己构造错误提示
+      toast.error('批量移除失败，请稍后重试')
     },
   })
 }
@@ -243,10 +250,14 @@ export function useBatchDeleteDomains() {
       toast.dismiss('batch-delete-domains')
       
       if (response.state === 'success') {
-        const message = response.data?.message || '批量删除完成'
+        // 打印后端响应
+        console.log('批量删除域名成功')
+        console.log('后端响应:', response)
+        
+        // 前端自己构造成功提示消息
         const deletedCount = response.data?.deletedCount || 0
         
-        toast.success(`${message}（已删除 ${deletedCount} 个域名）`)
+        toast.success(`成功删除 ${deletedCount} 个域名`)
         
         // 刷新所有域名相关查询
         queryClient.invalidateQueries({ queryKey: domainKeys.lists() })
@@ -266,12 +277,11 @@ export function useBatchDeleteDomains() {
     onError: (error: any) => {
       toast.dismiss('batch-delete-domains')
       
-      if (process.env.NODE_ENV === 'development') {
-        console.error('批量删除域名失败:', error)
-      }
+      console.error('批量删除域名失败:', error)
+      console.error('后端响应:', error?.response?.data || error)
       
-      const errorMessage = error?.response?.data?.message || error?.message || '批量删除失败'
-      toast.error(errorMessage)
+      // 前端自己构造错误提示
+      toast.error('批量删除失败，请稍后重试')
     },
   })
 }
@@ -290,6 +300,10 @@ export function useUpdateDomain() {
       toast.dismiss(`update-domain-${id}`)
       
       if (response.state === 'success') {
+        // 打印后端响应
+        console.log('更新域名成功')
+        console.log('后端响应:', response)
+        
         toast.success('更新成功')
         
         // 刷新所有域名相关查询
@@ -312,12 +326,11 @@ export function useUpdateDomain() {
     },
     onError: (error: any, { id }) => {
       toast.dismiss(`update-domain-${id}`)
-      if (process.env.NODE_ENV === 'development') {
-        console.error('更新域名失败:', error)
-      }
+      console.error('更新域名失败:', error)
+      console.error('后端响应:', error?.response?.data || error)
       
-      const errorMessage = error?.response?.data?.message || error?.message || '更新失败'
-      toast.error(errorMessage)
+      // 前端自己构造错误提示
+      toast.error('更新域名失败，请稍后重试')
     },
   })
 }

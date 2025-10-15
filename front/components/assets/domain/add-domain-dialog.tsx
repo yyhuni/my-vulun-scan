@@ -105,7 +105,7 @@ export function AddDomainDialog({
   } = useOrganizations(
     {
       page: 1,
-      pageSize: 100, // 获取足够多的组织用于选择
+      pageSize: 1000, // 获取足够多的组织用于选择
     },
     {
       enabled: !presetOrganizationId, // 有预设组织ID时不请求
