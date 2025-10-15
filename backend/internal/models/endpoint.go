@@ -57,19 +57,9 @@ type GetEndpointsResponse struct {
 	BasePaginationResponse
 }
 
-// CreateEndpointsResponse 创建端点响应（service 层使用）
+// CreateEndpointsResponse 创建端点响应
 type CreateEndpointsResponse struct {
-	SuccessCount      int      `json:"success_count"`
-	ExistingEndpoints []string `json:"existing_endpoints"`
-	TotalRequested    int      `json:"total_requested"`
-}
-
-// CreateEndpointsResponseData 创建端点响应数据（handler 层返回给前端）
-type CreateEndpointsResponseData struct {
-	Message           string   `json:"message"`
-	SuccessCount      int      `json:"success_count"`
-	ExistingEndpoints []string `json:"existing_endpoints"`
-	TotalRequested    int      `json:"total_requested"`
+	BaseBatchCreateResponse
 }
 
 // BatchDeleteEndpointsRequest 批量删除端点请求

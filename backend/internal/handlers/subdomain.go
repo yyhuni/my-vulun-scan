@@ -277,7 +277,7 @@ func BatchDeleteSubDomains(c *gin.Context) {
 // @Produce json
 // @Param id path uint true "域名ID" example(1)
 // @Param request body models.CreateSubDomainsForDomainRequest true "子域名列表"
-// @Success 200 {object} models.APIResponse{data=models.CreateSubDomainsResponseData} "创建成功"
+// @Success 200 {object} models.APIResponse{data=models.CreateSubDomainsResponse} "创建成功，返回统计信息"
 // @Failure 400 {object} models.APIResponse "请求参数错误"
 // @Failure 404 {object} models.APIResponse "域名不存在"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
@@ -339,14 +339,6 @@ func CreateSubDomainsForDomain(c *gin.Context) {
 		return
 	}
 
-	// 计算已存在的子域名数量（基于去重后的总数）
-	alreadyExists := result.TotalUniqueSubdomains - result.SubdomainsCreated
-
-	// 返回结构化数据
-	response.SuccessResponse(c, models.CreateSubDomainsResponseData{
-		SubdomainsCreated:     result.SubdomainsCreated,
-		AlreadyExists:         alreadyExists,
-		SkippedDomains:        []string{},                   // 当前场景无跳过的域名
-		TotalUniqueSubdomains: result.TotalUniqueSubdomains, // Service 层已有此字段
-	})
+	// 直接返回 service 层构建的响应
+	response.SuccessResponse(c, result)
 }

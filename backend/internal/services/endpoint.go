@@ -259,16 +259,23 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 		return nil, err
 	}
 
+	// 计算统计信息
+	alreadyExisted := len(existingEndpoints)
+	totalRequested := len(req.Endpoints)
+
 	response := &models.CreateEndpointsResponse{
-		SuccessCount:      createdCount,
-		ExistingEndpoints: existingEndpoints,
-		TotalRequested:    len(req.Endpoints),
+		BaseBatchCreateResponse: models.BaseBatchCreateResponse{
+			Message:        fmt.Sprintf("成功处理 %d 个端点，新创建 %d 个，%d 个已存在", totalRequested, createdCount, alreadyExisted),
+			TotalRequested: totalRequested,
+			NewCreated:     createdCount,
+			AlreadyExisted: alreadyExisted,
+		},
 	}
 
 	log.Info().
-		Int("success_count", createdCount).
-		Int("existing_count", len(existingEndpoints)).
-		Int("total_requested", len(req.Endpoints)).
+		Int("total_requested", totalRequested).
+		Int("new_created", createdCount).
+		Int("already_existed", alreadyExisted).
 		Msg("Endpoints creation completed")
 
 	return response, nil

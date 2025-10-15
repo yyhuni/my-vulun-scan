@@ -82,7 +82,7 @@ func GetEndpointByID(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body models.CreateEndpointsRequest true "端点创建请求"
-// @Success 200 {object} models.APIResponse{data=models.CreateEndpointsResponseData} "创建成功"
+// @Success 200 {object} models.APIResponse{data=models.CreateEndpointsResponse} "创建成功，返回统计信息"
 // @Failure 400 {object} models.APIResponse "请求参数错误"
 // @Router /endpoints/create [post]
 func CreateEndpoints(c *gin.Context) {
@@ -117,21 +117,8 @@ func CreateEndpoints(c *gin.Context) {
 		return
 	}
 
-	message := fmt.Sprintf("成功创建 %d 个端点", result.SuccessCount)
-	if len(result.ExistingEndpoints) > 0 {
-		message += fmt.Sprintf("，%d 个端点已存在", len(result.ExistingEndpoints))
-	}
-	skipped := result.TotalRequested - result.SuccessCount - len(result.ExistingEndpoints)
-	if skipped > 0 {
-		message += fmt.Sprintf("，%d 个端点因域名/子域名不存在被跳过", skipped)
-	}
-
-	response.SuccessResponse(c, models.CreateEndpointsResponseData{
-		Message:           message,
-		SuccessCount:      result.SuccessCount,
-		ExistingEndpoints: result.ExistingEndpoints,
-		TotalRequested:    result.TotalRequested,
-	})
+	// 直接返回 service 层构建的响应
+	response.SuccessResponse(c, result)
 }
 
 // GetEndpointsByDomainID 获取指定域名下的端点列表

@@ -429,7 +429,12 @@ func (s *SubDomainService) CreateSubDomainsForDomain(domainID uint, subdomains [
 	totalUnique := len(uniqueSubdomains)
 	if totalUnique == 0 {
 		return &models.CreateSubDomainsResponse{
-			TotalUniqueSubdomains: 0,
+			BaseBatchCreateResponse: models.BaseBatchCreateResponse{
+				Message:        "所有子域名已存在，跳过创建",
+				TotalRequested: 0,
+				NewCreated:     0,
+				AlreadyExisted: 0,
+			},
 		}, nil
 	}
 
@@ -457,8 +462,12 @@ func (s *SubDomainService) CreateSubDomainsForDomain(domainID uint, subdomains [
 			Msg("所有子域名已存在，跳过创建")
 
 		return &models.CreateSubDomainsResponse{
-			SubdomainsCreated:     0,
-			TotalUniqueSubdomains: totalUnique,
+			BaseBatchCreateResponse: models.BaseBatchCreateResponse{
+				Message:        fmt.Sprintf("所有 %d 个子域名已存在，跳过创建", totalUnique),
+				TotalRequested: totalUnique,
+				NewCreated:     0,
+				AlreadyExisted: totalUnique,
+			},
 		}, nil
 	}
 
@@ -475,14 +484,22 @@ func (s *SubDomainService) CreateSubDomainsForDomain(domainID uint, subdomains [
 		return nil, err
 	}
 
+	// 计算统计信息
+	alreadyExisted := totalUnique - int(totalRowsInserted)
+
 	log.Info().
 		Uint("domain_id", domainID).
-		Int64("created", totalRowsInserted).
-		Int("total_unique", totalUnique).
+		Int("total_requested", totalUnique).
+		Int("new_created", int(totalRowsInserted)).
+		Int("already_existed", alreadyExisted).
 		Msg("子域名创建完成")
 
 	return &models.CreateSubDomainsResponse{
-		SubdomainsCreated:     int(totalRowsInserted),
-		TotalUniqueSubdomains: totalUnique,
+		BaseBatchCreateResponse: models.BaseBatchCreateResponse{
+			Message:        fmt.Sprintf("成功处理 %d 个子域名，新创建 %d 个，%d 个已存在", totalUnique, int(totalRowsInserted), alreadyExisted),
+			TotalRequested: totalUnique,
+			NewCreated:     int(totalRowsInserted),
+			AlreadyExisted: alreadyExisted,
+		},
 	}, nil
 }

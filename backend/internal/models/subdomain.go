@@ -42,19 +42,9 @@ type GetSubDomainsResponse struct {
 	BasePaginationResponse
 }
 
-// CreateSubDomainsResponse 创建子域名响应（service 层使用）
+// CreateSubDomainsResponse 创建子域名响应
 type CreateSubDomainsResponse struct {
-	SubdomainsCreated     int      `json:"subdomains_created"`      // 实际创建的子域名数量
-	TotalUniqueSubdomains int      `json:"total_unique_subdomains"` // 去重后的唯一子域名总数
-	SkippedDomains        []string `json:"skipped_domains"`         // 被跳过的根域名（不存在或未关联组织）
-}
-
-// CreateSubDomainsResponseData 创建子域名响应数据（handler 层返回给前端）
-type CreateSubDomainsResponseData struct {
-	SubdomainsCreated     int      `json:"subdomains_created"`      // 实际创建的子域名数量
-	AlreadyExists         int      `json:"already_exists"`          // 已存在的子域名数量
-	SkippedDomains        []string `json:"skipped_domains"`         // 被跳过的根域名列表
-	TotalUniqueSubdomains int      `json:"total_unique_subdomains"` // 请求的唯一子域名总数
+	BaseBatchCreateResponse
 }
 
 // GetOrgSubDomainsResponse 获取组织子域名响应
