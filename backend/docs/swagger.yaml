@@ -393,6 +393,8 @@ definitions:
         type: array
       total:
         type: integer
+      total_pages:
+        type: integer
     type: object
   vulun-scan-backend_internal_models.GetToolsResponse:
     properties:
@@ -407,6 +409,15 @@ definitions:
       total:
         type: integer
       total_pages:
+        type: integer
+    type: object
+  vulun-scan-backend_internal_models.HealthStatusResponseData:
+    properties:
+      status:
+        description: 服务状态，如 "ok"
+        type: string
+      timestamp:
+        description: 当前时间戳（Unix时间）
         type: integer
     type: object
   vulun-scan-backend_internal_models.Organization:
@@ -553,7 +564,7 @@ paths:
       - 工具管理
   /domains:
     get:
-      description: 获取系统中的所有域名，支持分页和排序
+      description: 获取系统中的所有域名，支持分页。固定按更新时间降序排列
       parameters:
       - default: 1
         description: 页码
@@ -565,23 +576,6 @@ paths:
         in: query
         name: page_size
         type: integer
-      - default: updated_at
-        description: 排序字段
-        enum:
-        - name
-        - created_at
-        - updated_at
-        in: query
-        name: sort_by
-        type: string
-      - default: desc
-        description: 排序方向
-        enum:
-        - asc
-        - desc
-        in: query
-        name: sort_order
-        type: string
       produces:
       - application/json
       responses:
@@ -640,7 +634,7 @@ paths:
       - 域名管理
   /domains/{id}/endpoints:
     get:
-      description: 根据域名ID获取该域名下的所有端点（包括所有子域名的端点）
+      description: 根据域名ID获取该域名下的所有端点（包括所有子域名的端点）。固定按更新时间降序排列
       parameters:
       - description: 域名ID
         example: 1
@@ -656,14 +650,6 @@ paths:
         in: query
         name: page_size
         type: integer
-      - description: '排序字段: url, method, status_code, created_at, updated_at,默认updated_at'
-        in: query
-        name: sort_by
-        type: string
-      - description: '排序方向: asc, desc,默认desc'
-        in: query
-        name: sort_order
-        type: string
       produces:
       - application/json
       responses:
@@ -685,7 +671,7 @@ paths:
       - 域名管理
   /domains/{id}/subdomains:
     get:
-      description: 根据域名ID获取该域名下的所有子域名（支持分页和排序）
+      description: 根据域名ID获取该域名下的所有子域名（支持分页）。固定按更新时间降序排列
       parameters:
       - description: 域名ID
         example: 1
@@ -701,14 +687,6 @@ paths:
         in: query
         name: page_size
         type: integer
-      - description: '排序字段: id, name, created_at, updated_at,默认updated_at'
-        in: query
-        name: sort_by
-        type: string
-      - description: '排序方向: asc, desc,默认desc'
-        in: query
-        name: sort_order
-        type: string
       produces:
       - application/json
       responses:
@@ -881,7 +859,8 @@ paths:
       - 域名管理
   /endpoints:
     get:
-      description: 获取所有端点，支持分页和排序。如需按域名或子域名过滤，请使用 /domains/:id/endpoints 或 /subdomains/:id/endpoints
+      description: 获取所有端点，支持分页。固定按更新时间降序排列。如需按域名或子域名过滤，请使用 /domains/:id/endpoints
+        或 /subdomains/:id/endpoints
       parameters:
       - description: 页码,默认1
         in: query
@@ -891,14 +870,6 @@ paths:
         in: query
         name: page_size
         type: integer
-      - description: '排序字段: url, method, status_code, created_at, updated_at,默认updated_at'
-        in: query
-        name: sort_by
-        type: string
-      - description: '排序方向: asc, desc,默认desc'
-        in: query
-        name: sort_order
-        type: string
       produces:
       - application/json
       responses:
@@ -1058,9 +1029,27 @@ paths:
       summary: 批量创建端点（自动提取域名，缺失则跳过）
       tags:
       - 端点管理
+  /health:
+    get:
+      description: 检查服务是否正常运行
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 服务正常
+          schema:
+            allOf:
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.HealthStatusResponseData'
+              type: object
+      summary: 健康检查
+      tags:
+      - 系统管理
   /organizations:
     get:
-      description: 获取所有组织列表，支持分页和排序
+      description: 获取所有组织列表，支持分页。固定按更新时间降序排列
       parameters:
       - default: 1
         description: 页码
@@ -1074,24 +1063,6 @@ paths:
         in: query
         name: page_size
         type: integer
-      - default: updated_at
-        description: 排序字段
-        enum:
-        - id
-        - name
-        - created_at
-        - updated_at
-        in: query
-        name: sort_by
-        type: string
-      - default: desc
-        description: 排序方向
-        enum:
-        - asc
-        - desc
-        in: query
-        name: sort_order
-        type: string
       produces:
       - application/json
       responses:
@@ -1150,7 +1121,7 @@ paths:
       - 组织管理
   /organizations/{id}/domains:
     get:
-      description: 获取指定组织的所有域名，支持分页和排序。注意：返回的域名不包含子域名信息
+      description: 获取指定组织的所有域名，支持分页。固定按更新时间降序排列。注意：返回的域名不包含子域名信息
       parameters:
       - description: 组织ID
         example: 1
@@ -1168,23 +1139,6 @@ paths:
         in: query
         name: page_size
         type: integer
-      - default: updated_at
-        description: 排序字段
-        enum:
-        - name
-        - created_at
-        - updated_at
-        in: query
-        name: sort_by
-        type: string
-      - default: desc
-        description: 排序方向
-        enum:
-        - asc
-        - desc
-        in: query
-        name: sort_order
-        type: string
       produces:
       - application/json
       responses:
@@ -1210,7 +1164,7 @@ paths:
       - 域名管理
   /organizations/{id}/subdomains:
     get:
-      description: 根据组织ID获取该组织所有域名下的子域名（支持分页和排序）
+      description: 根据组织ID获取该组织所有域名下的子域名（支持分页）。固定按更新时间降序排列
       parameters:
       - description: 组织ID
         example: 1
@@ -1226,14 +1180,6 @@ paths:
         in: query
         name: page_size
         type: integer
-      - description: '排序字段: id, name, created_at, updated_at,默认updated_at'
-        in: query
-        name: sort_by
-        type: string
-      - description: '排序方向: asc, desc,默认desc'
-        in: query
-        name: sort_order
-        type: string
       produces:
       - application/json
       responses:
@@ -1489,7 +1435,7 @@ paths:
       - 组织管理
   /subdomains:
     get:
-      description: 获取所有子域名，支持分页和排序
+      description: 获取所有子域名，支持分页。固定按更新时间降序排列
       parameters:
       - description: 页码,默认1
         in: query
@@ -1499,14 +1445,6 @@ paths:
         in: query
         name: page_size
         type: integer
-      - description: '排序字段: id, name, created_at, updated_at,默认updated_at'
-        in: query
-        name: sort_by
-        type: string
-      - description: '排序方向: asc, desc,默认desc'
-        in: query
-        name: sort_order
-        type: string
       produces:
       - application/json
       responses:
@@ -1605,7 +1543,7 @@ paths:
       - 子域名管理
   /subdomains/{id}/endpoints:
     get:
-      description: 根据子域名ID获取该子域名下的端点，支持分页和排序
+      description: 根据子域名ID获取该子域名下的端点，支持分页。固定按更新时间降序排列
       parameters:
       - description: 子域名ID
         example: 1
@@ -1621,14 +1559,6 @@ paths:
         in: query
         name: page_size
         type: integer
-      - description: '排序字段: url, method, status_code, created_at, updated_at,默认updated_at'
-        in: query
-        name: sort_by
-        type: string
-      - description: '排序方向: asc, desc,默认desc'
-        in: query
-        name: sort_order
-        type: string
       produces:
       - application/json
       responses:

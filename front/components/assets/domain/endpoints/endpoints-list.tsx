@@ -239,7 +239,8 @@ export function EndpointsList({
               此操作无法撤销。这将永久删除以下 {selectedAssets.length} 个端点及其相关数据（包括关联的 Vulnerabilities）。
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="mt-2 p-2 bg-muted rounded-md max-h-60 overflow-y-auto">
+          {/* 端点列表容器 - 固定最大高度并支持滚动 */}
+          <div className="mt-2 p-2 bg-muted rounded-md max-h-96 overflow-y-auto">
             <ul className="text-sm space-y-1">
               {selectedAssets.map((endpoint) => (
                 <li key={endpoint.id} className="flex items-center flex-wrap">

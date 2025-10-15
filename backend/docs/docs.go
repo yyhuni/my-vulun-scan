@@ -55,7 +55,7 @@ const docTemplate = `{
         },
         "/domains": {
             "get": {
-                "description": "获取系统中的所有域名，支持分页和排序",
+                "description": "获取系统中的所有域名，支持分页。固定按更新时间降序排列",
                 "produces": [
                     "application/json"
                 ],
@@ -76,29 +76,6 @@ const docTemplate = `{
                         "default": 10,
                         "description": "每页数量",
                         "name": "page_size",
-                        "in": "query"
-                    },
-                    {
-                        "enum": [
-                            "name",
-                            "created_at",
-                            "updated_at"
-                        ],
-                        "type": "string",
-                        "default": "updated_at",
-                        "description": "排序字段",
-                        "name": "sort_by",
-                        "in": "query"
-                    },
-                    {
-                        "enum": [
-                            "asc",
-                            "desc"
-                        ],
-                        "type": "string",
-                        "default": "desc",
-                        "description": "排序方向",
-                        "name": "sort_order",
                         "in": "query"
                     }
                 ],
@@ -323,7 +300,7 @@ const docTemplate = `{
         },
         "/domains/{id}/endpoints": {
             "get": {
-                "description": "根据域名ID获取该域名下的所有端点（包括所有子域名的端点）",
+                "description": "根据域名ID获取该域名下的所有端点（包括所有子域名的端点）。固定按更新时间降序排列",
                 "produces": [
                     "application/json"
                 ],
@@ -350,18 +327,6 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "每页数量,默认10",
                         "name": "page_size",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "排序字段: url, method, status_code, created_at, updated_at,默认updated_at",
-                        "name": "sort_by",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "排序方向: asc, desc,默认desc",
-                        "name": "sort_order",
                         "in": "query"
                     }
                 ],
@@ -395,7 +360,7 @@ const docTemplate = `{
         },
         "/domains/{id}/subdomains": {
             "get": {
-                "description": "根据域名ID获取该域名下的所有子域名（支持分页和排序）",
+                "description": "根据域名ID获取该域名下的所有子域名（支持分页）。固定按更新时间降序排列",
                 "produces": [
                     "application/json"
                 ],
@@ -422,18 +387,6 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "每页数量,默认10",
                         "name": "page_size",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "排序字段: id, name, created_at, updated_at,默认updated_at",
-                        "name": "sort_by",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "排序方向: asc, desc,默认desc",
-                        "name": "sort_order",
                         "in": "query"
                     }
                 ],
@@ -551,7 +504,7 @@ const docTemplate = `{
         },
         "/endpoints": {
             "get": {
-                "description": "获取所有端点，支持分页和排序。如需按域名或子域名过滤，请使用 /domains/:id/endpoints 或 /subdomains/:id/endpoints",
+                "description": "获取所有端点，支持分页。固定按更新时间降序排列。如需按域名或子域名过滤，请使用 /domains/:id/endpoints 或 /subdomains/:id/endpoints",
                 "produces": [
                     "application/json"
                 ],
@@ -570,18 +523,6 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "每页数量,默认10",
                         "name": "page_size",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "排序字段: url, method, status_code, created_at, updated_at,默认updated_at",
-                        "name": "sort_by",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "排序方向: asc, desc,默认desc",
-                        "name": "sort_order",
                         "in": "query"
                     }
                 ],
@@ -841,9 +782,41 @@ const docTemplate = `{
                 }
             }
         },
+        "/health": {
+            "get": {
+                "description": "检查服务是否正常运行",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "系统管理"
+                ],
+                "summary": "健康检查",
+                "responses": {
+                    "200": {
+                        "description": "服务正常",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.HealthStatusResponseData"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/organizations": {
             "get": {
-                "description": "获取所有组织列表，支持分页和排序",
+                "description": "获取所有组织列表，支持分页。固定按更新时间降序排列",
                 "produces": [
                     "application/json"
                 ],
@@ -866,30 +839,6 @@ const docTemplate = `{
                         "example": 10,
                         "description": "每页数量",
                         "name": "page_size",
-                        "in": "query"
-                    },
-                    {
-                        "enum": [
-                            "id",
-                            "name",
-                            "created_at",
-                            "updated_at"
-                        ],
-                        "type": "string",
-                        "default": "updated_at",
-                        "description": "排序字段",
-                        "name": "sort_by",
-                        "in": "query"
-                    },
-                    {
-                        "enum": [
-                            "asc",
-                            "desc"
-                        ],
-                        "type": "string",
-                        "default": "desc",
-                        "description": "排序方向",
-                        "name": "sort_order",
                         "in": "query"
                     }
                 ],
@@ -1233,7 +1182,7 @@ const docTemplate = `{
         },
         "/organizations/{id}/domains": {
             "get": {
-                "description": "获取指定组织的所有域名，支持分页和排序。注意：返回的域名不包含子域名信息",
+                "description": "获取指定组织的所有域名，支持分页。固定按更新时间降序排列。注意：返回的域名不包含子域名信息",
                 "produces": [
                     "application/json"
                 ],
@@ -1262,29 +1211,6 @@ const docTemplate = `{
                         "default": 10,
                         "description": "每页数量",
                         "name": "page_size",
-                        "in": "query"
-                    },
-                    {
-                        "enum": [
-                            "name",
-                            "created_at",
-                            "updated_at"
-                        ],
-                        "type": "string",
-                        "default": "updated_at",
-                        "description": "排序字段",
-                        "name": "sort_by",
-                        "in": "query"
-                    },
-                    {
-                        "enum": [
-                            "asc",
-                            "desc"
-                        ],
-                        "type": "string",
-                        "default": "desc",
-                        "description": "排序方向",
-                        "name": "sort_order",
                         "in": "query"
                     }
                 ],
@@ -1324,7 +1250,7 @@ const docTemplate = `{
         },
         "/organizations/{id}/subdomains": {
             "get": {
-                "description": "根据组织ID获取该组织所有域名下的子域名（支持分页和排序）",
+                "description": "根据组织ID获取该组织所有域名下的子域名（支持分页）。固定按更新时间降序排列",
                 "produces": [
                     "application/json"
                 ],
@@ -1351,18 +1277,6 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "每页数量,默认10",
                         "name": "page_size",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "排序字段: id, name, created_at, updated_at,默认updated_at",
-                        "name": "sort_by",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "排序方向: asc, desc,默认desc",
-                        "name": "sort_order",
                         "in": "query"
                     }
                 ],
@@ -1528,7 +1442,7 @@ const docTemplate = `{
         },
         "/subdomains": {
             "get": {
-                "description": "获取所有子域名，支持分页和排序",
+                "description": "获取所有子域名，支持分页。固定按更新时间降序排列",
                 "produces": [
                     "application/json"
                 ],
@@ -1547,18 +1461,6 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "每页数量,默认10",
                         "name": "page_size",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "排序字段: id, name, created_at, updated_at,默认updated_at",
-                        "name": "sort_by",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "排序方向: asc, desc,默认desc",
-                        "name": "sort_order",
                         "in": "query"
                     }
                 ],
@@ -1780,7 +1682,7 @@ const docTemplate = `{
         },
         "/subdomains/{id}/endpoints": {
             "get": {
-                "description": "根据子域名ID获取该子域名下的端点，支持分页和排序",
+                "description": "根据子域名ID获取该子域名下的端点，支持分页。固定按更新时间降序排列",
                 "produces": [
                     "application/json"
                 ],
@@ -1807,18 +1709,6 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "每页数量,默认10",
                         "name": "page_size",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "排序字段: url, method, status_code, created_at, updated_at,默认updated_at",
-                        "name": "sort_by",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "排序方向: asc, desc,默认desc",
-                        "name": "sort_order",
                         "in": "query"
                     }
                 ],
@@ -2578,6 +2468,9 @@ const docTemplate = `{
                 },
                 "total": {
                     "type": "integer"
+                },
+                "total_pages": {
+                    "type": "integer"
                 }
             }
         },
@@ -2600,6 +2493,19 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "total_pages": {
+                    "type": "integer"
+                }
+            }
+        },
+        "vulun-scan-backend_internal_models.HealthStatusResponseData": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "description": "服务状态，如 \"ok\"",
+                    "type": "string"
+                },
+                "timestamp": {
+                    "description": "当前时间戳（Unix时间）",
                     "type": "integer"
                 }
             }

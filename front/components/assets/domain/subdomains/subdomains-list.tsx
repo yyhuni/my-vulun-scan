@@ -272,7 +272,8 @@ export function SubdomainsList({
               此操作无法撤销。这将永久删除以下 {selectedSubdomains.length} 个子域名及其相关数据（包括关联的 Endpoints 和 Vulnerabilities）。
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="mt-2 p-2 bg-muted rounded-md max-h-60 overflow-y-auto">
+          {/* 子域名列表容器 - 固定最大高度并支持滚动 */}
+          <div className="mt-2 p-2 bg-muted rounded-md max-h-96 overflow-y-auto">
             <ul className="text-sm space-y-1">
               {selectedSubdomains.map((subdomain) => (
                 <li key={subdomain.id} className="flex items-center">

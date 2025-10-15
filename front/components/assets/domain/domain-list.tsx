@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useCallback } from "react"
 import { Trash2 } from "lucide-react"
+import { toast } from "sonner"
 
 // 导入 UI 组件
 import { Button } from "@/components/ui/button"
@@ -29,7 +30,11 @@ import { EditDomainDialog } from "./edit-domain-dialog"
 import type { Domain } from "@/types/domain.types"
 
 // 导入 hooks
-import { useAllDomains } from "@/hooks/use-domains"
+import { 
+  useAllDomains,
+  useDeleteDomainFromOrganization,
+  useBatchDeleteDomainsFromOrganization 
+} from "@/hooks/use-domains"
 
 /**
  * 域名列表组件
@@ -37,18 +42,18 @@ import { useAllDomains } from "@/hooks/use-domains"
  * 功能特性：
  * 1. 显示所有域名列表
  * 2. 支持搜索、排序、分页
- * 3. 支持编辑和删除操作
+ * 3. 支持编辑和移除操作（从关联组织移除）
  * 4. 使用真实后端 API
  */
 export function DomainList() {
   // 状态管理
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [removeDialogOpen, setRemoveDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [addDialogOpen, setAddDialogOpen] = useState(false)
-  const [domainToDelete, setDomainToDelete] = useState<Domain | null>(null)
+  const [domainToRemove, setDomainToRemove] = useState<Domain | null>(null)
   const [domainToEdit, setDomainToEdit] = useState<Domain | null>(null)
   const [selectedDomains, setSelectedDomains] = useState<Domain[]>([])
-  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
+  const [bulkRemoveDialogOpen, setBulkRemoveDialogOpen] = useState(false)
   
   // 分页状态（服务器端分页）
   const [pagination, setPagination] = useState({
@@ -63,6 +68,10 @@ export function DomainList() {
     sortBy: 'updated_at',  // 注意：这里传给后端的参数保持下划线，请求拦截器会处理
     sortOrder: 'desc',
   })
+
+  // 移除 hooks
+  const deleteDomainMutation = useDeleteDomainFromOrganization()
+  const batchDeleteMutation = useBatchDeleteDomainsFromOrganization()
 
   // 辅助函数 - 格式化日期（使用 useCallback 优化）
   const formatDate = useCallback((dateString: string): string => {
@@ -86,10 +95,10 @@ export function DomainList() {
     }
   }, [])
 
-  // 处理删除操作（使用 useCallback 优化）
+  // 处理移除操作（使用 useCallback 优化）
   const handleDelete = useCallback((domain: Domain) => {
-    setDomainToDelete(domain)
-    setDeleteDialogOpen(true)
+    setDomainToRemove(domain)
+    setRemoveDialogOpen(true)
   }, [])
 
   // 处理编辑操作（使用 useCallback 优化）
@@ -104,12 +113,45 @@ export function DomainList() {
     [formatDate, handleEdit, handleDelete]
   )
 
-  // 确认删除域名（待实现）
-  const confirmDelete = async () => {
-    if (!domainToDelete) return
-    // TODO: 实现删除逻辑
-    setDeleteDialogOpen(false)
-    setDomainToDelete(null)
+  // 确认移除域名
+  const confirmRemove = async () => {
+    if (!domainToRemove) return
+    
+    const organizations = domainToRemove.organizations || []
+    
+    // 检查域名是否关联任何组织
+    if (organizations.length === 0) {
+      toast.error('该域名未关联任何组织，无法移除')
+      setRemoveDialogOpen(false)
+      setDomainToRemove(null)
+      return
+    }
+
+    // 关闭对话框
+    setRemoveDialogOpen(false)
+    setDomainToRemove(null)
+    
+    // 从所有关联组织中移除该域名
+    // 最后一次移除会导致域名成为孤儿并被自动删除
+    toast.loading(`正在从 ${organizations.length} 个组织中移除域名...`, { 
+      id: `remove-domain-${domainToRemove.id}` 
+    })
+    
+    try {
+      // 顺序执行移除操作
+      for (const org of organizations) {
+        await deleteDomainMutation.mutateAsync({
+          organizationId: org.id,
+          domainId: domainToRemove.id,
+        })
+      }
+      
+      toast.dismiss(`remove-domain-${domainToRemove.id}`)
+      toast.success(`成功从 ${organizations.length} 个组织中移除域名`)
+    } catch (error: any) {
+      toast.dismiss(`remove-domain-${domainToRemove.id}`)
+      // mutation 内部已经处理了错误提示，这里只需要捕获
+    }
   }
 
   // 编辑域名成功回调
@@ -118,20 +160,65 @@ export function DomainList() {
     setDomainToEdit(null)
   }
 
-  // 批量删除处理函数
-  const handleBulkDelete = () => {
+  // 批量移除处理函数
+  const handleBulkRemove = () => {
     if (selectedDomains.length === 0) {
       return
     }
-    setBulkDeleteDialogOpen(true)
+    setBulkRemoveDialogOpen(true)
   }
 
-  // 确认批量删除（待实现）
-  const confirmBulkDelete = async () => {
+  // 确认批量移除
+  const confirmBulkRemove = async () => {
     if (selectedDomains.length === 0) return
-    // TODO: 实现批量删除逻辑
-    setBulkDeleteDialogOpen(false)
+    
+    // 关闭对话框
+    setBulkRemoveDialogOpen(false)
     setSelectedDomains([])
+    
+    // 按组织分组：收集每个组织需要移除的域名ID
+    const orgDomainMap = new Map<number, number[]>()
+    
+    selectedDomains.forEach(domain => {
+      const organizations = domain.organizations || []
+      if (organizations.length === 0) {
+        toast.warning(`域名 ${domain.name} 未关联任何组织，跳过`)
+        return
+      }
+      
+      organizations.forEach(org => {
+        if (!orgDomainMap.has(org.id)) {
+          orgDomainMap.set(org.id, [])
+        }
+        orgDomainMap.get(org.id)!.push(domain.id)
+      })
+    })
+    
+    if (orgDomainMap.size === 0) {
+      toast.error('所选域名未关联任何组织，无法移除')
+      return
+    }
+    
+    // 显示进度提示
+    toast.loading(`正在从 ${orgDomainMap.size} 个组织中批量移除域名...`, { 
+      id: 'bulk-remove-domains' 
+    })
+    
+    try {
+      // 对每个组织调用批量删除 API
+      for (const [orgId, domainIds] of orgDomainMap.entries()) {
+        await batchDeleteMutation.mutateAsync({
+          organizationId: orgId,
+          domainIds: domainIds,
+        })
+      }
+      
+      toast.dismiss('bulk-remove-domains')
+      toast.success(`成功批量移除 ${selectedDomains.length} 个域名`)
+    } catch (error: any) {
+      toast.dismiss('bulk-remove-domains')
+      // mutation 内部已经处理了错误提示
+    }
   }
 
   // 加载状态
@@ -162,7 +249,7 @@ export function DomainList() {
         data={domains}
         columns={columns}
         onAddNew={() => setAddDialogOpen(true)}
-        onBulkDelete={handleBulkDelete}
+        onBulkDelete={handleBulkRemove}
         onSelectionChange={setSelectedDomains}
         searchPlaceholder="搜索域名..."
         searchColumn="name"
@@ -171,22 +258,22 @@ export function DomainList() {
         paginationInfo={paginationInfo}
       />
 
-      {/* 删除确认对话框 */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      {/* 移除确认对话框 */}
+      <AlertDialog open={removeDialogOpen} onOpenChange={setRemoveDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>确认删除</AlertDialogTitle>
+            <AlertDialogTitle>确认移除</AlertDialogTitle>
             <AlertDialogDescription>
-              此操作将永久删除域名 "{domainToDelete?.name}"及其相关数据。
+              此操作将从关联组织中移除域名 "{domainToRemove?.name}"。如果该域名不再关联任何组织，将被自动删除。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
             <AlertDialogAction 
-              onClick={confirmDelete} 
+              onClick={confirmRemove} 
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              删除
+              移除
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -202,16 +289,17 @@ export function DomainList() {
         />
       )}
 
-      {/* 批量删除确认对话框 */}
-      <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+      {/* 批量移除确认对话框 */}
+      <AlertDialog open={bulkRemoveDialogOpen} onOpenChange={setBulkRemoveDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>确认批量删除</AlertDialogTitle>
+            <AlertDialogTitle>确认批量移除</AlertDialogTitle>
             <AlertDialogDescription>
-              此操作将永久删除以下 {selectedDomains.length} 个域名及其相关数据。
+              此操作将从关联组织中移除以下 {selectedDomains.length} 个域名。如果这些域名不再关联任何组织，将被自动删除。
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="mt-2 p-2 bg-muted rounded-md">
+          {/* 域名列表容器 - 固定最大高度并支持滚动 */}
+          <div className="mt-2 p-2 bg-muted rounded-md max-h-96 overflow-y-auto">
             <ul className="text-sm space-y-1">
               {selectedDomains.map((domain) => (
                 <li key={domain.id} className="flex items-center font-mono">
@@ -226,10 +314,10 @@ export function DomainList() {
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
             <AlertDialogAction 
-              onClick={confirmBulkDelete} 
+              onClick={confirmBulkRemove} 
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              删除 {selectedDomains.length} 个域名
+              移除 {selectedDomains.length} 个域名
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

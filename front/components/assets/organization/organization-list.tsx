@@ -255,7 +255,8 @@ export function OrganizationList() {
               此操作无法撤销。这将永久删除以下 {selectedOrganizations.length} 个组织及其相关数据。
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="mt-2 p-2 bg-muted rounded-md">
+          {/* 组织列表容器 - 固定最大高度并支持滚动 */}
+          <div className="mt-2 p-2 bg-muted rounded-md max-h-96 overflow-y-auto">
             <ul className="text-sm space-y-1">
               {selectedOrganizations.map((org) => (
                 <li key={org.id} className="flex items-center">

@@ -193,7 +193,7 @@ export function DomainDataTable({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* 批量删除按钮 */}
+          {/* 批量移除按钮 */}
           {onBulkDelete && (
             <Button 
               onClick={onBulkDelete}
@@ -207,7 +207,7 @@ export function DomainDataTable({
               }
             >
               <IconTrash />
-              Delete
+              移除
             </Button>
           )}
 
