@@ -24,6 +24,7 @@ export interface GetSubDomainsResponse {
   total: number
   page: number
   pageSize: number
+  totalPages: number  // 总页数，与其他模型保持一致
 }
 
 export interface CreateSubDomainsRequest {

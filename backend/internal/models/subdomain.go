@@ -44,6 +44,7 @@ type GetSubDomainsResponse struct {
 	Total      int64       `json:"total"`
 	Page       int         `json:"page"`
 	PageSize   int         `json:"page_size"`
+	TotalPages int         `json:"total_pages"`
 }
 
 // CreateSubDomainsResponse 创建子域名响应（service 层使用）
@@ -67,6 +68,7 @@ type GetOrgSubDomainsResponse struct {
 	Total      int         `json:"total"`
 	Page       int         `json:"page"`
 	PageSize   int         `json:"page_size"`
+	TotalPages int         `json:"total_pages"`
 }
 
 // BatchDeleteSubDomainsRequest 批量删除子域名请求

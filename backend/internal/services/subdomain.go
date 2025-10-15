@@ -53,17 +53,25 @@ func (s *SubDomainService) GetSubDomains(page, pageSize int, sortBy, sortOrder s
 		return nil, err
 	}
 
+	// 计算总页数
+	totalPages := 0
+	if total > 0 {
+		totalPages = int((total-1)/int64(pageSize)) + 1
+	}
+
 	response := &models.GetSubDomainsResponse{
 		SubDomains: subDomains,
 		Total:      total,
 		Page:       page,
 		PageSize:   pageSize,
+		TotalPages: totalPages,
 	}
 
 	log.Info().
 		Int("page", page).
 		Int("page_size", pageSize).
 		Int64("total", total).
+		Int("total_pages", totalPages).
 		Int("count", len(subDomains)).
 		Msg("All sub domains retrieved successfully")
 
@@ -98,11 +106,18 @@ func (s *SubDomainService) GetSubDomainsByDomainID(domainID uint, page, pageSize
 		return nil, err
 	}
 
+	// 计算总页数
+	totalPages := 0
+	if total > 0 {
+		totalPages = int((total-1)/int64(pageSize)) + 1
+	}
+
 	response := &models.GetSubDomainsResponse{
 		SubDomains: subDomains,
 		Total:      total,
 		Page:       page,
 		PageSize:   pageSize,
+		TotalPages: totalPages,
 	}
 
 	log.Info().
@@ -110,6 +125,7 @@ func (s *SubDomainService) GetSubDomainsByDomainID(domainID uint, page, pageSize
 		Int("page", page).
 		Int("page_size", pageSize).
 		Int64("total", total).
+		Int("total_pages", totalPages).
 		Int("count", len(subDomains)).
 		Msg("Sub domains by domain retrieved successfully")
 
@@ -148,11 +164,18 @@ func (s *SubDomainService) GetSubDomainsByOrgID(orgID uint, page, pageSize int, 
 		return nil, err
 	}
 
+	// 计算总页数
+	totalPages := 0
+	if total > 0 {
+		totalPages = int((total-1)/int64(pageSize)) + 1
+	}
+
 	response := &models.GetSubDomainsResponse{
 		SubDomains: subDomains,
 		Total:      total,
 		Page:       page,
 		PageSize:   pageSize,
+		TotalPages: totalPages,
 	}
 
 	log.Info().
@@ -160,6 +183,7 @@ func (s *SubDomainService) GetSubDomainsByOrgID(orgID uint, page, pageSize int, 
 		Int("page", page).
 		Int("page_size", pageSize).
 		Int64("total", total).
+		Int("total_pages", totalPages).
 		Int("count", len(subDomains)).
 		Msg("Sub domains by organization retrieved successfully")
 
