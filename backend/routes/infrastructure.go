@@ -2,7 +2,7 @@ package routes
 
 import (
 	"net/http"
-	"time"
+	"vulun-scan-backend/internal/handlers"
 
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -27,13 +27,8 @@ func SetupInfrastructureRoutes(r *gin.Engine) {
 		c.Redirect(http.StatusMovedPermanently, "/docs")
 	})
 
-	// 健康检查路由
-	r.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"status":    "ok",
-			"timestamp": time.Now().Unix(),
-		})
-	})
+	// 健康检查路由（使用统一响应结构）
+	r.GET("/health", handlers.HealthCheck)
 }
 
 // getScalarHTML 返回 Scalar 文档的 HTML
