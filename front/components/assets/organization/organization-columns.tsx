@@ -12,6 +12,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 // 导入图标组件
 import { MoreHorizontal, Eye, Edit, Trash2, ChevronsUpDown, ChevronUp, ChevronDown } from "lucide-react"
 
@@ -169,16 +175,31 @@ export const createOrganizationColumns = ({
     ),
     cell: ({ row }) => {
       const name = row.getValue("name") as string
+      const isLong = name.length > 30 // 判断内容是否较长
+      
       return (
-        <div className="font-medium">
-          <Button
-            variant="link"
-            className="p-0 h-auto font-medium text-left justify-start max-w-full truncate"
-            onClick={() => navigate(`/assets/organization/${row.original.id}`)}
-            title={name}
-          >
-            <span className="truncate">{name}</span>
-          </Button>
+        <div className="font-medium max-w-xs">
+          <TooltipProvider delayDuration={500} skipDelayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="link"
+                  className="p-0 h-auto font-medium text-left justify-start max-w-full truncate"
+                  onClick={() => navigate(`/assets/organization/${row.original.id}`)}
+                >
+                  <span className="truncate">{name}</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent 
+                side="top" 
+                align="start"
+                sideOffset={5}
+                className={`text-xs ${isLong ? 'max-w-md break-all' : 'whitespace-nowrap'}`}
+              >
+                {name}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       )
     },
@@ -192,11 +213,32 @@ export const createOrganizationColumns = ({
     ),
     cell: ({ row }) => {
       const description = row.getValue("description") as string
+      
+      if (!description) {
+        return <span className="text-muted-foreground">-</span>
+      }
+      
+      const isLong = description.length > 50
+      
       return (
         <div className="max-w-md">
-          <span className="block truncate text-muted-foreground">
-            {description || "-"}
-          </span>
+          <TooltipProvider delayDuration={500} skipDelayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="block truncate text-muted-foreground cursor-default">
+                  {description}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent 
+                side="top" 
+                align="start"
+                sideOffset={5}
+                className={`text-xs ${isLong ? 'max-w-lg break-all' : 'max-w-md whitespace-pre-wrap'}`}
+              >
+                {description}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       )
     },
