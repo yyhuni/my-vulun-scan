@@ -156,7 +156,20 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 		// 预估容量：最多不超过请求的域名数量
 		newAssocs := make([]models.OrganizationDomain, 0, len(req.Domains))
 		for _, detail := range req.Domains {
-			domain := existingDomainMap[detail.Name]
+			// ✅ 使用标准化的域名作为 key（与前面步骤一致）
+			normalizedName := strings.ToLower(strings.TrimSpace(detail.Name))
+			
+			// ✅ 检查域名是否存在于 map 中
+			domain, exists := existingDomainMap[normalizedName]
+			if !exists {
+				// 理论上不应该发生，因为前面已经创建了所有域名
+				// 但为了安全，记录错误并跳过
+				log.Error().
+					Str("domain", normalizedName).
+					Uint("organization_id", req.OrgID).
+					Msg("Domain not found in map, this should not happen")
+				continue  // 跳过不存在的域名，避免使用零值
+			}
 
 			// 如果该域名未关联到组织，添加到待创建列表
 			if !existingAssocMap[domain.ID] {

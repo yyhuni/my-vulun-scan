@@ -12,7 +12,13 @@ database:
   password: "123.com"
   dbname: "vulun_scan"
   sslmode: "disable"
-  max_conns: 10
+  # 连接池最大连接数（代码会自动设置空闲连接数等于最大连接数以优化性能）
+  # 推荐配置：开发环境 10-25，测试环境 25-50，生产环境 50-100
+  # 连接池参数（自动配置）：
+  #   - MaxIdleConns = MaxConns（避免频繁创建/销毁连接）
+  #   - ConnMaxIdleTime = 10分钟（空闲超时自动关闭）
+  #   - ConnMaxLifetime = 1小时（连接最大存活时间）
+  max_conns: 25
 
 security:
   jwt_secret: "your-super-secret-jwt-key-change-this-in-production"

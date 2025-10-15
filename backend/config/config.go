@@ -84,7 +84,9 @@ func setDefaults() {
 	viper.SetDefault("database.password", getEnv("DB_PASSWORD", "postgres"))
 	viper.SetDefault("database.dbname", getEnv("DB_NAME", "vulun_scan"))
 	viper.SetDefault("database.sslmode", getEnv("DB_SSLMODE", "disable"))
-	viper.SetDefault("database.max_conns", getEnvAsInt("DB_MAX_CONNS", 10))
+	// 连接池默认 25 个连接（适合大多数场景）
+	// 开发: 10-25, 测试: 25-50, 生产: 50-100
+	viper.SetDefault("database.max_conns", getEnvAsInt("DB_MAX_CONNS", 25))
 
 	// 安全默认配置
 	viper.SetDefault("security.jwt_secret", getEnv("JWT_SECRET", "your-secret-key"))

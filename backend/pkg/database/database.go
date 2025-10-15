@@ -101,10 +101,26 @@ func InitDB() {
 			return
 		}
 
-		// 配置连接池
-		sqlDB.SetMaxOpenConns(cfg.Database.MaxConns)
-		sqlDB.SetMaxIdleConns(cfg.Database.MaxConns / 2)
-		sqlDB.SetConnMaxLifetime(5 * time.Minute)
+		// 配置连接池 - 优化版
+		maxOpen := cfg.Database.MaxConns
+		if maxOpen == 0 {
+			maxOpen = 25 // 默认值
+		}
+		
+		// 最大打开连接数
+		sqlDB.SetMaxOpenConns(maxOpen)
+		
+		// 最大空闲连接数应该接近最大连接数
+		// 避免频繁创建和销毁连接，提升性能
+		sqlDB.SetMaxIdleConns(maxOpen)
+		
+		// 连接最大空闲时间（10 分钟未使用则关闭）
+		// 防止长期空闲连接占用资源
+		sqlDB.SetConnMaxIdleTime(10 * time.Minute)
+		
+		// 连接最大生命周期（1 小时后强制关闭重建）
+		// 防止连接长期持有导致的问题（如数据库重启、网络问题等）
+		sqlDB.SetConnMaxLifetime(1 * time.Hour)
 
 		// 测试连接
 		if err = sqlDB.Ping(); err != nil {
@@ -113,7 +129,12 @@ func InitDB() {
 			return
 		}
 
-		log.Info().Msg("Database connection established successfully with GORM")
+		log.Info().
+			Int("max_open_conns", maxOpen).
+			Int("max_idle_conns", maxOpen).
+			Dur("conn_max_idle_time", 10*time.Minute).
+			Dur("conn_max_lifetime", 1*time.Hour).
+			Msg("Database connection pool configured successfully")
 	})
 }
 
