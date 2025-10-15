@@ -14,6 +14,15 @@ definitions:
         description: 业务状态，如 "success", "error"
         type: string
     type: object
+  vulun-scan-backend_internal_models.BatchDeleteDomainsDirectRequest:
+    properties:
+      domain_ids:
+        items:
+          type: integer
+        type: array
+    required:
+    - domain_ids
+    type: object
   vulun-scan-backend_internal_models.BatchDeleteDomainsRequest:
     properties:
       domain_ids:
@@ -757,6 +766,50 @@ paths:
           schema:
             $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
       summary: 为指定域名批量创建子域名
+      tags:
+      - 域名管理
+  /domains/batch-delete:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        直接批量删除指定的域名，不需要指定组织。
+        此接口会：
+        1. 删除所有 organization_domains 关联关系
+        2. 批量删除域名本身（级联删除 SubDomain 和 Endpoint）
+
+        **适用场景**：
+        - 前端批量删除操作（一次API调用完成）
+        - 不需要关心域名属于哪些组织
+        - 性能优化：避免多次API调用
+      parameters:
+      - description: 批量删除请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/vulun-scan-backend_internal_models.BatchDeleteDomainsDirectRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 删除成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+            - properties:
+                data:
+                  type: object
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
+      summary: 批量删除域名（独立接口）
       tags:
       - 域名管理
   /domains/create:

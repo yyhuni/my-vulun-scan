@@ -113,6 +113,64 @@ const docTemplate = `{
                 }
             }
         },
+        "/domains/batch-delete": {
+            "post": {
+                "description": "直接批量删除指定的域名，不需要指定组织。\n此接口会：\n1. 删除所有 organization_domains 关联关系\n2. 批量删除域名本身（级联删除 SubDomain 和 Endpoint）\n\n**适用场景**：\n- 前端批量删除操作（一次API调用完成）\n- 不需要关心域名属于哪些组织\n- 性能优化：避免多次API调用",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "域名管理"
+                ],
+                "summary": "批量删除域名（独立接口）",
+                "parameters": [
+                    {
+                        "description": "批量删除请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.BatchDeleteDomainsDirectRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "删除成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/domains/create": {
             "post": {
                 "description": "批量创建域名并自动关联到指定组织（支持单个或多个域名）\n\n**幂等性行为说明：**\n- 如果域名已存在，会复用现有域名并建立新的关联关系\n- 如果域名与组织的关联已存在，会跳过（不会报错）\n- 每个新创建的域名会自动创建一个同名的根子域名\n- 重复提交相同的域名是安全的，不会产生重复数据\n\n**业务场景：**\n- 适用于从外部导入域名列表\n- 支持多个组织共享同一个域名\n- 域名在数据库中全局唯一，通过中间表实现多对多关系",
@@ -1903,6 +1961,20 @@ const docTemplate = `{
                 "state": {
                     "description": "业务状态，如 \"success\", \"error\"",
                     "type": "string"
+                }
+            }
+        },
+        "vulun-scan-backend_internal_models.BatchDeleteDomainsDirectRequest": {
+            "type": "object",
+            "required": [
+                "domain_ids"
+            ],
+            "properties": {
+                "domain_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 }
             }
         },

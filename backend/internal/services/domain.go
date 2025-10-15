@@ -609,6 +609,76 @@ func (s *DomainService) BatchDeleteDomainsFromOrganization(req models.BatchDelet
 	return int(deletedCount), 0, nil
 }
 
+// BatchDeleteDomainsDirect 批量删除域名（不依赖组织）
+//
+// 业务逻辑说明：
+// 1. 删除所有 organization_domains 关联关系
+// 2. 批量删除域名本身（级联删除 SubDomain 和 Endpoint）
+//
+// 优化说明：
+// - 单次事务完成所有操作
+// - 不检查组织关联，直接删除
+// - 适用于前端批量操作场景
+//
+// 返回：
+//   - int: 成功删除的域名数量
+//   - error: 错误信息
+func (s *DomainService) BatchDeleteDomainsDirect(domainIDs []uint) (int, error) {
+	// 参数验证
+	if len(domainIDs) == 0 {
+		return 0, fmt.Errorf("域名ID列表不能为空")
+	}
+
+	var deletedCount int64
+
+	// 使用事务确保批量删除的原子性
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		// 步骤1: 删除所有 organization_domains 关联关系
+		if err := tx.Where("domain_id IN ?", domainIDs).
+			Delete(&models.OrganizationDomain{}).Error; err != nil {
+			log.Error().Err(err).Msg("Failed to delete domain associations")
+			return err
+		}
+
+		log.Info().
+			Int("domain_count", len(domainIDs)).
+			Msg("Domain associations deleted successfully")
+
+		// 步骤2: 批量删除域名（数据库 CASCADE 会自动删除 SubDomain 和 Endpoint）
+		result := tx.Where("id IN ?", domainIDs).Delete(&models.Domain{})
+		if result.Error != nil {
+			log.Error().Err(result.Error).Msg("Failed to batch delete domains")
+			return result.Error
+		}
+
+		deletedCount = result.RowsAffected
+
+		// 记录删除结果（允许部分删除）
+		if deletedCount == 0 {
+			log.Warn().
+				Uints("domain_ids", domainIDs).
+				Msg("No domains found to delete")
+		} else if deletedCount < int64(len(domainIDs)) {
+			log.Warn().
+				Int("requested", len(domainIDs)).
+				Int64("deleted", deletedCount).
+				Msg("部分域名不存在，仅删除存在的域名")
+		}
+
+		log.Info().
+			Int64("deleted_count", deletedCount).
+			Msg("Domains batch deleted successfully")
+
+		return nil
+	})
+
+	if err != nil {
+		return 0, err
+	}
+
+	return int(deletedCount), nil
+}
+
 // GetAllDomains 获取所有域名列表(支持分页和排序)
 //
 // 业务逻辑说明：

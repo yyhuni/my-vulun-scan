@@ -49,6 +49,11 @@ type DeleteDomainRequest struct {
 	DomainID uint `json:"domain_id" binding:"required"`
 }
 
+// BatchDeleteDomainsDirectRequest 批量删除域名请求（不依赖组织）
+type BatchDeleteDomainsDirectRequest struct {
+	DomainIDs []uint `json:"domain_ids" binding:"required"`
+}
+
 // GetDomainsByOrgIDRequest 获取组织域名请求(支持分页和排序)
 type GetDomainsByOrgIDRequest struct {
 	OrgID uint `uri:"id" binding:"required"` // 组织ID（路径参数）

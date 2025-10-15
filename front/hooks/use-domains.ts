@@ -220,6 +220,53 @@ export function useBatchDeleteDomainsFromOrganization() {
   })
 }
 
+// 批量删除域名（独立接口，不依赖组织）
+export function useBatchDeleteDomains() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (domainIds: number[]) => 
+      DomainService.batchDeleteDomains(domainIds),
+    onMutate: () => {
+      toast.loading('正在批量删除域名...', { id: 'batch-delete-domains' })
+    },
+    onSuccess: (response) => {
+      toast.dismiss('batch-delete-domains')
+      
+      if (response.state === 'success') {
+        const message = response.data?.message || '批量删除完成'
+        const deletedCount = response.data?.deletedCount || 0
+        
+        toast.success(`${message}（已删除 ${deletedCount} 个域名）`)
+        
+        // 刷新所有域名相关查询
+        queryClient.invalidateQueries({ queryKey: domainKeys.lists() })
+        queryClient.invalidateQueries({ queryKey: ['domains', 'all'] })
+        
+        // 刷新所有组织的域名列表
+        queryClient.invalidateQueries({ 
+          predicate: (query) => {
+            const key = query.queryKey as string[]
+            return key[0] === 'organizations' && key[2] === 'domains'
+          }
+        })
+      } else {
+        throw new Error(response.message || '批量删除失败')
+      }
+    },
+    onError: (error: any) => {
+      toast.dismiss('batch-delete-domains')
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.error('批量删除域名失败:', error)
+      }
+      
+      const errorMessage = error?.response?.data?.message || error?.message || '批量删除失败'
+      toast.error(errorMessage)
+    },
+  })
+}
+
 // 更新域名
 export function useUpdateDomain() {
   const queryClient = useQueryClient()

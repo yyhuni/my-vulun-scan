@@ -106,6 +106,26 @@ export class DomainService {
   }
 
   /**
+   * 批量删除域名（独立接口，不依赖组织）
+   * @param domainIds - 域名ID数组
+   * @returns Promise<ApiResponse<{ message: string; deletedCount: number }>>
+   */
+  static async batchDeleteDomains(
+    domainIds: number[]
+  ): Promise<ApiResponse<{ 
+    message: string
+    deletedCount: number
+  }>> {
+    const response = await api.post<ApiResponse<any>>(
+      `/domains/batch-delete`,
+      {
+        domainIds,  // 拦截器会转换为 domain_ids
+      }
+    )
+    return response.data
+  }
+
+  /**
    * 获取组织的域名列表
    * @param organizationId - 组织ID
    * @param params - 分页和排序参数

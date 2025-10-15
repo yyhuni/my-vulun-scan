@@ -33,6 +33,11 @@ func SetupDomainRoutes(api *gin.RouterGroup) {
 		// 更新域名信息 - 支持更新名称和描述
 		// 请求体示例：{"id": 1, "name": "new-domain.com", "description": "新描述"}
 		domains.POST("/update", handlers.UpdateDomain)
+
+		// 批量删除域名 - 直接删除域名，不依赖组织（优化接口）
+		// 请求体示例：{"domain_ids": [1, 2, 3, 4, 5]}
+		// 注意：此接口会删除所有关联关系并删除域名本身
+		domains.POST("/batch-delete", handlers.BatchDeleteDomainsDirect)
 	}
 
 	// 组织相关的域名路由

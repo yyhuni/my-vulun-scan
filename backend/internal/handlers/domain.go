@@ -295,6 +295,50 @@ func BatchDeleteDomainsFromOrganization(c *gin.Context) {
 	response.InternalServerErrorResponse(c, fmt.Sprintf("批量移除失败: %s", err.Error()))
 }
 
+// BatchDeleteDomainsDirect 批量删除域名（不依赖组织）
+// @Summary 批量删除域名（独立接口）
+// @Description 直接批量删除指定的域名，不需要指定组织。
+// @Description 此接口会：
+// @Description 1. 删除所有 organization_domains 关联关系
+// @Description 2. 批量删除域名本身（级联删除 SubDomain 和 Endpoint）
+// @Description
+// @Description **适用场景**：
+// @Description - 前端批量删除操作（一次API调用完成）
+// @Description - 不需要关心域名属于哪些组织
+// @Description - 性能优化：避免多次API调用
+// @Tags 域名管理
+// @Accept json
+// @Produce json
+// @Param request body models.BatchDeleteDomainsDirectRequest true "批量删除请求"
+// @Success 200 {object} models.APIResponse{data=object} "删除成功"
+// @Failure 400 {object} models.APIResponse "请求参数错误"
+// @Failure 500 {object} models.APIResponse "服务器内部错误"
+// @Router /domains/batch-delete [post]
+func BatchDeleteDomainsDirect(c *gin.Context) {
+	var req models.BatchDeleteDomainsDirectRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	if len(req.DomainIDs) == 0 {
+		response.BadRequestResponse(c, "域名ID列表不能为空")
+		return
+	}
+
+	service := services.NewDomainService()
+	deletedCount, err := service.BatchDeleteDomainsDirect(req.DomainIDs)
+	if err != nil {
+		response.InternalServerErrorResponse(c, fmt.Sprintf("批量删除失败: %s", err.Error()))
+		return
+	}
+
+	response.SuccessResponse(c, gin.H{
+		"message":       fmt.Sprintf("成功删除 %d 个域名", deletedCount),
+		"deleted_count": deletedCount,
+	})
+}
+
 // GetAllDomains 获取所有域名列表
 // @Summary 获取所有域名列表
 // @Description 获取系统中的所有域名，支持分页。固定按更新时间降序排列
