@@ -5,15 +5,15 @@ export interface Endpoint {
   id: number
   url: string
   method: string
-  statusCode: number      // 后端: status_code
+  statusCode: number | null       // 后端: status_code (指针类型，可能为 null)
   title: string
-  contentLength: number   // 后端: content_length
-  domainId: number        // 后端: domain_id
-  subdomainId?: number    // 后端: subdomain_id
+  contentLength: number | null    // 后端: content_length (指针类型，可能为 null)
+  domainId: number                // 后端: domain_id
+  subdomainId?: number            // 后端: subdomain_id
   domain?: string
   subdomain?: string
-  createdAt: string       // 后端: created_at
-  updatedAt: string       // 后端: updated_at
+  createdAt: string               // 后端: created_at
+  updatedAt: string               // 后端: updated_at
 }
 
 // Endpoint 列表查询请求参数

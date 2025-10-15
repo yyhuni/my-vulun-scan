@@ -48,5 +48,5 @@ export interface BatchDeleteSubDomainsRequest {
 export interface BatchDeleteSubDomainsResponse {
   message: string
   deletedCount: number
-  subDomains: SubDomain[]  // 被删除的子域名列表
+  // 注意：后端不返回 subDomains 字段（性能优化，避免大规模数据场景下返回完整对象列表）
 }
