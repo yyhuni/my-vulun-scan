@@ -35,9 +35,7 @@ func (s *EndpointService) GetEndpoints(req models.GetEndpointsRequest) (*models.
 	}
 
 	// 构建数据查询
-	query := s.db.Model(&models.Endpoint{}).
-		Preload("Domain").
-		Preload("Subdomain")
+	query := s.db.Model(&models.Endpoint{})
 
 	// 排序（统一：按更新时间倒序）
 	query = query.Order("updated_at desc")
@@ -285,9 +283,7 @@ func (s *EndpointService) GetEndpointsByDomainID(domainID uint, page, pageSize i
 
 	// 构建数据查询
 	query := s.db.Model(&models.Endpoint{}).
-		Where("domain_id = ?", domainID).
-		Preload("Domain").
-		Preload("Subdomain")
+		Where("domain_id = ?", domainID)
 
 	// 排序（统一：按更新时间倒序）
 	query = query.Order("updated_at desc")
@@ -339,9 +335,7 @@ func (s *EndpointService) GetEndpointsBySubdomainID(subdomainID uint, page, page
 
 	// 构建数据查询
 	query := s.db.Model(&models.Endpoint{}).
-		Where("subdomain_id = ?", subdomainID).
-		Preload("Domain").
-		Preload("Subdomain")
+		Where("subdomain_id = ?", subdomainID)
 
 	// 排序（统一：按更新时间倒序）
 	query = query.Order("updated_at desc")
