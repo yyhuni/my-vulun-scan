@@ -118,6 +118,7 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) ([]models
 				rootSubdomains = append(rootSubdomains, models.SubDomain{
 					Name:     domain.Name, // 根子域名与域名同名
 					DomainID: domain.ID,
+					IsRoot:   true, // 标记为根子域名，受保护不允许删除
 				})
 			}
 

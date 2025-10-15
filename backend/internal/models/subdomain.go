@@ -16,6 +16,7 @@ type SubDomain struct {
 	// <-:create 表示该字段只在创建时可写，创建后只读
 	Name     string `json:"name" gorm:"not null;size:255;uniqueIndex;uniqueIndex:idx_subdomain_domain_name;check:name = LOWER(name);<-:create"`
 	DomainID uint   `json:"domain_id" gorm:"not null;index;uniqueIndex:idx_subdomain_domain_name;<-:create"`
+	IsRoot   bool   `json:"is_root" gorm:"not null;default:false;index;<-:create"` // 是否为根子域名（Domain自动创建的同名子域名），根子域名不允许删除
 
 	// 关联关系
 	// BelongsTo 关系 - 在这里配置级联删除

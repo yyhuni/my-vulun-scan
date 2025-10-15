@@ -282,9 +282,10 @@ func (s *SubDomainService) GetSubDomainByID(id uint) (*models.SubDomain, error) 
 // 批量删除多个子域名，通过事务保证原子性
 //
 // 业务规则：
-// 1. 所有子域名ID必须存在，否则返回错误
-// 2. 关联的Endpoints和Vulnerabilities会自动级联删除（数据库外键约束）
-// 3. 删除操作在事务中执行，保证原子性
+// 1. **根子域名保护**：不允许删除 IsRoot = true 的子域名（Domain 自动创建的专属子域名）
+// 2. 所有子域名ID必须存在，否则返回错误
+// 3. 关联的Endpoints和Vulnerabilities会自动级联删除（数据库外键约束）
+// 4. 删除操作在事务中执行，保证原子性
 //
 // 级联删除说明：
 // - Endpoints: 子域名删除后，关联的端点也会被删除
@@ -310,7 +311,26 @@ func (s *SubDomainService) BatchDeleteSubDomains(subdomainIDs []uint) (int, erro
 
 	// 使用事务确保批量删除的原子性
 	err := s.db.Transaction(func(tx *gorm.DB) error {
-		// 批量删除子域名并检查影响行数
+		// 步骤1: 检查是否有根子域名（IsRoot = true 的记录不允许删除）
+		var rootSubdomains []models.SubDomain
+		if err := tx.Where("id IN ? AND is_root = ?", subdomainIDs, true).Find(&rootSubdomains).Error; err != nil {
+			log.Error().Err(err).Msg("查询根子域名失败")
+			return err
+		}
+
+		if len(rootSubdomains) > 0 {
+			// 收集根子域名的名称用于错误提示
+			rootNames := make([]string, 0, len(rootSubdomains))
+			for _, sub := range rootSubdomains {
+				rootNames = append(rootNames, sub.Name)
+			}
+			log.Warn().
+				Strs("root_subdomains", rootNames).
+				Msg("尝试删除根子域名被拒绝")
+			return fmt.Errorf("不允许删除根子域名（Domain 专属子域名）: %v", rootNames)
+		}
+
+		// 步骤2: 批量删除非根子域名
 		// 数据库已配置 CASCADE，会自动删除关联的 Endpoints 和 Vulnerabilities
 		result := tx.Where("id IN ?", subdomainIDs).Delete(&models.SubDomain{})
 		if result.Error != nil {
