@@ -43,8 +43,8 @@ func CreateDomains(c *gin.Context) {
 		return
 	}
 
-	if len(req.Domains) == 0 {
-		response.BadRequestResponse(c, "域名列表不能为空")
+	if len(req.Domains) == 0 || req.OrgID == 0 {
+		response.BadRequestResponse(c, "域名列表或组织ID不能为空")
 		return
 	}
 
@@ -280,7 +280,7 @@ func BatchDeleteDomainsFromOrganization(c *gin.Context) {
 
 	service := services.NewDomainService()
 	successCount, failedCount, err := service.BatchDeleteDomainsFromOrganization(req)
-	
+
 	// 即使部分失败，只要有成功的就返回成功
 	if successCount > 0 {
 		response.SuccessResponse(c, models.BatchDeleteDomainsResponseData{
