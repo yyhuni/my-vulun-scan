@@ -1,6 +1,6 @@
 # 安全扫描工具执行器 - 基于 Kali Linux 的完整环境
 # 强制使用 amd64 平台（在 ARM Mac 上会通过 Rosetta 2 模拟运行）
-FROM --platform=linux/amd64 kalilinux/kali-rolling
+FROM kalilinux/kali-rolling
 
 LABEL maintainer="vulun-scan"
 LABEL description="Complete environment for security scanning tools based on Kali Linux"

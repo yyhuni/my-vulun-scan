@@ -57,15 +57,6 @@ echo ""
 read -p "是否现在构建 Docker 镜像？(y/n) " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-    # 检查架构并给出提示
-    ARCH=$(uname -m)
-    if [[ "$ARCH" == "arm64" ]] || [[ "$ARCH" == "aarch64" ]]; then
-        echo ""
-        echo -e "${YELLOW}⚠️  提示：检测到 ARM 架构（Mac M 系列）${NC}"
-        echo "当前 Dockerfile 配置为使用 amd64 平台，可能存在兼容性问题"
-        echo "如遇到问题，请检查 Docker Desktop 是否已启用 Rosetta 2 支持"
-        echo ""
-    fi
     
     echo "开始构建镜像..."
     docker-compose build

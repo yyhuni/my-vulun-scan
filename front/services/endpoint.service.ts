@@ -82,18 +82,6 @@ export class EndpointService {
     return response.data
   }
 
-  /**
-   * 更新 Endpoint 信息
-   * @param data - 更新请求对象
-   * @returns Promise<ApiResponse<Endpoint>>
-   */
-  static async updateEndpoint(data: UpdateEndpointRequest): Promise<ApiResponse<Endpoint>> {
-    // api-client.ts 会自动将请求体的驼峰转换为下划线
-    const { id, ...requestData } = data
-    
-    const response = await api.put<ApiResponse<Endpoint>>(`/endpoints/${id}`, requestData)
-    return response.data
-  }
 
   /**
    * 删除 Endpoint

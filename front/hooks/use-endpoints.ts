@@ -189,45 +189,6 @@ export function useRemoveEndpointFromOrganization() {
   })
 }
 
-// 更新 Endpoint
-export function useUpdateEndpoint() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (data: UpdateEndpointRequest) => EndpointService.updateEndpoint(data),
-    onMutate: ({ id }) => {
-      toast.loading('正在更新端点...', { id: `update-endpoint-${id}` })
-    },
-    onSuccess: (response: any, { id }) => {
-      toast.dismiss(`update-endpoint-${id}`)
-      
-      if (response.state === 'success') {
-        toast.success('更新成功')
-        queryClient.invalidateQueries({ queryKey: endpointKeys.lists() })
-        queryClient.invalidateQueries({ queryKey: endpointKeys.detail(id) })
-        
-        // 刷新所有组织的端点列表
-        queryClient.invalidateQueries({ 
-          predicate: (query) => {
-            const key = query.queryKey as string[]
-            return key[0] === 'organizations' && key[2] === 'endpoints'
-          }
-        })
-      } else {
-        throw new Error(response.message || '更新端点失败')
-      }
-    },
-    onError: (error: any, { id }) => {
-      toast.dismiss(`update-endpoint-${id}`)
-      if (process.env.NODE_ENV === 'development') {
-        console.error('更新端点失败:', error)
-      }
-      
-      const errorMessage = error?.response?.data?.message || error?.message || '更新失败'
-      toast.error(errorMessage)
-    },
-  })
-}
 
 // 删除单个 Endpoint
 export function useDeleteEndpoint() {

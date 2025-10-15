@@ -24,9 +24,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-
-// 导入 React Query Hook
-import { useUpdateEndpoint } from "@/hooks/use-endpoints"
 import {
   Dialog,
   DialogContent,
@@ -38,7 +35,7 @@ import {
 } from "@/components/ui/dialog"
 
 // 导入类型定义
-import type { Endpoint, UpdateEndpointRequest } from "@/types/endpoint.types"
+import type { Endpoint } from "@/types/endpoint.types"
 
 // 组件属性类型定义
 interface EditEndpointDialogProps {
@@ -111,9 +108,7 @@ export function EditEndpointDialog({
   const [contentLength, setContentLength] = useState(endpoint.contentLength)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   const [hasChanges, setHasChanges] = useState(false)
-
-  // 使用 React Query 的更新 Endpoint mutation
-  const updateEndpoint = useUpdateEndpoint()
+  const [saving, setSaving] = useState(false)
 
   // 验证 URL 格式 - 只支持完整 URL
   const validateUrl = (url: string): boolean => {
@@ -175,34 +170,29 @@ export function EditEndpointDialog({
     }
 
     // 构建更新数据
-    const updateData: UpdateEndpointRequest = {
-      id: endpoint.id,
+    const updatedEndpoint: Endpoint = {
+      ...endpoint,
       url: url?.trim() || "",
       method,
       statusCode,
       title: title?.trim() || "",
       contentLength,
-      domain: "",
-      subdomain: undefined,
     }
 
-    // 使用 React Query mutation
-    updateEndpoint.mutate(updateData, {
-      onSuccess: (response) => {
-        if (response.state === "success" && response.data) {
-          // 调用成功回调
-          onEdit(response.data)
-          
-          // 关闭对话框
-          setOpen(false)
-        }
-      }
-    })
+    try {
+      setSaving(true)
+      // 直接回调上层以更新本地数据
+      onEdit(updatedEndpoint)
+      // 关闭对话框
+      setOpen(false)
+    } finally {
+      setSaving(false)
+    }
   }
 
   // 处理对话框关闭
   const handleOpenChange = (newOpen: boolean) => {
-    if (!updateEndpoint.isPending) {
+    if (!saving) {
       setOpen(newOpen)
       if (!newOpen) {
         // 关闭时重置表单
@@ -255,7 +245,7 @@ export function EditEndpointDialog({
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://example.com/api/v1/users"
-                disabled={updateEndpoint.isPending}
+                disabled={saving}
                 className={`font-mono ${validationErrors.some(e => e.includes('URL')) ? 'border-destructive' : ''}`}
               />
             </div>
@@ -264,7 +254,7 @@ export function EditEndpointDialog({
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="method">HTTP 方法</Label>
-                <Select value={method} onValueChange={setMethod} disabled={updateEndpoint.isPending}>
+                <Select value={method} onValueChange={setMethod} disabled={saving}>
                   <SelectTrigger>
                     <SelectValue placeholder="选择 HTTP 方法" />
                   </SelectTrigger>
@@ -283,7 +273,7 @@ export function EditEndpointDialog({
                 <Select 
                   value={statusCode.toString()} 
                   onValueChange={(value) => setStatusCode(parseInt(value))}
-                  disabled={updateEndpoint.isPending}
+                  disabled={saving}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="选择状态码" />
@@ -309,7 +299,7 @@ export function EditEndpointDialog({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Endpoint 标题"
-                disabled={updateEndpoint.isPending}
+                disabled={saving}
                 className={validationErrors.some(e => e.includes('标题')) ? 'border-destructive' : ''}
               />
             </div>
@@ -323,7 +313,7 @@ export function EditEndpointDialog({
                 value={contentLength}
                 onChange={(e) => setContentLength(parseInt(e.target.value) || 0)}
                 placeholder="0"
-                disabled={updateEndpoint.isPending}
+                disabled={saving}
                 min="0"
               />
             </div>
@@ -372,7 +362,7 @@ export function EditEndpointDialog({
               type="button" 
               variant="outline" 
               onClick={() => handleOpenChange(false)}
-              disabled={updateEndpoint.isPending}
+              disabled={saving}
             >
               取消
             </Button>
@@ -380,20 +370,20 @@ export function EditEndpointDialog({
               type="button" 
               variant="ghost" 
               onClick={resetForm}
-              disabled={updateEndpoint.isPending || !hasChanges}
+              disabled={saving || !hasChanges}
             >
               重置
             </Button>
             <Button 
               type="submit" 
               disabled={
-                updateEndpoint.isPending || 
+                saving || 
                 validationErrors.length > 0 ||
                 !hasChanges
               }
               className="min-w-[100px]"
             >
-              {updateEndpoint.isPending ? (
+              {saving ? (
                 <>
                   <LoadingSpinner/>
                   保存中...

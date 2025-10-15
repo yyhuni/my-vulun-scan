@@ -364,13 +364,7 @@ export function AddToolDialog({
             <div className="space-y-4">
               <h3 className="text-sm font-semibold text-muted-foreground">命令配置</h3>
               
-              {/* 安全警告 */}
-              <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription className="text-xs">
-                  <strong>安全警告：</strong>这里的命令将直接在 Shell 中执行，请确保命令的安全性。
-                </AlertDescription>
-              </Alert>
+  
 
               {/* 安装命令 */}
               <div className="grid gap-2">

@@ -106,8 +106,8 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 	// 使用事务确保批量创建的原子性
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		// 1. 从 URL 提取所有唯一的 host 和根域名
-		domainMap := make(map[string]uint)    // rootDomain -> domain_id
-		subdomainMap := make(map[string]uint) // host -> subdomain_id
+		domainMap := make(map[string]uint)      // rootDomain -> domain_id
+		subdomainMap := make(map[string]uint)   // host -> subdomain_id
 		hostToDomain := make(map[string]string) // host -> rootDomain
 
 		for _, detail := range req.Endpoints {
@@ -320,23 +320,23 @@ func (s *EndpointService) GetEndpointsBySubdomainID(subdomainID uint, page, page
 // extractHostFromURL 从 URL 中提取主机名（不含端口）
 // 例如: https://api.example.com:8080/path -> api.example.com
 func extractHostFromURL(rawURL string) (string, error) {
-	parsedURL, err := url.Parse(rawURL)
+	u, err := url.Parse(rawURL)
 	if err != nil {
 		return "", fmt.Errorf("invalid URL: %w", err)
 	}
-	// 使用 Hostname() 获取不包含端口的主机名
-	host := parsedURL.Hostname()
-	if host == "" {
+	if host := u.Hostname(); host == "" {
 		return "", fmt.Errorf("URL has no host")
 	}
-	return host, nil
+	return u.Hostname(), nil
 }
 
 // extractRootDomain 使用 Public Suffix List 提取可注册的根域名（eTLD+1）
 // 例如:
-//   api.example.com -> example.com
-//   www.example.co.uk -> example.co.uk
-//   example.com -> example.com
+//
+//	api.example.com -> example.com
+//	www.example.co.uk -> example.co.uk
+//	example.com -> example.com
+//
 // 若解析失败则回退返回原 host
 func extractRootDomain(host string) string {
 	if etld1, err := publicsuffix.EffectiveTLDPlusOne(host); err == nil {
@@ -395,7 +395,7 @@ func (s *EndpointService) BatchDeleteEndpoints(endpointIDs []uint) (int, error) 
 				Int("requested", len(endpointIDs)).
 				Int64("deleted", deletedCount).
 				Msg("部分端点ID不存在")
-			return fmt.Errorf("%w: 请求删除 %d 个端点，实际删除 %d 个", 
+			return fmt.Errorf("%w: 请求删除 %d 个端点，实际删除 %d 个",
 				customErrors.ErrPartialEndpointsNotFound, len(endpointIDs), deletedCount)
 		}
 

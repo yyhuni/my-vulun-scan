@@ -19,13 +19,22 @@ func SetupEndpointRoutes(api *gin.RouterGroup) {
 		// 示例：GET /endpoints/1
 		endpoints.GET("/:id", handlers.GetEndpointByID)
 
-		// 批量创建端点 - 必须关联到指定的 Subdomain
+		// 批量创建端点（自动从完整 URL 中提取域名/子域名，若不存在将跳过）
 		// 请求体示例：{
 		//   "endpoints": [
-		//     {"url": "/api/v1/users", "method": "GET", "status_code": 200, "title": "获取用户列表"},
-		//   ],
-		//   "subdomain_id": 2
+		//     {
+		//       "url": "https://example.com/api/v1/users",
+		//       "method": "GET",
+		//       "status_code": 200,
+		//       "title": "获取用户列表",
+		//       "content_length": 1024
+		//     }
+		//   ]
 		// }
+		// 说明：
+		// - 需要传入完整的 HTTP/HTTPS URL（例如 https://example.com/api/v1/users）
+		// - 后端会自动解析 URL 提取 host/根域名并匹配已有的 domain/subdomain
+		// - 不需要、也不支持手动传入 domain_id 或 subdomain_id；若匹配不到将跳过该条
 		endpoints.POST("/create", handlers.CreateEndpoints)
 
 		// 删除单个端点
