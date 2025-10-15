@@ -275,8 +275,7 @@ demo.org`}
               )}
             </div>
 
-            {/* 所属组织选择 - 如果预设了组织ID则隐藏 */}
-            {!presetOrganizationId && (
+            {/* 所属组织选择 */}
             <div className="grid gap-2">
               <Label htmlFor="organization" className="flex items-center space-x-2">
                 <Building2 />
@@ -335,7 +334,7 @@ demo.org`}
                         role="combobox"
                         aria-expanded={openOrgPopover}
                         className="w-full justify-between"
-                        disabled={createDomain.isPending}
+                        disabled={createDomain.isPending || !!presetOrganizationId}
                       >
                         {formData.organizationId
                           ? organizationsData.organizations.find(
@@ -388,24 +387,25 @@ demo.org`}
                   {/* 辅助信息 */}
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span>
-                      共 {organizationsData.organizations.length} 个组织可选
+                      {presetOrganizationId ? "组织已预设（不可修改）" : `共 ${organizationsData.organizations.length} 个组织可选`}
                     </span>
-                    <Button
-                      type="button"
-                      variant="link"
-                      size="sm"
-                      className="h-auto p-0 text-xs"
-                      onClick={() => {
-                        window.open('/assets/organization', '_blank')
-                      }}
-                    >
-                      管理组织 →
-                    </Button>
+                    {!presetOrganizationId && (
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        className="h-auto p-0 text-xs"
+                        onClick={() => {
+                          window.open('/assets/organization', '_blank')
+                        }}
+                      >
+                        管理组织 →
+                      </Button>
+                    )}
                   </div>
                 </>
               )}
             </div>
-            )}
             
             {/* 域名描述输入框 */}
             <div className="grid gap-2">
