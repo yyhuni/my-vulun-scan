@@ -11,6 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/net/publicsuffix"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // EndpointService 端点服务
@@ -100,40 +101,44 @@ func (s *EndpointService) GetEndpointByID(id uint) (*models.Endpoint, error) {
 // 1. 从所有请求的 URL 中提取唯一的 host（如 baidu.com、media.baidu.com）
 // 2. 批量查询这些 host 对应的 Subdomain 记录（因为系统设计：每个 Domain 都会自动创建同名 Subdomain）
 // 3. 建立 host 到 (subdomain_id, domain_id) 的映射关系
-// 4. 批量查询现有的 Endpoint 记录（基于 URL 去重，URL 是唯一标识）
-// 5. 过滤掉已存在的 Endpoint 和找不到 Subdomain 的 Endpoint
-// 6. 批量创建新的 Endpoint 记录
+// 4. 过滤掉找不到 Subdomain 的 Endpoint（host 不存在）
+// 5. 批量创建新的 Endpoint 记录，使用 OnConflict 自动跳过重复 URL
 //
 // 关键设计决策：
-//   - URL 唯一性：Endpoint 的唯一标识是 URL，而不是 (URL + Method) 组合
+//   - URL 唯一性：Endpoint 的唯一标识是 URL（数据库唯一索引），而不是 (URL + Method) 组合
 //   - 精确匹配：优先精确匹配完整 host 到 Subdomain，避免跨域关联问题
 //     例如：https://media.org20-primary.com/api 只会关联到 media.org20-primary.com 这个 Subdomain
 //     不会错误关联到 org20-primary.com 或其他域名
 //   - 自动跳过：如果 URL 的 host 在系统中不存在对应的 Subdomain，则自动跳过该 URL
+//   - OnConflict 处理：使用数据库层面的冲突处理，遇到重复 URL 时自动跳过，避免竞态条件
 //
 // 幂等性保证：
-// - 重复提交相同 URL 的 Endpoint 不会报错，只会计入已存在数量（AlreadyExisted）
+// - 重复提交相同 URL 的 Endpoint 不会报错，通过 OnConflict DoNothing 自动跳过
 // - 返回值中包含成功创建数（NewCreated）、已存在数（AlreadyExisted）、总请求数（TotalRequested）
-// - 被跳过的数量 = TotalRequested - NewCreated - AlreadyExisted（需调用方自行计算）
+// - AlreadyExisted = preparedCount - createdCount（准备插入数 - 实际插入数）
+// - 被跳过数量（host不存在）= TotalRequested - preparedCount
 // - 被跳过的具体 URL 不在返回值中，仅通过日志记录
 //
 // 数据一致性：
 // - 使用事务确保批量创建的原子性，要么全部成功，要么全部回滚
 // - SubdomainID 和 DomainID 都设置为 not null，确保 Endpoint 必定关联到有效的 Domain 和 Subdomain
+// - URL 唯一索引确保不会插入重复数据
 //
 // 性能优化：
 // - 批量查询 Subdomain，避免 N+1 查询问题（1次查询代替 N 次）
-// - 批量查询现有 Endpoint，避免逐个检查（1次查询代替 N 次）
+// - 使用 OnConflict 替代预查询，减少一次 SELECT 操作，避免竞态条件
 // - 批量创建新 Endpoint，每批最多 100 条（1次插入代替 N 次）
 // - 使用 map 结构快速查找，避免嵌套循环
+// - 数据库层面原子性处理冲突，性能更优
 //
 // 注意事项：
 // - 前提条件：Domain 创建时会自动创建同名 Subdomain（在 CreateDomains 方法中实现）
 // - 如果需要创建子域名（如 media.baidu.com），需要先调用 CreateSubDomainsForDomain 接口
 // - 事务失败会自动回滚，不会产生脏数据
+// - URL 字段必须有唯一索引，否则 OnConflict 无法正常工作
 func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*models.CreateEndpointsResponseData, error) {
 	var createdCount int
-	var existingEndpoints []string
+	var preparedCount int // 准备插入的端点数量（过滤掉无效 host 后）
 
 	log.Info().
 		Int("total_requested", len(req.Endpoints)).
@@ -188,69 +193,57 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 			}
 		}
 
-		// 5. 批量查询现有端点
-		var urls []string
-		for _, detail := range req.Endpoints {
-			urls = append(urls, detail.URL)
-		}
-
-		var existingEndpointsInDB []models.Endpoint
-		if err := tx.Model(&models.Endpoint{}).
-			Where("url IN ?", urls).
-			Find(&existingEndpointsInDB).Error; err != nil {
-			log.Error().Err(err).Msg("Failed to query existing endpoints")
-			return err
-		}
-
-		// 6. 创建现有端点的映射，便于快速查找（只基于URL）
-		existingMap := make(map[string]bool)
-		for _, existing := range existingEndpointsInDB {
-			existingMap[existing.URL] = true
-		}
-
-		// 7. 准备需要创建的端点
+		// 5. 准备需要创建的端点（不再预查询，使用 OnConflict 处理重复）
 		var newEndpoints []models.Endpoint
 		for _, detail := range req.Endpoints {
-			if existingMap[detail.URL] {
-				// 已存在，记录到列表
-				existingEndpoints = append(existingEndpoints, fmt.Sprintf("%s %s", detail.Method, detail.URL))
-				log.Info().Str("url", detail.URL).Str("method", detail.Method).Msg("Endpoint already exists")
-			} else {
-				// 提取 host 获取 subdomain_id 和 domain_id
-				host, err := extractHostFromURL(detail.URL)
-				if err != nil {
-					log.Warn().Err(err).Str("url", detail.URL).Msg("Skipping endpoint with invalid URL")
-					continue
-				}
-
-				info, exists := hostInfo[host]
-				if !exists {
-					log.Warn().Str("url", detail.URL).Str("host", host).Msg("Host not found in domain/subdomain, skipping")
-					continue
-				}
-
-				// 准备创建
-				newEndpoint := models.Endpoint{
-					URL:           detail.URL,
-					Method:        detail.Method,
-					StatusCode:    detail.StatusCode,
-					Title:         detail.Title,
-					ContentLength: detail.ContentLength,
-					SubdomainID:   info.subdomainID,
-					DomainID:      info.domainID,
-				}
-				newEndpoints = append(newEndpoints, newEndpoint)
+			// 提取 host 获取 subdomain_id 和 domain_id
+			host, err := extractHostFromURL(detail.URL)
+			if err != nil {
+				log.Warn().Err(err).Str("url", detail.URL).Msg("Skipping endpoint with invalid URL")
+				continue
 			}
+
+			info, exists := hostInfo[host]
+			if !exists {
+				log.Warn().Str("url", detail.URL).Str("host", host).Msg("Host not found in domain/subdomain, skipping")
+				continue
+			}
+
+			// 准备创建
+			newEndpoint := models.Endpoint{
+				URL:           detail.URL,
+				Method:        detail.Method,
+				StatusCode:    detail.StatusCode,
+				Title:         detail.Title,
+				ContentLength: detail.ContentLength,
+				SubdomainID:   info.subdomainID,
+				DomainID:      info.domainID,
+			}
+			newEndpoints = append(newEndpoints, newEndpoint)
 		}
 
-		// 8. 批量创建新端点
-		if len(newEndpoints) > 0 {
-			if err := tx.CreateInBatches(newEndpoints, 100).Error; err != nil {
-				log.Error().Err(err).Msg("Failed to create endpoints")
-				return err
+		preparedCount = len(newEndpoints)
+
+		// 6. 批量创建新端点，使用 OnConflict 自动跳过重复 URL
+		// 优势：
+		// - 避免竞态条件：数据库层面原子性处理冲突
+		// - 提升性能：无需预查询已存在的 URL
+		// - 简化代码：自动处理重复，无需手动过滤
+		// - 幂等性：重复提交相同 URL 不会报错
+		if preparedCount > 0 {
+			result := tx.Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "url"}},
+				DoNothing: true, // 遇到重复 URL 时跳过，不报错
+			}).CreateInBatches(newEndpoints, 100)
+
+			if result.Error != nil {
+				log.Error().Err(result.Error).Msg("Failed to create endpoints")
+				return result.Error
 			}
-			createdCount = len(newEndpoints)
-			log.Info().Int("created_count", createdCount).Msg("Endpoints created successfully")
+
+			// RowsAffected 返回实际插入的行数（跳过的重复行不计入）
+			createdCount = int(result.RowsAffected)
+			log.Info().Int("created_count", createdCount).Int("total_prepared", preparedCount).Msg("Endpoints created successfully")
 		}
 
 		return nil
@@ -262,17 +255,28 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 	}
 
 	// 计算统计信息
-	alreadyExisted := len(existingEndpoints)
+	// - totalRequested: 用户请求的总数
+	// - preparedCount: 通过 host 验证，准备插入的数量
+	// - createdCount: 实际插入成功的数量（RowsAffected）
+	// - alreadyExisted: 因 URL 重复被跳过的数量 = preparedCount - createdCount
+	// - skippedCount: 因 host 不存在被跳过的数量 = totalRequested - preparedCount
 	totalRequested := len(req.Endpoints)
-	skippedCount := totalRequested - createdCount - alreadyExisted
+	alreadyExisted := preparedCount - createdCount
+	skippedCount := totalRequested - preparedCount
 
 	// 构造详细的消息
 	var message string
-	if skippedCount > 0 {
-		message = fmt.Sprintf("成功创建 %d 个端点，%d 个端点已存在，%d 个端点因域名/子域名不存在被跳过", 
+	if skippedCount > 0 && alreadyExisted > 0 {
+		message = fmt.Sprintf("成功创建 %d 个端点，%d 个端点已存在（URL重复），%d 个端点因域名/子域名不存在被跳过",
 			createdCount, alreadyExisted, skippedCount)
+	} else if skippedCount > 0 {
+		message = fmt.Sprintf("成功创建 %d 个端点，%d 个端点因域名/子域名不存在被跳过",
+			createdCount, skippedCount)
+	} else if alreadyExisted > 0 {
+		message = fmt.Sprintf("成功创建 %d 个端点，%d 个端点已存在（URL重复）",
+			createdCount, alreadyExisted)
 	} else {
-		message = fmt.Sprintf("成功创建 %d 个端点，%d 个端点已存在", createdCount, alreadyExisted)
+		message = fmt.Sprintf("成功创建 %d 个端点", createdCount)
 	}
 
 	response := &models.CreateEndpointsResponseData{
@@ -286,6 +290,7 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 
 	log.Info().
 		Int("total_requested", totalRequested).
+		Int("prepared_count", preparedCount).
 		Int("new_created", createdCount).
 		Int("already_existed", alreadyExisted).
 		Int("skipped", skippedCount).

@@ -12,7 +12,7 @@ type Endpoint struct {
 	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime;index"`
 
 	// 核心业务字段
-	URL           string `json:"url" gorm:"not null;size:2048;index"`
+	URL           string `json:"url" gorm:"not null;size:2048;uniqueIndex"`
 	Method        string `json:"method" gorm:"size:10"`
 	StatusCode    *int   `json:"status_code"`
 	Title         string `json:"title" gorm:"size:255"`

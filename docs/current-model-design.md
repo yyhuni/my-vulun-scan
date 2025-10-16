@@ -101,7 +101,7 @@
 | ID | uint | 主键，索引 | 自增 | 主键标识符 |
 | CreatedAt | time.Time | 非空 | 当前时间 | 创建时间 |
 | UpdatedAt | time.Time | 非空，索引 | 当前时间 | 更新时间 |
-| URL | string(2048) | 非空，索引 | - | 完整的端点 URL（包括协议、域名、路径、查询参数等，如 https://www.baidu.com/a/b?a=123） |
+| URL | string(2048) | 非空，唯一索引 | - | 完整的端点 URL（包括协议、域名、路径、查询参数等，如 https://www.baidu.com/a/b?a=123） |
 | Method | string(10) | 可为空 | NULL | HTTP方法(GET/POST/PUT/DELETE等) |
 | StatusCode | int | 可为空 | NULL | HTTP响应状态码 |
 | Title | string(255) | 可为空 | NULL | 页面标题 |
