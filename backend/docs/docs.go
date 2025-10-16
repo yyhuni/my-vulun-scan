@@ -139,7 +139,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "删除成功",
+                        "description": "批量删除成功",
                         "schema": {
                             "allOf": [
                                 {
@@ -149,7 +149,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "object"
+                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.BatchDeleteDomainsDirectResponseData"
                                         }
                                     }
                                 }
@@ -157,7 +157,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "请求参数错误",
+                        "description": "请求参数错误或部分ID不存在",
                         "schema": {
                             "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
                         }
@@ -207,7 +207,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.CreateDomainsResponse"
+                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.CreateDomainsResponseData"
                                         }
                                     }
                                 }
@@ -519,7 +519,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "创建成功",
+                        "description": "创建成功，返回统计信息",
                         "schema": {
                             "allOf": [
                                 {
@@ -699,7 +699,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "创建成功",
+                        "description": "创建成功，返回统计信息",
                         "schema": {
                             "allOf": [
                                 {
@@ -1371,7 +1371,7 @@ const docTemplate = `{
         },
         "/organizations/{organization_id}/domains/batch-remove": {
             "post": {
-                "description": "批量解除指定组织与多个域名的关联关系，如果域名成为孤儿（没有任何组织关联）则自动删除该域名",
+                "description": "批量解除指定组织与多个域名的关联关系，如果域名成为孤儿（没有任何组织关联）则自动删除该域名。所有域名ID必须存在，否则返回错误",
                 "consumes": [
                     "application/json"
                 ],
@@ -1403,7 +1403,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "移除成功，返回成功和失败的统计信息",
+                        "description": "批量删除成功",
                         "schema": {
                             "allOf": [
                                 {
@@ -1421,7 +1421,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "请求参数错误",
+                        "description": "请求参数错误或部分ID不存在",
                         "schema": {
                             "$ref": "#/definitions/vulun-scan-backend_internal_models.APIResponse"
                         }
@@ -1983,6 +1983,19 @@ const docTemplate = `{
                 }
             }
         },
+        "vulun-scan-backend_internal_models.BatchDeleteDomainsDirectResponseData": {
+            "type": "object",
+            "properties": {
+                "deleted_count": {
+                    "description": "实际删除的数量",
+                    "type": "integer"
+                },
+                "message": {
+                    "description": "操作结果描述",
+                    "type": "string"
+                }
+            }
+        },
         "vulun-scan-backend_internal_models.BatchDeleteDomainsRequest": {
             "type": "object",
             "required": [
@@ -2000,16 +2013,13 @@ const docTemplate = `{
         "vulun-scan-backend_internal_models.BatchDeleteDomainsResponseData": {
             "type": "object",
             "properties": {
-                "failed_count": {
-                    "description": "失败的数量",
+                "deleted_count": {
+                    "description": "实际删除的数量",
                     "type": "integer"
                 },
                 "message": {
+                    "description": "操作结果描述",
                     "type": "string"
-                },
-                "success_count": {
-                    "description": "成功移除的数量",
-                    "type": "integer"
                 }
             }
         },
@@ -2112,7 +2122,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.CreateDomainsResponse": {
+        "vulun-scan-backend_internal_models.CreateDomainsResponseData": {
             "type": "object",
             "properties": {
                 "already_existed": {
@@ -2150,19 +2160,20 @@ const docTemplate = `{
         "vulun-scan-backend_internal_models.CreateEndpointsResponseData": {
             "type": "object",
             "properties": {
-                "existing_endpoints": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
+                "already_existed": {
+                    "description": "已存在的数量",
+                    "type": "integer"
                 },
                 "message": {
+                    "description": "详细说明",
                     "type": "string"
                 },
-                "success_count": {
+                "new_created": {
+                    "description": "新创建的数量",
                     "type": "integer"
                 },
                 "total_requested": {
+                    "description": "请求创建的总数量",
                     "type": "integer"
                 }
             }
@@ -2198,23 +2209,20 @@ const docTemplate = `{
         "vulun-scan-backend_internal_models.CreateSubDomainsResponseData": {
             "type": "object",
             "properties": {
-                "already_exists": {
-                    "description": "已存在的子域名数量",
+                "already_existed": {
+                    "description": "已存在的数量",
                     "type": "integer"
                 },
-                "skipped_domains": {
-                    "description": "被跳过的根域名列表",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
+                "message": {
+                    "description": "详细说明",
+                    "type": "string"
                 },
-                "subdomains_created": {
-                    "description": "实际创建的子域名数量",
+                "new_created": {
+                    "description": "新创建的数量",
                     "type": "integer"
                 },
-                "total_unique_subdomains": {
-                    "description": "请求的唯一子域名总数",
+                "total_requested": {
+                    "description": "请求创建的总数量",
                     "type": "integer"
                 }
             }

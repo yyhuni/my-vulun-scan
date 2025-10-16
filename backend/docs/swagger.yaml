@@ -23,6 +23,15 @@ definitions:
     required:
     - domain_ids
     type: object
+  vulun-scan-backend_internal_models.BatchDeleteDomainsDirectResponseData:
+    properties:
+      deleted_count:
+        description: 实际删除的数量
+        type: integer
+      message:
+        description: 操作结果描述
+        type: string
+    type: object
   vulun-scan-backend_internal_models.BatchDeleteDomainsRequest:
     properties:
       domain_ids:
@@ -34,14 +43,12 @@ definitions:
     type: object
   vulun-scan-backend_internal_models.BatchDeleteDomainsResponseData:
     properties:
-      failed_count:
-        description: 失败的数量
+      deleted_count:
+        description: 实际删除的数量
         type: integer
       message:
+        description: 操作结果描述
         type: string
-      success_count:
-        description: 成功移除的数量
-        type: integer
     type: object
   vulun-scan-backend_internal_models.BatchDeleteEndpointsRequest:
     properties:
@@ -109,7 +116,7 @@ definitions:
     - domains
     - organization_id
     type: object
-  vulun-scan-backend_internal_models.CreateDomainsResponse:
+  vulun-scan-backend_internal_models.CreateDomainsResponseData:
     properties:
       already_existed:
         description: 已存在的数量
@@ -135,15 +142,17 @@ definitions:
     type: object
   vulun-scan-backend_internal_models.CreateEndpointsResponseData:
     properties:
-      existing_endpoints:
-        items:
-          type: string
-        type: array
+      already_existed:
+        description: 已存在的数量
+        type: integer
       message:
+        description: 详细说明
         type: string
-      success_count:
+      new_created:
+        description: 新创建的数量
         type: integer
       total_requested:
+        description: 请求创建的总数量
         type: integer
     type: object
   vulun-scan-backend_internal_models.CreateOrgRequest:
@@ -166,19 +175,17 @@ definitions:
     type: object
   vulun-scan-backend_internal_models.CreateSubDomainsResponseData:
     properties:
-      already_exists:
-        description: 已存在的子域名数量
+      already_existed:
+        description: 已存在的数量
         type: integer
-      skipped_domains:
-        description: 被跳过的根域名列表
-        items:
-          type: string
-        type: array
-      subdomains_created:
-        description: 实际创建的子域名数量
+      message:
+        description: 详细说明
+        type: string
+      new_created:
+        description: 新创建的数量
         type: integer
-      total_unique_subdomains:
-        description: 请求的唯一子域名总数
+      total_requested:
+        description: 请求创建的总数量
         type: integer
     type: object
   vulun-scan-backend_internal_models.CreateToolRequest:
@@ -789,7 +796,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 创建成功
+          description: 创建成功，返回统计信息
           schema:
             allOf:
             - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
@@ -837,16 +844,16 @@ paths:
       - application/json
       responses:
         "200":
-          description: 删除成功
+          description: 批量删除成功
           schema:
             allOf:
             - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
             - properties:
                 data:
-                  type: object
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.BatchDeleteDomainsDirectResponseData'
               type: object
         "400":
-          description: 请求参数错误
+          description: 请求参数错误或部分ID不存在
           schema:
             $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "500":
@@ -890,7 +897,7 @@ paths:
             - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/vulun-scan-backend_internal_models.CreateDomainsResponse'
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.CreateDomainsResponseData'
               type: object
         "400":
           description: 请求参数错误（如域名列表为空、参数格式错误等）
@@ -1109,7 +1116,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 创建成功
+          description: 创建成功，返回统计信息
           schema:
             allOf:
             - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
@@ -1345,7 +1352,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: 批量解除指定组织与多个域名的关联关系，如果域名成为孤儿（没有任何组织关联）则自动删除该域名
+      description: 批量解除指定组织与多个域名的关联关系，如果域名成为孤儿（没有任何组织关联）则自动删除该域名。所有域名ID必须存在，否则返回错误
       parameters:
       - description: 组织ID
         example: 1
@@ -1363,7 +1370,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 移除成功，返回成功和失败的统计信息
+          description: 批量删除成功
           schema:
             allOf:
             - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
@@ -1372,7 +1379,7 @@ paths:
                   $ref: '#/definitions/vulun-scan-backend_internal_models.BatchDeleteDomainsResponseData'
               type: object
         "400":
-          description: 请求参数错误
+          description: 请求参数错误或部分ID不存在
           schema:
             $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
         "500":

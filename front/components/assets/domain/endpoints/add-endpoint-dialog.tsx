@@ -35,7 +35,6 @@ import type { Endpoint, CreateEndpointRequest } from "@/types/endpoint.types"
 // 导入 URL 验证工具
 import { UrlValidator } from "@/lib/url-validator"
 import { getDomain } from "tldts"
-import { useSubdomains } from "@/hooks/use-subdomains"
 
 // 组件属性类型定义
 interface AddEndpointDialogProps {
@@ -76,7 +75,6 @@ export function AddEndpointDialog({
   const [urlsText, setUrlsText] = useState("")
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   const [parsedUrls, setParsedUrls] = useState<string[]>([])
-  const [unknownHosts, setUnknownHosts] = useState<string[]>([])
   
   // 可选字段状态
   const [method, setMethod] = useState<string>("GET")
@@ -129,43 +127,6 @@ export function AddEndpointDialog({
     
     setValidationErrors(errors)
   }, [urlsText, currentDomainName])
-
-  // 拉取当前域名下子域名，用于“子域名存在性预检”
-  const { data: subdomainResp } = useSubdomains({
-    domainId: domainId,
-    page: 1,
-    pageSize: 1000,
-  })
-
-  // 根据子域名列表与当前输入 URLs 计算未知 host（将被后端跳过）
-  useEffect(() => {
-    if (!parsedUrls.length) {
-      setUnknownHosts([])
-      return
-    }
-    const list = (subdomainResp?.subDomains || []) as Array<{ name: string }>
-    const known = new Set<string>(list.map((s) => s.name))
-    const unknown = new Set<string>()
-    parsedUrls.forEach((u) => {
-      try {
-        const urlObj = new URL(u)
-        const host = urlObj.hostname
-        // 仅在属于当前域名时才进行子域名存在性预检
-        if (currentDomainName) {
-          const urlRootDomain = getDomain(host) || host
-          const currentRootDomain = getDomain(currentDomainName) || currentDomainName
-          if (urlRootDomain !== currentRootDomain) return
-        }
-        if (!known.has(host)) {
-          unknown.add(host)
-        }
-      } catch {
-        // 忽略解析失败，已在 validationErrors 处理
-      }
-    })
-    setUnknownHosts(Array.from(unknown))
-  }, [parsedUrls, subdomainResp, currentDomainName])
-
 
   // 处理表单提交
   const handleSubmit = async (e: React.FormEvent) => {
@@ -267,7 +228,7 @@ export function AddEndpointDialog({
                 <strong>注意：URL 必须属于当前域名 {currentDomainName} 或其子域名</strong>。<br />
               </>
             )}
-            系统会自动从 URL 中提取根域名和子域名进行匹配，<strong>若域名或子域名不存在将被跳过</strong>。
+            系统会自动从 URL 中提取根域名和子域名进行匹配。
           </DialogDescription>
         </DialogHeader>
         
@@ -308,15 +269,6 @@ https://example.com/status`}
                   {validationErrors.length === 0 ? "✓ 校验通过" : `✗ ${validationErrors.length} 个错误`}
                 </Badge>
               )}
-              {unknownHosts.length > 0 && validationErrors.length === 0 && (
-                <Badge 
-                  variant="secondary"
-                  className="text-xs bg-amber-100 text-amber-800 border-amber-200"
-                  title={unknownHosts.join(', ')}
-                >
-                  将被跳过 {unknownHosts.length} 个子域名
-                </Badge>
-              )}
             </div>
 
               {/* 验证错误提示 */}
@@ -336,18 +288,6 @@ https://example.com/status`}
                 </ul>
               </div>
             )}
-
-            {/* 预检提示：子域名不存在将被跳过 */}
-            {unknownHosts.length > 0 && validationErrors.length === 0 && (
-              <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-amber-800">
-                <div className="text-sm font-medium mb-1">以下子域名尚未创建，提交后将被跳过：</div>
-                <div className="text-xs break-all leading-5">
-                  {unknownHosts.slice(0, 5).join(', ')}
-                  {unknownHosts.length > 5 && `，以及 ${unknownHosts.length - 5} 个...`}
-                </div>
-              </div>
-            )}
-
             </div>
 
             {/* 可选字段 - 折叠区域 */}
@@ -474,7 +414,7 @@ https://example.com/status`}
               ) : (
                 <>
                   <Plus />
-                  添加 {parsedUrls.length > 0 ? `${parsedUrls.length} 个` : ''} URL
+                  Add {parsedUrls.length > 0 ? `${parsedUrls.length} 个` : ''} URL
                 </>
               )}
             </Button>

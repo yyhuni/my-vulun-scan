@@ -112,8 +112,10 @@ func (s *EndpointService) GetEndpointByID(id uint) (*models.Endpoint, error) {
 //   - 自动跳过：如果 URL 的 host 在系统中不存在对应的 Subdomain，则自动跳过该 URL
 //
 // 幂等性保证：
-// - 重复提交相同 URL 的 Endpoint 不会报错，只会记录到 ExistingEndpoints 列表
-// - 返回值中包含成功创建数、已存在数、总请求数，便于调用方了解处理结果
+// - 重复提交相同 URL 的 Endpoint 不会报错，只会计入已存在数量（AlreadyExisted）
+// - 返回值中包含成功创建数（NewCreated）、已存在数（AlreadyExisted）、总请求数（TotalRequested）
+// - 被跳过的数量 = TotalRequested - NewCreated - AlreadyExisted（需调用方自行计算）
+// - 被跳过的具体 URL 不在返回值中，仅通过日志记录
 //
 // 数据一致性：
 // - 使用事务确保批量创建的原子性，要么全部成功，要么全部回滚
@@ -262,10 +264,20 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 	// 计算统计信息
 	alreadyExisted := len(existingEndpoints)
 	totalRequested := len(req.Endpoints)
+	skippedCount := totalRequested - createdCount - alreadyExisted
+
+	// 构造详细的消息
+	var message string
+	if skippedCount > 0 {
+		message = fmt.Sprintf("成功创建 %d 个端点，%d 个端点已存在，%d 个端点因域名/子域名不存在被跳过", 
+			createdCount, alreadyExisted, skippedCount)
+	} else {
+		message = fmt.Sprintf("成功创建 %d 个端点，%d 个端点已存在", createdCount, alreadyExisted)
+	}
 
 	response := &models.CreateEndpointsResponseData{
 		BaseBatchCreateResponseData: models.BaseBatchCreateResponseData{
-			Message:        fmt.Sprintf("成功处理 %d 个端点，新创建 %d 个，%d 个已存在", totalRequested, createdCount, alreadyExisted),
+			Message:        message,
 			TotalRequested: totalRequested,
 			NewCreated:     createdCount,
 			AlreadyExisted: alreadyExisted,
@@ -276,6 +288,7 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 		Int("total_requested", totalRequested).
 		Int("new_created", createdCount).
 		Int("already_existed", alreadyExisted).
+		Int("skipped", skippedCount).
 		Msg("Endpoints creation completed")
 
 	return response, nil
