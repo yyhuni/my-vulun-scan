@@ -99,13 +99,8 @@ func CreateEndpoints(c *gin.Context) {
 
 	// 验证端点数据 - 使用 URLValidator 进行严格验证
 	for i, detail := range req.Endpoints {
-		if detail.URL == "" {
-			response.ValidationErrorResponse(c, fmt.Sprintf("第 %d 个端点的 URL 不能为空", i+1))
-			return
-		}
-
 		// 使用 utils.ValidateHTTPURL 验证 URL 格式
-		if err := utils.ValidateHTTPURL(detail.URL); err != nil {
+		if err := utils.ValidateURL(detail.URL); err != nil {
 			response.ValidationErrorResponse(c, fmt.Sprintf("第 %d 个端点的 URL 格式无效: %s", i+1, err.Error()))
 			return
 		}

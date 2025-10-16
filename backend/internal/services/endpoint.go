@@ -2,14 +2,13 @@ package services
 
 import (
 	"fmt"
-	"net/url"
 
 	customErrors "vulun-scan-backend/internal/errors"
 	"vulun-scan-backend/internal/models"
+	"vulun-scan-backend/internal/utils"
 	"vulun-scan-backend/pkg/database"
 
 	"github.com/rs/zerolog/log"
-	"golang.org/x/net/publicsuffix"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -125,6 +124,7 @@ func (s *EndpointService) GetEndpointByID(id uint) (*models.Endpoint, error) {
 // - URL 唯一索引确保不会插入重复数据
 //
 // 性能优化：
+// - URL 规范化阶段就提取并缓存 host，避免重复解析（减少一次完整循环）
 // - 批量查询 Subdomain，避免 N+1 查询问题（1次查询代替 N 次）
 // - 使用 OnConflict 替代预查询，减少一次 SELECT 操作，避免竞态条件
 // - 批量创建新 Endpoint，每批最多 100 条（1次插入代替 N 次）
@@ -144,17 +144,75 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 		Int("total_requested", len(req.Endpoints)).
 		Msg("Starting to create endpoints with auto domain/subdomain lookup")
 
+	// 0. URL 规范化 + Host 提取 + 请求内去重：只保留每个 URL 的第一次出现
+	// 使用结构体缓存 detail 和对应的 host，避免后续重复解析
+	type endpointWithHost struct {
+		detail models.EndpointDetail
+		host   string
+	}
+	
+	urlMap := make(map[string]endpointWithHost)
+	var duplicateInRequest int
+	var normalizeErrors int
+	var extractHostErrors int
+
+	for _, detail := range req.Endpoints {
+		// 规范化 URL，避免等价不同写法的重复
+		// 例如：HTTPS://Example.COM:443/API/ 和 https://example.com/api 会被识别为同一个 URL
+		normalizedURL, err := utils.NormalizeURL(detail.URL)
+		if err != nil {
+			// 规范化失败说明 URL 格式无效，直接跳过
+			log.Warn().Err(err).Str("original_url", detail.URL).Msg("Failed to normalize URL, skipping invalid URL")
+			normalizeErrors++
+			continue
+		}
+
+		// 提取 host（在这里只解析一次）
+		host, err := utils.ExtractHostFromURL(normalizedURL)
+		if err != nil {
+			log.Warn().Err(err).Str("url", normalizedURL).Msg("Failed to extract host from URL, skipping")
+			extractHostErrors++
+			continue
+		}
+
+		// 使用规范化后的 URL 进行去重
+		if _, exists := urlMap[normalizedURL]; !exists {
+			// 更新 detail 中的 URL 为规范化后的版本，并缓存 host
+			detail.URL = normalizedURL
+			urlMap[normalizedURL] = endpointWithHost{
+				detail: detail,
+				host:   host,
+			}
+		} else {
+			duplicateInRequest++
+			log.Debug().
+				Str("original_url", detail.URL).
+				Str("normalized_url", normalizedURL).
+				Msg("Duplicate URL detected after normalization")
+		}
+	}
+
+	// 转换为切片（去重后的端点列表，包含缓存的 host）
+	uniqueEndpoints := make([]endpointWithHost, 0, len(urlMap))
+	for _, item := range urlMap {
+		uniqueEndpoints = append(uniqueEndpoints, item)
+	}
+
+	if duplicateInRequest > 0 || normalizeErrors > 0 || extractHostErrors > 0 {
+		log.Info().
+			Int("duplicate_in_request", duplicateInRequest).
+			Int("normalize_errors", normalizeErrors).
+			Int("extract_host_errors", extractHostErrors).
+			Int("unique_endpoints", len(uniqueEndpoints)).
+			Msg("URL normalization, host extraction and deduplication completed")
+	}
+
 	// 使用事务确保批量创建的原子性
 	err := s.db.Transaction(func(tx *gorm.DB) error {
-		// 1. 提取所有唯一的 host
+		// 1. 提取所有唯一的 host（直接使用缓存的 host，无需重复解析）
 		uniqueHosts := make(map[string]bool)
-		for _, detail := range req.Endpoints {
-			host, err := extractHostFromURL(detail.URL)
-			if err != nil {
-				log.Warn().Err(err).Str("url", detail.URL).Msg("Failed to extract host from URL, skipping")
-				continue
-			}
-			uniqueHosts[host] = true
+		for _, item := range uniqueEndpoints {
+			uniqueHosts[item.host] = true
 		}
 
 		// 2. 批量查询所有 host 对应的 Subdomain（每个 Domain 都会自动创建同名 Subdomain）
@@ -193,29 +251,23 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 			}
 		}
 
-		// 5. 准备需要创建的端点（不再预查询，使用 OnConflict 处理重复）
+		// 5. 准备需要创建的端点（已去重，使用 OnConflict 处理数据库重复）
 		var newEndpoints []models.Endpoint
-		for _, detail := range req.Endpoints {
-			// 提取 host 获取 subdomain_id 和 domain_id
-			host, err := extractHostFromURL(detail.URL)
-			if err != nil {
-				log.Warn().Err(err).Str("url", detail.URL).Msg("Skipping endpoint with invalid URL")
-				continue
-			}
-
-			info, exists := hostInfo[host]
+		for _, item := range uniqueEndpoints {
+			// 直接使用缓存的 host，无需重复解析
+			info, exists := hostInfo[item.host]
 			if !exists {
-				log.Warn().Str("url", detail.URL).Str("host", host).Msg("Host not found in domain/subdomain, skipping")
+				log.Warn().Str("url", item.detail.URL).Str("host", item.host).Msg("Host not found in domain/subdomain, skipping")
 				continue
 			}
 
 			// 准备创建
 			newEndpoint := models.Endpoint{
-				URL:           detail.URL,
-				Method:        detail.Method,
-				StatusCode:    detail.StatusCode,
-				Title:         detail.Title,
-				ContentLength: detail.ContentLength,
+				URL:           item.detail.URL,
+				Method:        item.detail.Method,
+				StatusCode:    item.detail.StatusCode,
+				Title:         item.detail.Title,
+				ContentLength: item.detail.ContentLength,
 				SubdomainID:   info.subdomainID,
 				DomainID:      info.domainID,
 			}
@@ -255,28 +307,13 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 	}
 
 	// 计算统计信息
-	// - totalRequested: 用户请求的总数
-	// - preparedCount: 通过 host 验证，准备插入的数量
-	// - createdCount: 实际插入成功的数量（RowsAffected）
-	// - alreadyExisted: 因 URL 重复被跳过的数量 = preparedCount - createdCount
-	// - skippedCount: 因 host 不存在被跳过的数量 = totalRequested - preparedCount
 	totalRequested := len(req.Endpoints)
 	alreadyExisted := preparedCount - createdCount
-	skippedCount := totalRequested - preparedCount
 
-	// 构造详细的消息
-	var message string
-	if skippedCount > 0 && alreadyExisted > 0 {
-		message = fmt.Sprintf("成功创建 %d 个端点，%d 个端点已存在（URL重复），%d 个端点因域名/子域名不存在被跳过",
-			createdCount, alreadyExisted, skippedCount)
-	} else if skippedCount > 0 {
-		message = fmt.Sprintf("成功创建 %d 个端点，%d 个端点因域名/子域名不存在被跳过",
-			createdCount, skippedCount)
-	} else if alreadyExisted > 0 {
-		message = fmt.Sprintf("成功创建 %d 个端点，%d 个端点已存在（URL重复）",
-			createdCount, alreadyExisted)
-	} else {
-		message = fmt.Sprintf("成功创建 %d 个端点", createdCount)
+	// 构造消息
+	message := fmt.Sprintf("成功创建 %d 个端点", createdCount)
+	if alreadyExisted > 0 {
+		message = fmt.Sprintf("成功创建 %d 个端点，%d 个已存在", createdCount, alreadyExisted)
 	}
 
 	response := &models.CreateEndpointsResponseData{
@@ -289,11 +326,10 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 	}
 
 	log.Info().
+		Str("message", message).
 		Int("total_requested", totalRequested).
-		Int("prepared_count", preparedCount).
 		Int("new_created", createdCount).
 		Int("already_existed", alreadyExisted).
-		Int("skipped", skippedCount).
 		Msg("Endpoints creation completed")
 
 	return response, nil
@@ -405,35 +441,6 @@ func (s *EndpointService) GetEndpointsBySubdomainID(subdomainID uint, page, page
 		Msg("Endpoints by subdomain ID retrieved successfully")
 
 	return response, nil
-}
-
-// extractHostFromURL 从 URL 中提取主机名（不含端口）
-// 例如: https://api.example.com:8080/path -> api.example.com
-func extractHostFromURL(rawURL string) (string, error) {
-	u, err := url.Parse(rawURL)
-	if err != nil {
-		return "", fmt.Errorf("invalid URL: %w", err)
-	}
-	if host := u.Hostname(); host == "" {
-		return "", fmt.Errorf("URL has no host")
-	}
-	return u.Hostname(), nil
-}
-
-// extractRootDomain 使用 Public Suffix List 提取可注册的根域名（eTLD+1）
-// 例如:
-//
-//	api.example.com -> example.com
-//	www.example.co.uk -> example.co.uk
-//	example.com -> example.com
-//
-// 若解析失败则回退返回原 host
-func extractRootDomain(host string) string {
-	if etld1, err := publicsuffix.EffectiveTLDPlusOne(host); err == nil {
-		return etld1
-	}
-	// 回退：直接返回原始 host（例如 IP 或非标准域名）
-	return host
 }
 
 // BatchDeleteEndpoints 批量删除端点
