@@ -43,6 +43,7 @@
     "lucide-react": "^0.544.0",
     "next": "15.5.4",
     "next-themes": "^0.4.6",
+    "nextjs-toploader": "^3.9.17",
     "psl": "^1.15.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",

@@ -5,6 +5,7 @@ import type { Metadata } from "next"
 // 导入全局样式文件
 import "./globals.css"
 import { Suspense } from "react"
+import NextTopLoader from "nextjs-toploader"
 import { QueryProvider } from "@/components/providers/query-provider"
 import { ThemeProvider } from "@/components/providers/theme-provider"
 import { Noto_Sans_SC } from "next/font/google"
@@ -54,6 +55,18 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          {/* 顶部路由加载进度条 - 自动检测路由变化 */}
+          <NextTopLoader
+            color="#6b7280"
+            height={3}
+            showSpinner={false}
+            speed={200}
+            easing="ease"
+            crawlSpeed={300}
+            initialPosition={0.3}
+            shadow="0 0 10px rgba(107, 114, 128, 0.4), 0 0 5px rgba(107, 114, 128, 0.3)"
+            zIndex={99999}
+          />
           {/* 使用 QueryProvider 提供 React Query 功能 */}
           <QueryProvider>
             {/* SidebarProvider 提供侧边栏的上下文状态管理 */}

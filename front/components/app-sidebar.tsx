@@ -25,13 +25,13 @@ import {
 } from "@tabler/icons-react"
 // 导入路径名 hook
 import { usePathname } from "next/navigation"
+// 导入 Link 组件
+import Link from "next/link"
 
 // 导入自定义导航组件
 import { NavDocuments } from "@/components/nav-documents"
 import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
-// 导入 Next.js 路由 hook
-import { useRouter } from "next/navigation"
 // 导入侧边栏 UI 组件
 import {
   Sidebar,
@@ -171,12 +171,6 @@ const data = {
  */
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname()
-  const router = useRouter()
-  
-  // 简单的导航函数，直接使用 Next.js router
-  const navigate = (href: string) => {
-    router.push(href)
-  }
 
   return (
     // collapsible="offcanvas" 表示侧边栏可以折叠为画布外模式
@@ -190,13 +184,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               data-[slot=sidebar-menu-button]:!p-1.5 设置内边距
             */}
             <SidebarMenuButton 
-              onClick={() => navigate("/")} 
-              className="data-[slot=sidebar-menu-button]:!p-1.5 cursor-pointer"
+              asChild
+              className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
-              {/* 公司 Logo 图标 */}
-              <IconInnerShadowTop className="!size-5" />
-              {/* 公司名称 */}
-              <span className="text-base font-semibold">Acme Inc.</span>
+              <Link href="/">
+                {/* 公司 Logo 图标 */}
+                <IconInnerShadowTop className="!size-5" />
+                {/* 公司名称 */}
+                <span className="text-base font-semibold">Acme Inc.</span>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -217,13 +213,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   // 无子菜单的普通菜单项
                   return (
                     <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton
-                        isActive={isActive}
-                        onClick={() => navigate(item.url)}
-                        className="cursor-pointer"
-                      >
-                        <item.icon />
-                        <span>{item.title}</span>
+                      <SidebarMenuButton asChild isActive={isActive}>
+                        <Link href={item.url}>
+                          <item.icon />
+                          <span>{item.title}</span>
+                        </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   )
@@ -249,14 +243,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                           {item.items?.map((subItem) => (
                             <SidebarMenuSubItem key={subItem.title}>
                               <SidebarMenuSubButton
-                                href={subItem.url}
+                                asChild
                                 isActive={pathname === subItem.url}
-                                onClick={(e) => {
-                                  e.preventDefault()
-                                  navigate(subItem.url)
-                                }}
                               >
-                                <span>{subItem.title}</span>
+                                <Link href={subItem.url}>
+                                  <span>{subItem.title}</span>
+                                </Link>
                               </SidebarMenuSubButton>
                             </SidebarMenuSubItem>
                           ))}
