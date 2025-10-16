@@ -225,17 +225,19 @@ export function OrganizationDetailView({ organizationId }: OrganizationDetailVie
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>确认移除域名</AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2">
-              <p>确定要从此组织中移除域名吗？</p>
-              {domainToRemove && (
-                <div className="p-3 bg-muted rounded-md">
-                  <p className="font-medium text-foreground">{domainToRemove.name}</p>
-                  <p className="text-sm text-muted-foreground mt-1">ID: {domainToRemove.id}</p>
-                </div>
-              )}
-              <p className="text-sm">
-                <strong>注意：</strong>如果该域名不再归属于任何组织，系统将自动删除该域名及其所有关联数据（子域名、端点等）。
-              </p>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>确定要从此组织中移除域名吗？</p>
+                {domainToRemove && (
+                  <div className="p-3 bg-muted rounded-md">
+                    <p className="font-medium text-foreground">{domainToRemove.name}</p>
+                    <p className="text-sm text-muted-foreground mt-1">ID: {domainToRemove.id}</p>
+                  </div>
+                )}
+                <p className="text-sm">
+                  <strong>注意：</strong>如果该域名不再归属于任何组织，系统将自动删除该域名及其所有关联数据（子域名、端点等）。
+                </p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

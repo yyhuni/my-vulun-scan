@@ -63,7 +63,7 @@ export default function RootLayout({
             speed={200}
             easing="ease"
             crawlSpeed={300}
-            initialPosition={0.3}
+            initialPosition={0.4}
             shadow="0 0 10px rgba(107, 114, 128, 0.4), 0 0 5px rgba(107, 114, 128, 0.3)"
             zIndex={99999}
           />
