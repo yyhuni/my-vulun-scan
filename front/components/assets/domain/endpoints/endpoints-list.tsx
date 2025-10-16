@@ -56,7 +56,7 @@ export function EndpointsList({
     data: endpointsResponse,
     isLoading,
     error,
-    refetch
+    refetch,
   } = useEndpointsByDomain(domainId ? parseInt(domainId) : 0, {
     page: pagination.pageIndex + 1, // API 使用 1-based 页码
     pageSize: pagination.pageSize,
@@ -129,8 +129,7 @@ export function EndpointsList({
 
   // 处理添加成功回调
   const handleAddSuccess = (newEndpoints: Endpoint[]) => {
-    // 刷新数据
-    refetch()
+    // React Query 会通过 invalidateQueries 自动刷新数据，无需手动 refetch
     setShowAddDialog(false)
   }
 

@@ -1,7 +1,8 @@
 "use client"
 
 import React from "react"
-import { useRouter, usePathname, useParams } from "next/navigation"
+import { usePathname, useParams } from "next/navigation"
+import Link from "next/link"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Globe } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -17,7 +18,6 @@ export default function DomainLayout({
   children: React.ReactNode
 }) {
   const { id } = useParams<{ id: string }>()
-  const router = useRouter()
   const pathname = usePathname()
 
   // 使用 React Query 获取域名数据
@@ -34,17 +34,11 @@ export default function DomainLayout({
     return ""
   }
 
-  // 处理 Tab 切换
-  const handleTabChange = (value: string) => {
-    const basePath = `/assets/domain/${id}`
-    switch (value) {
-      case "subdomains":
-        router.push(`${basePath}/subdomains`)
-        break
-      case "endpoints":
-        router.push(`${basePath}/endpoints`)
-        break
-    }
+  // Tab 路径映射
+  const basePath = `/assets/domain/${id}`
+  const tabPaths = {
+    subdomains: `${basePath}/subdomains`,
+    endpoints: `${basePath}/endpoints`,
   }
 
   // 加载状态
@@ -120,16 +114,16 @@ export default function DomainLayout({
         </div>
       </div>
 
-      {/* Tabs 导航 */}
+      {/* Tabs 导航 - 使用 Link 确保触发进度条 */}
       <div className="flex items-center justify-between px-4 lg:px-6">
-        <Tabs
-          value={getActiveTab()}
-          onValueChange={handleTabChange}
-          className="w-full"
-        >
+        <Tabs value={getActiveTab()} className="w-full">
           <TabsList>
-            <TabsTrigger value="subdomains">子域名</TabsTrigger>
-            <TabsTrigger value="endpoints">Endpoint</TabsTrigger>
+            <TabsTrigger value="subdomains" asChild>
+              <Link href={tabPaths.subdomains}>子域名</Link>
+            </TabsTrigger>
+            <TabsTrigger value="endpoints" asChild>
+              <Link href={tabPaths.endpoints}>Endpoint</Link>
+            </TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
