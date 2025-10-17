@@ -102,14 +102,14 @@ type DomainResponseData struct {
 	Description string    `json:"description"`
 }
 
-// GetAllDomainsRequest 获取所有域名请求（支持分页和排序）
-type GetAllDomainsRequest struct {
+// GetDomainsRequest 获取所有域名请求（支持分页和排序）
+type GetDomainsRequest struct {
 	BasePaginationRequest
 	// 允许的排序字段: name, created_at, updated_at
 }
 
-// GetAllDomainsResponse 获取所有域名响应
-type GetAllDomainsResponse struct {
+// GetDomainsResponse 获取所有域名响应
+type GetDomainsResponse struct {
 	Domains []Domain `json:"domains"`
 	BasePaginationResponse
 }

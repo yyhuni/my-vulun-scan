@@ -34,10 +34,10 @@ func (s *ToolService) GetTools(req models.GetToolsRequest) (*models.GetToolsResp
 	// 计算总页数
 	totalPages := int((total + int64(req.PageSize) - 1) / int64(req.PageSize))
 
-	// 构建排序字符串
-	orderClause := req.SortBy + " " + req.SortOrder
+	// 构建排序子句（统一：按更新时间倒序）
+	orderClause := "updated_at desc"
 
-	// 分页查询，支持动态排序
+	// 分页查询
 	offset := (req.Page - 1) * req.PageSize
 	result := s.db.Order(orderClause).Offset(offset).Limit(req.PageSize).Find(&tools)
 	if result.Error != nil {

@@ -10,14 +10,13 @@ export interface SubDomain {
   domain?: Domain
 }
 
+// 后端固定按更新时间降序排列，不支持自定义排序
 export interface GetSubDomainsParams {
   id?: number | string
   domainId?: number
   organizationId?: number
   page?: number
   pageSize?: number
-  sortBy?: 'id' | 'name' | 'created_at' | 'updated_at'  // 使用下划线命名以匹配后端
-  sortOrder?: 'asc' | 'desc'
 }
 
 export interface GetSubDomainsResponse {

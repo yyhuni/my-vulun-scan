@@ -18,12 +18,11 @@ export interface Endpoint {
   updatedAt: string               // 后端: updated_at
 }
 
-// Endpoint 列表查询请求参数
+// Endpoint 列表请求参数
+// 后端固定按更新时间降序排列
 export interface GetEndpointsRequest {
   page?: number
   pageSize?: number
-  sortBy?: string
-  sortOrder?: string
 }
 
 // Endpoint 列表响应数据

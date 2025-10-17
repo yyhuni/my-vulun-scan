@@ -127,16 +127,15 @@ export class DomainService {
   /**
    * 获取组织的域名列表
    * @param organizationId - 组织ID
-   * @param params - 分页和排序参数
+   * @param params - 分页参数
    * @returns Promise<ApiResponse<GetDomainsResponse>>
+   * @description 后端固定按更新时间降序排列
    */
   static async getDomainsByOrgId(
     organizationId: number,
     params?: {
       page?: number
       pageSize?: number
-      sortBy?: string
-      sortOrder?: string
     }
   ): Promise<ApiResponse<GetDomainsResponse>> {
     const response = await api.get<ApiResponse<GetDomainsResponse>>(
@@ -145,8 +144,6 @@ export class DomainService {
         params: {
           page: params?.page || 1,
           pageSize: params?.pageSize || 10,
-          sortBy: params?.sortBy || 'updated_at',
-          sortOrder: params?.sortOrder || 'desc',
         }
       }
     )
@@ -155,16 +152,15 @@ export class DomainService {
 
   /**
    * 获取所有域名列表
-   * @param params - 分页和排序参数
+   * @param params - 分页参数
    * @returns Promise<ApiResponse<GetAllDomainsResponse>>
+   * @description 后端固定按更新时间降序排列，不支持自定义排序
    */
   static async getAllDomains(params?: GetAllDomainsParams): Promise<ApiResponse<GetAllDomainsResponse>> {
     const response = await api.get<ApiResponse<GetAllDomainsResponse>>('/domains', {
       params: {
         page: params?.page || 1,
         pageSize: params?.pageSize || 10,
-        sortBy: params?.sortBy || 'updated_at',
-        sortOrder: params?.sortOrder || 'desc',
       }
     })
     return response.data

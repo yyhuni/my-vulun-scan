@@ -33,26 +33,27 @@ export function useDomain(id: number) {
 }
 
 // 获取组织的域名列表
-export function useDomainsByOrgId(params: {
-  organizationId: number
-  page?: number
-  pageSize?: number
-  sortBy?: string
-  sortOrder?: string
-}) {
+// 后端固定按更新时间降序排列
+export function useOrganizationDomains(
+  organizationId: number,
+  params?: {
+    page?: number
+    pageSize?: number
+  },
+  options?: {
+    enabled?: boolean
+  }
+) {
   return useQuery({
-    queryKey: ['organizations', 'detail', params.organizationId, 'domains', {
-      page: params.page,
-      pageSize: params.pageSize,
-      sortBy: params.sortBy,
-      sortOrder: params.sortOrder,
+    queryKey: ['organizations', 'detail', organizationId, 'domains', {
+      page: params?.page,
+      pageSize: params?.pageSize,
     }],
-    queryFn: () => DomainService.getDomainsByOrgId(params.organizationId, {
-      page: params.page,
-      pageSize: params.pageSize,
-      sortBy: params.sortBy,
-      sortOrder: params.sortOrder,
+    queryFn: () => DomainService.getDomainsByOrgId(organizationId, {
+      page: params?.page || 1,
+      pageSize: params?.pageSize || 10,
     }),
+    enabled: options?.enabled !== undefined ? options.enabled : true,
     select: (response) => {
       if (response.state === 'success' && response.data) {
         return {
@@ -67,7 +68,6 @@ export function useDomainsByOrgId(params: {
       }
       throw new Error(response.message || '获取域名列表失败')
     },
-    enabled: !!params.organizationId,
   })
 }
 
@@ -336,13 +336,12 @@ export function useUpdateDomain() {
 }
 
 // 获取所有域名列表
+// 后端固定按更新时间降序排列，不支持自定义排序
 export function useAllDomains(params: GetAllDomainsParams = {}) {
   return useQuery({
     queryKey: ['domains', 'all', {
       page: params.page,
       pageSize: params.pageSize,
-      sortBy: params.sortBy,
-      sortOrder: params.sortOrder,
     }],
     queryFn: () => DomainService.getAllDomains(params),
     select: (response) => {

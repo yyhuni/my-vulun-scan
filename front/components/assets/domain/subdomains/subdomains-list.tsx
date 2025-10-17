@@ -56,8 +56,6 @@ export function SubdomainsList({
     domainId,
     page: pagination.pageIndex + 1, // 转换为 1-based
     pageSize: pagination.pageSize,
-    sortBy: "updated_at", // 直接使用数据库字段名，避免混淆
-    sortOrder: "desc"
   })
 
   // 如果是通过 domainId 访问，需要先获取域名信息来提取 organizationId
@@ -79,8 +77,6 @@ export function SubdomainsList({
     {
       page: 1,
       pageSize: 1000, // 获取所有域名
-      sortBy: "name",
-      sortOrder: "asc"
     },
     {
       enabled: !!effectiveOrganizationId // 只有当有有效的 organizationId 时才启用

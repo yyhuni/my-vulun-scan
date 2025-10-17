@@ -400,19 +400,19 @@ func BatchDeleteDomainsDirect(c *gin.Context) {
 	})
 }
 
-// GetAllDomains 获取所有域名列表
+// GetDomains 获取所有域名列表
 // @Summary 获取所有域名列表
 // @Description 获取系统中的所有域名，支持分页。固定按更新时间降序排列
 // @Tags 域名管理
 // @Produce json
 // @Param page query int false "页码" default(1)
 // @Param page_size query int false "每页数量" default(10)
-// @Success 200 {object} models.APIResponse{data=models.GetAllDomainsResponse} "获取成功"
+// @Success 200 {object} models.APIResponse{data=models.GetDomainsResponse} "获取成功"
 // @Failure 400 {object} models.APIResponse "请求参数错误"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
 // @Router /domains [get]
-func GetAllDomains(c *gin.Context) {
-	var req models.GetAllDomainsRequest
+func GetDomains(c *gin.Context) {
+	var req models.GetDomainsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
 		return
@@ -433,7 +433,7 @@ func GetAllDomains(c *gin.Context) {
 	}
 
 	service := services.NewDomainService()
-	result, err := service.GetAllDomains(req)
+	result, err := service.GetDomains(req)
 	if err != nil {
 		response.InternalServerErrorResponse(c, "获取域名列表失败: "+err.Error())
 		return

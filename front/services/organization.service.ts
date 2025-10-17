@@ -9,22 +9,17 @@ export class OrganizationService {
   // ========== 组织基础操作 ==========
 
   /**
-   * 获取组织列表(支持分页和排序)
+   * 获取组织列表
    * @param params - 查询参数对象
    * @param params.page - 当前页码，1-based
    * @param params.pageSize - 分页大小
-   * @param params.sortBy - 排序字段：id, name, created_at, updated_at（使用下划线命名）
-   * @param params.sortOrder - 排序方向：asc, desc
    * @returns Promise<ApiResponse<OrganizationsResponse<Organization>>>
+   * @description 后端固定按更新时间降序排列，不支持自定义排序
    */
   static async getOrganizations(params?: {
     page?: number
     pageSize?: number
-    sortBy?: string
-    sortOrder?: 'asc' | 'desc'
   }): Promise<ApiResponse<OrganizationsResponse<Organization>>> {
-    // ✅ 使用 params 对象，拦截器会自动将键名从驼峰转换为下划线（如 sortBy → sort_by）
-    // ⚠️ 注意：值本身不会转换，需要直接使用后端期望的格式（如 "updated_at"）
     const response = await api.get<ApiResponse<OrganizationsResponse<Organization>>>(
       '/organizations',
       { params }
@@ -51,8 +46,6 @@ export class OrganizationService {
   static async getOrganizationDomains(id: string | number, params?: {
     page?: number
     pageSize?: number
-    sortBy?: string
-    sortOrder?: 'asc' | 'desc'
   }): Promise<ApiResponse<any>> {
     const response = await api.get<ApiResponse<any>>(
       `/organizations/${id}/domains`,

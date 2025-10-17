@@ -61,11 +61,10 @@ export function DomainList() {
   })
 
   // 获取域名列表数据
+  // 后端固定按更新时间降序排列
   const { data, isLoading, error } = useAllDomains({
     page: pagination.pageIndex + 1, // 后端从 1 开始计数
     pageSize: pagination.pageSize,
-    sortBy: 'updated_at',  // 注意：这里传给后端的参数保持下划线，请求拦截器会处理
-    sortOrder: 'desc',
   })
 
   // 删除 hook（单个和批量删除统一使用批量删除 API）

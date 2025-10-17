@@ -23,8 +23,6 @@ export default function ToolsPage() {
   const { data, isLoading: toolsLoading, error } = useTools({
     page: 1,
     pageSize: 100, // 获取所有工具
-    sortBy: 'name',
-    sortOrder: 'asc'
   })
 
   const tools = data?.tools || []

@@ -21,8 +21,8 @@ func SetupToolRoutes(api *gin.RouterGroup) {
 	// 工具路由
 	tools := api.Group("/tools")
 	{
-		// 获取工具列表 - 支持分页和排序
-		// 示例：GET /tools?page=1&page_size=10&sort_by=name&sort_order=asc
+		// 获取工具列表 - 支持分页，固定按更新时间降序排列
+		// 示例：GET /tools?page=1&page_size=10
 		tools.GET("", handlers.GetTools)
 
 		// 创建工具

@@ -10,13 +10,11 @@ import (
 
 // GetTools 获取工具列表
 // @Summary 获取工具列表
-// @Description 获取所有安全扫描工具列表，支持分页和排序
+// @Description 获取所有安全扫描工具列表，支持分页。固定按更新时间降序排列
 // @Tags 工具管理
 // @Produce json
 // @Param page query int false "页码" default(1) example(1)
 // @Param page_size query int false "每页数量" default(10) example(10)
-// @Param sort_by query string false "排序字段" default(updated_at) Enums(id, name, created_at, updated_at)
-// @Param sort_order query string false "排序方向" default(desc) Enums(asc, desc)
 // @Success 200 {object} models.APIResponse{data=models.GetToolsResponse} "获取成功"
 // @Failure 422 {object} models.APIResponse "请求参数验证失败"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
@@ -37,12 +35,6 @@ func GetTools(c *gin.Context) {
 	}
 	if req.PageSize <= 0 {
 		req.PageSize = 10
-	}
-	if req.SortBy == "" {
-		req.SortBy = "updated_at"
-	}
-	if req.SortOrder == "" {
-		req.SortOrder = "desc"
 	}
 
 	result, err := service.GetTools(req)

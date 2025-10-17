@@ -20,7 +20,15 @@ export const subdomainKeys = {
 // 获取子域名列表（根据参数自动选择API端点）
 export function useSubdomains(params: PaginationParams & { organizationId?: string; domainId?: string }) {
   return useQuery({
-    queryKey: subdomainKeys.list(params),
+    queryKey: [
+      'subdomains',
+      params.organizationId ? { organizationId: params.organizationId } : null,
+      params.domainId ? { domainId: params.domainId } : null,
+      {
+        page: params.page,
+        pageSize: params.pageSize,
+      }
+    ],
     queryFn: async () => {
       // 根据参数选择不同的API端点
       if (params.organizationId) {
@@ -30,8 +38,6 @@ export function useSubdomains(params: PaginationParams & { organizationId?: stri
           {
             page: params.page,
             pageSize: params.pageSize,
-            sortBy: params.sortBy,
-            sortOrder: params.sortOrder
           }
         )
       } else if (params.domainId) {
@@ -41,8 +47,6 @@ export function useSubdomains(params: PaginationParams & { organizationId?: stri
           {
             page: params.page,
             pageSize: params.pageSize,
-            sortBy: params.sortBy,
-            sortOrder: params.sortOrder
           }
         )
       } else {
@@ -50,8 +54,6 @@ export function useSubdomains(params: PaginationParams & { organizationId?: stri
         return SubDomainService.getSubDomains({
           page: params.page,
           pageSize: params.pageSize,
-          sortBy: params.sortBy,
-          sortOrder: params.sortOrder
         })
       }
     },

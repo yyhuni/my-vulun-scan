@@ -59,11 +59,10 @@ export interface CategoriesResponse {
 }
 
 // 工具查询参数
+// 后端固定按更新时间降序排列，不支持自定义排序
 export interface GetToolsParams {
   page?: number
   pageSize?: number
-  sortBy?: string
-  sortOrder?: 'asc' | 'desc'
 }
 
 // 工具过滤类型

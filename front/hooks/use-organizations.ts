@@ -18,23 +18,25 @@ export const organizationKeys = {
  * 功能：
  * - 自动管理加载状态
  * - 自动错误处理
- * - 支持分页和排序
+ * - 支持分页
  * - 自动缓存和重新验证
  * - 支持条件查询（enabled 选项）
  */
+// 后端固定按更新时间降序排列，不支持自定义排序
 export function useOrganizations(
-  params?: {
+  params: {
     page?: number
     pageSize?: number
-    sortBy?: string
-    sortOrder?: 'asc' | 'desc'
-  },
+  } = {},
   options?: {
     enabled?: boolean
   }
 ) {
   return useQuery({
-    queryKey: organizationKeys.list(params),
+    queryKey: ['organizations', {
+      page: params.page || 1,
+      pageSize: params.pageSize || 10,
+    }],
     queryFn: () => OrganizationService.getOrganizations(params || {}),
     select: (response) => {
       if (response.state === 'success' && response.data) {

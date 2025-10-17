@@ -651,7 +651,7 @@ func (s *DomainService) BatchDeleteDomainsDirect(domainIDs []uint) (int, error) 
 	return int(deletedCount), nil
 }
 
-// GetAllDomains 获取所有域名列表(支持分页和排序)
+// GetDomains 获取所有域名列表(支持分页和排序)
 //
 // 业务逻辑说明：
 // 1. 统计所有域名总数
@@ -660,7 +660,7 @@ func (s *DomainService) BatchDeleteDomainsDirect(domainIDs []uint) (int, error) 
 //
 // 安全考虑：
 // - 排序字段和方向会经过 buildOrderClause 验证，防止 SQL 注入
-func (s *DomainService) GetAllDomains(req models.GetAllDomainsRequest) (*models.GetAllDomainsResponse, error) {
+func (s *DomainService) GetDomains(req models.GetDomainsRequest) (*models.GetDomainsResponse, error) {
 	var domains []models.Domain
 	var total int64
 
@@ -698,7 +698,7 @@ func (s *DomainService) GetAllDomains(req models.GetAllDomainsRequest) (*models.
 		Int("count", len(domains)).
 		Msg("All domains retrieved successfully")
 
-	return &models.GetAllDomainsResponse{
+	return &models.GetDomainsResponse{
 		Domains: domains,
 		BasePaginationResponse: models.BasePaginationResponse{
 			Total:      total,

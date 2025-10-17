@@ -13,14 +13,13 @@ export class SubDomainService {
 
   /**
    * 获取所有子域名列表
+   * @description 后端固定按更新时间降序排列
    * @param params - 查询参数对象
    * @returns Promise<ApiResponse<GetSubDomainsResponse>> - 子域名列表
    */
   static async getSubDomains(params?: {
     page?: number
     pageSize?: number
-    sortBy?: string
-    sortOrder?: string
   }): Promise<ApiResponse<GetSubDomainsResponse>> {
     const response = await api.get<ApiResponse<GetSubDomainsResponse>>(
       '/subdomains',
@@ -40,7 +39,8 @@ export class SubDomainService {
   }
 
   /**
-   * 根据域名ID获取子域名列表
+   * 获取指定域名的子域名列表
+   * @description 后端固定按更新时间降序排列
    * @param domainId - 域名ID
    * @param params - 查询参数
    * @returns Promise<ApiResponse<GetSubDomainsResponse>> - 子域名列表
@@ -48,8 +48,6 @@ export class SubDomainService {
   static async getSubDomainsByDomain(domainId: number, params?: {
     page?: number
     pageSize?: number
-    sortBy?: string
-    sortOrder?: string
   }): Promise<ApiResponse<GetSubDomainsResponse>> {
     const response = await api.get<ApiResponse<GetSubDomainsResponse>>(
       `/domains/${domainId}/subdomains`,
@@ -59,7 +57,8 @@ export class SubDomainService {
   }
 
   /**
-   * 根据组织ID获取子域名列表
+   * 获取指定组织的子域名列表
+   * @description 后端固定按更新时间降序排列
    * @param organizationId - 组织ID
    * @param params - 查询参数
    * @returns Promise<ApiResponse<GetSubDomainsResponse>> - 子域名列表
@@ -67,8 +66,6 @@ export class SubDomainService {
   static async getSubDomainsByOrganization(organizationId: number, params?: {
     page?: number
     pageSize?: number
-    sortBy?: string
-    sortOrder?: string
   }): Promise<ApiResponse<GetSubDomainsResponse>> {
     const response = await api.get<ApiResponse<GetSubDomainsResponse>>(
       `/organizations/${organizationId}/subdomains`,

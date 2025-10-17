@@ -25,7 +25,7 @@ type Tool struct {
 // GetToolsRequest 获取工具列表请求
 type GetToolsRequest struct {
 	BasePaginationRequest
-	// 允许的排序字段：id, name, created_at, updated_at
+	// 注意：排序暂未实现，固定按 updated_at desc
 }
 
 // GetToolsResponse 获取工具列表响应

@@ -12,13 +12,12 @@ export class ToolService {
     return response.data
   }
   /**
-   * 获取工具列表(支持分页和排序)
+   * 获取工具列表
    * @param params - 查询参数对象
    * @param params.page - 当前页码，1-based
    * @param params.pageSize - 分页大小
-   * @param params.sortBy - 排序字段：id, name, created_at, updated_at
-   * @param params.sortOrder - 排序方向：asc, desc
    * @returns Promise<ApiResponse<ToolsResponse>>
+   * @description 后端固定按更新时间降序排列，不支持自定义排序
    */
   static async getTools(params?: GetToolsParams): Promise<ApiResponse<ToolsResponse>> {
     const response = await api.get<ApiResponse<ToolsResponse>>(

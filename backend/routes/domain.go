@@ -12,9 +12,9 @@ import (
 func SetupDomainRoutes(api *gin.RouterGroup) {
 	domains := api.Group("/domains")
 	{
-		// 获取所有域名列表 - 支持分页和排序
-		// 示例：GET /domains?page=1&page_size=10&sort_by=name&sort_order=asc
-		domains.GET("", handlers.GetAllDomains)
+		// 获取所有域名列表 - 支持分页，固定按更新时间降序排列
+		// 示例：GET /domains?page=1&page_size=10
+		domains.GET("", handlers.GetDomains)
 
 		// 批量创建域名 - 支持一次创建多个域名并关联到指定组织
 		// 请求体示例：{

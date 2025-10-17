@@ -31,11 +31,10 @@ export interface GetDomainsResponse {
 }
 
 // 获取所有域名请求参数
+// 后端固定按更新时间降序排列，不支持自定义排序
 export interface GetAllDomainsParams {
   page?: number
   pageSize?: number
-  sortBy?: string
-  sortOrder?: string
 }
 
 // 获取所有域名响应
