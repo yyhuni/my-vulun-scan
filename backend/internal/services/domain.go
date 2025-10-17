@@ -28,202 +28,122 @@ func NewDomainService() *DomainService {
 // CreateDomains 批量创建域名并关联到组织
 //
 // 前置处理（Handler 层）：
+// - 域名已标准化（统一小写、去空格）和验证（符合 DNS 规范）
 // - 域名已去重（相同域名只保留一个）
-// - 域名已标准化（统一转为小写并去除空格）
-// - 域名格式已验证（符合 DNS 规范）
 //
-// 业务逻辑说明：
-// 1. 验证目标组织是否存在（避免无效关联）
-// 2. 批量查询已存在的域名（1次查询代替N次）
-// 3. 批量创建新域名（1次插入代替N次）
-// 4. 为新域名自动创建根子域名（IsRoot=true）
-// 5. 批量查询已存在的关联关系（1次查询代替N次）
-// 6. 批量创建新关联关系（1次插入代替N次）
-// 7. 返回统计信息（总数、新建数、已存在数）
-//
-// 设计考虑：
-// - 使用事务确保数据一致性：要么全部成功，要么全部回滚
-// - 支持幂等性：重复提交相同域名不会报错，只会跳过
-// - 域名可以被多个组织共享，通过中间表 organization_domains 实现多对多关系
-// - 使用 map 结构快速查找，避免嵌套循环
-//
-// 注意事项：
-// - 如果组织不存在会立即返回错误
-// - 事务失败会自动回滚，不会产生脏数据
+// 核心流程：
+// 1. COUNT 验证组织
+// 2. COUNT 统计插入前数量
+// 3. INSERT domains (OnConflict)
+// 4. SELECT 查询 domain IDs + 计算新建数
+// 5. INSERT subdomains (OnConflict)
+// 6. INSERT organization_domains (OnConflict)
 func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) (*models.CreateDomainsResponseData, error) {
 
-	var actualCreatedCount int  // 实际新创建的域名数量（after - before）
-	var requestedDomainCount int // 请求中的唯一域名数量（去重后）
-
-	// 步骤1: 验证组织是否存在
-	var organization models.Organization
-	if err := s.db.First(&organization, "id = ?", req.OrgID).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			log.Error().Uint("organization_id", req.OrgID).Msg("Organization not found")
-			return nil, fmt.Errorf("组织不存在")
-		}
-		log.Error().Err(err).Msg("Failed to query organization")
-		return nil, err
+	// 步骤1: 验证组织存在性
+	var orgExists int64
+	if err := s.db.Model(&models.Organization{}).Where("id = ?", req.OrgID).Count(&orgExists).Error; err != nil || orgExists == 0 {
+		log.Error().Uint("organization_id", req.OrgID).Msg("Organization not found or query failed")
+		return nil, fmt.Errorf("组织不存在")
 	}
 
-	// 步骤2: 去重（业务逻辑）
-	// Handler 层传入的是规范化和验证过的域名，这里进行去重处理
-	requestedDomainMap := make(map[string]models.DomainDetail)
+	// 步骤2: 去重请求中的域名（FIFO 策略：保留第一次出现）
+	domainMap := make(map[string]models.DomainDetail)
 	for _, detail := range req.Domains {
-		// 只保留第一次出现的域名（FIFO策略）
-		if _, exists := requestedDomainMap[detail.Name]; !exists {
-			requestedDomainMap[detail.Name] = detail
+		if _, exists := domainMap[detail.Name]; !exists {
+			domainMap[detail.Name] = detail
 		}
 	}
-	requestedDomainCount = len(requestedDomainMap)
 
 	// 步骤3: 使用事务处理批量创建和关联
+	var countBefore int64
+	var countCreated int
+
 	err := s.db.Transaction(func(tx *gorm.DB) error {
-		// 步骤3.1: 收集所有唯一域名名称
-		requestedDomainNames := make([]string, 0, len(requestedDomainMap))
-		for name := range requestedDomainMap {
-			requestedDomainNames = append(requestedDomainNames, name)
+		// 步骤3.1: 提取域名列表
+		names := make([]string, 0, len(domainMap))
+		for name := range domainMap {
+			names = append(names, name)
 		}
 
-		// 步骤3.2: 批量查询已存在的域名（1次查询）
-		// 统计口径：记录插入前的域名数量（before）
-		var domainsBeforeUpsert []models.Domain
-		if err := tx.Where("name IN ?", requestedDomainNames).Find(&domainsBeforeUpsert).Error; err != nil {
-			log.Error().Err(err).Msg("Failed to query existing domains")
+		// 步骤3.2: 统计插入前的域名数量
+		if err := tx.Model(&models.Domain{}).Where("name IN ?", names).Count(&countBefore).Error; err != nil {
+			log.Error().Err(err).Msg("Failed to count existing domains")
 			return err
 		}
-		domainCountBefore := len(domainsBeforeUpsert) // 插入前已有的域名数量
 
-		// 步骤3.3: 构建已存在域名的映射（name -> Domain）
-		finalDomainMap := make(map[string]models.Domain)
-		finalDomainIDs := make([]uint, 0, len(domainsBeforeUpsert))
-		for _, domain := range domainsBeforeUpsert {
-			finalDomainMap[domain.Name] = domain
-			finalDomainIDs = append(finalDomainIDs, domain.ID)
+		// 步骤3.3: 准备并插入所有域名（OnConflict 自动忽略已存在）
+		domains := make([]models.Domain, 0, len(domainMap))
+		for name, detail := range domainMap {
+			domains = append(domains, models.Domain{
+				Name:        name,
+				Description: detail.Description,
+			})
 		}
 
-		// 步骤3.4: 找出需要创建的新域名
-		newDomainsToCreate := make([]models.Domain, 0, len(requestedDomainMap))
-		for domainName, detail := range requestedDomainMap {
-			// 检查域名是否已存在
-			if _, exists := finalDomainMap[domainName]; !exists {
-				newDomainsToCreate = append(newDomainsToCreate, models.Domain{
-					Name:        domainName, // Handler 层已规范化
-					Description: detail.Description,
-				})
-			}
-		}
-
-		// 步骤3.5: 批量创建新域名（1次插入，使用 Upsert 确保并发安全）
-		if len(newDomainsToCreate) > 0 {
-			// 使用 OnConflict DoNothing 忽略重复（并发场景）
+		if len(domains) > 0 {
 			if err := tx.Clauses(clause.OnConflict{
-				Columns:   []clause.Column{{Name: "name"}}, // 域名唯一键
-				DoNothing: true,                            // 遇到冲突就忽略
-			}).Create(&newDomainsToCreate).Error; err != nil {
-				log.Error().Err(err).Int("count", len(newDomainsToCreate)).Msg("Failed to batch create domains")
+				Columns:   []clause.Column{{Name: "name"}},
+				DoNothing: true,
+			}).Create(&domains).Error; err != nil {
+				log.Error().Err(err).Int("count", len(domains)).Msg("Failed to batch create domains")
 				return err
 			}
-			// 注意：Upsert 后 newDomainsToCreate 可能没有 ID（被忽略的记录）
-			// 使用 Debug 级别，避免事务回滚时误导（真正的成功日志在事务外）
-			log.Debug().Int("count", len(newDomainsToCreate)).Msg("Domains upsert completed in transaction")
-
-			// 步骤3.5.1: 重新查询所有域名（包括并发创建的），确保拿到完整ID
-			// 统计口径：记录插入后的域名数量（after）
-			var allDomainsAfterUpsert []models.Domain
-			if err := tx.Where("name IN ?", requestedDomainNames).Find(&allDomainsAfterUpsert).Error; err != nil {
-				log.Error().Err(err).Msg("Failed to re-query all domains")
-				return err
-			}
-			domainCountAfter := len(allDomainsAfterUpsert) // 插入后的域名数量
-
-			// 清空并重新构建映射（确保包含所有域名，包括并发创建的）
-			finalDomainMap = make(map[string]models.Domain)
-			finalDomainIDs = make([]uint, 0, len(allDomainsAfterUpsert))
-			for _, domain := range allDomainsAfterUpsert {
-				finalDomainMap[domain.Name] = domain
-				finalDomainIDs = append(finalDomainIDs, domain.ID)
-			}
-
-			// 统计口径：新建数量 = 插入后数量 - 插入前数量（after - before）
-			// 这样可以准确统计实际新创建的域名数，包括并发场景下的真实情况
-			actualCreatedCount = domainCountAfter - domainCountBefore
-
-			// 步骤3.5.2: 为每个新创建的域名自动创建根子域名
-			// 预分配切片容量，避免动态扩容带来的性能开销
-			// 只为本次新创建的域名（不在 domainsBeforeUpsert 中的）创建根子域名
-			rootSubdomainsToCreate := make([]models.SubDomain, 0)
-			for _, domain := range allDomainsAfterUpsert {
-				// 检查是否是新创建的域名
-				isNewlyCreated := true
-				for _, existingDomain := range domainsBeforeUpsert {
-					if existingDomain.ID == domain.ID {
-						isNewlyCreated = false
-						break
-					}
-				}
-				if !isNewlyCreated {
-					continue
-				}
-				
-				rootSubdomainsToCreate = append(rootSubdomainsToCreate, models.SubDomain{
-					Name:     domain.Name, // 根子域名与域名同名
-					DomainID: domain.ID,
-					IsRoot:   true, // 标记为根子域名，受保护不允许删除
-				})
-			}
-
-			// 批量创建根子域名（使用 Upsert 确保并发安全）
-			if len(rootSubdomainsToCreate) > 0 {
-				if err := tx.Clauses(clause.OnConflict{
-					Columns:   []clause.Column{{Name: "domain_id"}, {Name: "name"}}, // 复合唯一键
-					DoNothing: true,                                                  // 遇到冲突就忽略
-				}).Create(&rootSubdomainsToCreate).Error; err != nil {
-					log.Error().Err(err).Int("count", len(rootSubdomainsToCreate)).Msg("Failed to create root subdomains")
-					return err
-				}
-				// 使用 Debug 级别，避免事务回滚时误导（真正的成功日志在事务外）
-				log.Debug().Int("count", len(rootSubdomainsToCreate)).Msg("Root subdomains upsert completed in transaction")
-			}
+			log.Debug().Int("count", len(domains)).Msg("Domains upsert completed")
 		}
 
-		// 步骤3.6: 批量创建组织-域名关联（使用 Upsert，无需提前查询）
-		// 为所有域名创建关联记录
-		orgDomainAssociationsToCreate := make([]models.OrganizationDomain, 0, len(requestedDomainMap))
-		for domainName := range requestedDomainMap {
-			// 检查域名是否存在于 map 中
-			domain, exists := finalDomainMap[domainName]
-			if !exists {
-				// 理论上不应该发生，因为前面已经创建了所有域名
-				// 但为了安全，记录错误并跳过
-				log.Error().
-					Str("domain", domainName).
-					Uint("organization_id", req.OrgID).
-					Msg("Domain not found in map, this should not happen")
-				continue
-			}
+		// 步骤3.4: 查询所有域名获取 ID（包括已存在的和新创建的）
+		var allDomains []models.Domain
+		if err := tx.Where("name IN ?", names).Find(&allDomains).Error; err != nil {
+			log.Error().Err(err).Msg("Failed to query all domains")
+			return err
+		}
 
-			// 添加到待创建列表（不管是否已存在关联，让 Upsert 处理）
-			orgDomainAssociationsToCreate = append(orgDomainAssociationsToCreate, models.OrganizationDomain{
+		// 计算实际新创建的域名数量
+		countCreated = len(allDomains) - int(countBefore)
+
+		// 步骤3.5: 为所有域名创建根子域名（OnConflict 自动忽略已存在）
+		subdomains := make([]models.SubDomain, 0, len(allDomains))
+		for _, domain := range allDomains {
+			subdomains = append(subdomains, models.SubDomain{
+				Name:     domain.Name,
+				DomainID: domain.ID,
+				IsRoot:   true,
+			})
+		}
+
+		if len(subdomains) > 0 {
+			if err := tx.Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "name"}}, // Name 全局唯一（完整 FQDN）
+				DoNothing: true,
+			}).Create(&subdomains).Error; err != nil {
+				log.Error().Err(err).Int("count", len(subdomains)).Msg("Failed to create root subdomains")
+				return err
+			}
+			log.Debug().Int("count", len(subdomains)).Msg("Root subdomains upsert completed")
+		}
+
+		// 步骤3.6: 批量创建组织-域名关联（OnConflict 自动忽略已存在）
+		associations := make([]models.OrganizationDomain, 0, len(allDomains))
+		for _, domain := range allDomains {
+			associations = append(associations, models.OrganizationDomain{
 				OrganizationID: req.OrgID,
 				DomainID:       domain.ID,
 			})
 		}
 
-		// 批量创建关联（使用 Upsert 忽略重复）
-		if len(orgDomainAssociationsToCreate) > 0 {
+		if len(associations) > 0 {
 			if err := tx.Clauses(clause.OnConflict{
-				Columns:   []clause.Column{{Name: "organization_id"}, {Name: "domain_id"}}, // 复合唯一键
-				DoNothing: true, // 遇到冲突就忽略
-			}).Create(&orgDomainAssociationsToCreate).Error; err != nil {
-				log.Error().Err(err).Int("count", len(orgDomainAssociationsToCreate)).Msg("Failed to batch create associations")
+				Columns:   []clause.Column{{Name: "organization_id"}, {Name: "domain_id"}},
+				DoNothing: true,
+			}).Create(&associations).Error; err != nil {
+				log.Error().Err(err).Int("count", len(associations)).Msg("Failed to batch create associations")
 				return err
 			}
-			// 使用 Debug 级别，避免事务回滚时误导（真正的成功日志在事务外）
 			log.Debug().
 				Uint("organization_id", req.OrgID).
-				Int("count", len(orgDomainAssociationsToCreate)).
-				Msg("Associations upsert completed in transaction")
+				Int("count", len(associations)).
+				Msg("Associations upsert completed")
 		}
 
 		return nil
@@ -233,27 +153,26 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) (*models.
 		return nil, err
 	}
 
-	// 计算已存在的域名数量
-	alreadyExistedCount := requestedDomainCount - actualCreatedCount
+	// 计算统计信息
+	totalRequested := len(domainMap)
+	countExisted := totalRequested - countCreated
 
 	log.Info().
 		Uint("organization_id", req.OrgID).
-		Int("requested_count", requestedDomainCount).
-		Int("actually_created", actualCreatedCount).
-		Int("already_existed", alreadyExistedCount).
+		Int("requested_count", totalRequested).
+		Int("actually_created", countCreated).
+		Int("already_existed", countExisted).
 		Msg("Domains created and associated successfully")
 
 	// 构建响应数据
-	response := &models.CreateDomainsResponseData{
+	return &models.CreateDomainsResponseData{
 		BaseBatchCreateResponseData: models.BaseBatchCreateResponseData{
-			Message:        fmt.Sprintf("成功处理 %d 个域名，新创建 %d 个，%d 个已存在", requestedDomainCount, actualCreatedCount, alreadyExistedCount),
-			TotalRequested: requestedDomainCount,
-			NewCreated:     actualCreatedCount,
-			AlreadyExisted: alreadyExistedCount,
+			Message:        fmt.Sprintf("成功处理 %d 个域名，新创建 %d 个，%d 个已存在", totalRequested, countCreated, countExisted),
+			TotalRequested: totalRequested,
+			NewCreated:     countCreated,
+			AlreadyExisted: countExisted,
 		},
-	}
-
-	return response, nil
+	}, nil
 }
 
 // GetDomainByID 根据ID获取域名信息（包含组织关联信息）

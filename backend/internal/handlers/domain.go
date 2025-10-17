@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	customErrors "vulun-scan-backend/internal/errors"
 	"vulun-scan-backend/internal/models"
@@ -49,7 +50,9 @@ func CreateDomains(c *gin.Context) {
 	}
 
 	// 处理域名数据：过滤空值、规范化、验证
+	// 优化：收集所有错误后一次性返回，提升用户体验
 	validDomains := make([]models.DomainDetail, 0, len(req.Domains))
+	var errorMessages []string
 
 	for _, detail := range req.Domains {
 		// 跳过空域名
@@ -60,14 +63,14 @@ func CreateDomains(c *gin.Context) {
 		// 1. 规范化域名（去除空格、统一小写、移除末尾的点）
 		normalized, err := utils.NormalizeDomain(detail.Name)
 		if err != nil {
-			response.ValidationErrorResponse(c, fmt.Sprintf("域名 [%s] 规范化失败: %s", detail.Name, err.Error()))
-			return
+			errorMessages = append(errorMessages, fmt.Sprintf("域名 [%s] 规范化失败: %s", detail.Name, err.Error()))
+			continue
 		}
 
 		// 2. 验证规范化后的域名
 		if err := utils.ValidateDomain(normalized); err != nil {
-			response.ValidationErrorResponse(c, fmt.Sprintf("域名 [%s] 格式无效: %s", detail.Name, err.Error()))
-			return
+			errorMessages = append(errorMessages, fmt.Sprintf("域名 [%s] 格式无效: %s", detail.Name, err.Error()))
+			continue
 		}
 
 		// 3. 添加到有效列表
@@ -75,6 +78,12 @@ func CreateDomains(c *gin.Context) {
 			Name:        normalized,
 			Description: detail.Description,
 		})
+	}
+
+	// 如果有验证错误，一次性返回所有错误信息
+	if len(errorMessages) > 0 {
+		response.ValidationErrorResponse(c, fmt.Sprintf("发现 %d 个无效域名:\n%s", len(errorMessages), strings.Join(errorMessages, "\n")))
+		return
 	}
 
 	// 检查是否有有效域名
