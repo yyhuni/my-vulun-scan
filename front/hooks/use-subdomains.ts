@@ -128,8 +128,8 @@ export function useCreateSubdomainForDomain() {
           toast.success('操作成功')
         }
         
-        // 刷新相关查询
-        queryClient.invalidateQueries({ queryKey: subdomainKeys.lists() })
+        // 刷新所有子域名相关查询（通配符匹配）
+        queryClient.invalidateQueries({ queryKey: ['subdomains'] })
       } else {
         toast.error(response.message || '创建子域名失败')
       }
@@ -165,7 +165,8 @@ export function useDeleteSubdomain() {
         console.log('后端响应:', response)
         
         toast.success('✅ 删除成功')
-        queryClient.invalidateQueries({ queryKey: subdomainKeys.lists() })
+        // 刷新所有子域名相关查询（通配符匹配）
+        queryClient.invalidateQueries({ queryKey: ['subdomains'] })
       } else {
         toast.error(response.message || '删除子域名失败')
       }
@@ -199,7 +200,8 @@ export function useBatchDeleteSubdomains() {
         
         const { deletedCount } = response.data
         toast.success(`✅ 成功删除 ${deletedCount} 个子域名`)
-        queryClient.invalidateQueries({ queryKey: subdomainKeys.lists() })
+        // 刷新所有子域名相关查询（通配符匹配）
+        queryClient.invalidateQueries({ queryKey: ['subdomains'] })
       } else {
         toast.error(response.message || '批量删除子域名失败')
       }
