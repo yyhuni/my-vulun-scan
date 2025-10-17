@@ -2699,7 +2699,7 @@
                     "type": "boolean"
                 },
                 "name": {
-                    "description": "核心业务字段\n注意：Name 字段在应用层已统一转为小写，数据库层通过 CHECK 约束防止插入大写值\n\u003c-:create 表示该字段只在创建时可写，创建后只读",
+                    "description": "核心业务字段\n注意：Name 字段在应用层已统一转为小写，数据库层通过 CHECK 约束防止插入大写值\n\u003c-:create 表示该字段只在创建时可写，创建后只读\nName 存储完整子域名（如 api.example.com），全局唯一",
                     "type": "string"
                 },
                 "updated_at": {
