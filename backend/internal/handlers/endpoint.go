@@ -50,7 +50,7 @@ func GetEndpoints(c *gin.Context) {
 // @Tags 端点管理
 // @Produce json
 // @Param id path uint true "端点ID" example(1)
-// @Success 200 {object} models.APIResponse{data=models.Endpoint} "获取成功"
+// @Success 200 {object} models.APIResponse{data=models.GetEndpointByIDResponseData} "获取成功"
 // @Failure 400 {object} models.APIResponse "请求参数错误"
 // @Failure 404 {object} models.APIResponse "端点不存在"
 // @Router /endpoints/{id} [get]

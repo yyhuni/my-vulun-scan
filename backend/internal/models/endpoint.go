@@ -71,3 +71,8 @@ type BatchDeleteEndpointsRequest struct {
 type BatchDeleteEndpointsResponseData struct {
 	BaseBatchDeleteResponseData
 }
+
+// GetEndpointByIDResponseData 获取单个端点详情响应数据
+type GetEndpointByIDResponseData struct {
+	Endpoint *Endpoint `json:"endpoint"`
+}

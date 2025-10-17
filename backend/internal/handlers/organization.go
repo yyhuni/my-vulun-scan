@@ -17,7 +17,7 @@ import (
 // @Tags 组织管理
 // @Produce json
 // @Param id path uint true "组织ID" example(1)
-// @Success 200 {object} models.APIResponse{data=models.Organization} "获取成功"
+// @Success 200 {object} models.APIResponse{data=models.OrgResponseData} "获取成功"
 // @Failure 404 {object} models.APIResponse "组织不存在"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
 // @Router /organizations/{id} [get]

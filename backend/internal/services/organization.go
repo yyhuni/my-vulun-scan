@@ -67,7 +67,7 @@ func (s *OrganizationService) GetOrgs(req models.GetOrgsRequest) (*models.GetOrg
 }
 
 // GetOrgByID 根据ID获取组织详细信息
-func (s *OrganizationService) GetOrgByID(id uint) (*models.Organization, error) {
+func (s *OrganizationService) GetOrgByID(id uint) (*models.OrgResponseData, error) {
 
 	var org models.Organization
 
@@ -86,7 +86,9 @@ func (s *OrganizationService) GetOrgByID(id uint) (*models.Organization, error) 
 	}
 
 	log.Info().Uint("id", id).Msg("Organization retrieved successfully")
-	return &org, nil
+	return &models.OrgResponseData{
+		Organization: &org,
+	}, nil
 }
 
 // CreateOrg 创建组织

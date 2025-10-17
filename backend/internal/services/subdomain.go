@@ -294,7 +294,7 @@ func (s *SubDomainService) GetSubDomainsByDomain(domainID uint, page, pageSize i
 }
 
 // GetSubDomainByID 根据ID获取子域名详情
-func (s *SubDomainService) GetSubDomainByID(id uint) (*models.SubDomain, error) {
+func (s *SubDomainService) GetSubDomainByID(id uint) (*models.GetSubDomainByIDResponseData, error) {
 
 	var subDomain models.SubDomain
 	result := s.db.Preload("Domain").First(&subDomain, id)
@@ -308,7 +308,9 @@ func (s *SubDomainService) GetSubDomainByID(id uint) (*models.SubDomain, error) 
 	}
 
 	log.Info().Uint("id", id).Str("name", subDomain.Name).Msg("Sub domain retrieved successfully")
-	return &subDomain, nil
+	return &models.GetSubDomainByIDResponseData{
+		SubDomain: &subDomain,
+	}, nil
 }
 
 // BatchDeleteSubDomains 批量删除子域名

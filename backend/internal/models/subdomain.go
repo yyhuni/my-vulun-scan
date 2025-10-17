@@ -64,3 +64,8 @@ type BatchDeleteSubDomainsRequest struct {
 type BatchDeleteSubDomainsResponseData struct {
 	BaseBatchDeleteResponseData
 }
+
+// GetSubDomainByIDResponseData 获取单个子域名详情响应数据（包含关联的域名信息）
+type GetSubDomainByIDResponseData struct {
+	SubDomain *SubDomain `json:"sub_domain"`
+}

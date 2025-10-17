@@ -78,7 +78,7 @@ func (s *EndpointService) GetEndpoints(req models.GetEndpointsRequest) (*models.
 }
 
 // GetEndpointByID 根据ID获取端点详情
-func (s *EndpointService) GetEndpointByID(id uint) (*models.Endpoint, error) {
+func (s *EndpointService) GetEndpointByID(id uint) (*models.GetEndpointByIDResponseData, error) {
 	var endpoint models.Endpoint
 	result := s.db.First(&endpoint, id)
 	if result.Error != nil {
@@ -91,7 +91,9 @@ func (s *EndpointService) GetEndpointByID(id uint) (*models.Endpoint, error) {
 	}
 
 	log.Info().Uint("id", id).Str("url", endpoint.URL).Msg("Endpoint retrieved successfully")
-	return &endpoint, nil
+	return &models.GetEndpointByIDResponseData{
+		Endpoint: &endpoint,
+	}, nil
 }
 
 // CreateEndpoints 批量创建端点，从 URL 自动提取并关联 domain 和 subdomain

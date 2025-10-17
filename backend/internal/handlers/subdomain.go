@@ -55,7 +55,7 @@ func GetSubDomains(c *gin.Context) {
 // @Tags 子域名管理
 // @Produce json
 // @Param id path uint true "子域名ID" example(1)
-// @Success 200 {object} models.APIResponse{data=models.SubDomain} "获取成功"
+// @Success 200 {object} models.APIResponse{data=models.GetSubDomainByIDResponseData} "获取成功"
 // @Failure 400 {object} models.APIResponse "请求参数错误"
 // @Failure 404 {object} models.APIResponse "子域名不存在"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
