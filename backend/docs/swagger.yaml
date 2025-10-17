@@ -346,7 +346,18 @@ definitions:
     required:
     - url
     type: object
-  vulun-scan-backend_internal_models.GetAllDomainsResponse:
+  vulun-scan-backend_internal_models.GetCategoriesResponse:
+    properties:
+      categories:
+        description: 分类名称列表
+        items:
+          type: string
+        type: array
+      total:
+        description: 分类数量
+        type: integer
+    type: object
+  vulun-scan-backend_internal_models.GetDomainsResponse:
     properties:
       domains:
         items:
@@ -363,17 +374,6 @@ definitions:
         type: integer
       total_pages:
         description: 总页数
-        type: integer
-    type: object
-  vulun-scan-backend_internal_models.GetCategoriesResponse:
-    properties:
-      categories:
-        description: 分类名称列表
-        items:
-          type: string
-        type: array
-      total:
-        description: 分类数量
         type: integer
     type: object
   vulun-scan-backend_internal_models.GetEndpointsResponse:
@@ -647,7 +647,7 @@ paths:
             - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/vulun-scan-backend_internal_models.GetAllDomainsResponse'
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.GetDomainsResponse'
               type: object
         "400":
           description: 请求参数错误
@@ -1728,7 +1728,7 @@ paths:
       - 子域名管理
   /tools:
     get:
-      description: 获取所有安全扫描工具列表，支持分页和排序
+      description: 获取所有安全扫描工具列表，支持分页。固定按更新时间降序排列
       parameters:
       - default: 1
         description: 页码
@@ -1742,24 +1742,6 @@ paths:
         in: query
         name: page_size
         type: integer
-      - default: updated_at
-        description: 排序字段
-        enum:
-        - id
-        - name
-        - created_at
-        - updated_at
-        in: query
-        name: sort_by
-        type: string
-      - default: desc
-        description: 排序方向
-        enum:
-        - asc
-        - desc
-        in: query
-        name: sort_order
-        type: string
       produces:
       - application/json
       responses:

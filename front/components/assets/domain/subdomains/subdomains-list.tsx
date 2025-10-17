@@ -17,7 +17,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { useSubdomains, useDeleteSubdomain, useBatchDeleteSubdomains } from "@/hooks/use-subdomains"
-import { useOrganizationDomains } from "@/hooks/use-organizations"
 import { useDomain } from "@/hooks/use-domains"
 import type { SubDomain } from "@/types/subdomain.types"
 
@@ -62,25 +61,6 @@ export function SubdomainsList({
   // 注意：useDomain 内部有 enabled: !!id 的条件，所以传 0 时不会发起请求
   const { data: domainData } = useDomain(
     domainId && !organizationId ? parseInt(domainId) : 0
-  )
-
-  // 从域名数据中提取 organizationId（取第一个关联的组织）
-  const effectiveOrganizationId = organizationId || 
-    (domainData?.organizations && domainData.organizations.length > 0 
-      ? domainData.organizations[0].id.toString() 
-      : undefined)
-
-  // 获取组织的域名列表（用于添加/编辑子域名时选择所属域名）
-  // 只在通过 organizationId 访问时才获取
-  const { data: domainsData } = useOrganizationDomains(
-    effectiveOrganizationId ? parseInt(effectiveOrganizationId) : 0, 
-    {
-      page: 1,
-      pageSize: 1000, // 获取所有域名
-    },
-    {
-      enabled: !!effectiveOrganizationId // 只有当有有效的 organizationId 时才启用
-    }
   )
 
   // Mutations

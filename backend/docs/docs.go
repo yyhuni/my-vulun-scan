@@ -91,7 +91,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.GetAllDomainsResponse"
+                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.GetDomainsResponse"
                                         }
                                     }
                                 }
@@ -1805,7 +1805,7 @@ const docTemplate = `{
         },
         "/tools": {
             "get": {
-                "description": "获取所有安全扫描工具列表，支持分页和排序",
+                "description": "获取所有安全扫描工具列表，支持分页。固定按更新时间降序排列",
                 "produces": [
                     "application/json"
                 ],
@@ -1828,30 +1828,6 @@ const docTemplate = `{
                         "example": 10,
                         "description": "每页数量",
                         "name": "page_size",
-                        "in": "query"
-                    },
-                    {
-                        "enum": [
-                            "id",
-                            "name",
-                            "created_at",
-                            "updated_at"
-                        ],
-                        "type": "string",
-                        "default": "updated_at",
-                        "description": "排序字段",
-                        "name": "sort_by",
-                        "in": "query"
-                    },
-                    {
-                        "enum": [
-                            "asc",
-                            "desc"
-                        ],
-                        "type": "string",
-                        "default": "desc",
-                        "description": "排序方向",
-                        "name": "sort_order",
                         "in": "query"
                     }
                 ],
@@ -2453,7 +2429,23 @@ const docTemplate = `{
                 }
             }
         },
-        "vulun-scan-backend_internal_models.GetAllDomainsResponse": {
+        "vulun-scan-backend_internal_models.GetCategoriesResponse": {
+            "type": "object",
+            "properties": {
+                "categories": {
+                    "description": "分类名称列表",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "total": {
+                    "description": "分类数量",
+                    "type": "integer"
+                }
+            }
+        },
+        "vulun-scan-backend_internal_models.GetDomainsResponse": {
             "type": "object",
             "properties": {
                 "domains": {
@@ -2476,22 +2468,6 @@ const docTemplate = `{
                 },
                 "total_pages": {
                     "description": "总页数",
-                    "type": "integer"
-                }
-            }
-        },
-        "vulun-scan-backend_internal_models.GetCategoriesResponse": {
-            "type": "object",
-            "properties": {
-                "categories": {
-                    "description": "分类名称列表",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "total": {
-                    "description": "分类数量",
                     "type": "integer"
                 }
             }
