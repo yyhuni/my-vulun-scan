@@ -114,36 +114,69 @@ func (s *OrganizationService) CreateOrg(req models.CreateOrgRequest) (*models.Or
 }
 
 // UpdateOrg 更新组织
+//
+// 业务逻辑说明：
+// 1. 验证组织是否存在
+// 2. 更新组织的名称和描述
+// 3. 返回更新后的组织信息（包含域名关联信息）
+//
+// 字段更新说明（三态逻辑）：
+// - name: 传null不更新，传空字符串会报错（名称不能为空），传值则更新
+// - description: 传null不更新，传空字符串清空，传值则更新
+// - 至少需要更新一个字段，否则直接返回原数据
+//
+// 注意事项：
+// - 使用指针类型区分"不更新"(nil)和"清空"(空字符串)
+// - 名称修改后需要保证唯一性
+// - 更新操作会自动更新 updated_at 字段
 func (s *OrganizationService) UpdateOrg(req models.UpdateOrgRequest) (*models.Organization, error) {
 
 	var org models.Organization
 
-	// 先查询是否存在
+	// 步骤1: 验证组织是否存在
 	result := s.db.First(&org, "id = ?", req.ID)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
+			log.Error().Uint("organization_id", req.ID).Msg("Organization not found")
 			return nil, errors.ErrOrganizationNotFound
 		}
 		log.Error().Err(result.Error).Msg("Failed to query organization for update")
 		return nil, result.Error
 	}
 
-	// 更新字段
+	// 步骤2: 更新字段（使用指针类型实现三态逻辑）
+	// nil = 不更新该字段
+	// 非nil（包括空字符串）= 更新为该值
 	updates := map[string]interface{}{}
-	if req.Name != "" {
-		updates["name"] = req.Name
+	if req.Name != nil {
+		updates["name"] = *req.Name
 	}
-	if req.Description != "" {
-		updates["description"] = req.Description
+	if req.Description != nil {
+		updates["description"] = *req.Description
 	}
 
+	// 如果没有任何更新字段，直接返回原组织（需要预加载域名保持一致性）
+	if len(updates) == 0 {
+		result = s.db.Preload("Domains").First(&org, req.ID)
+		if result.Error != nil {
+			log.Error().Err(result.Error).Msg("Failed to reload organization")
+			return nil, result.Error
+		}
+		if org.Domains == nil {
+			org.Domains = []models.Domain{}
+		}
+		log.Info().Uint("organization_id", req.ID).Msg("No fields to update")
+		return &org, nil
+	}
+
+	// 执行更新操作
 	result = s.db.Model(&org).Updates(updates)
 	if result.Error != nil {
-		log.Error().Err(result.Error).Msg("Failed to update organization")
+		log.Error().Err(result.Error).Uint("organization_id", req.ID).Msg("Failed to update organization")
 		return nil, result.Error
 	}
 
-	// 重新查询并预加载关联数据，保持与 GetOrgByID 的数据结构一致
+	// 步骤3: 重新查询并预加载关联数据，保持与 GetOrgByID 的数据结构一致
 	var updatedOrg models.Organization
 	result = s.db.Preload("Domains").First(&updatedOrg, org.ID)
 	if result.Error != nil {

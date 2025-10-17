@@ -31,10 +31,9 @@ type CreateSubDomainsForDomainRequest struct {
 	Subdomains []string `json:"subdomains" binding:"required"`
 }
 
-// GetSubDomainsRequest 获取所有子域名列表请求
+// GetSubDomainsRequest 获取所有子域名列表请求（固定按 updated_at desc 排序）
 type GetSubDomainsRequest struct {
 	BasePaginationRequest
-	// 允许的排序字段：id, name, created_at, updated_at
 }
 
 // GetSubDomainsResponse 获取子域名列表响应

@@ -25,8 +25,8 @@ func NewSubDomainService() *SubDomainService {
 	}
 }
 
-// GetSubDomains 获取所有子域名列表
-func (s *SubDomainService) GetSubDomains(page, pageSize int, sortBy, sortOrder string) (*models.GetSubDomainsResponse, error) {
+// GetSubDomains 获取所有子域名列表（固定按 updated_at desc 排序）
+func (s *SubDomainService) GetSubDomains(page, pageSize int) (*models.GetSubDomainsResponse, error) {
 	query := s.db.Model(&models.SubDomain{})
 
 	// 计算总数
@@ -80,8 +80,8 @@ func (s *SubDomainService) GetSubDomains(page, pageSize int, sortBy, sortOrder s
 	return response, nil
 }
 
-// GetSubDomainsByDomainID 根据域名ID获取子域名列表
-func (s *SubDomainService) GetSubDomainsByDomainID(domainID uint, page, pageSize int, sortBy, sortOrder string) (*models.GetSubDomainsResponse, error) {
+// GetSubDomainsByDomainID 根据域名ID获取子域名列表（固定按 updated_at desc 排序）
+func (s *SubDomainService) GetSubDomainsByDomainID(domainID uint, page, pageSize int) (*models.GetSubDomainsResponse, error) {
 	query := s.db.Model(&models.SubDomain{}).Where("domain_id = ?", domainID)
 
 	// 计算总数
@@ -136,8 +136,8 @@ func (s *SubDomainService) GetSubDomainsByDomainID(domainID uint, page, pageSize
 	return response, nil
 }
 
-// GetSubDomainsByOrgID 根据组织ID获取子域名列表
-func (s *SubDomainService) GetSubDomainsByOrgID(orgID uint, page, pageSize int, sortBy, sortOrder string) (*models.GetSubDomainsResponse, error) {
+// GetSubDomainsByOrgID 根据组织ID获取子域名列表（固定按 updated_at desc 排序）
+func (s *SubDomainService) GetSubDomainsByOrgID(orgID uint, page, pageSize int) (*models.GetSubDomainsResponse, error) {
 	// 通过多表JOIN查询组织的所有子域名
 	query := s.db.Model(&models.SubDomain{}).
 		Joins("JOIN domains ON sub_domains.domain_id = domains.id").

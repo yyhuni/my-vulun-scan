@@ -1,6 +1,8 @@
 package services
 
 import (
+	"sort"
+
 	"vulun-scan-backend/internal/models"
 	"vulun-scan-backend/pkg/database"
 
@@ -51,14 +53,8 @@ func (s *CategoryService) GetCategories() (*models.GetCategoriesResponse, error)
 		categories = append(categories, category)
 	}
 
-	// 简单排序
-	for i := 0; i < len(categories)-1; i++ {
-		for j := i + 1; j < len(categories); j++ {
-			if categories[i] > categories[j] {
-				categories[i], categories[j] = categories[j], categories[i]
-			}
-		}
-	}
+	// 使用标准库排序（O(n log n)）
+	sort.Strings(categories)
 
 	log.Info().
 		Int("total", len(categories)).

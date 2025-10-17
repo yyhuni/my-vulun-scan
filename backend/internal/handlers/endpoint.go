@@ -172,7 +172,7 @@ func GetEndpointsByDomainID(c *gin.Context) {
 	query.SetDefaults()
 
 	result, err := services.NewEndpointService().GetEndpointsByDomainID(
-		uri.ID, query.Page, query.PageSize, query.SortBy, query.SortOrder,
+		uri.ID, query.Page, query.PageSize,
 	)
 	if err != nil {
 		response.InternalServerErrorResponse(c, "获取域名端点列表失败: "+err.Error())
@@ -211,7 +211,7 @@ func GetEndpointsBySubdomainID(c *gin.Context) {
 	query.SetDefaults()
 
 	result, err := services.NewEndpointService().GetEndpointsBySubdomainID(
-		uri.ID, query.Page, query.PageSize, query.SortBy, query.SortOrder,
+		uri.ID, query.Page, query.PageSize,
 	)
 	if err != nil {
 		response.InternalServerErrorResponse(c, "获取子域名端点列表失败: "+err.Error())

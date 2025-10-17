@@ -109,13 +109,18 @@ func CreateOrg(c *gin.Context) {
 
 // UpdateOrg 更新组织
 // @Summary 更新组织
-// @Description 更新组织信息
+// @Description 更新组织信息（名称和描述）
+// @Description
+// @Description **字段更新说明：**
+// @Description - name: 传null不更新，传空字符串会报错（名称不能为空），传值则更新
+// @Description - description: 传null不更新，传空字符串清空，传值则更新
+// @Description - 至少需要更新一个字段，否则直接返回原数据
 // @Tags 组织管理
 // @Accept json
 // @Produce json
 // @Param request body models.UpdateOrgRequest true "更新信息"
 // @Success 200 {object} models.APIResponse{data=models.Organization} "更新成功"
-// @Failure 422 {object} models.APIResponse "请求参数验证失败"
+// @Failure 400 {object} models.APIResponse "请求参数错误"
 // @Failure 404 {object} models.APIResponse "组织不存在"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
 // @Router /organizations/update [post]
@@ -124,6 +129,13 @@ func UpdateOrg(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.ValidationErrorResponse(c, "请求参数错误: "+err.Error())
+		return
+	}
+
+	// 验证名称不能为空（如果提供了）
+	// 使用指针类型：nil表示不更新，非nil表示要更新（包括空字符串）
+	if req.Name != nil && *req.Name == "" {
+		response.ValidationErrorResponse(c, "组织名称不能为空")
 		return
 	}
 

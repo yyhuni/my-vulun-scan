@@ -45,10 +45,9 @@ type EndpointDetail struct {
 	ContentLength *int64 `json:"content_length"`
 }
 
-// GetEndpointsRequest 获取所有端点列表请求
+// GetEndpointsRequest 获取所有端点列表请求（固定按 updated_at desc 排序）
 type GetEndpointsRequest struct {
 	BasePaginationRequest
-	// 注意：排序暂未实现，固定按 updated_at desc
 }
 
 // GetEndpointsResponse 获取端点列表响应

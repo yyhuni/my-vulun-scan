@@ -59,11 +59,10 @@ type BatchDeleteDomainsDirectRequest struct {
 	DomainIDs []uint `json:"domain_ids" binding:"required"`
 }
 
-// GetDomainsByOrgIDRequest 获取组织域名请求(支持分页和排序)
+// GetDomainsByOrgIDRequest 获取组织域名请求(支持分页，固定按 updated_at desc 排序)
 type GetDomainsByOrgIDRequest struct {
 	OrgID uint `uri:"id" binding:"required"` // 组织ID（路径参数）
 	BasePaginationRequest
-	// 允许的排序字段: name, created_at, updated_at
 }
 
 // GetOrgDomainsResponse 获取组织域名响应
@@ -107,10 +106,9 @@ type GetDomainByIDResponseData struct {
 	Domain *Domain `json:"domain"`
 }
 
-// GetDomainsRequest 获取所有域名请求（支持分页和排序）
+// GetDomainsRequest 获取所有域名请求（支持分页，固定按 updated_at desc 排序）
 type GetDomainsRequest struct {
 	BasePaginationRequest
-	// 允许的排序字段: name, created_at, updated_at
 }
 
 // GetDomainsResponse 获取所有域名响应

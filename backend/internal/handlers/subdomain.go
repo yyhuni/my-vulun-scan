@@ -38,8 +38,6 @@ func GetSubDomains(c *gin.Context) {
 	result, err := services.NewSubDomainService().GetSubDomains(
 		req.Page,
 		req.PageSize,
-		req.SortBy,
-		req.SortOrder,
 	)
 	if err != nil {
 		response.InternalServerErrorResponse(c, "获取子域名列表失败: "+err.Error())
@@ -125,8 +123,6 @@ func GetSubDomainsByDomainID(c *gin.Context) {
 		uri.ID,
 		queryParams.Page,
 		queryParams.PageSize,
-		queryParams.SortBy,
-		queryParams.SortOrder,
 	)
 	if err != nil {
 		response.InternalServerErrorResponse(c, "获取域名子域名列表失败: "+err.Error())
@@ -175,8 +171,6 @@ func GetSubDomainsByOrgID(c *gin.Context) {
 		uri.ID,
 		queryParams.Page,
 		queryParams.PageSize,
-		queryParams.SortBy,
-		queryParams.SortOrder,
 	)
 	if err != nil {
 		response.InternalServerErrorResponse(c, "获取组织子域名列表失败: "+err.Error())

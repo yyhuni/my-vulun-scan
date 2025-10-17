@@ -22,10 +22,9 @@ type Tool struct {
 	VersionCommand string   `json:"version_command" gorm:"size:500;not null"`         // 版本查询命令
 }
 
-// GetToolsRequest 获取工具列表请求
+// GetToolsRequest 获取工具列表请求（固定按 updated_at desc 排序）
 type GetToolsRequest struct {
 	BasePaginationRequest
-	// 注意：排序暂未实现，固定按 updated_at desc
 }
 
 // GetToolsResponse 获取工具列表响应

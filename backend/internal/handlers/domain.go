@@ -107,7 +107,7 @@ func CreateDomains(c *gin.Context) {
 
 // GetDomainByID 获取单个域名详情
 // @Summary 获取单个域名详情
-// @Description 根据域名ID获取域名的详细信息（包含组织关联信息）
+// @Description 根据域名ID获取域名的详细信息（不包含组织关联信息）
 // @Tags 域名管理
 // @Produce json
 // @Param id path uint true "域名ID" example(1)
@@ -231,18 +231,7 @@ func GetDomainsByOrgID(c *gin.Context) {
 	}
 
 	// 设置默认值
-	if req.Page <= 0 {
-		req.Page = 1
-	}
-	if req.PageSize <= 0 {
-		req.PageSize = 10
-	}
-	if req.SortBy == "" {
-		req.SortBy = "updated_at"
-	}
-	if req.SortOrder == "" {
-		req.SortOrder = "desc"
-	}
+	req.SetDefaults()
 
 	result, err := service.GetDomainsByOrgID(req)
 	if err != nil {
@@ -419,18 +408,7 @@ func GetDomains(c *gin.Context) {
 	}
 
 	// 设置默认值
-	if req.Page <= 0 {
-		req.Page = 1
-	}
-	if req.PageSize <= 0 {
-		req.PageSize = 10
-	}
-	if req.SortBy == "" {
-		req.SortBy = "updated_at"
-	}
-	if req.SortOrder == "" {
-		req.SortOrder = "desc"
-	}
+	req.SetDefaults()
 
 	service := services.NewDomainService()
 	result, err := service.GetDomains(req)

@@ -27,9 +27,9 @@ type CreateOrgRequest struct {
 
 // UpdateOrgRequest 更新组织请求
 type UpdateOrgRequest struct {
-	ID          uint   `json:"id" binding:"required"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	ID          uint    `json:"id" binding:"required"`
+	Name        *string `json:"name"`        // 指针类型：nil=不更新，非nil（包括空字符串）=更新
+	Description *string `json:"description"` // 指针类型：nil=不更新，非nil（包括空字符串）=更新（空字符串表示清空）
 }
 
 // DeleteOrgRequest 删除组织请求
@@ -42,10 +42,9 @@ type BatchDeleteOrgsRequest struct {
 	OrgIDs []uint `json:"organization_ids" binding:"required"`
 }
 
-// GetOrgsRequest 获取组织列表请求
+// GetOrgsRequest 获取组织列表请求（固定按 updated_at desc 排序）
 type GetOrgsRequest struct {
 	BasePaginationRequest
-	// 允许的排序字段：id, name, created_at, updated_at
 }
 
 // GetOrgsResponse 获取组织列表响应

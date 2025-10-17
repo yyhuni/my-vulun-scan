@@ -272,8 +272,8 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 	return response, nil
 }
 
-// GetEndpointsByDomainID 获取域名下的端点列表（包括所有子域名的端点）
-func (s *EndpointService) GetEndpointsByDomainID(domainID uint, page, pageSize int, sortBy, sortOrder string) (*models.GetEndpointsResponse, error) {
+// GetEndpointsByDomainID 获取域名下的端点列表（包括所有子域名的端点，固定按 updated_at desc 排序）
+func (s *EndpointService) GetEndpointsByDomainID(domainID uint, page, pageSize int) (*models.GetEndpointsResponse, error) {
 	// 先计算总数（使用独立的查询）
 	var total int64
 	if err := s.db.Model(&models.Endpoint{}).Where("domain_id = ?", domainID).Count(&total).Error; err != nil {
@@ -326,8 +326,8 @@ func (s *EndpointService) GetEndpointsByDomainID(domainID uint, page, pageSize i
 	return response, nil
 }
 
-// GetEndpointsBySubdomainID 获取子域名下的端点列表
-func (s *EndpointService) GetEndpointsBySubdomainID(subdomainID uint, page, pageSize int, sortBy, sortOrder string) (*models.GetEndpointsResponse, error) {
+// GetEndpointsBySubdomainID 获取子域名下的端点列表（固定按 updated_at desc 排序）
+func (s *EndpointService) GetEndpointsBySubdomainID(subdomainID uint, page, pageSize int) (*models.GetEndpointsResponse, error) {
 	// 先计算总数（使用独立的查询）
 	var total int64
 	if err := s.db.Model(&models.Endpoint{}).Where("subdomain_id = ?", subdomainID).Count(&total).Error; err != nil {
