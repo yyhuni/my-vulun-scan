@@ -95,47 +95,6 @@ func (s *EndpointService) GetEndpointByID(id uint) (*models.Endpoint, error) {
 }
 
 // CreateEndpoints 批量创建端点，从 URL 自动提取并关联 domain 和 subdomain
-//
-// 核心业务逻辑：
-// 1. 从所有请求的 URL 中提取唯一的 host（如 baidu.com、media.baidu.com）
-// 2. 批量查询这些 host 对应的 Subdomain 记录（因为系统设计：每个 Domain 都会自动创建同名 Subdomain）
-// 3. 建立 host 到 (subdomain_id, domain_id) 的映射关系
-// 4. 过滤掉找不到 Subdomain 的 Endpoint（host 不存在）
-// 5. 批量创建新的 Endpoint 记录，使用 OnConflict 自动跳过重复 URL
-//
-// 关键设计决策：
-//   - URL 唯一性：Endpoint 的唯一标识是 URL（数据库唯一索引），而不是 (URL + Method) 组合
-//   - 精确匹配：优先精确匹配完整 host 到 Subdomain，避免跨域关联问题
-//     例如：https://media.org20-primary.com/api 只会关联到 media.org20-primary.com 这个 Subdomain
-//     不会错误关联到 org20-primary.com 或其他域名
-//   - 自动跳过：如果 URL 的 host 在系统中不存在对应的 Subdomain，则自动跳过该 URL
-//   - OnConflict 处理：使用数据库层面的冲突处理，遇到重复 URL 时自动跳过，避免竞态条件
-//
-// 幂等性保证：
-// - 重复提交相同 URL 的 Endpoint 不会报错，通过 OnConflict DoNothing 自动跳过
-// - 返回值中包含成功创建数（NewCreated）、已存在数（AlreadyExisted）、总请求数（TotalRequested）
-// - AlreadyExisted = preparedCount - createdCount（准备插入数 - 实际插入数）
-// - 被跳过数量（host不存在）= TotalRequested - preparedCount
-// - 被跳过的具体 URL 不在返回值中，仅通过日志记录
-//
-// 数据一致性：
-// - 使用事务确保批量创建的原子性，要么全部成功，要么全部回滚
-// - SubdomainID 和 DomainID 都设置为 not null，确保 Endpoint 必定关联到有效的 Domain 和 Subdomain
-// - URL 唯一索引确保不会插入重复数据
-//
-// 性能优化：
-// - URL 规范化阶段就提取并缓存 host，避免重复解析（减少一次完整循环）
-// - 批量查询 Subdomain，避免 N+1 查询问题（1次查询代替 N 次）
-// - 使用 OnConflict 替代预查询，减少一次 SELECT 操作，避免竞态条件
-// - 批量创建新 Endpoint，每批最多 100 条（1次插入代替 N 次）
-// - 使用 map 结构快速查找，避免嵌套循环
-// - 数据库层面原子性处理冲突，性能更优
-//
-// 注意事项：
-// - 前提条件：Domain 创建时会自动创建同名 Subdomain（在 CreateDomains 方法中实现）
-// - 如果需要创建子域名（如 media.baidu.com），需要先调用 CreateSubDomainsForDomain 接口
-// - 事务失败会自动回滚，不会产生脏数据
-// - URL 字段必须有唯一索引，否则 OnConflict 无法正常工作
 func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*models.CreateEndpointsResponseData, error) {
 	var createdCount int
 	var preparedCount int // 准备插入的端点数量（过滤掉无效 host 后）
@@ -150,11 +109,12 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 		detail models.EndpointDetail
 		host   string
 	}
-	
+
 	urlMap := make(map[string]endpointWithHost)
-	var duplicateInRequest int
-	var normalizeErrors int
-	var extractHostErrors int
+	// 统计计数器
+	var duplicateInRequest int // 请求内重复的URL数量
+	var normalizeErrors int    // URL规范化失败的数量
+	var extractHostErrors int  // 主机名提取失败的数量
 
 	for _, detail := range req.Endpoints {
 		// 规范化 URL，避免等价不同写法的重复
@@ -194,8 +154,8 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 
 	// 转换为切片（去重后的端点列表，包含缓存的 host）
 	uniqueEndpoints := make([]endpointWithHost, 0, len(urlMap))
-	for _, item := range urlMap {
-		uniqueEndpoints = append(uniqueEndpoints, item)
+	for _, endpoint := range urlMap {
+		uniqueEndpoints = append(uniqueEndpoints, endpoint)
 	}
 
 	if duplicateInRequest > 0 || normalizeErrors > 0 || extractHostErrors > 0 {
@@ -211,8 +171,8 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		// 1. 提取所有唯一的 host（直接使用缓存的 host，无需重复解析）
 		uniqueHosts := make(map[string]bool)
-		for _, item := range uniqueEndpoints {
-			uniqueHosts[item.host] = true
+		for _, endpoint := range uniqueEndpoints {
+			uniqueHosts[endpoint.host] = true
 		}
 
 		// 2. 批量查询所有 host 对应的 Subdomain（每个 Domain 都会自动创建同名 Subdomain）
@@ -228,13 +188,13 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 		}
 
 		// 3. 创建 host 到 subdomain_id 和 domain_id 的映射
-		hostInfo := make(map[string]struct {
+		hostToSubdomainMap := make(map[string]struct {
 			subdomainID uint
 			domainID    uint
 		})
 
 		for _, subdomain := range subdomains {
-			hostInfo[subdomain.Name] = struct {
+			hostToSubdomainMap[subdomain.Name] = struct {
 				subdomainID uint
 				domainID    uint
 			}{
@@ -244,39 +204,32 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 			log.Debug().Str("host", subdomain.Name).Uint("subdomain_id", subdomain.ID).Uint("domain_id", subdomain.DomainID).Msg("Found subdomain for host")
 		}
 
-		// 4. 记录未找到的 host（这些域名不在系统中）
-		for host := range uniqueHosts {
-			if _, found := hostInfo[host]; !found {
-				log.Warn().Str("host", host).Msg("Subdomain not found in system, URLs with this host will be skipped")
-			}
-		}
-
-		// 5. 准备需要创建的端点（已去重，使用 OnConflict 处理数据库重复）
+		// 4. 准备需要创建的端点（已去重，使用 OnConflict 处理数据库重复）
 		var newEndpoints []models.Endpoint
-		for _, item := range uniqueEndpoints {
+		for _, endpoint := range uniqueEndpoints {
 			// 直接使用缓存的 host，无需重复解析
-			info, exists := hostInfo[item.host]
+			subdomainInfo, exists := hostToSubdomainMap[endpoint.host]
 			if !exists {
-				log.Warn().Str("url", item.detail.URL).Str("host", item.host).Msg("Host not found in domain/subdomain, skipping")
+				log.Warn().Str("url", endpoint.detail.URL).Str("host", endpoint.host).Msg("Host not found in domain/subdomain, skipping")
 				continue
 			}
 
 			// 准备创建
 			newEndpoint := models.Endpoint{
-				URL:           item.detail.URL,
-				Method:        item.detail.Method,
-				StatusCode:    item.detail.StatusCode,
-				Title:         item.detail.Title,
-				ContentLength: item.detail.ContentLength,
-				SubdomainID:   info.subdomainID,
-				DomainID:      info.domainID,
+				URL:           endpoint.detail.URL,
+				Method:        endpoint.detail.Method,
+				StatusCode:    endpoint.detail.StatusCode,
+				Title:         endpoint.detail.Title,
+				ContentLength: endpoint.detail.ContentLength,
+				SubdomainID:   subdomainInfo.subdomainID,
+				DomainID:      subdomainInfo.domainID,
 			}
 			newEndpoints = append(newEndpoints, newEndpoint)
 		}
 
 		preparedCount = len(newEndpoints)
 
-		// 6. 批量创建新端点，使用 OnConflict 自动跳过重复 URL
+		// 5. 批量创建新端点，使用 OnConflict 自动跳过重复 URL
 		// 优势：
 		// - 避免竞态条件：数据库层面原子性处理冲突
 		// - 提升性能：无需预查询已存在的 URL
