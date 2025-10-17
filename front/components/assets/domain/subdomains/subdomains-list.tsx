@@ -216,7 +216,7 @@ export function SubdomainsList({
           <AlertDialogHeader>
             <AlertDialogTitle>确认删除</AlertDialogTitle>
             <AlertDialogDescription>
-              此操作无法撤销。这将永久删除子域名 "{subdomainToDelete?.name}" 及其相关数据（包括关联的 Endpoints 和 Vulnerabilities）。
+              此操作无法撤销。这将永久删除子域名 &quot;{subdomainToDelete?.name}&quot; 及其相关数据（包括关联的 Endpoints 和 Vulnerabilities）。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -206,7 +206,7 @@ export function DomainList() {
           <AlertDialogHeader>
             <AlertDialogTitle>确认删除</AlertDialogTitle>
             <AlertDialogDescription>
-              此操作将永久删除域名 "{domainToDelete?.name}" 及其所有关联数据（包括子域名、端点等）。此操作不可撤销。
+              此操作将永久删除域名 &quot;{domainToDelete?.name}&quot; 及其所有关联数据（包括子域名、端点等）。此操作不可撤销。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

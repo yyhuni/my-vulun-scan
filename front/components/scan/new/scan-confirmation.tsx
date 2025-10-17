@@ -42,7 +42,7 @@ export function ScanConfirmation({
       <div>
         <h3 className="text-lg font-semibold mb-2">确认扫描配置</h3>
         <p className="text-sm text-muted-foreground">
-          请确认以下信息无误后，点击"启动扫描"按钮
+          请确认以下信息无误后，点击&quot;启动扫描&quot;按钮
         </p>
       </div>
 

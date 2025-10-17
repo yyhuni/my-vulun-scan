@@ -276,7 +276,7 @@ demo.org`}
               </div>
               {invalidDomains.length > 0 && (
                 <div className="text-xs text-destructive">
-                  {invalidDomains.length} 个无效域名，例如 第 {invalidDomains[0].index + 1} 行: "{invalidDomains[0].originalDomain}" - {invalidDomains[0].error}
+                  {invalidDomains.length} 个无效域名，例如 第 {invalidDomains[0].index + 1} 行: &quot;{invalidDomains[0].originalDomain}&quot; - {invalidDomains[0].error}
                 </div>
               )}
             </div>

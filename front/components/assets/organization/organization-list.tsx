@@ -211,7 +211,7 @@ export function OrganizationList() {
           <AlertDialogHeader>
             <AlertDialogTitle>确认删除</AlertDialogTitle>
             <AlertDialogDescription>
-              此操作无法撤销。这将永久删除组织 "{organizationToDelete?.name}" 及其相关数据。
+              此操作无法撤销。这将永久删除组织 &quot;{organizationToDelete?.name}&quot; 及其相关数据。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

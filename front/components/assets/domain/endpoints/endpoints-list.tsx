@@ -206,7 +206,7 @@ export function EndpointsList({
           <AlertDialogHeader>
             <AlertDialogTitle>确认删除</AlertDialogTitle>
             <AlertDialogDescription>
-              此操作无法撤销。这将永久删除端点 "{endpointToDelete?.url}" 及其相关数据（包括关联的 Vulnerabilities）。
+              此操作无法撤销。这将永久删除端点 &quot;{endpointToDelete?.url}&quot; 及其相关数据（包括关联的 Vulnerabilities）。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
