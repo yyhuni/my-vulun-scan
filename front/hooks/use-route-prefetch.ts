@@ -5,8 +5,9 @@ import { useEffect } from 'react'
  * 路由预加载 Hook
  * 在页面加载完成后，后台预加载其他页面的 JS/CSS 资源
  * 不会发送 API 请求，只加载页面组件
+ * @param currentPath 当前页面路径（可选），如果提供则会智能预加载相关动态路由
  */
-export function useRoutePrefetch() {
+export function useRoutePrefetch(currentPath?: string) {
   const router = useRouter()
 
   useEffect(() => {
@@ -31,6 +32,19 @@ export function useRoutePrefetch() {
         router.prefetch(route)
       })
       
+      // 如果提供了当前路径，智能预加载相关动态路由
+      if (currentPath) {
+        // 如果是域名详情页（如 /assets/domain/146），预加载子路由
+        const domainIdMatch = currentPath.match(/\/assets\/domain\/(\d+)/)
+        if (domainIdMatch) {
+          const domainId = domainIdMatch[1]
+          router.prefetch(`/assets/domain/${domainId}/subdomains`)
+          router.prefetch(`/assets/domain/${domainId}/endpoints`)
+          console.log(`  ↳ 智能预加载域名子路由: /assets/domain/${domainId}/subdomains`)
+          console.log(`  ↳ 智能预加载域名子路由: /assets/domain/${domainId}/endpoints`)
+        }
+      }
+      
       console.log('✅ 所有路由预加载请求已发送')
       console.log('💡 提示：开发模式下预加载可能不明显，请在生产构建中测试')
     }, 2000)
@@ -39,7 +53,7 @@ export function useRoutePrefetch() {
       console.log('🔄 路由预加载 Hook 已卸载')
       clearTimeout(timer)
     }
-  }, [router])
+  }, [router, currentPath])
 }
 
 /**
@@ -59,6 +73,16 @@ export function useSmartRoutePrefetch(currentPath: string) {
         // 在域名页面，预加载子域名和端点页面
         router.prefetch('/assets/subdomain')
         router.prefetch('/assets/endpoint')
+        
+        // 如果是域名详情页（如 /assets/domain/146），预加载子路由
+        const domainIdMatch = currentPath.match(/\/assets\/domain\/(\d+)$/)
+        if (domainIdMatch) {
+          const domainId = domainIdMatch[1]
+          router.prefetch(`/assets/domain/${domainId}/subdomains`)
+          router.prefetch(`/assets/domain/${domainId}/endpoints`)
+          console.log(`  ↳ 预加载域名子路由: /assets/domain/${domainId}/subdomains`)
+          console.log(`  ↳ 预加载域名子路由: /assets/domain/${domainId}/endpoints`)
+        }
       } else if (currentPath.includes('/assets/subdomain')) {
         // 在子域名页面，预加载端点页面
         router.prefetch('/assets/endpoint')
