@@ -106,18 +106,9 @@ export function useCreateDomain() {
           toast.success(`成功创建 ${newCreated} 个域名`)
         }
         
-        // 刷新相关查询
-        queryClient.invalidateQueries({ queryKey: domainKeys.lists() })
-        
-        // 刷新所有域名列表（包括 useAllDomains）
-        queryClient.invalidateQueries({ queryKey: ['domains', 'all'] })
-        
-        // 刷新该组织的域名列表（使用 organizationKeys）
-        if (variables.organizationId) {
-          queryClient.invalidateQueries({ 
-            queryKey: ['organizations', 'detail', variables.organizationId, 'domains']
-          })
-        }
+        // 刷新所有域名和组织相关查询（通配符匹配）
+        queryClient.invalidateQueries({ queryKey: ['domains'] })
+        queryClient.invalidateQueries({ queryKey: ['organizations'] })
       } else {
         throw new Error(response.message || '创建域名失败')
       }
@@ -156,16 +147,9 @@ export function useDeleteDomainFromOrganization() {
         // 前端自己构造成功提示消息
         toast.success('域名已成功移除')
         
-        // 刷新相关查询
-        queryClient.invalidateQueries({ queryKey: domainKeys.lists() })
-        
-        // 刷新所有域名列表（包括 useAllDomains）
-        queryClient.invalidateQueries({ queryKey: ['domains', 'all'] })
-        
-        // 刷新组织的域名列表
-        queryClient.invalidateQueries({ 
-          queryKey: ['organizations', 'detail', organizationId, 'domains'] 
-        })
+        // 刷新所有域名和组织相关查询（通配符匹配）
+        queryClient.invalidateQueries({ queryKey: ['domains'] })
+        queryClient.invalidateQueries({ queryKey: ['organizations'] })
       } else {
         throw new Error(response.message || '移除失败')
       }
@@ -210,16 +194,9 @@ export function useBatchDeleteDomainsFromOrganization() {
           toast.success(`成功移除 ${successCount} 个域名`)
         }
         
-        // 刷新相关查询
-        queryClient.invalidateQueries({ queryKey: domainKeys.lists() })
-        
-        // 刷新所有域名列表（包括 useAllDomains）
-        queryClient.invalidateQueries({ queryKey: ['domains', 'all'] })
-        
-        // 刷新组织的域名列表
-        queryClient.invalidateQueries({ 
-          queryKey: ['organizations', 'detail', organizationId, 'domains'] 
-        })
+        // 刷新所有域名和组织相关查询（通配符匹配）
+        queryClient.invalidateQueries({ queryKey: ['domains'] })
+        queryClient.invalidateQueries({ queryKey: ['organizations'] })
       } else {
         throw new Error(response.message || '批量移除失败')
       }
@@ -259,17 +236,9 @@ export function useBatchDeleteDomains() {
         
         toast.success(`成功删除 ${deletedCount} 个域名`)
         
-        // 刷新所有域名相关查询
-        queryClient.invalidateQueries({ queryKey: domainKeys.lists() })
-        queryClient.invalidateQueries({ queryKey: ['domains', 'all'] })
-        
-        // 刷新所有组织的域名列表
-        queryClient.invalidateQueries({ 
-          predicate: (query) => {
-            const key = query.queryKey as string[]
-            return key[0] === 'organizations' && key[2] === 'domains'
-          }
-        })
+        // 刷新所有域名和组织相关查询（通配符匹配）
+        queryClient.invalidateQueries({ queryKey: ['domains'] })
+        queryClient.invalidateQueries({ queryKey: ['organizations'] })
       } else {
         throw new Error(response.message || '批量删除失败')
       }
@@ -306,20 +275,9 @@ export function useUpdateDomain() {
         
         toast.success('更新成功')
         
-        // 刷新所有域名相关查询
-        queryClient.invalidateQueries({ queryKey: domainKeys.lists() })
-        queryClient.invalidateQueries({ queryKey: domainKeys.detail(id) })
-        
-        // 刷新所有域名列表（包括 useAllDomains）
-        queryClient.invalidateQueries({ queryKey: ['domains', 'all'] })
-        
-        // 刷新所有组织的域名列表（更精确的匹配）
-        queryClient.invalidateQueries({ 
-          predicate: (query) => {
-            const key = query.queryKey as string[]
-            return key[0] === 'organizations' && key[2] === 'domains'
-          }
-        })
+        // 刷新所有域名和组织相关查询（通配符匹配）
+        queryClient.invalidateQueries({ queryKey: ['domains'] })
+        queryClient.invalidateQueries({ queryKey: ['organizations'] })
       } else {
         throw new Error(response.message || '更新域名失败')
       }

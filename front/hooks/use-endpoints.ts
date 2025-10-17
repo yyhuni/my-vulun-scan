@@ -135,16 +135,8 @@ export function useCreateEndpoint() {
           toast.success(`成功创建 ${newCreated} 个端点`)
         }
         
-        // 刷新所有相关查询（因为可能自动创建了 domain 和 subdomain）
-        queryClient.invalidateQueries({ queryKey: endpointKeys.lists() })
-        
-        // 刷新所有域名的端点列表
-        queryClient.invalidateQueries({ 
-          predicate: (query) => {
-            const key = query.queryKey as string[]
-            return key[0] === 'endpoints' && (key[1] === 'domain' || key[1] === 'subdomain')
-          }
-        })
+        // 刷新所有端点相关查询（通配符匹配）
+        queryClient.invalidateQueries({ queryKey: ['endpoints'] })
       } else {
         throw new Error('创建端点失败')
       }
@@ -181,17 +173,8 @@ export function useDeleteEndpoint() {
         
         toast.success('删除成功')
         
-        // 刷新相关查询
-        queryClient.invalidateQueries({ queryKey: endpointKeys.lists() })
-        queryClient.invalidateQueries({ queryKey: endpointKeys.detail(id) })
-        
-        // 刷新所有域名和子域名的端点列表
-        queryClient.invalidateQueries({ 
-          predicate: (query) => {
-            const key = query.queryKey as string[]
-            return key[0] === 'endpoints' && (key[1] === 'domain' || key[1] === 'subdomain')
-          }
-        })
+        // 刷新所有端点相关查询（通配符匹配）
+        queryClient.invalidateQueries({ queryKey: ['endpoints'] })
       } else {
         throw new Error(response.message || '删除端点失败')
       }
@@ -228,16 +211,8 @@ export function useBatchDeleteEndpoints() {
         const { deletedCount } = response.data
         toast.success(`成功删除 ${deletedCount} 个端点`)
         
-        // 刷新相关查询
-        queryClient.invalidateQueries({ queryKey: endpointKeys.lists() })
-        
-        // 刷新所有域名和子域名的端点列表
-        queryClient.invalidateQueries({ 
-          predicate: (query) => {
-            const key = query.queryKey as string[]
-            return key[0] === 'endpoints' && (key[1] === 'domain' || key[1] === 'subdomain')
-          }
-        })
+        // 刷新所有端点相关查询（通配符匹配）
+        queryClient.invalidateQueries({ queryKey: ['endpoints'] })
       } else {
         throw new Error(response.message || '批量删除端点失败')
       }

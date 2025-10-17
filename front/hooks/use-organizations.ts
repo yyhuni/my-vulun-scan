@@ -134,8 +134,8 @@ export function useCreateOrganization() {
         console.log('创建组织成功')
         console.log('后端响应:', response)
         
-        // 刷新组织列表
-        queryClient.invalidateQueries({ queryKey: organizationKeys.lists() })
+        // 刷新所有组织相关查询（通配符匹配）
+        queryClient.invalidateQueries({ queryKey: ['organizations'] })
         
         // 显示成功提示
         toast.success('创建成功')
@@ -180,9 +180,8 @@ export function useUpdateOrganization() {
         console.log('更新组织成功')
         console.log('后端响应:', response)
         
-        // 刷新组织详情和列表（使用 invalidateQueries 确保数据一致性）
-        queryClient.invalidateQueries({ queryKey: organizationKeys.detail(id) })
-        queryClient.invalidateQueries({ queryKey: organizationKeys.lists() })
+        // 刷新所有组织相关查询（通配符匹配）
+        queryClient.invalidateQueries({ queryKey: ['organizations'] })
         
         // 显示成功提示
         toast.success('更新成功')
@@ -218,14 +217,14 @@ export function useDeleteOrganization() {
       toast.loading('正在删除组织...', { id: `delete-${deletedId}` })
       
       // 取消正在进行的查询
-      await queryClient.cancelQueries({ queryKey: organizationKeys.lists() })
+      await queryClient.cancelQueries({ queryKey: ['organizations'] })
 
       // 获取当前数据作为备份
-      const previousData = queryClient.getQueriesData({ queryKey: organizationKeys.lists() })
+      const previousData = queryClient.getQueriesData({ queryKey: ['organizations'] })
 
       // 乐观更新：从所有列表查询中移除该组织
       queryClient.setQueriesData(
-        { queryKey: organizationKeys.lists() },
+        { queryKey: ['organizations'] },
         (old: any) => {
           if (old?.organizations) {
             return {
@@ -273,7 +272,7 @@ export function useDeleteOrganization() {
     },
     onSettled: () => {
       // 无论成功失败都刷新数据
-      queryClient.invalidateQueries({ queryKey: organizationKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: ['organizations'] })
     },
   })
 }
@@ -292,14 +291,14 @@ export function useBatchDeleteOrganizations() {
       toast.loading('正在批量删除组织...', { id: 'batch-delete' })
       
       // 取消正在进行的查询
-      await queryClient.cancelQueries({ queryKey: organizationKeys.lists() })
+      await queryClient.cancelQueries({ queryKey: ['organizations'] })
 
       // 获取当前数据作为备份
-      const previousData = queryClient.getQueriesData({ queryKey: organizationKeys.lists() })
+      const previousData = queryClient.getQueriesData({ queryKey: ['organizations'] })
 
       // 乐观更新：从所有列表查询中移除这些组织
       queryClient.setQueriesData(
-        { queryKey: organizationKeys.lists() },
+        { queryKey: ['organizations'] },
         (old: any) => {
           if (old?.organizations) {
             return {
@@ -349,7 +348,7 @@ export function useBatchDeleteOrganizations() {
     },
     onSettled: () => {
       // 无论成功失败都刷新数据
-      queryClient.invalidateQueries({ queryKey: organizationKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: ['organizations'] })
     },
   })
 }
