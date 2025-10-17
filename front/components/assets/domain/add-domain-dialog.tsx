@@ -41,11 +41,11 @@ import { useCreateDomain } from "@/hooks/use-domains"
 import { useOrganizations } from "@/hooks/use-organizations"
 
 // 导入类型定义
-import type { Domain } from "@/types/domain.types"
+import type { BatchCreateResponse } from "@/types/api-response.types"
 
 // 组件属性类型定义
 interface AddDomainDialogProps {
-  onAdd?: (domains: Domain[]) => void  // 添加成功回调函数（可选）
+  onAdd?: (result: BatchCreateResponse) => void  // 添加成功回调，返回批量创建的统计信息
   open?: boolean                        // 外部控制对话框开关状态
   onOpenChange?: (open: boolean) => void // 外部控制对话框开关回调
   presetOrganizationId?: number         // 预设的组织ID（可选）
@@ -166,6 +166,7 @@ export function AddDomainDialog({
           
           // 调用外部回调（如果提供）
           if (onAdd && response.state === 'success' && response.data) {
+            // 传递批量创建的统计信息给回调函数
             onAdd(response.data)
           }
         }
