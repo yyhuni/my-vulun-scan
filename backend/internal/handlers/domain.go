@@ -111,7 +111,7 @@ func CreateDomains(c *gin.Context) {
 // @Tags 域名管理
 // @Produce json
 // @Param id path uint true "域名ID" example(1)
-// @Success 200 {object} models.APIResponse{data=models.Domain} "获取成功"
+// @Success 200 {object} models.APIResponse{data=models.GetDomainByIDResponseData} "获取成功"
 // @Failure 404 {object} models.APIResponse "域名不存在"
 // @Failure 500 {object} models.APIResponse "服务器内部错误"
 // @Router /domains/{id} [get]

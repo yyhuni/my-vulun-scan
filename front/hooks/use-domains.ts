@@ -24,7 +24,7 @@ export function useDomain(id: number) {
     queryFn: () => DomainService.getDomainById(id),
     select: (response) => {
       if (response.state === 'success' && response.data) {
-        return response.data as Domain
+        return response.data.domain
       }
       throw new Error(response.message || '获取域名详情失败')
     },

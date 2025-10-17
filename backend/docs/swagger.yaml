@@ -357,6 +357,11 @@ definitions:
         description: 分类数量
         type: integer
     type: object
+  vulun-scan-backend_internal_models.GetDomainByIDResponseData:
+    properties:
+      domain:
+        $ref: '#/definitions/vulun-scan-backend_internal_models.Domain'
+    type: object
   vulun-scan-backend_internal_models.GetDomainsResponse:
     properties:
       domains:
@@ -680,7 +685,7 @@ paths:
             - $ref: '#/definitions/vulun-scan-backend_internal_models.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/vulun-scan-backend_internal_models.Domain'
+                  $ref: '#/definitions/vulun-scan-backend_internal_models.GetDomainByIDResponseData'
               type: object
         "404":
           description: 域名不存在

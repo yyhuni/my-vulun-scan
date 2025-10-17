@@ -176,12 +176,12 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) (*models.
 }
 
 // GetDomainByID 根据ID获取域名信息（包含组织关联信息）
-func (s *DomainService) GetDomainByID(id uint) (*models.Domain, error) {
+func (s *DomainService) GetDomainByID(id uint) (*models.GetDomainByIDResponseData, error) {
 
 	var domain models.Domain
 
 	// 加载关联的组织信息
-	result := s.db.Preload("Organizations").First(&domain, "id = ?", id)
+	result := s.db.First(&domain, "id = ?", id)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
 			return nil, customErrors.ErrDomainNotFound
@@ -193,7 +193,9 @@ func (s *DomainService) GetDomainByID(id uint) (*models.Domain, error) {
 	log.Info().Uint("id", id).Msg("Domain retrieved successfully")
 
 	// 返回完整的域名模型（包含关联的组织）
-	return &domain, nil
+	return &models.GetDomainByIDResponseData{
+		Domain: &domain,
+	}, nil
 }
 
 // UpdateDomain 更新域名信息

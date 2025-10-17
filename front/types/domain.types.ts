@@ -46,6 +46,11 @@ export interface GetAllDomainsResponse {
   totalPages: number
 }
 
+// 获取单个域名详情响应
+export interface GetDomainByIDResponse {
+  domain: Domain
+}
+
 // 域名数据表格组件属性类型定义
 export interface DomainDataTableProps {
   data: Domain[]                           // 域名数据数组

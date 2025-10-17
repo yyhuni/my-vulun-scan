@@ -1,6 +1,6 @@
 import { api } from "@/lib/api-client"
 import type { ApiResponse } from "@/types/api-response.types"
-import type { Domain, GetDomainsParams, GetDomainsResponse, GetAllDomainsParams, GetAllDomainsResponse, BatchCreateDomainsResponse } from "@/types/domain.types"
+import type { Domain, GetDomainsParams, GetDomainsResponse, GetAllDomainsParams, GetAllDomainsResponse, GetDomainByIDResponse, BatchCreateDomainsResponse } from "@/types/domain.types"
 
 export class DomainService {
   // ========== 域名基础操作 ==========
@@ -29,10 +29,10 @@ export class DomainService {
   /**
    * 获取单个域名详情
    * @param id - 域名ID
-   * @returns Promise<ApiResponse<Domain>>
+   * @returns Promise<ApiResponse<GetDomainByIDResponse>>
    */
-  static async getDomainById(id: string | number): Promise<ApiResponse<Domain>> {
-    const response = await api.get<ApiResponse<Domain>>(`/domains/${id}`)
+  static async getDomainById(id: string | number): Promise<ApiResponse<GetDomainByIDResponse>> {
+    const response = await api.get<ApiResponse<GetDomainByIDResponse>>(`/domains/${id}`)
     return response.data
   }
 

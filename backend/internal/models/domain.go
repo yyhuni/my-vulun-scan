@@ -102,6 +102,11 @@ type DomainResponseData struct {
 	Description string    `json:"description"`
 }
 
+// GetDomainByIDResponseData 获取单个域名详情响应数据（包含关联的组织信息）
+type GetDomainByIDResponseData struct {
+	Domain *Domain `json:"domain"`
+}
+
 // GetDomainsRequest 获取所有域名请求（支持分页和排序）
 type GetDomainsRequest struct {
 	BasePaginationRequest

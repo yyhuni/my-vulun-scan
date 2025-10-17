@@ -331,7 +331,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.Domain"
+                                            "$ref": "#/definitions/vulun-scan-backend_internal_models.GetDomainByIDResponseData"
                                         }
                                     }
                                 }
@@ -2442,6 +2442,14 @@ const docTemplate = `{
                 "total": {
                     "description": "分类数量",
                     "type": "integer"
+                }
+            }
+        },
+        "vulun-scan-backend_internal_models.GetDomainByIDResponseData": {
+            "type": "object",
+            "properties": {
+                "domain": {
+                    "$ref": "#/definitions/vulun-scan-backend_internal_models.Domain"
                 }
             }
         },
