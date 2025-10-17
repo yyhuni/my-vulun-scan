@@ -61,9 +61,10 @@ export function useSubdomains(params: PaginationParams & { organizationId?: stri
       if (response.state === 'success' && response.data) {
         return response.data as GetSubDomainsResponse
       }
-      // 抛出包含后端错误信息的错误
-      const errorMessage = response.message || '获取子域名列表失败'
-      throw new Error(errorMessage)
+      // 控制台打印后端响应，便于调试
+      console.error('获取子域名列表失败 - 后端响应:', response)
+      // 抛出固定的用户友好错误信息
+      throw new Error('获取子域名列表失败')
     },
   })
 }
@@ -77,9 +78,10 @@ export function useSubdomain(id: number) {
       if (response.state === 'success' && response.data) {
         return response.data as SubDomain
       }
-      // 抛出包含后端错误信息的错误
-      const errorMessage = response.message || '获取子域名详情失败'
-      throw new Error(errorMessage)
+      // 控制台打印后端响应，便于调试
+      console.error('获取子域名详情失败 - 后端响应:', response)
+      // 抛出固定的用户友好错误信息
+      throw new Error('获取子域名详情失败')
     },
     enabled: !!id,
   })

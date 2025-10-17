@@ -53,7 +53,10 @@ export function useOrganizations(
           }
         }
       }
-      throw new Error(response.message || '获取组织列表失败')
+      // 控制台打印后端响应，便于调试
+      console.error('获取组织列表失败 - 后端响应:', response)
+      // 抛出固定的用户友好错误信息
+      throw new Error('获取组织列表失败')
     },
     enabled: options?.enabled !== undefined ? options.enabled : true,
     throwOnError: true,
@@ -71,7 +74,10 @@ export function useOrganization(id: number) {
       if (response.state === 'success' && response.data) {
         return response.data as Organization
       }
-      throw new Error(response.message || '获取组织详情失败')
+      // 控制台打印后端响应，便于调试
+      console.error('获取组织详情失败 - 后端响应:', response)
+      // 抛出固定的用户友好错误信息
+      throw new Error('获取组织详情失败')
     },
     enabled: !!id, // 只有当 id 存在时才执行查询
     throwOnError: true,
@@ -100,7 +106,10 @@ export function useOrganizationDomains(
       if (response.state === 'success' && response.data) {
         return response.data
       }
-      throw new Error(response.message || '获取组织域名列表失败')
+      // 控制台打印后端响应，便于调试
+      console.error('获取组织域名列表失败 - 后端响应:', response)
+      // 抛出固定的用户友好错误信息
+      throw new Error('获取组织域名列表失败')
     },
     enabled: options?.enabled !== undefined ? (options.enabled && !!id) : !!id,
     throwOnError: true,

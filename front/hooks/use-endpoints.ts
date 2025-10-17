@@ -36,7 +36,10 @@ export function useEndpoint(id: number) {
       if (response.state === 'success' && response.data) {
         return response.data as Endpoint
       }
-      throw new Error(response.message || '获取端点详情失败')
+      // 控制台打印后端响应，便于调试
+      console.error('获取端点详情失败 - 后端响应:', response)
+      // 抛出固定的用户友好错误信息
+      throw new Error('获取端点详情失败')
     },
     enabled: !!id,
   })
@@ -57,7 +60,10 @@ export function useEndpoints(params?: GetEndpointsRequest) {
       if (response.state === 'success' && response.data) {
         return response.data as GetEndpointsResponse
       }
-      throw new Error(response.message || '获取端点列表失败')
+      // 控制台打印后端响应，便于调试
+      console.error('获取端点列表失败 - 后端响应:', response)
+      // 抛出固定的用户友好错误信息
+      throw new Error('获取端点列表失败')
     },
   })
 }
@@ -77,7 +83,10 @@ export function useEndpointsByDomain(domainId: number, params?: Omit<GetEndpoint
       if (response.state === 'success' && response.data) {
         return response.data as GetEndpointsResponse
       }
-      throw new Error(response.message || '获取域名端点列表失败')
+      // 控制台打印后端响应，便于调试
+      console.error('获取域名端点列表失败 - 后端响应:', response)
+      // 抛出固定的用户友好错误信息
+      throw new Error('获取域名端点列表失败')
     },
     enabled: !!domainId,
   })
@@ -98,7 +107,10 @@ export function useEndpointsBySubdomain(subdomainId: number, params?: Omit<GetEn
       if (response.state === 'success' && response.data) {
         return response.data as GetEndpointsResponse
       }
-      throw new Error(response.message || '获取子域名端点列表失败')
+      // 控制台打印后端响应，便于调试
+      console.error('获取子域名端点列表失败 - 后端响应:', response)
+      // 抛出固定的用户友好错误信息
+      throw new Error('获取子域名端点列表失败')
     },
     enabled: !!subdomainId,
   })

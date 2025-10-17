@@ -14,7 +14,6 @@ export interface Endpoint {
   subdomainId?: number            // 后端: subdomain_id
   domain?: string
   subdomain?: string
-  createdAt: string               // 后端: created_at
   updatedAt: string               // 后端: updated_at
 }
 

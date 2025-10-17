@@ -153,7 +153,7 @@ export function EndpointsList({
         </div>
         <h3 className="text-lg font-semibold mb-2">加载失败</h3>
         <p className="text-muted-foreground text-center mb-4">
-          {error.message || "加载端点数据时出现错误，请重试"}
+          加载端点数据失败，请检查网络连接后重试
         </p>
         <button 
           onClick={() => refetch()}

@@ -26,7 +26,10 @@ export function useDomain(id: number) {
       if (response.state === 'success' && response.data) {
         return response.data.domain
       }
-      throw new Error(response.message || '获取域名详情失败')
+      // 控制台打印后端响应，便于调试
+      console.error('获取域名详情失败 - 后端响应:', response)
+      // 抛出固定的用户友好错误信息
+      throw new Error('获取域名详情失败')
     },
     enabled: !!id,
   })
@@ -66,7 +69,10 @@ export function useOrganizationDomains(
           }
         }
       }
-      throw new Error(response.message || '获取域名列表失败')
+      // 控制台打印后端响应，便于调试
+      console.error('获取组织域名列表失败 - 后端响应:', response)
+      // 抛出固定的用户友好错误信息
+      throw new Error('获取组织域名列表失败')
     },
   })
 }
@@ -314,7 +320,10 @@ export function useAllDomains(params: GetAllDomainsParams = {}) {
           }
         }
       }
-      throw new Error(response.message || '获取域名列表失败')
+      // 控制台打印后端响应，便于调试
+      console.error('获取所有域名列表失败 - 后端响应:', response)
+      // 抛出固定的用户友好错误信息
+      throw new Error('获取所有域名列表失败')
     },
   })
 }

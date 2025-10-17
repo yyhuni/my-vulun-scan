@@ -22,7 +22,10 @@ export function useCategories() {
       if (response.state === 'success' && response.data) {
         return response.data.categories || []
       }
-      throw new Error(response.message || '获取分类列表失败')
+      // 控制台打印后端响应，便于调试
+      console.error('获取分类列表失败 - 后端响应:', response)
+      // 抛出固定的用户友好错误信息
+      throw new Error('获取工具分类列表失败')
     },
   })
 }
@@ -44,7 +47,10 @@ export function useTools(params: GetToolsParams = {}) {
           }
         }
       }
-      throw new Error(response.message || '获取工具列表失败')
+      // 控制台打印后端响应，便于调试
+      console.error('获取工具列表失败 - 后端响应:', response)
+      // 抛出固定的用户友好错误信息
+      throw new Error('获取工具列表失败')
     },
   })
 }
