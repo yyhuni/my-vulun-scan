@@ -305,33 +305,40 @@ func CreateSubDomainsForDomain(c *gin.Context) {
 		return
 	}
 
-	// 查询域名信息以进行归属校验
-	domainService := services.NewDomainService()
-	d, err := domainService.GetDomainByID(uri.ID)
-	if err != nil {
-		if errors.Is(err, customErrors.ErrDomainNotFound) {
-			response.NotFoundResponse(c, "域名不存在")
-			return
-		}
-		response.InternalServerErrorResponse(c, "获取域名信息失败: "+err.Error())
-		return
-	}
-
-	// 子域名格式校验（使用工具包）
-	if vErrs := utils.ValidateSubdomains(req.Subdomains); len(vErrs) > 0 {
-		response.ValidationErrorResponse(c, "子域名格式验证失败: "+vErrs[0].Error())
-		return
-	}
-
-	// 子域名归属校验：必须属于当前域名
+	// 处理子域名数据：过滤空值、规范化、验证
+	validSubdomains := make([]string, 0, len(req.Subdomains))
 	for _, sub := range req.Subdomains {
-		if err := utils.ValidateSubdomainBelongsTo(sub, d.Name); err != nil {
-			response.ValidationErrorResponse(c, "子域名归属验证失败: "+err.Error())
+		// 跳过空子域名（自动移除空行）
+		if sub == "" {
+			continue
+		}
+
+		// 1. 规范化子域名（去除空格、统一小写、移除末尾的点）
+		normalized, err := utils.NormalizeDomain(sub)
+		if err != nil {
+			response.ValidationErrorResponse(c, fmt.Sprintf("子域名 [%s] 规范化失败: %s", sub, err.Error()))
 			return
 		}
+
+		// 2. 验证规范化后的子域名
+		if err := utils.ValidateSubdomain(normalized); err != nil {
+			response.ValidationErrorResponse(c, fmt.Sprintf("子域名 [%s] 格式无效: %s", sub, err.Error()))
+			return
+		}
+
+		validSubdomains = append(validSubdomains, normalized)
 	}
 
-	// 调用服务层创建子域名
+	// 检查是否有有效子域名
+	if len(validSubdomains) == 0 {
+		response.BadRequestResponse(c, "没有有效的子域名数据（所有子域名均为空）")
+		return
+	}
+
+	// 更新为有效子域名列表
+	req.Subdomains = validSubdomains
+
+	// 调用服务层创建子域名（Service 层会处理归属验证等业务逻辑）
 	service := services.NewSubDomainService()
 	result, err := service.CreateSubDomainsForDomain(uri.ID, req.Subdomains)
 	if err != nil {

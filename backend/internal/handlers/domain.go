@@ -3,7 +3,6 @@ package handlers
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	customErrors "vulun-scan-backend/internal/errors"
 	"vulun-scan-backend/internal/models"
@@ -49,46 +48,43 @@ func CreateDomains(c *gin.Context) {
 		return
 	}
 
-	// 步骤1: 去重 + 标准化（使用 map 自动去重，保留第一次出现的域名）
-	domainMap := make(map[string]models.DomainDetail)
+	// 处理域名数据：过滤空值、规范化、验证
+	validDomains := make([]models.DomainDetail, 0, len(req.Domains))
 
 	for _, detail := range req.Domains {
-		// 标准化域名（转小写 + 去空格）
-		normalizedName := strings.ToLower(strings.TrimSpace(detail.Name))
-
-		// 只保留第一次出现的域名和描述（FIFO 策略）
-		if _, exists := domainMap[normalizedName]; !exists {
-			domainMap[normalizedName] = models.DomainDetail{
-				Name:        normalizedName,
-				Description: detail.Description,
-			}
+		// 跳过空域名
+		if detail.Name == "" {
+			continue
 		}
+
+		// 1. 规范化域名（去除空格、统一小写、移除末尾的点）
+		normalized, err := utils.NormalizeDomain(detail.Name)
+		if err != nil {
+			response.ValidationErrorResponse(c, fmt.Sprintf("域名 [%s] 规范化失败: %s", detail.Name, err.Error()))
+			return
+		}
+
+		// 2. 验证规范化后的域名
+		if err := utils.ValidateDomain(normalized); err != nil {
+			response.ValidationErrorResponse(c, fmt.Sprintf("域名 [%s] 格式无效: %s", detail.Name, err.Error()))
+			return
+		}
+
+		// 3. 添加到有效列表
+		validDomains = append(validDomains, models.DomainDetail{
+			Name:        normalized,
+			Description: detail.Description,
+		})
 	}
 
-	// 步骤2: 提取域名列表用于验证
-	domainNames := make([]string, 0, len(domainMap))
-	for name := range domainMap {
-		domainNames = append(domainNames, name)
-	}
-
-	// 步骤3: 批量验证域名格式
-	if validationErrors := utils.ValidateDomains(domainNames); len(validationErrors) > 0 {
-		var errorMessages []string
-		for _, err := range validationErrors {
-			errorMessages = append(errorMessages, err.Error())
-		}
-		response.ValidationErrorResponse(c, "域名格式验证失败:\n"+strings.Join(errorMessages, "\n"))
+	// 检查是否有有效域名
+	if len(validDomains) == 0 {
+		response.BadRequestResponse(c, "没有有效的域名数据（所有域名均为空）")
 		return
 	}
 
-	// 步骤4: 构建去重后的请求（直接使用 domainMap）
-	deduplicatedDomains := make([]models.DomainDetail, 0, len(domainMap))
-	for _, detail := range domainMap {
-		deduplicatedDomains = append(deduplicatedDomains, detail)
-	}
-
-	// 更新请求，使用去重后的域名列表
-	req.Domains = deduplicatedDomains
+	// 更新为有效域名列表
+	req.Domains = validDomains
 
 	service := services.NewDomainService()
 	result, err := service.CreateDomains(req)
@@ -160,13 +156,29 @@ func UpdateDomain(c *gin.Context) {
 		return
 	}
 
-	// 验证新域名格式（如果提供了新名称）
+	// 处理新域名（如果提供了）：规范化 + 验证
 	// 使用指针类型：nil表示不更新，非nil表示要更新（包括空字符串）
-	if req.Name != nil && *req.Name != "" {
-		if err := utils.ValidateDomain(*req.Name); err != nil {
-			response.ValidationErrorResponse(c, "域名格式验证失败: "+err.Error())
+	if req.Name != nil {
+		if *req.Name == "" {
+			response.ValidationErrorResponse(c, "域名不能为空")
 			return
 		}
+
+		// 1. 规范化域名
+		normalized, err := utils.NormalizeDomain(*req.Name)
+		if err != nil {
+			response.ValidationErrorResponse(c, fmt.Sprintf("域名 [%s] 规范化失败: %s", *req.Name, err.Error()))
+			return
+		}
+
+		// 2. 验证规范化后的域名
+		if err := utils.ValidateDomain(normalized); err != nil {
+			response.ValidationErrorResponse(c, fmt.Sprintf("域名 [%s] 格式无效: %s", *req.Name, err.Error()))
+			return
+		}
+
+		// 3. 使用规范化后的域名
+		req.Name = &normalized
 	}
 
 	service := services.NewDomainService()

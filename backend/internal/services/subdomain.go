@@ -2,10 +2,10 @@ package services
 
 import (
 	"fmt"
-	"strings"
 
 	"vulun-scan-backend/internal/errors"
 	"vulun-scan-backend/internal/models"
+	"vulun-scan-backend/internal/utils"
 	"vulun-scan-backend/pkg/database"
 
 	"github.com/rs/zerolog/log"
@@ -417,13 +417,23 @@ func (s *SubDomainService) CreateSubDomainsForDomain(domainID uint, subdomains [
 		return nil, fmt.Errorf("域名不存在")
 	}
 
-	// ===== 步骤2：去重子域名 =====
-	uniqueSubdomains := make(map[string]struct{}, len(subdomains)) // 预分配容量
+	// ===== 步骤2：归属验证（业务规则验证）=====
+	// Handler 层传入的子域名已经规范化和格式验证过，这里只需验证业务规则
 	for _, subdomain := range subdomains {
-		normalized := strings.TrimSpace(strings.ToLower(subdomain))
-		if normalized != "" {
-			uniqueSubdomains[normalized] = struct{}{}
+		if err := utils.ValidateSubdomainBelongsTo(subdomain, domain.Name); err != nil {
+			log.Warn().
+				Str("subdomain", subdomain).
+				Str("parent_domain", domain.Name).
+				Msg("子域名归属验证失败")
+			return nil, fmt.Errorf("子域名 '%s' 不属于域名 '%s'", subdomain, domain.Name)
 		}
+	}
+
+	// ===== 步骤3：去重子域名 =====
+	// Handler 层已经规范化，这里直接去重即可
+	uniqueSubdomains := make(map[string]struct{}, len(subdomains))
+	for _, subdomain := range subdomains {
+		uniqueSubdomains[subdomain] = struct{}{}
 	}
 
 	totalUnique := len(uniqueSubdomains)

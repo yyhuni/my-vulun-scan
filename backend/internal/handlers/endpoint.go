@@ -97,14 +97,40 @@ func CreateEndpoints(c *gin.Context) {
 		return
 	}
 
-	// 验证端点数据 - 使用 URLValidator 进行严格验证
-	for i, detail := range req.Endpoints {
-		// 使用 utils.ValidateHTTPURL 验证 URL 格式
-		if err := utils.ValidateURL(detail.URL); err != nil {
-			response.ValidationErrorResponse(c, fmt.Sprintf("第 %d 个端点的 URL 格式无效: %s", i+1, err.Error()))
+	// 处理端点数据：过滤空值、规范化、验证
+	validEndpoints := make([]models.EndpointDetail, 0, len(req.Endpoints))
+	for _, detail := range req.Endpoints {
+		// 跳过空 URL（自动移除空行）
+		if detail.URL == "" {
+			continue
+		}
+
+		// 1. 规范化 URL（统一格式、去除冗余）
+		normalized, err := utils.NormalizeURL(detail.URL)
+		if err != nil {
+			response.ValidationErrorResponse(c, fmt.Sprintf("URL [%s] 规范化失败: %s", detail.URL, err.Error()))
 			return
 		}
+
+		// 2. 验证规范化后的 URL
+		if err := utils.ValidateURL(normalized); err != nil {
+			response.ValidationErrorResponse(c, fmt.Sprintf("URL [%s] 格式无效: %s", detail.URL, err.Error()))
+			return
+		}
+
+		// 3. 使用规范化后的 URL
+		detail.URL = normalized
+		validEndpoints = append(validEndpoints, detail)
 	}
+
+	// 检查是否有有效端点
+	if len(validEndpoints) == 0 {
+		response.BadRequestResponse(c, "没有有效的端点数据（所有 URL 均为空）")
+		return
+	}
+
+	// 更新为有效端点列表
+	req.Endpoints = validEndpoints
 
 	result, err := services.NewEndpointService().CreateEndpoints(req)
 	if err != nil {

@@ -11,10 +11,10 @@ import (
 )
 
 // ValidateURL 验证 URL（统一验证入口）
+// 注意：此函数只做验证，不修改输入。请先调用 NormalizeURL 进行规范化
 func ValidateURL(urlStr string) error {
 	const maxLength = 2048
 
-	urlStr = strings.TrimSpace(urlStr)
 	if urlStr == "" {
 		return fmt.Errorf("URL 不能为空")
 	}
@@ -65,6 +65,7 @@ func ValidateURL(urlStr string) error {
 //	NormalizeURL("HTTPS://Example.COM:443/API/#section")
 //	=> "https://example.com/api"
 func NormalizeURL(urlStr string) (string, error) {
+	// 去除首尾空格
 	urlStr = strings.TrimSpace(urlStr)
 
 	if urlStr == "" {
@@ -93,7 +94,12 @@ func NormalizeURL(urlStr string) (string, error) {
 
 // ExtractHostFromURL 从 URL 中提取主机名（不含端口）
 // 例如: https://api.example.com:8080/path -> api.example.com
+// 注意：请先调用 NormalizeURL 进行规范化
 func ExtractHostFromURL(rawURL string) (string, error) {
+	if rawURL == "" {
+		return "", fmt.Errorf("URL 不能为空")
+	}
+
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return "", fmt.Errorf("invalid URL: %w", err)
@@ -112,10 +118,15 @@ func ExtractHostFromURL(rawURL string) (string, error) {
 //	example.com -> example.com
 //
 // 若解析失败则回退返回原 host
-func ExtractRootDomain(host string) string {
+// 注意：请传入已规范化的 host
+func ExtractRootDomain(host string) (string, error) {
+	if host == "" {
+		return "", fmt.Errorf("host 不能为空")
+	}
+
 	if etld1, err := publicsuffix.EffectiveTLDPlusOne(host); err == nil {
-		return etld1
+		return etld1, nil
 	}
 	// 回退：直接返回原始 host（例如 IP 或非标准域名）
-	return host
+	return host, nil
 }

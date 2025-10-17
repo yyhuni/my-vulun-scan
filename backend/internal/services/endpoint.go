@@ -103,52 +103,35 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 		Int("total_requested", len(req.Endpoints)).
 		Msg("Starting to create endpoints with auto domain/subdomain lookup")
 
-	// 0. URL 规范化 + Host 提取 + 请求内去重：只保留每个 URL 的第一次出现
-	// 使用结构体缓存 detail 和对应的 host，避免后续重复解析
+	// 0. Host 提取 + 请求内去重：只保留每个 URL 的第一次出现
+	// 注意：URL 已在 Handler 层完成规范化和验证，此处信任输入数据
 	type endpointWithHost struct {
 		detail models.EndpointDetail
 		host   string
 	}
 
 	urlMap := make(map[string]endpointWithHost)
-	// 统计计数器
 	var duplicateInRequest int // 请求内重复的URL数量
-	var normalizeErrors int    // URL规范化失败的数量
 	var extractHostErrors int  // 主机名提取失败的数量
 
 	for _, detail := range req.Endpoints {
-		// 规范化 URL，避免等价不同写法的重复
-		// 例如：HTTPS://Example.COM:443/API/ 和 https://example.com/api 会被识别为同一个 URL
-		normalizedURL, err := utils.NormalizeURL(detail.URL)
+		// 提取 host（URL 已在 Handler 层规范化）
+		host, err := utils.ExtractHostFromURL(detail.URL)
 		if err != nil {
-			// 规范化失败说明 URL 格式无效，直接跳过
-			log.Warn().Err(err).Str("original_url", detail.URL).Msg("Failed to normalize URL, skipping invalid URL")
-			normalizeErrors++
-			continue
-		}
-
-		// 提取 host（在这里只解析一次）
-		host, err := utils.ExtractHostFromURL(normalizedURL)
-		if err != nil {
-			log.Warn().Err(err).Str("url", normalizedURL).Msg("Failed to extract host from URL, skipping")
+			log.Warn().Err(err).Str("url", detail.URL).Msg("Failed to extract host from URL, skipping")
 			extractHostErrors++
 			continue
 		}
 
-		// 使用规范化后的 URL 进行去重
-		if _, exists := urlMap[normalizedURL]; !exists {
-			// 更新 detail 中的 URL 为规范化后的版本，并缓存 host
-			detail.URL = normalizedURL
-			urlMap[normalizedURL] = endpointWithHost{
+		// 使用 URL 进行去重
+		if _, exists := urlMap[detail.URL]; !exists {
+			urlMap[detail.URL] = endpointWithHost{
 				detail: detail,
 				host:   host,
 			}
 		} else {
 			duplicateInRequest++
-			log.Debug().
-				Str("original_url", detail.URL).
-				Str("normalized_url", normalizedURL).
-				Msg("Duplicate URL detected after normalization")
+			log.Debug().Str("url", detail.URL).Msg("Duplicate URL detected")
 		}
 	}
 
@@ -158,13 +141,12 @@ func (s *EndpointService) CreateEndpoints(req models.CreateEndpointsRequest) (*m
 		uniqueEndpoints = append(uniqueEndpoints, endpoint)
 	}
 
-	if duplicateInRequest > 0 || normalizeErrors > 0 || extractHostErrors > 0 {
+	if duplicateInRequest > 0 || extractHostErrors > 0 {
 		log.Info().
 			Int("duplicate_in_request", duplicateInRequest).
-			Int("normalize_errors", normalizeErrors).
 			Int("extract_host_errors", extractHostErrors).
 			Int("unique_endpoints", len(uniqueEndpoints)).
-			Msg("URL normalization, host extraction and deduplication completed")
+			Msg("Host extraction and deduplication completed")
 	}
 
 	// 使用事务确保批量创建的原子性

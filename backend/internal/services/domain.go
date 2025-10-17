@@ -65,27 +65,33 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) (*models.
 		return nil, err
 	}
 
-	// 步骤2: 使用事务处理批量创建和关联
-	// 注意：Handler 层已经完成了去重和标准化，这里直接使用
-	totalProcessed = len(req.Domains)
-
-	err := s.db.Transaction(func(tx *gorm.DB) error {
-		// 步骤2.1: 收集所有域名名称（Handler 层已去重和标准化）
-		domainNames := make([]string, 0, len(req.Domains))
-		domainDetailMap := make(map[string]models.DomainDetail)
-		for _, detail := range req.Domains {
-			domainNames = append(domainNames, detail.Name)
+	// 步骤2: 去重（业务逻辑）
+	// Handler 层传入的是规范化和验证过的域名，这里进行去重处理
+	domainDetailMap := make(map[string]models.DomainDetail)
+	for _, detail := range req.Domains {
+		// 只保留第一次出现的域名（FIFO策略）
+		if _, exists := domainDetailMap[detail.Name]; !exists {
 			domainDetailMap[detail.Name] = detail
 		}
+	}
+	totalProcessed = len(domainDetailMap)
 
-		// 步骤2.2: 批量查询已存在的域名（1次查询）
+	// 步骤3: 使用事务处理批量创建和关联
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		// 步骤3.1: 收集所有唯一域名名称
+		domainNames := make([]string, 0, len(domainDetailMap))
+		for name := range domainDetailMap {
+			domainNames = append(domainNames, name)
+		}
+
+		// 步骤3.2: 批量查询已存在的域名（1次查询）
 		var existingDomains []models.Domain
 		if err := tx.Where("name IN ?", domainNames).Find(&existingDomains).Error; err != nil {
 			log.Error().Err(err).Msg("Failed to query existing domains")
 			return err
 		}
 
-		// 步骤2.3: 构建已存在域名的映射（name -> Domain）
+		// 步骤3.3: 构建已存在域名的映射（name -> Domain）
 		existingDomainMap := make(map[string]models.Domain)
 		existingDomainIDs := make([]uint, 0, len(existingDomains))
 		for _, domain := range existingDomains {
@@ -93,19 +99,19 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) (*models.
 			existingDomainIDs = append(existingDomainIDs, domain.ID)
 		}
 
-		// 步骤2.4: 找出需要创建的新域名
+		// 步骤3.4: 找出需要创建的新域名
 		newDomains := make([]models.Domain, 0, len(domainDetailMap))
 		for domainName, detail := range domainDetailMap {
 			// 检查域名是否已存在
 			if _, exists := existingDomainMap[domainName]; !exists {
 				newDomains = append(newDomains, models.Domain{
-					Name:        domainName, // Handler 层已标准化
+					Name:        domainName, // Handler 层已规范化
 					Description: detail.Description,
 				})
 			}
 		}
 
-		// 步骤2.5: 批量创建新域名（1次插入）
+		// 步骤3.5: 批量创建新域名（1次插入）
 		if len(newDomains) > 0 {
 			if err := tx.Create(&newDomains).Error; err != nil {
 				log.Error().Err(err).Int("count", len(newDomains)).Msg("Failed to batch create domains")
@@ -115,7 +121,7 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) (*models.
 			// 使用 Debug 级别，避免事务回滚时误导（真正的成功日志在事务外）
 			log.Debug().Int("count", len(newDomains)).Msg("Domains created in transaction")
 
-			// 步骤2.5.1: 为每个新创建的域名自动创建根子域名
+			// 步骤3.5.1: 为每个新创建的域名自动创建根子域名
 			// 预分配切片容量，避免动态扩容带来的性能开销
 			rootSubdomains := make([]models.SubDomain, 0, len(newDomains))
 			for _, domain := range newDomains {
@@ -141,7 +147,7 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) (*models.
 			}
 		}
 
-		// 步骤2.6: 批量查询已存在的关联关系（1次查询）
+		// 步骤3.6: 批量查询已存在的关联关系（1次查询）
 		var existingAssocs []models.OrganizationDomain
 		if len(existingDomainIDs) > 0 {
 			if err := tx.Where("organization_id = ? AND domain_id IN ?", req.OrgID, existingDomainIDs).
@@ -151,13 +157,13 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) (*models.
 			}
 		}
 
-		// 步骤2.7: 构建已存在关联的映射（domain_id -> bool）
+		// 步骤3.7: 构建已存在关联的映射（domain_id -> bool）
 		existingAssocMap := make(map[uint]bool)
 		for _, assoc := range existingAssocs {
 			existingAssocMap[assoc.DomainID] = true
 		}
 
-		// 步骤2.8: 找出需要创建的新关联
+		// 步骤3.8: 找出需要创建的新关联
 		newAssocs := make([]models.OrganizationDomain, 0, len(domainDetailMap))
 		for domainName := range domainDetailMap {
 			// 检查域名是否存在于 map 中
@@ -181,7 +187,7 @@ func (s *DomainService) CreateDomains(req models.CreateDomainsRequest) (*models.
 			}
 		}
 
-		// 步骤2.9: 批量创建新关联（1次插入）
+		// 步骤3.9: 批量创建新关联（1次插入）
 		if len(newAssocs) > 0 {
 			if err := tx.Create(&newAssocs).Error; err != nil {
 				log.Error().Err(err).Int("count", len(newAssocs)).Msg("Failed to batch create associations")
