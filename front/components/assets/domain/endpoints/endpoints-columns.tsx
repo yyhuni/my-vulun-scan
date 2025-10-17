@@ -219,11 +219,11 @@ export const createEndpointColumns = ({
       }
       
       return (
-        <div className="flex items-center gap-2 group max-w-md">
+        <div className="group inline-flex items-center gap-1 max-w-[500px]">
           <TooltipProvider delayDuration={500} skipDelayDuration={0}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="text-sm font-mono truncate cursor-default min-w-0 flex-1">
+                <div className="text-sm font-mono truncate cursor-default">
                   {url}
                 </div>
               </TooltipTrigger>
@@ -250,9 +250,9 @@ export const createEndpointColumns = ({
                   onClick={handleCopy}
                 >
                   {copied ? (
-                    <Check className="text-green-600" />
+                    <Check className="h-3.5 w-3.5 text-green-600" />
                   ) : (
-                    <Copy className="text-muted-foreground" />
+                    <Copy className="h-3.5 w-3.5 text-muted-foreground" />
                   )}
                 </Button>
               </TooltipTrigger>
@@ -303,11 +303,11 @@ export const createEndpointColumns = ({
       }
       
       return (
-        <div className="flex items-center gap-2 group max-w-sm">
+        <div className="group inline-flex items-center gap-1 max-w-[400px]">
           <TooltipProvider delayDuration={500} skipDelayDuration={0}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="text-sm font-mono truncate cursor-default min-w-0 flex-1">
+                <div className="text-sm font-mono truncate cursor-default">
                   {endpoint}
                 </div>
               </TooltipTrigger>
@@ -334,9 +334,9 @@ export const createEndpointColumns = ({
                   onClick={handleCopy}
                 >
                   {copied ? (
-                    <Check className="text-green-600" />
+                    <Check className="h-3.5 w-3.5 text-green-600" />
                   ) : (
-                    <Copy className="text-muted-foreground" />
+                    <Copy className="h-3.5 w-3.5 text-muted-foreground" />
                   )}
                 </Button>
               </TooltipTrigger>
