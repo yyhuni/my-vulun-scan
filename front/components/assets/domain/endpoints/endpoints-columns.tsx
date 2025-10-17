@@ -23,6 +23,83 @@ import { IconCircleCheckFilled, IconLoader, IconAlertTriangle, IconX } from "@ta
 import type { Endpoint } from "@/types/endpoint.types"
 import { toast } from "sonner"
 
+/**
+ * 可复制单元格组件
+ */
+function CopyableCell({ 
+  value, 
+  maxWidth = "500px", 
+  truncateLength = 60,
+  successMessage = "已复制",
+  className = "font-mono"
+}: { 
+  value: string
+  maxWidth?: string
+  truncateLength?: number
+  successMessage?: string
+  className?: string
+}) {
+  const [copied, setCopied] = React.useState(false)
+  const isLong = value.length > truncateLength
+  
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(value)
+      setCopied(true)
+      toast.success(successMessage)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      toast.error('复制失败')
+    }
+  }
+  
+  return (
+    <div className="group inline-flex items-center gap-1" style={{ maxWidth }}>
+      <TooltipProvider delayDuration={500} skipDelayDuration={0}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className={`text-sm truncate cursor-default ${className}`}>
+              {value}
+            </div>
+          </TooltipTrigger>
+          <TooltipContent 
+            side="top" 
+            align="start"
+            sideOffset={5}
+            className={`text-xs ${className} ${isLong ? 'max-w-[500px] break-all' : 'whitespace-nowrap'}`}
+          >
+            {value}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      
+      <TooltipProvider delayDuration={500} skipDelayDuration={0}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`h-6 w-6 flex-shrink-0 hover:bg-accent transition-opacity ${
+                copied ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+              }`}
+              onClick={handleCopy}
+            >
+              {copied ? (
+                <Check className="h-3.5 w-3.5 text-green-600" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            <p className="text-xs">{copied ? '已复制!' : '点击复制'}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </div>
+  )
+}
+
 // 列创建函数的参数类型
 interface CreateColumnsProps {
   formatDate: (dateString: string) => string
@@ -78,7 +155,7 @@ function DataTableColumnHeader({
   column,
   title,
 }: {
-  column: any
+  column: { getCanSort: () => boolean; getIsSorted: () => false | "asc" | "desc"; toggleSorting: (desc?: boolean) => void }
   title: string
 }) {
   if (!column.getCanSort()) {
@@ -204,149 +281,20 @@ export const createEndpointColumns = ({
     ),
     cell: ({ row }) => {
       const url = row.getValue("url") as string
-      const isLong = url.length > 60
-      const [copied, setCopied] = React.useState(false)
-      
-      const handleCopy = async () => {
-        try {
-          await navigator.clipboard.writeText(url)
-          setCopied(true)
-          toast.success('已复制 URL')
-          setTimeout(() => setCopied(false), 2000)
-        } catch (err) {
-          toast.error('复制失败')
-        }
-      }
-      
-      return (
-        <div className="group inline-flex items-center gap-1 max-w-[500px]">
-          <TooltipProvider delayDuration={500} skipDelayDuration={0}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="text-sm font-mono truncate cursor-default">
-                  {url}
-                </div>
-              </TooltipTrigger>
-              <TooltipContent 
-                side="top" 
-                align="start"
-                sideOffset={5}
-                className={`text-xs font-mono ${isLong ? 'max-w-[500px] break-all' : 'whitespace-nowrap'}`}
-              >
-                {url}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          
-          <TooltipProvider delayDuration={500} skipDelayDuration={0}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={`h-6 w-6 flex-shrink-0 hover:bg-accent transition-opacity ${
-                    copied ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                  }`}
-                  onClick={handleCopy}
-                >
-                  {copied ? (
-                    <Check className="h-3.5 w-3.5 text-green-600" />
-                  ) : (
-                    <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                <p className="text-xs">{copied ? '已复制' : '复制'}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-      )
+      return <CopyableCell value={url} maxWidth="500px" truncateLength={60} successMessage="已复制 URL" />
     },
   },
 
   // Endpoint 列（从 URL 中提取路径）
   {
-    id: "endpoint",
-    accessorFn: (row) => {
-      // 提供访问器函数用于排序
-      const getEndpointPath = (fullUrl: string) => {
-        try {
-          const urlObj = new URL(fullUrl)
-          return urlObj.pathname + urlObj.search + urlObj.hash
-        } catch {
-          // 如果 URL 解析失败，尝试简单的字符串处理
-          const match = fullUrl.match(/^https?:\/\/[^\/]+(.*)$/)
-          return match ? match[1] || '/' : fullUrl
-        }
-      }
-      return getEndpointPath(row.url)
-    },
+    accessorKey: "endpoint",
+    enableSorting: false,
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Endpoint" />
     ),
     cell: ({ row }) => {
       const endpoint = row.getValue("endpoint") as string
-      const isLong = endpoint.length > 30
-      const [copied, setCopied] = React.useState(false)
-      
-      const handleCopy = async () => {
-        try {
-          await navigator.clipboard.writeText(endpoint)
-          setCopied(true)
-          toast.success('已复制 Endpoint')
-          setTimeout(() => setCopied(false), 2000)
-        } catch (err) {
-          toast.error('复制失败')
-        }
-      }
-      
-      return (
-        <div className="group inline-flex items-center gap-1 max-w-[400px]">
-          <TooltipProvider delayDuration={500} skipDelayDuration={0}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="text-sm font-mono truncate cursor-default">
-                  {endpoint}
-                </div>
-              </TooltipTrigger>
-              <TooltipContent 
-                side="top" 
-                align="start"
-                sideOffset={5}
-                className={`text-xs font-mono ${isLong ? 'max-w-[400px] break-all' : 'whitespace-nowrap'}`}
-              >
-                {endpoint}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          
-          <TooltipProvider delayDuration={500} skipDelayDuration={0}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={`h-6 w-6 flex-shrink-0 hover:bg-accent transition-opacity ${
-                    copied ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                  }`}
-                  onClick={handleCopy}
-                >
-                  {copied ? (
-                    <Check className="h-3.5 w-3.5 text-green-600" />
-                  ) : (
-                    <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                <p className="text-xs">{copied ? '已复制' : '复制'}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-      )
+      return <CopyableCell value={endpoint} maxWidth="400px" truncateLength={30} successMessage="已复制 Endpoint" />
     },
   },
 

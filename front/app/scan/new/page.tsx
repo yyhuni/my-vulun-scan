@@ -7,7 +7,7 @@ import { IconRadar, IconChevronRight, IconChevronLeft, IconSearch, IconCheck } f
 import { useRouter } from "next/navigation"
 import { useOrganizations } from "@/hooks/use-organizations"
 import type { Organization } from "@/types/organization.types"
-import { StepIndicator, type Step } from "@/components/scan/new/step-indicator"
+import { StepIndicator } from "@/components/scan/new/step-indicator"
 import { OrganizationSelectionTable } from "@/components/scan/new/organization-selection-table"
 import { ScanConfigForm } from "@/components/scan/new/scan-config-form"
 import { ScanConfirmation } from "@/components/scan/new/scan-confirmation"
@@ -44,7 +44,6 @@ export default function NewScanPage() {
   const {
     data: organizationsData,
     isLoading,
-    error,
   } = useOrganizations({
     page: pagination.pageIndex + 1, // 转换为 1-based
     pageSize: pagination.pageSize,

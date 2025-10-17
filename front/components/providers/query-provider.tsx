@@ -13,9 +13,10 @@ const queryClient = new QueryClient({
       // 缓存时间（1小时）- 延长缓存时间减少重复请求
       gcTime: 60 * 60 * 1000,
       // 重试配置
-      retry: (failureCount, error: any) => {
+      retry: (failureCount, error: unknown) => {
         // 4xx 错误不重试
-        if (error?.response?.status >= 400 && error?.response?.status < 500) {
+        const err = error as { response?: { status?: number } }
+        if (err?.response?.status && err.response.status >= 400 && err.response.status < 500) {
           return false
         }
         // 最多重试 3 次
@@ -30,9 +31,10 @@ const queryClient = new QueryClient({
     },
     mutations: {
       // 变更操作重试配置
-      retry: (failureCount, error: any) => {
+      retry: (failureCount, error: unknown) => {
         // 4xx 错误不重试
-        if (error?.response?.status >= 400 && error?.response?.status < 500) {
+        const err = error as { response?: { status?: number } }
+        if (err?.response?.status && err.response.status >= 400 && err.response.status < 500) {
           return false
         }
         // 最多重试 2 次

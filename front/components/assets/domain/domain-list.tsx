@@ -122,7 +122,7 @@ export function DomainList() {
       await batchDeleteMutation.mutateAsync([domainToDelete.id])
       // mutation hook 内部已经处理了成功提示和刷新
       setDomainToDelete(null)
-    } catch (error: any) {
+    } catch {
       // mutation hook 内部已经处理了错误提示
       // 失败时不清空状态，让用户可以重试
     }
@@ -157,7 +157,7 @@ export function DomainList() {
       await batchDeleteMutation.mutateAsync(domainIds)
       // mutation hook 内部已经处理了成功提示和刷新
       setSelectedDomains([])
-    } catch (error: any) {
+    } catch {
       // mutation hook 内部已经处理了错误提示
       // 失败时不清空选中状态，让用户可以重试
     }

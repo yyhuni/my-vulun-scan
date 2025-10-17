@@ -113,7 +113,7 @@ export function EndpointsDataTable({
   const pagination = externalPagination || internalPagination
   
   // 分页变化处理
-  const handlePaginationChange = React.useCallback((updaterOrValue: any) => {
+  const handlePaginationChange = React.useCallback((updaterOrValue: { pageIndex: number; pageSize: number } | ((prev: { pageIndex: number; pageSize: number }) => { pageIndex: number; pageSize: number })) => {
     if (onPaginationChange) {
       // 外部控制分页（服务器端分页）
       if (typeof updaterOrValue === 'function') {

@@ -59,7 +59,7 @@ import {
 interface NavItem {
   title: string
   url: string
-  icon: React.ComponentType<any>
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>
   items?: {
     title: string
     url: string

@@ -144,7 +144,7 @@
  * ⚠️ 注意：字符串值必须直接使用后端期望的格式（下划线）
  */
 
-import axios from 'axios';
+import axios, { AxiosRequestConfig } from 'axios';
 import camelcaseKeys from 'camelcase-keys';
 import snakecaseKeys from 'snakecase-keys';
 
@@ -359,7 +359,7 @@ export const api = {
    * @param config - axios 配置，建议使用 params 传递查询参数
    * @returns Promise<AxiosResponse<T>>
    */
-  get: <T = any>(url: string, config?: any) => apiClient.get<T>(url, config),
+  get: <T = unknown>(url: string, config?: AxiosRequestConfig) => apiClient.get<T>(url, config),
   
   /**
    * POST 请求
@@ -368,7 +368,7 @@ export const api = {
    * @param config - axios 配置（可选）
    * @returns Promise<AxiosResponse<T>>
    */
-  post: <T = any>(url: string, data?: any, config?: any) => apiClient.post<T>(url, data, config),
+  post: <T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig) => apiClient.post<T>(url, data, config),
   
   /**
    * PUT 请求
@@ -377,7 +377,7 @@ export const api = {
    * @param config - axios 配置（可选）
    * @returns Promise<AxiosResponse<T>>
    */
-  put: <T = any>(url: string, data?: any, config?: any) => apiClient.put<T>(url, data, config),
+  put: <T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig) => apiClient.put<T>(url, data, config),
   
   /**
    * DELETE 请求
@@ -385,7 +385,7 @@ export const api = {
    * @param config - axios 配置（可选）
    * @returns Promise<AxiosResponse<T>>
    */
-  delete: <T = any>(url: string, config?: any) => apiClient.delete<T>(url, config),
+  delete: <T = unknown>(url: string, config?: AxiosRequestConfig) => apiClient.delete<T>(url, config),
 };
 
 /**
@@ -411,25 +411,32 @@ export const api = {
  * @param error - 错误对象（可以是任意类型）
  * @returns 用户友好的错误消息字符串
  */
-export const getErrorMessage = (error: any): string => {
+export const getErrorMessage = (error: unknown): string => {
   // 请求被取消（用户主动取消或组件卸载）
   if (axios.isCancel(error)) {
     return '请求已被取消';
   }
   
+  // 类型守卫：检查是否为错误对象
+  const err = error as { 
+    code?: string; 
+    response?: { data?: { message?: string } }; 
+    message?: string 
+  }
+  
   // 请求超时（超过 30 秒）
-  if (error.code === 'ECONNABORTED') {
+  if (err.code === 'ECONNABORTED') {
     return '请求超时，请稍后重试';
   }
   
   // 后端返回的错误消息（已经过驼峰转换）
-  if (error.response?.data?.message) {
-    return error.response.data.message;
+  if (err.response?.data?.message) {
+    return err.response.data.message;
   }
   
   // axios 自身的错误消息
-  if (error.message) {
-    return error.message;
+  if (err.message) {
+    return err.message;
   }
   
   // 兜底错误消息

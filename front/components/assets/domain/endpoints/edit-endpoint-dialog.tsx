@@ -9,21 +9,14 @@ import { LoadingSpinner } from "@/components/loading-spinner"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { Checkbox } from "@/components/ui/checkbox"
-import {
+import {  
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+
 import {
   Dialog,
   DialogContent,
@@ -271,7 +264,7 @@ export function EditEndpointDialog({
               <div className="grid gap-2">
                 <Label htmlFor="statusCode">状态码</Label>
                 <Select 
-                  value={statusCode.toString()} 
+                  value={statusCode?.toString() || ""} 
                   onValueChange={(value) => setStatusCode(parseInt(value))}
                   disabled={saving}
                 >
@@ -310,7 +303,7 @@ export function EditEndpointDialog({
               <Input
                 id="contentLength"
                 type="number"
-                value={contentLength}
+                value={contentLength ?? ""}
                 onChange={(e) => setContentLength(parseInt(e.target.value) || 0)}
                 placeholder="0"
                 disabled={saving}
@@ -343,8 +336,8 @@ export function EditEndpointDialog({
                 <div className="text-xs bg-white rounded px-2 py-1 border">
                   <div className="flex items-center gap-2">
                     <Badge variant="outline" className="text-xs">{method}</Badge>
-                    <Badge className={`text-xs ${getStatusCodeColor(statusCode)}`}>
-                      {statusCode}
+                    <Badge className={`text-xs ${getStatusCodeColor(statusCode || 0)}`}>
+                      {statusCode || "-"}
                     </Badge>
                     <span className="font-mono truncate flex-1">{url}</span>
                   </div>

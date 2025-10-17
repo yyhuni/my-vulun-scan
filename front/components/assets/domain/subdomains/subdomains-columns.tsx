@@ -21,6 +21,83 @@ import { MoreHorizontal, Eye, Trash2, ChevronsUpDown, ChevronUp, ChevronDown, Co
 import type { SubDomain } from "@/types/subdomain.types"
 import { toast } from "sonner"
 
+/**
+ * 可复制单元格组件
+ */
+function CopyableCell({ 
+  value, 
+  maxWidth = "400px", 
+  truncateLength = 50,
+  successMessage = "已复制",
+  className = "font-medium"
+}: { 
+  value: string
+  maxWidth?: string
+  truncateLength?: number
+  successMessage?: string
+  className?: string
+}) {
+  const [copied, setCopied] = React.useState(false)
+  const isLong = value.length > truncateLength
+  
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(value)
+      setCopied(true)
+      toast.success(successMessage)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      toast.error('复制失败')
+    }
+  }
+  
+  return (
+    <div className="group inline-flex items-center gap-1" style={{ maxWidth }}>
+      <TooltipProvider delayDuration={500} skipDelayDuration={0}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className={`text-sm truncate cursor-default ${className}`}>
+              {value}
+            </div>
+          </TooltipTrigger>
+          <TooltipContent 
+            side="top" 
+            align="start"
+            sideOffset={5}
+            className={`text-xs ${isLong ? 'max-w-[500px] break-all' : 'whitespace-nowrap'}`}
+          >
+            {value}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      
+      <TooltipProvider delayDuration={500} skipDelayDuration={0}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`h-6 w-6 flex-shrink-0 hover:bg-accent transition-opacity ${
+                copied ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+              }`}
+              onClick={handleCopy}
+            >
+              {copied ? (
+                <Check className="h-3.5 w-3.5 text-green-600" />
+              ) : (
+                <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            <p className="text-xs">{copied ? '已复制!' : '点击复制'}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </div>
+  )
+}
+
 // 列创建函数的参数类型
 interface CreateColumnsProps {
   formatDate: (dateString: string) => string
@@ -76,7 +153,7 @@ function DataTableColumnHeader({
   column,
   title,
 }: {
-  column: any
+  column: { getCanSort: () => boolean; getIsSorted: () => false | "asc" | "desc"; toggleSorting: (desc?: boolean) => void }
   title: string
 }) {
   if (!column.getCanSort()) {
@@ -156,65 +233,7 @@ export const createSubdomainColumns = ({
     ),
     cell: ({ row }) => {
       const name = row.getValue("name") as string
-      const isLong = name.length > 50 // 判断内容是否较长
-      const [copied, setCopied] = React.useState(false)
-      
-      const handleCopy = async () => {
-        try {
-          await navigator.clipboard.writeText(name)
-          setCopied(true)
-          toast.success('已复制子域名')
-          setTimeout(() => setCopied(false), 2000) // 2秒后恢复
-        } catch (err) {
-          toast.error('复制失败')
-        }
-      }
-      
-      return (
-        <div className="group inline-flex items-center gap-1 max-w-[400px]">
-          <TooltipProvider delayDuration={500} skipDelayDuration={0}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="text-sm font-medium truncate cursor-default">
-                  {name}
-                </div>
-              </TooltipTrigger>
-              <TooltipContent 
-                side="top" 
-                align="start"
-                sideOffset={5}
-                className={`text-xs ${isLong ? 'max-w-[500px] break-all' : 'whitespace-nowrap'}`}
-              >
-                {name}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          
-          <TooltipProvider delayDuration={500} skipDelayDuration={0}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={`h-6 w-6 flex-shrink-0 hover:bg-accent transition-opacity ${
-                    copied ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                  }`}
-                  onClick={handleCopy}
-                >
-                  {copied ? (
-                    <Check className="h-3.5 w-3.5 text-green-600" />
-                  ) : (
-                    <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                <p className="text-xs">{copied ? '已复制' : '复制'}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-      )
+      return <CopyableCell value={name} maxWidth="400px" truncateLength={50} successMessage="已复制子域名" />
     },
   },
 
@@ -227,7 +246,7 @@ export const createSubdomainColumns = ({
       <DataTableColumnHeader column={column} title="所属域名" />
     ),
     cell: ({ row }) => {
-      const domain = row.getValue("domain") as any
+      const domain = row.getValue("domain") as { name?: string } | undefined
       const domainName = domain?.name || "-"
       
       return (

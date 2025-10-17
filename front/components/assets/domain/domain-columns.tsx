@@ -84,7 +84,7 @@ function DataTableColumnHeader({
   column, 
   title 
 }: { 
-  column: any
+  column: { getCanSort: () => boolean; getIsSorted: () => false | "asc" | "desc"; toggleSorting: (desc?: boolean) => void }
   title: string 
 }) {
   if (!column.getCanSort()) {
