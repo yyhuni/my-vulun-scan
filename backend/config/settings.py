@@ -45,7 +45,6 @@ INSTALLED_APPS = [
     # 第三方应用
     'rest_framework',
     'corsheaders',
-    'drf_spectacular',
     # 业务应用
     'apps.common',   # 通用工具
     'apps.assets',   # 资产管理
@@ -143,17 +142,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ==================== REST Framework 配置 ====================
 REST_FRAMEWORK = {
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PAGINATION_CLASS': 'apps.common.pagination.CustomPageNumberPagination',  # 使用自定义分页器
     'PAGE_SIZE': 20,
-}
-
-# ==================== API 文档配置 (Scalar) ====================
-SPECTACULAR_SETTINGS = {
-    'TITLE': 'my-vulun-scan API',
-    'DESCRIPTION': 'Web 应用侦察工具 API 文档',
-    'VERSION': '1.0.0',
-    'SERVE_INCLUDE_SCHEMA': False,
 }
 
 # ==================== CORS 配置 ====================

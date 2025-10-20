@@ -16,18 +16,10 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 urlpatterns = [
     # Django 后台管理
     path('admin/', admin.site.urls),
-    
-    # API 文档（Scalar）
-    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
-    path('api/docs/', SpectacularSwaggerView.as_view(
-        template_name='drf_spectacular/scalar.html',
-        url_name='schema'
-    ), name='api-docs'),
     
     # 业务 API 路由
     path('api/', include('apps.assets.urls')),
