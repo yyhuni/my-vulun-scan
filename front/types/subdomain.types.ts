@@ -7,6 +7,7 @@ export interface SubDomain {
   updatedAt: string    // 驼峰命名，api-client.ts 会自动从 updated_at 转换
   name: string
   domainId: number     // 驼峰命名，api-client.ts 会自动从 domain_id 转换
+  isRoot: boolean      // 驼峰命名，api-client.ts 会自动从 is_root 转换
   domain?: Domain
 }
 

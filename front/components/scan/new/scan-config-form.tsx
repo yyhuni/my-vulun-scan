@@ -34,13 +34,6 @@ export function ScanConfigForm({
 }: ScanConfigFormProps) {
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold mb-2">配置扫描参数</h3>
-        <p className="text-sm text-muted-foreground">
-          设置扫描任务的名称、类型和其他参数
-        </p>
-      </div>
-
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-4">
           <div className="space-y-2">
@@ -54,15 +47,14 @@ export function ScanConfigForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="scanType">扫描类型 *</Label>
+            <Label htmlFor="scanType">扫描策略 *</Label>
             <Select value={scanType} onValueChange={onScanTypeChange}>
               <SelectTrigger id="scanType">
-                <SelectValue placeholder="选择扫描类型" />
+                <SelectValue placeholder="选择扫描策略" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="full">完整扫描</SelectItem>
-                <SelectItem value="quick">快速扫描</SelectItem>
-                <SelectItem value="custom">自定义扫描</SelectItem>
+                <SelectItem value="full">全量扫描</SelectItem>
+                <SelectItem value="subdomain">子域名扫描</SelectItem>
               </SelectContent>
             </Select>
           </div>

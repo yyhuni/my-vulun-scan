@@ -117,12 +117,26 @@ const data = {
           title: "扫描策略", // 扫描策略
           url: "/scan/strategy",
         },
+        {
+          title: "定时扫描", // 定时扫描
+          url: "/scan/scheduled",
+        },
       ],
     },
     {
       title: "工具管理", // 工具管理
       url: "/tools",
       icon: IconTool,
+      items: [
+        {
+          title: "工具配置", // 工具配置
+          url: "/tools/config",
+        },
+        {
+          title: "命令管理", // 命令管理
+          url: "/tools/command",
+        },
+      ],
     },
   ],
   // 次要导航菜单项

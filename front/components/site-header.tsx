@@ -4,7 +4,7 @@ import { Separator } from "@/components/ui/separator"
 // 导入侧边栏触发器组件
 import { SidebarTrigger } from "@/components/ui/sidebar"
 // 导入通知抽屉组件
-import { NotificationDrawer } from "@/components/notification-drawer"
+import { NotificationDrawer } from "@/components/notifications"
 // 导入主题切换组件
 import { ThemeToggle } from "@/components/theme-toggle"
 

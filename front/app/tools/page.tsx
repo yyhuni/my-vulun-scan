@@ -1,153 +1,136 @@
-"use client"
-
-import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { IconPlus, IconSettings } from "@tabler/icons-react"
-import { ToolCard } from "@/components/tools/tool-card"
-import { AddToolDialog } from "@/components/tools/add-tool-dialog"
-import { useTools, useCategories } from "@/hooks/use-tools"
-import { CategoryNameMap } from "@/types/tool.types"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Wrench, PackageOpen, Settings, ArrowRight } from "lucide-react"
+import Link from "next/link"
 
 /**
- * 工具管理页面
- * 展示和管理扫描工具集
+ * 工具管理概览页面
+ * 显示开源工具和自定义工具的入口
  */
 export default function ToolsPage() {
-  const [activeCategoryId, setActiveCategoryId] = useState<string>("all")
-  
-  // 获取分类列表
-  const { data: categories = [], isLoading: categoriesLoading } = useCategories()
-  
-  // 获取工具列表
-  const { data, isLoading: toolsLoading, error } = useTools({
-    page: 1,
-    pageSize: 100, // 获取所有工具
-  })
-
-  const tools = data?.tools || []
-  
-  // 按分类筛选工具（支持多标签）
-  const filteredTools = useMemo(() => {
-    if (activeCategoryId === "all") return tools
-    return tools.filter(tool => 
-      tool.categoryNames && tool.categoryNames.includes(activeCategoryId)
-    )
-  }, [tools, activeCategoryId])
-  
-  const isLoading = categoriesLoading || toolsLoading
-
-  // 处理检查更新
-  const handleCheckUpdate = (toolId: number) => {
-    console.log("Check update for tool:", toolId)
-    // TODO: 实现检查更新逻辑
-  }
-
-  // 加载状态
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <p className="text-muted-foreground">加载工具列表中...</p>
-        </div>
-      </div>
-    )
-  }
-
-  // 错误状态
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <p className="text-destructive">加载失败: {error.message}</p>
-        </div>
-      </div>
-    )
-  }
+  // 功能模块
+  const modules = [
+    {
+      title: "开源工具",
+      description: "管理和配置开源扫描工具，支持自动更新和版本管理",
+      href: "/tools/config/opensource",
+      icon: PackageOpen,
+      status: "available",
+      stats: {
+        total: "12",
+        active: "8"
+      }
+    },
+    {
+      title: "自定义工具",
+      description: "管理自定义扫描脚本和工具，支持命令配置和参数管理",
+      href: "/tools/config/custom",
+      icon: Settings,
+      status: "available",
+      stats: {
+        total: "5",
+        active: "3"
+      }
+    }
+  ]
 
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-      {/* 页面标题和操作栏 */}
+      {/* 页面头部 */}
       <div className="flex items-center justify-between px-4 lg:px-6">
         <div>
-          <h1 className="text-3xl font-bold">Tool Arsenal</h1>
-          <p className="text-muted-foreground mt-1">
-            工具集 - 管理和配置扫描工具
+          <h2 className="text-2xl font-bold tracking-tight">工具管理</h2>
+          <p className="text-muted-foreground">
+            管理和配置扫描工具，包括开源工具和自定义工具
           </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="icon">
-            <IconSettings className="h-5 w-5" />
-          </Button>
-          <AddToolDialog />
         </div>
       </div>
 
-      {/* 工具筛选标签页 */}
+      {/* 统计卡片 */}
       <div className="px-4 lg:px-6">
-        <Tabs 
-          defaultValue="all" 
-          value={activeCategoryId}
-          onValueChange={setActiveCategoryId}
-          className="flex-1"
-        >
-          <TabsList className="mb-6">
-            {/* All 标签 */}
-            <TabsTrigger value="all">
-              All ({tools.length})
-            </TabsTrigger>
-            
-            {/* 动态分类标签 */}
-            {categories.map((categoryName) => {
-              const count = tools.filter(t => 
-                t.categoryNames && t.categoryNames.includes(categoryName)
-              ).length
-              return (
-                <TabsTrigger key={categoryName} value={categoryName}>
-                  {CategoryNameMap[categoryName] || categoryName} ({count})
-                </TabsTrigger>
-              )
-            })}
-          </TabsList>
-
-          {/* All 标签内容 */}
-          <TabsContent value="all" className="mt-0">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredTools.map((tool) => (
-                <ToolCard 
-                  key={tool.id} 
-                  tool={tool}
-                  onCheckUpdate={handleCheckUpdate}
-                />
-              ))}
-            </div>
-            {filteredTools.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">暂无工具</p>
-              </div>
-            )}
-          </TabsContent>
-
-          {/* 动态分类标签内容 */}
-          {categories.map((categoryName) => (
-            <TabsContent key={categoryName} value={categoryName} className="mt-0">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {filteredTools.map((tool) => (
-                  <ToolCard 
-                    key={tool.id} 
-                    tool={tool}
-                    onCheckUpdate={handleCheckUpdate}
-                  />
-                ))}
-              </div>
-              {filteredTools.length === 0 && (
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground">该分类暂无工具</p>
+        <div className="grid gap-4 md:grid-cols-2">
+          {modules.map((module) => (
+            <Card key={module.title} className="relative hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <module.icon className="h-5 w-5" />
+                    <CardTitle className="text-lg">{module.title}</CardTitle>
+                  </div>
+                  {module.status === "coming-soon" && (
+                    <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
+                      即将上线
+                    </span>
+                  )}
                 </div>
-              )}
-            </TabsContent>
+                <CardDescription>{module.description}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {/* 统计信息 */}
+                  <div className="flex items-center gap-6 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">总数：</span>
+                      <span className="font-semibold ml-1">{module.stats.total}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">活跃：</span>
+                      <span className="font-semibold ml-1 text-green-600">{module.stats.active}</span>
+                    </div>
+                  </div>
+
+                  {/* 操作按钮 */}
+                  {module.status === "available" ? (
+                    <Link href={module.href}>
+                      <Button className="w-full">
+                        进入管理
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Button disabled className="w-full">
+                      敬请期待
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           ))}
-        </Tabs>
+        </div>
+      </div>
+
+      {/* 快速操作 */}
+      <div className="px-4 lg:px-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>快速操作</CardTitle>
+            <CardDescription>
+              常用的工具管理操作
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              <Link href="/tools/config/opensource">
+                <Button variant="outline" size="sm">
+                  <PackageOpen className="h-4 w-4" />
+                  开源工具
+                </Button>
+              </Link>
+              <Link href="/tools/config/custom">
+                <Button variant="outline" size="sm">
+                  <Settings className="h-4 w-4" />
+                  自定义工具
+                </Button>
+              </Link>
+              <Link href="/tools/command">
+                <Button variant="outline" size="sm">
+                  <Wrench className="h-4 w-4" />
+                  命令管理
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

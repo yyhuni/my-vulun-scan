@@ -48,7 +48,7 @@
 | Description | varchar(1000) | 可为空 | NULL | 描述信息 |
 
 **业务逻辑**:
-- **自动创建根子域名**: 创建 Domain 时，系统自动创建一个同名的 Subdomain 作为根子域名（IsRoot = true），用于关联主域名的 Endpoint
+- **自动创建根子域名**: 创建 Domain 时，系统自动创建一个同名的 Subdomain 作为根子域名（IsRoot = true），用于关联主域名的 URL
 - **根子域名保护**: 自动创建的根子域名受保护，不允许被手动删除，只能通过删除 Domain 时级联删除
 - **小写规范化**: Name 字段在应用层统一转为小写存储，数据库层通过 `CHECK (name = LOWER(name))` 约束防止插入大写值
 
@@ -75,7 +75,7 @@
 - **外键约束**: domain_id → domains.id (CASCADE DELETE)
 
 **业务逻辑**:
-- **根子域名**: 每个 Domain 创建时自动生成一个同名的 Subdomain（如 Domain 为 `example.com`，则根子域名也为 `example.com`），用于关联主域名的 Endpoint
+- **根子域名**: 每个 Domain 创建时自动生成一个同名的 Subdomain（如 Domain 为 `example.com`，则根子域名也为 `example.com`），用于关联主域名的 URL
 - **根子域名保护**: 通过 `IsRoot` 字段标记 Domain 专属的根子域名（IsRoot = true），这些根子域名**不允许被手动删除**，只能通过删除 Domain 时级联删除
   - 创建 Domain 时自动创建的同名 Subdomain 会设置 IsRoot = true
   - 用户手动创建的子域名（如 media.baidu.com）IsRoot = false，可以正常删除
@@ -89,19 +89,19 @@
 
 **关系**:
 - BelongsTo: Domain (通过 DomainID 外键关联)
-- HasMany: Endpoints
+- HasMany: URLs
 - HasMany: Vulnerabilities
 
 
-### Endpoint 模型
-**作用**: 存储发现的 API 端点和 URL 路径信息
+### URL 模型
+**作用**: 存储发现的 URL 信息（包括完整的 URL、HTTP 探测结果等）
 
 | 字段名 | 类型 | 限制 | 默认值 | 说明 |
 |--------|------|------|--------|------|
 | ID | uint | 主键，索引 | 自增 | 主键标识符 |
 | CreatedAt | time.Time | 非空 | 当前时间 | 创建时间 |
 | UpdatedAt | time.Time | 非空，索引 | 当前时间 | 更新时间 |
-| URL | string(2048) | 非空，唯一索引 | - | 完整的端点 URL（包括协议、域名、路径、查询参数等，如 https://www.baidu.com/a/b?a=123） |
+| URL | string(2048) | 非空，唯一索引 | - | 完整的 URL（包括协议、域名、路径、查询参数等，如 https://www.baidu.com/a/b?a=123） |
 | Method | string(10) | 可为空 | NULL | HTTP方法(GET/POST/PUT/DELETE等) |
 | StatusCode | int | 可为空 | NULL | HTTP响应状态码 |
 | Title | string(255) | 可为空 | NULL | 页面标题 |
@@ -110,13 +110,13 @@
 | DomainID | uint | 非空，外键，索引，只读(创建后) | - | 所属域名ID（冗余字段，性能优化） |
 
 **业务逻辑约束**:
-- **统一归属**: 所有 Endpoint 必须属于某个 Subdomain 和 DomainID
-- **级联删除**: 删除子域名或域名时自动删除相关端点
+- **统一归属**: 所有 URL 必须属于某个 Subdomain 和 DomainID
+- **级联删除**: 删除子域名或域名时自动删除相关 URL
 - **禁止更新**: SubdomainID 和 DomainID 创建后不可修改，如需变更请删除重建
 
 **性能优化说明**:
-- 添加 DomainID 冗余字段，查询组织下的所有 Endpoint 只需 1 次 JOIN（从 3 次降低）
-- 查询路径优化：Organization → organization_domains → Endpoint (通过 domain_id)
+- 添加 DomainID 冗余字段，查询组织下的所有 URL 只需 1 次 JOIN（从 3 次降低）
+- 查询路径优化：Organization → organization_domains → URL (通过 domain_id)
 - 复合索引：(domain_id, subdomain_id) 优化多维度查询
 
 **关系**:
@@ -124,23 +124,29 @@
 - BelongsTo: Domain (通过 DomainID 外键关联，冗余字段)
 - HasMany: Vulnerabilities
 
+**注意**: 数据库表名仍为 `endpoints`，但语义上应理解为 URL 模型
+
+
+## 工具执行与工作流模型
 
 ### Tool 模型
-**作用**: 管理安全扫描工具信息及其安装、更新配置
+**作用**: 管理安全扫描工具信息及其安装、更新配置（支持开源工具和自定义工具）
 
 | 字段名 | 类型 | 限制 | 默认值 | 说明 |
 |--------|------|------|--------|------|
 | ID | uint | 主键 | 自增 | 主键标识符 |
 | CreatedAt | time.Time | 非空 | 当前时间 | 创建时间 |
 | UpdatedAt | time.Time | 非空，索引 | 当前时间 | 更新时间 |
-| Name | string(255) | 非空，索引 | - | 工具名称 |
-| RepoURL | string(512) | 可为空 | NULL | 开源项目地址 |
+| Name | string(255) | 非空，索引，唯一 | - | 工具名称 |
+| Type | string(20) | 非空，索引 | opensource | 工具类型：opensource（开源工具）/ custom（自定义工具） |
+| RepoURL | string(512) | 可为空 | NULL | 开源项目地址（开源工具使用） |
 | Version | string(100) | 可为空 | NULL | 当前安装的工具版本号 |
 | Description | text | 可为空 | NULL | 工具描述 |
 | CategoryNames | JSON | 可为空 | NULL | 工具分类标签数组 |
-| InstallCommand | text | 非空 | - | 安装命令（如 git clone 或 go install） |
-| UpdateCommand | text | 非空 | - | 更新命令（如 git pull 或 go install） |
-| VersionCommand | string(500) | 非空 | - | 版本查询命令（如 toolname --version） |
+| Directory | string(512) | 可为空 | NULL | 工具路径（自定义工具的脚本所在目录） |
+| InstallCommand | text | 可为空 | NULL | 安装命令（开源工具必填，如 git clone 或 go install） |
+| UpdateCommand | text | 可为空 | NULL | 更新命令（开源工具必填，如 git pull 或 go install） |
+| VersionCommand | string(500) | 可为空 | NULL | 版本查询命令（开源工具必填，如 toolname --version） |
 
 **工具分类 (CategoryNames) 推荐值**:
 - `subdomain` - 子域名扫描（如 subfinder, sublist3r）
@@ -156,38 +162,72 @@
 - `screenshot` - 截图工具（如 gowitness, aquatone）
 - `exploit` - 漏洞利用（如 sqlmap, metasploit）
 - `network` - 网络扫描（如 masscan, zmap）
-- `other` - 其他工具
 
 **数据示例**:
 ```json
-// 单个分类
+// 开源工具示例 - 单个分类
 {
   "name": "nuclei",
-  "category_names": ["vulnerability"]
+  "type": "opensource",
+  "category_names": ["vulnerability"],
+  "repo_url": "https://github.com/projectdiscovery/nuclei",
+  "version": "v3.0.0",
+  "install_command": "go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest",
+  "update_command": "go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest",
+  "version_command": "nuclei -version"
 }
 
-// 多个分类（如 nmap 既能端口扫描，也能漏洞扫描）
+// 开源工具示例 - 多个分类（如 nmap 既能端口扫描，也能漏洞扫描）
 {
   "name": "nmap",
-  "category_names": ["port", "vulnerability", "network"]
+  "type": "opensource",
+  "category_names": ["port", "vulnerability", "network"],
+  "install_command": "apt install nmap",
+  "update_command": "apt update && apt upgrade nmap",
+  "version_command": "nmap --version"
+}
+
+// 自定义工具示例
+{
+  "name": "自定义端口扫描",
+  "type": "custom",
+  "category_names": ["port-scan", "network"],
+  "description": "基于 Python 的自定义端口扫描脚本",
+  "directory": "/opt/security-tools/port-scanner"
 }
 ```
 
-**命令配置说明**:
-- **InstallCommand**: 工具安装命令，必填
+**工具类型说明**:
+- **opensource（开源工具）**: 从 GitHub 等开源平台获取的工具
+  - 必须提供：InstallCommand、UpdateCommand、VersionCommand、RepoURL
+  - 可选提供：Version
+  - 示例：nuclei、subfinder、httpx 等
+- **custom（自定义工具）**: 用户自己编写的脚本和工具
+  - 必须提供：Directory（脚本所在目录）
+  - 示例：自定义 Python 脚本、Bash 脚本等
+
+**命令配置说明**（仅开源工具需要）:
+- **InstallCommand**: 工具安装命令
   - Git 方式：`git clone https://github.com/user/tool`
   - Go 方式：`go install -v github.com/tool@latest`
   - ⚠️ 注意：命令将直接在 Shell 中执行，请确保安全性
   - ⚠️ 注意：go get 已弃用，请使用 go install
-- **UpdateCommand**: 工具更新命令，必填
+- **UpdateCommand**: 工具更新命令
   - Git 工具推荐：`git pull`
   - Go 工具推荐：使用相同的 go install 命令
-- **VersionCommand**: 版本查询命令，必填
+- **VersionCommand**: 版本查询命令
   - 系统会使用此命令检查工具版本并提示更新
   - 常见格式：`toolname --version`、`toolname -v`、`python tool.py -v`
   - 前端会根据工具名称和安装命令自动生成建议值
 
+**目录配置说明**（仅自定义工具需要）:
+- **Directory**: 工具路径
+  - 指定自定义脚本所在的目录路径
+  - 示例：`/opt/security-tools/port-scanner`
+  - 系统会在此目录下查找和执行脚本
+
 **查询说明**:
+
 - 使用 PostgreSQL JSONB 操作符查询：
   - 包含某个标签：`category_names @> '["subdomain"]'`
   - 包含任意标签：`category_names ?| array['port', 'vulnerability']`
@@ -199,7 +239,262 @@
 - CategoryNames 建议使用 JSONB 类型并创建 GIN 索引：`CREATE INDEX idx_tools_category_names ON tools USING GIN (category_names);`
 
 **关系**:
-(无)
+- HasMany: Commands（一个工具可以有多个执行命令配置）
+
+---
+
+### Command 模型
+**作用**: 定义工具的具体执行命令（单个可执行的原子任务）
+
+| 字段名 | 类型 | 限制 | 默认值 | 说明 |
+|--------|------|------|--------|------|
+| ID | uint | 主键 | 自增 | 主键标识符 |
+| CreatedAt | time.Time | 非空 | 当前时间 | 创建时间 |
+| UpdatedAt | time.Time | 非空，索引 | 当前时间 | 更新时间 |
+| ToolID | uint | 非空，外键，索引 | - | 所属工具ID |
+| Name | string(255) | 非空 | - | 命令标识名（如 nuclei-cve-scan, subfinder-discover |
+| Description | text | 可为空 | NULL | 命令描述 |
+| CommandTemplate | text | 非空 | - | 命令模板（如 nuclei -u {target} -t {templates} -o {output}） |
+
+**命令模板说明**:
+- 参数占位符格式：`{变量名}`
+- 示例：`nuclei -u {target} -t {templates} -o {output}`
+- 执行时通过简单字符串替换将占位符替换为实际参数值
+- 格式简单通用，不依赖特定编程语言
+
+**关系**:
+
+- BelongsTo: Tool（通过 ToolID 外键关联）
+- HasMany: WorkflowSteps（可以被多个工作流步骤使用）
+
+**数据示例**:
+
+```json
+{
+  "id": 1,
+  "tool_id": 1,
+  "name": "nuclei-cve-scan",
+  "display_name": "Nuclei CVE 全量扫描",
+  "description": "使用 Nuclei 进行 CVE 漏洞全量扫描",
+  "command_template": "nuclei -u {target} -t /nuclei-templates/cves/ -o {output}"
+}
+```
+
+---
+
+### Workflow 模型
+**作用**: 定义工作流（多个命令的有序组合，形成完整的扫描流程）
+
+| 字段名 | 类型 | 限制 | 默认值 | 说明 |
+|--------|------|------|--------|------|
+| ID | uint | 主键 | 自增 | 主键标识符 |
+| CreatedAt | time.Time | 非空 | 当前时间 | 创建时间 |
+| UpdatedAt | time.Time | 非空，索引 | 当前时间 | 更新时间 |
+| Name | string(255) | 非空，唯一 | - | 工作流标识名（如 full-recon-workflow） |
+| DisplayName | string(255) | 可为空 | NULL | 显示名称（如 "完整侦察扫描流程"） |
+| Description | text | 可为空 | NULL | 工作流描述 |
+| Category | string(100) | 可为空 | NULL | 工作流分类（recon, vulnerability_scan, full_scan 等） |
+| TotalSteps | int | 非空 | 0 | 总步骤数 |
+| EstimatedTime | int | 可为空 | NULL | 预估耗时（秒） |
+| IsActive | bool | 非空 | true | 是否启用 |
+
+**工作流分类 (Category)**:
+- `recon` - 侦察扫描
+- `vulnerability_scan` - 漏洞扫描
+- `full_scan` - 完整扫描
+- `quick_scan` - 快速扫描
+- `custom` - 自定义工作流
+
+**关系**:
+- HasMany: WorkflowSteps（工作流包含多个步骤）
+- HasMany: WorkflowExecutions（工作流的执行记录）
+
+**数据示例**:
+```json
+{
+  "id": 1,
+  "name": "full-recon-workflow",
+  "display_name": "完整侦察扫描流程",
+  "description": "子域名发现 -> 存活探测 -> 漏洞扫描",
+  "category": "recon",
+  "total_steps": 3,
+  "estimated_time": 1800,
+  "is_active": true
+}
+```
+
+---
+
+### WorkflowStep 模型
+**作用**: 工作流步骤（连接 Workflow 和 Command 的中间表，定义步骤顺序和参数映射）
+
+| 字段名 | 类型 | 限制 | 默认值 | 说明 |
+|--------|------|------|--------|------|
+| ID | uint | 主键 | 自增 | 主键标识符 |
+| CreatedAt | time.Time | 非空 | 当前时间 | 创建时间 |
+| UpdatedAt | time.Time | 非空 | 当前时间 | 更新时间 |
+| WorkflowID | uint | 非空，外键，索引 | - | 所属工作流ID |
+| CommandID | uint | 非空，外键，索引 | - | 使用的命令ID |
+| StepOrder | int | 非空 | - | 步骤顺序（1, 2, 3...） |
+| StepName | string(255) | 可为空 | NULL | 步骤别名（如 "子域名发现"） |
+| DependsOn | uint | 可为空，外键 | NULL | 依赖的上一步骤ID（用于串行执行） |
+| ArgsMapping | text | 可为空 | NULL | 参数映射规则（JSON 格式，定义如何从上一步获取输入） |
+| ContinueOnError | bool | 非空 | false | 失败是否继续执行后续步骤 |
+| TimeoutOverride | int | 可为空 | NULL | 覆盖命令默认超时时间 |
+
+**参数映射 (ArgsMapping) 说明**:
+- JSON 格式定义参数如何传递
+- 支持引用工作流入参：`{workflow.target}`
+- 支持引用上一步输出：`{step1.output}`
+- 示例：
+```json
+{
+  "target": "{workflow.target}",
+  "input_file": "{step1.output}",
+  "output": "/tmp/step2-result.txt"
+}
+```
+
+**关系**:
+- BelongsTo: Workflow（通过 WorkflowID 外键关联）
+- BelongsTo: Command（通过 CommandID 外键关联）
+- BelongsTo: WorkflowStep（自引用，通过 DependsOn 外键关联）
+
+**约束**:
+- 复合唯一索引：(workflow_id, step_order) - 同一工作流中步骤顺序不能重复
+
+**数据示例**:
+```json
+{
+  "id": 1,
+  "workflow_id": 1,
+  "command_id": 1,
+  "step_order": 1,
+  "step_name": "子域名发现",
+  "depends_on": null,
+  "args_mapping": "{\"domain\": \"{workflow.target}\", \"output\": \"/tmp/subdomains.txt\"}",
+  "continue_on_error": false
+}
+```
+
+---
+
+### WorkflowExecution 模型
+**作用**: 工作流执行记录（记录工作流的每次执行）
+
+| 字段名 | 类型 | 限制 | 默认值 | 说明 |
+|--------|------|------|--------|------|
+| ID | uint | 主键 | 自增 | 主键标识符 |
+| CreatedAt | time.Time | 非空 | 当前时间 | 创建时间 |
+| UpdatedAt | time.Time | 非空，索引 | 当前时间 | 更新时间 |
+| WorkflowID | uint | 非空，外键，索引 | - | 所属工作流ID |
+| Status | string(50) | 非空，索引 | queued | 执行状态 |
+| CurrentStep | int | 非空 | 0 | 当前执行到第几步 |
+| InputArgs | text | 可为空 | NULL | 工作流入参（JSON 格式） |
+| TotalDuration | int | 可为空 | NULL | 总耗时（秒） |
+| ErrorMessage | text | 可为空 | NULL | 错误信息 |
+| StartedAt | time.Time | 可为空 | NULL | 开始时间 |
+| FinishedAt | time.Time | 可为空 | NULL | 结束时间 |
+
+**执行状态 (Status)**:
+- `queued` - 已入队
+- `running` - 执行中
+- `completed` - 已完成
+- `failed` - 执行失败
+- `canceled` - 已取消
+
+**关系**:
+- BelongsTo: Workflow（通过 WorkflowID 外键关联）
+- HasMany: StepExecutions（包含多个步骤执行记录）
+
+**数据示例**:
+```json
+{
+  "id": 123,
+  "workflow_id": 1,
+  "status": "running",
+  "current_step": 2,
+  "input_args": "{\"target\": \"example.com\"}",
+  "started_at": "2025-10-18T10:00:00+08:00"
+}
+```
+
+---
+
+### StepExecution 模型
+**作用**: 步骤执行记录（记录工作流中每个步骤的执行详情）
+
+| 字段名 | 类型 | 限制 | 默认值 | 说明 |
+|--------|------|------|--------|------|
+| ID | uint | 主键 | 自增 | 主键标识符 |
+| CreatedAt | time.Time | 非空 | 当前时间 | 创建时间 |
+| UpdatedAt | time.Time | 非空 | 当前时间 | 更新时间 |
+| WorkflowExecutionID | uint | 非空，外键，索引 | - | 所属工作流执行ID |
+| WorkflowStepID | uint | 非空，外键，索引 | - | 对应的工作流步骤ID |
+| Status | string(50) | 非空，索引 | pending | 执行状态 |
+| ExitCode | int | 可为空 | NULL | 退出码（0=成功） |
+| Pid | int | 可为空 | NULL | 进程ID |
+| RenderedCommand | text | 可为空 | NULL | 渲染后的完整命令 |
+| LogFilePath | string(512) | 可为空 | NULL | 日志文件路径 |
+| OutputFilePath | string(512) | 可为空 | NULL | 输出文件路径 |
+| ErrorMessage | text | 可为空 | NULL | 错误信息 |
+| StartedAt | time.Time | 可为空 | NULL | 开始时间 |
+| FinishedAt | time.Time | 可为空 | NULL | 结束时间 |
+| Duration | int | 可为空 | NULL | 耗时（秒） |
+
+**执行状态 (Status)**:
+- `pending` - 待执行
+- `running` - 执行中
+- `completed` - 已完成
+- `failed` - 执行失败
+- `skipped` - 已跳过
+
+**关系**:
+- BelongsTo: WorkflowExecution（通过 WorkflowExecutionID 外键关联）
+- BelongsTo: WorkflowStep（通过 WorkflowStepID 外键关联）
+
+**数据示例**:
+```json
+{
+  "id": 1,
+  "workflow_execution_id": 123,
+  "workflow_step_id": 1,
+  "status": "completed",
+  "exit_code": 0,
+  "pid": 12345,
+  "rendered_command": "subfinder -d example.com -o /tmp/subdomains.txt",
+  "log_file_path": "/var/log/executions/step-1.log",
+  "output_file_path": "/tmp/subdomains.txt",
+  "started_at": "2025-10-18T10:00:05+08:00",
+  "finished_at": "2025-10-18T10:02:10+08:00",
+  "duration": 125
+}
+```
+
+---
+
+### 工作流模型关系图
+
+```
+Tool (工具管理)
+  └─ HasMany → Command (命令定义)
+                  └─ BelongsToMany → WorkflowStep (工作流步骤)
+                                        └─ BelongsTo → Workflow (工作流)
+                                                         └─ HasMany → WorkflowExecution (工作流执行)
+                                                                        └─ HasMany → StepExecution (步骤执行)
+```
+
+**数据流转示例**:
+```
+1. 用户创建 Workflow（完整侦察扫描）
+2. Workflow 包含 3 个 WorkflowStep：
+   - Step 1: 使用 Command(subfinder-discover)
+   - Step 2: 使用 Command(httpx-probe)，依赖 Step 1
+   - Step 3: 使用 Command(nuclei-cve-scan)，依赖 Step 2
+3. 用户执行 Workflow，创建 WorkflowExecution
+4. 系统按顺序执行步骤，每步创建 StepExecution
+5. 步骤间通过 ArgsMapping 传递数据（上一步输出 → 下一步输入）
+```
 
 
 ### Vulnerability 模型
@@ -250,23 +545,24 @@
 | IsGPTUsed | bool | 可为空 | false | 是否使用 GPT |
 | ScanHistoryID | uint | 非空 | - | 扫描历史 ID |
 | SubdomainID | uint | 可为空，外键，复合索引 | NULL | 所属子域名 ID |
-| EndPointID | uint | 可为空，外键，复合索引 | NULL | 所属端点 ID |
+| URLID | uint | 可为空，外键，复合索引 | NULL | 所属 URL ID |
 | DomainID | uint | 可为空，外键，复合索引 | NULL | 目标域名 ID |
 | DomainName | string(255) | 可为空 | NULL | 冗余域名名称（优化查询） |
 
 **业务逻辑约束**:
-- **灵活归属**: DomainID、SubdomainID 和 EndPointID 至少有一个非空
-- **级联删除**: 删除域名、子域名或端点时自动删除相关漏洞
+- **灵活归属**: DomainID、SubdomainID 和 URLID 至少有一个非空
+- **级联删除**: 删除域名、子域名或 URL 时自动删除相关漏洞
 - **严重等级**: Severity 字段必须在 -1 到 4 范围内
-- **复合索引**: (DomainID, SubdomainID, EndPointID) 优化关联查询
+- **复合索引**: (DomainID, SubdomainID, URLID) 优化关联查询
 
 **关系**:
 - BelongsTo: Domain (通过 DomainID 外键关联，可选)
 - BelongsTo: Subdomain (通过 SubdomainID 外键关联，可选)
-- BelongsTo: Endpoint (通过 EndPointID 外键关联，可选)
+- BelongsTo: URL (通过 URLID 外键关联，可选)
 
 ## 设计原则
 
+### 核心领域模型
 1. **以 Domain 为中心**: 所有侦察活动围绕 Domain 实体展开，Domain 专门用于表示域名，关联子域名和组织。
 2. **规范化设计**: 避免数据冗余，保持关系完整性，使用 BelongsTo、HasMany 和 Many2Many 关系。
 3. **查询优化**: 使用 GORM 的索引标签（如 `gorm:"index"`）和预加载（Preload）优化性能。
@@ -274,6 +570,18 @@
 5. **数据保护**: 根子域名通过 IsRoot 字段标记并受保护，防止误删除 Domain 的专属子域名，确保数据完整性。
 6. **性能提升**: 统一字段长度减少碎片。
 7. **数据规范化**: 域名和子域名统一使用小写存储，通过应用层转换和数据库 CHECK 约束双重保障数据一致性。
+
+### 工作流模型
+1. **四层架构**: Tool（工具管理） → Command（命令定义） → Workflow（工作流） → Execution（执行记录）
+2. **职责分离**: 
+   - Tool 只管理工具生命周期（安装、更新、版本）
+   - Command 定义具体执行命令（命令模板、参数、超时）
+   - Workflow 编排多个命令形成流程
+   - Execution 记录执行历史和状态
+3. **灵活编排**: 通过 WorkflowStep 中间表实现命令的灵活组合和顺序控制
+4. **数据传递**: 通过 ArgsMapping 实现步骤间的数据流转（上一步输出 → 下一步输入）
+5. **可扩展性**: 一个工具可以有多个命令配置，一个命令可以被多个工作流使用
+6. **执行追踪**: 完整记录工作流和步骤的执行状态、日志、结果，便于调试和审计
 
 
 
@@ -284,11 +592,18 @@ erDiagram
     Organization }o--o{ organization_domains : "管理"
     Domain }o--o{ organization_domains : "属于"
     Domain ||--o{ Subdomain : "包含子域名(含根子域名)"
-    Domain ||--o{ Endpoint : "包含端点(冗余关联)"
+    Domain ||--o{ URL : "包含URL(冗余关联)"
     Domain ||--o{ Vulnerability : "包含漏洞"
-    Subdomain ||--o{ Endpoint : "包含端点"
+    Subdomain ||--o{ URL : "包含URL"
     Subdomain ||--o{ Vulnerability : "包含漏洞"
-    Endpoint ||--o{ Vulnerability : "包含漏洞"
+    URL ||--o{ Vulnerability : "包含漏洞"
+    
+    Tool ||--o{ Command : "包含命令"
+    Command ||--o{ WorkflowStep : "被步骤使用"
+    Workflow ||--o{ WorkflowStep : "包含步骤"
+    Workflow ||--o{ WorkflowExecution : "执行记录"
+    WorkflowExecution ||--o{ StepExecution : "步骤执行记录"
+    WorkflowStep ||--o{ StepExecution : "对应执行"
     
     Organization {
         uint id PK
@@ -315,7 +630,7 @@ erDiagram
         time updated_at
     }
     
-    Endpoint {
+    URL {
         uint id PK
         string url
         string method
@@ -370,13 +685,86 @@ erDiagram
     Tool {
         uint id PK
         string name
+        string type
         string repo_url
         string version
         text description
+        json category_names
+        string directory
         text install_command
         text update_command
         string version_command
-        json category_names
+        time created_at
+        time updated_at
+    }
+    
+    Command {
+        uint id PK
+        uint tool_id FK
+        string name
+        string display_name
+        text description
+        text command_template
+        bool is_active
+        time created_at
+        time updated_at
+    }
+    
+    Workflow {
+        uint id PK
+        string name
+        string display_name
+        text description
+        string category
+        int total_steps
+        int estimated_time
+        bool is_active
+        time created_at
+        time updated_at
+    }
+    
+    WorkflowStep {
+        uint id PK
+        uint workflow_id FK
+        uint command_id FK
+        int step_order
+        string step_name
+        uint depends_on FK
+        text args_mapping
+        bool continue_on_error
+        int timeout_override
+        time created_at
+        time updated_at
+    }
+    
+    WorkflowExecution {
+        uint id PK
+        uint workflow_id FK
+        string status
+        int current_step
+        text input_args
+        int total_duration
+        text error_message
+        time started_at
+        time finished_at
+        time created_at
+        time updated_at
+    }
+    
+    StepExecution {
+        uint id PK
+        uint workflow_execution_id FK
+        uint workflow_step_id FK
+        string status
+        int exit_code
+        int pid
+        text rendered_command
+        string log_file_path
+        string output_file_path
+        text error_message
+        time started_at
+        time finished_at
+        int duration
         time created_at
         time updated_at
     }

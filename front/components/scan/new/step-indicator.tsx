@@ -6,7 +6,7 @@ import { IconCheck } from "@tabler/icons-react"
 export interface Step {
   id: number
   title: string
-  description: string
+  description?: string
 }
 
 interface StepIndicatorProps {
@@ -52,9 +52,11 @@ export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
                 >
                   {step.title}
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  {step.description}
-                </div>
+                {step.description && (
+                  <div className="text-xs text-muted-foreground">
+                    {step.description}
+                  </div>
+                )}
               </div>
             </div>
             {index < steps.length - 1 && (

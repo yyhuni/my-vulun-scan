@@ -1,16 +1,8 @@
 import { api } from "@/lib/api-client"
 import type { ApiResponse } from "@/types/api-response.types"
-import type { Tool, ToolsResponse, CreateToolRequest, GetToolsParams, CategoriesResponse } from "@/types/tool.types"
+import type { Tool, ToolsResponse, CreateToolRequest, UpdateToolRequest, GetToolsParams } from "@/types/tool.types"
 
 export class ToolService {
-  /**
-   * 获取所有工具分类
-   * @returns Promise<ApiResponse<CategoriesResponse>>
-   */
-  static async getCategories(): Promise<ApiResponse<CategoriesResponse>> {
-    const response = await api.get<ApiResponse<CategoriesResponse>>('/categories')
-    return response.data
-  }
   /**
    * 获取工具列表
    * @param params - 查询参数对象
@@ -38,6 +30,27 @@ export class ToolService {
    */
   static async createTool(data: CreateToolRequest): Promise<ApiResponse<{ tool: Tool }>> {
     const response = await api.post<ApiResponse<{ tool: Tool }>>('/tools/create', data)
+    return response.data
+  }
+
+  /**
+   * 更新工具
+   * @param id - 工具ID
+   * @param data - 更新的工具信息（所有字段可选）
+   * @returns Promise<ApiResponse<{ tool: Tool }>>
+   */
+  static async updateTool(id: number, data: UpdateToolRequest): Promise<ApiResponse<{ tool: Tool }>> {
+    const response = await api.put<ApiResponse<{ tool: Tool }>>(`/tools/${id}`, data)
+    return response.data
+  }
+
+  /**
+   * 删除工具
+   * @param id - 工具ID
+   * @returns Promise<ApiResponse<{ message: string }>>
+   */
+  static async deleteTool(id: number): Promise<ApiResponse<{ message: string }>> {
+    const response = await api.delete<ApiResponse<{ message: string }>>(`/tools/${id}`)
     return response.data
   }
 }

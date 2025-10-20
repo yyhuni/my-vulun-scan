@@ -9,14 +9,16 @@ import { useOrganizations } from "@/hooks/use-organizations"
 import type { Organization } from "@/types/organization.types"
 import { StepIndicator } from "@/components/scan/new/step-indicator"
 import { OrganizationSelectionTable } from "@/components/scan/new/organization-selection-table"
+import { TargetConfirmation } from "@/components/scan/new/target-confirmation"
 import { ScanConfigForm } from "@/components/scan/new/scan-config-form"
 import { ScanConfirmation } from "@/components/scan/new/scan-confirmation"
 
 // 步骤定义
 const STEPS = [
-  { id: 1, title: "选择目标", description: "选择扫描的组织" },
-  { id: 2, title: "扫描配置", description: "配置扫描参数" },
-  { id: 3, title: "确认启动", description: "确认并启动扫描" },
+  { id: 1, title: "扫描策略" },
+  { id: 2, title: "选择目标" },
+  { id: 3, title: "确认目标" },
+  { id: 4, title: "确认启动" },
 ]
 
 /**
@@ -85,10 +87,12 @@ export default function NewScanPage() {
   const canProceed = () => {
     switch (currentStep) {
       case 1:
-        return selectedOrganizations.length > 0
+        return scanName.trim() !== "" && scanType !== "" // 扫描策略
       case 2:
-        return scanName.trim() !== "" && scanType !== ""
+        return selectedOrganizations.length > 0 // 选择目标
       case 3:
+        return true // 确认目标，仅查看，可直接下一步
+      case 4:
         return true
       default:
         return false
@@ -115,8 +119,18 @@ export default function NewScanPage() {
 
         {/* 操作栏 */}
         <div className="flex items-center gap-4 py-4">
-          {/* 左侧：搜索框（仅步骤1显示） */}
+          {/* 左侧：步骤标题（仅步骤1显示） */}
           {currentStep === 1 && (
+            <div>
+              <h3 className="text-lg font-semibold">配置扫描参数</h3>
+              <p className="text-sm text-muted-foreground">
+                设置扫描任务的名称、类型和其他参数
+              </p>
+            </div>
+          )}
+
+          {/* 左侧：搜索框（仅步骤2显示） */}
+          {currentStep === 2 && (
             <div className="relative flex-1 max-w-md">
               <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
@@ -128,8 +142,8 @@ export default function NewScanPage() {
             </div>
           )}
 
-          {/* 中间：已选择提示（仅步骤1且已选择时显示） */}
-          {currentStep === 1 && selectedOrganizations.length > 0 && (
+          {/* 中间：已选择提示（仅步骤2且已选择时显示） */}
+          {currentStep === 2 && selectedOrganizations.length > 0 && (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/5 border border-primary/20 rounded-md">
               <IconCheck className="size-4 text-primary flex-shrink-0" />
               <span className="text-sm whitespace-nowrap">
@@ -140,7 +154,7 @@ export default function NewScanPage() {
 
           {/* 右侧：操作按钮 */}
           <div className="ml-auto flex items-center gap-2">
-            {/* 上一步按钮（步骤2和3显示） */}
+            {/* 上一步按钮（步骤2、3、4显示） */}
             {currentStep > 1 && (
               <Button variant="outline" onClick={handlePrevious}>
                 <IconChevronLeft />
@@ -165,8 +179,20 @@ export default function NewScanPage() {
 
         {/* 步骤内容 */}
         <div className="pt-4 pb-6">
-          {/* 步骤 1: 选择组织 */}
+          {/* 步骤 1: 扫描策略 */}
           {currentStep === 1 && (
+            <ScanConfigForm
+              scanName={scanName}
+              scanType={scanType}
+              description={description}
+              onScanNameChange={setScanName}
+              onScanTypeChange={setScanType}
+              onDescriptionChange={setDescription}
+            />
+          )}
+
+          {/* 步骤 2: 选择目标 */}
+          {currentStep === 2 && (
             <OrganizationSelectionTable
               organizations={organizations}
               selectedOrganizations={selectedOrganizations}
@@ -180,20 +206,13 @@ export default function NewScanPage() {
             />
           )}
 
-          {/* 步骤 2: 扫描配置 */}
-          {currentStep === 2 && (
-            <ScanConfigForm
-              scanName={scanName}
-              scanType={scanType}
-              description={description}
-              onScanNameChange={setScanName}
-              onScanTypeChange={setScanType}
-              onDescriptionChange={setDescription}
-            />
+          {/* 步骤 3: 确认目标 */}
+          {currentStep === 3 && (
+            <TargetConfirmation organizations={selectedOrganizations} />
           )}
 
-          {/* 步骤 3: 确认信息 */}
-          {currentStep === 3 && (
+          {/* 步骤 4: 确认启动 */}
+          {currentStep === 4 && (
             <ScanConfirmation
               organizations={selectedOrganizations}
               scanName={scanName}
