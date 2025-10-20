@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # 第三方应用
     'rest_framework',
+    'drf_yasg',
     'corsheaders',
     # 业务应用
     'apps.common',   # 通用工具

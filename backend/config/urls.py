@@ -16,10 +16,28 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from rest_framework import permissions
+from drf_yasg.views import get_schema_view
+from drf_yasg import openapi
+
+# API 文档配置
+schema_view = get_schema_view(
+   openapi.Info(
+      title="my-vulun-scan API",
+      default_version='v1',
+      description="Web 应用侦察工具 API 文档",
+   ),
+   public=True,
+   permission_classes=(permissions.AllowAny,),
+)
 
 urlpatterns = [
     # Django 后台管理
     path('admin/', admin.site.urls),
+    
+    # API 文档
+    path('api/swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='swagger'),
+    path('api/redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='redoc'),
     
     # 业务 API 路由
     path('api/', include('apps.assets.urls')),
