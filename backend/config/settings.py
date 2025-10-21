@@ -143,8 +143,23 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ==================== REST Framework 配置 ====================
 REST_FRAMEWORK = {
-    'DEFAULT_PAGINATION_CLASS': 'apps.common.pagination.CustomPageNumberPagination',  # 使用自定义分页器
-    'PAGE_SIZE': 20,
+    'DEFAULT_PAGINATION_CLASS': 'apps.common.pagination.BasePagination',  # 使用基础分页器
+    
+    # JSON 命名格式转换：后端 snake_case ↔ 前端 camelCase
+    'DEFAULT_RENDERER_CLASSES': (
+        'djangorestframework_camel_case.render.CamelCaseJSONRenderer',  # 响应数据转换为 camelCase
+        'djangorestframework_camel_case.render.CamelCaseBrowsableAPIRenderer',  # 浏览器 API 也使用 camelCase
+    ),
+    'DEFAULT_PARSER_CLASSES': (
+        'djangorestframework_camel_case.parser.CamelCaseJSONParser',  # 请求数据从 camelCase 转换为 snake_case
+        'djangorestframework_camel_case.parser.CamelCaseFormParser',  # 表单数据也支持转换
+        'djangorestframework_camel_case.parser.CamelCaseMultiPartParser',  # 文件上传支持转换
+    ),
+    
+    # 转换配置
+    'JSON_UNDERSCOREIZE': {
+        'no_underscore_before_number': True,  # 数字前不加下划线 (field1 不会变成 field_1)
+    },
 }
 
 # ==================== CORS 配置 ====================

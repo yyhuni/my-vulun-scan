@@ -39,27 +39,18 @@ export function useOrganizations(
     }],
     queryFn: () => OrganizationService.getOrganizations(params || {}),
     select: (response) => {
-      if (response.state === 'success' && response.data) {
-        // 类型守卫：检查是否为列表响应
-        if ('organizations' in response.data) {
-          return {
-            organizations: response.data.organizations || [],
-            pagination: {
-              total: response.data.total || 0,
-              page: response.data.page || 1,
-              pageSize: response.data.pageSize || 10,
-              totalPages: response.data.totalPages || 0,
-            }
-          }
+      // RESTful 标准：直接返回数据，不需要检查 state
+      return {
+        organizations: response.organizations || [],
+        pagination: {
+          total: response.total || 0,
+          page: response.page || 1,
+          pageSize: response.pageSize || 10,
+          totalPages: response.totalPages || 0,
         }
       }
-      // 控制台打印后端响应，便于调试
-      console.error('获取组织列表失败 - 后端响应:', response)
-      // 抛出固定的用户友好错误信息
-      throw new Error('获取组织列表失败')
     },
     enabled: options?.enabled !== undefined ? options.enabled : true,
-    throwOnError: true,
   })
 }
 
@@ -70,17 +61,7 @@ export function useOrganization(id: number) {
   return useQuery({
     queryKey: organizationKeys.detail(id),
     queryFn: () => OrganizationService.getOrganizationById(id),
-    select: (response) => {
-      if (response.state === 'success' && response.data) {
-        return response.data as Organization
-      }
-      // 控制台打印后端响应，便于调试
-      console.error('获取组织详情失败 - 后端响应:', response)
-      // 抛出固定的用户友好错误信息
-      throw new Error('获取组织详情失败')
-    },
     enabled: !!id, // 只有当 id 存在时才执行查询
-    throwOnError: true,
   })
 }
 
@@ -102,17 +83,7 @@ export function useOrganizationDomains(
   return useQuery({
     queryKey: [...organizationKeys.detail(id), 'domains', params],
     queryFn: () => OrganizationService.getOrganizationDomains(id, params),
-    select: (response) => {
-      if (response.state === 'success' && response.data) {
-        return response.data
-      }
-      // 控制台打印后端响应，便于调试
-      console.error('获取组织域名列表失败 - 后端响应:', response)
-      // 抛出固定的用户友好错误信息
-      throw new Error('获取组织域名列表失败')
-    },
     enabled: options?.enabled !== undefined ? (options.enabled && !!id) : !!id,
-    throwOnError: true,
   })
 }
 
@@ -138,21 +109,11 @@ export function useCreateOrganization() {
       // 关闭加载提示
       toast.dismiss('create-organization')
       
-      if (response.state === 'success' && response.data) {
-        // 打印后端响应
-        console.log('创建组织成功')
-        console.log('后端响应:', response)
-        
-        // 刷新所有组织相关查询（通配符匹配）
-        queryClient.invalidateQueries({ queryKey: ['organizations'] })
-        
-        // 显示成功提示
-        toast.success('创建成功')
-        
-        return response.data
-      } else {
-        throw new Error(response.message || '创建组织失败')
-      }
+      // 刷新所有组织相关查询（通配符匹配）
+      queryClient.invalidateQueries({ queryKey: ['organizations'] })
+      
+      // 显示成功提示
+      toast.success('创建成功')
     },
     onError: (error: any) => {
       // 关闭加载提示
@@ -184,21 +145,11 @@ export function useUpdateOrganization() {
       // 关闭加载提示
       toast.dismiss(`update-${id}`)
       
-      if (response.state === 'success' && response.data) {
-        // 打印后端响应
-        console.log('更新组织成功')
-        console.log('后端响应:', response)
-        
-        // 刷新所有组织相关查询（通配符匹配）
-        queryClient.invalidateQueries({ queryKey: ['organizations'] })
-        
-        // 显示成功提示
-        toast.success('更新成功')
-        
-        return response.data
-      } else {
-        throw new Error(response.message || '更新组织失败')
-      }
+      // 刷新所有组织相关查询（通配符匹配）
+      queryClient.invalidateQueries({ queryKey: ['organizations'] })
+      
+      // 显示成功提示
+      toast.success('更新成功')
     },
     onError: (error: any, { id }) => {
       // 关闭加载提示
@@ -252,15 +203,8 @@ export function useDeleteOrganization() {
       // 关闭加载提示
       toast.dismiss(`delete-${deletedId}`)
       
-      if (response.state === 'success') {
-        // 打印后端响应
-        console.log('删除组织成功')
-        console.log('后端响应:', response)
-        
-        toast.success('删除成功')
-      } else {
-        throw new Error(response.message || '删除组织失败')
-      }
+      // 显示成功提示
+      toast.success('删除成功')
     },
     onError: (error: any, deletedId, context) => {
       // 关闭加载提示
@@ -328,15 +272,8 @@ export function useBatchDeleteOrganizations() {
       // 关闭加载提示
       toast.dismiss('batch-delete')
       
-      if (response.state === 'success') {
-        // 打印后端响应
-        console.log('批量删除组织成功')
-        console.log('后端响应:', response)
-        
-        toast.success('批量删除成功')
-      } else {
-        throw new Error(response.message || '批量删除组织失败')
-      }
+      // 显示成功提示
+      toast.success('批量删除成功')
     },
     onError: (error: any, deletedIds, context) => {
       // 关闭加载提示

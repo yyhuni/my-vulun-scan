@@ -7,8 +7,8 @@ export interface Organization {
   id: number
   name: string
   description: string
-  createdAt: string      // 后端 created_at 经过 camelcaseKeys 转换
-  updatedAt: string      // 后端 updated_at 经过 camelcaseKeys 转换
+  createdAt: string      // 后端 created_at 由 Django 自动转换为 camelCase
+  updatedAt: string      // 后端 updated_at 由 Django 自动转换为 camelCase
   domains?: Domain[]     // 关联的域名列表（仅在 Preload 时返回）
 }
 

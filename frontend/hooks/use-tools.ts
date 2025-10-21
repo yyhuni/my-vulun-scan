@@ -18,21 +18,16 @@ export function useTools(params: GetToolsParams = {}) {
     queryKey: toolKeys.list(params),
     queryFn: () => ToolService.getTools(params),
     select: (response) => {
-      if (response.state === 'success' && response.data) {
-        return {
-          tools: response.data.tools || [],
-          pagination: {
-            total: response.data.total || 0,
-            page: response.data.page || 1,
-            pageSize: response.data.pageSize || 10,
-            totalPages: response.data.totalPages || 0,
-          }
+      // RESTful 标准：直接返回数据
+      return {
+        tools: response.tools || [],
+        pagination: {
+          total: response.total || 0,
+          page: response.page || 1,
+          pageSize: response.pageSize || 10,
+          totalPages: response.totalPages || 0,
         }
       }
-      // 控制台打印后端响应，便于调试
-      console.error('获取工具列表失败 - 后端响应:', response)
-      // 抛出固定的用户友好错误信息
-      throw new Error('获取工具列表失败')
     },
   })
 }
@@ -49,21 +44,17 @@ export function useCreateTool() {
     onSuccess: (response) => {
       toast.dismiss('create-tool')
       
-      if (response.state === 'success') {
-        // 打印后端响应
-        console.log('创建工具成功')
-        console.log('后端响应:', response)
-        
-        toast.success('创建成功')
-        
-        // 刷新工具列表和分类列表
-        queryClient.invalidateQueries({ 
-          queryKey: toolKeys.all,
-          refetchType: 'active' 
-        })
-      } else {
-        throw new Error(response.message || '创建工具失败')
-      }
+      // 打印后端响应
+      console.log('创建工具成功')
+      console.log('后端响应:', response)
+      
+      toast.success('创建成功')
+      
+      // 刷新工具列表和分类列表
+      queryClient.invalidateQueries({ 
+        queryKey: toolKeys.all,
+        refetchType: 'active' 
+      })
     },
     onError: (error: any) => {
       toast.dismiss('create-tool')
@@ -90,20 +81,16 @@ export function useUpdateTool() {
     onSuccess: (response) => {
       toast.dismiss('update-tool')
       
-      if (response.state === 'success') {
-        console.log('更新工具成功')
-        console.log('后端响应:', response)
-        
-        toast.success('更新成功')
-        
-        // 刷新工具列表
-        queryClient.invalidateQueries({ 
-          queryKey: toolKeys.all,
-          refetchType: 'active' 
-        })
-      } else {
-        throw new Error(response.message || '更新工具失败')
-      }
+      console.log('更新工具成功')
+      console.log('后端响应:', response)
+      
+      toast.success('更新成功')
+      
+      // 刷新工具列表
+      queryClient.invalidateQueries({ 
+        queryKey: toolKeys.all,
+        refetchType: 'active' 
+      })
     },
     onError: (error: any) => {
       toast.dismiss('update-tool')
@@ -128,20 +115,15 @@ export function useDeleteTool() {
     onSuccess: (response) => {
       toast.dismiss('delete-tool')
       
-      if (response.state === 'success') {
-        console.log('删除工具成功')
-        console.log('后端响应:', response)
-        
-        toast.success('删除成功')
-        
-        // 刷新工具列表
-        queryClient.invalidateQueries({ 
-          queryKey: toolKeys.all,
-          refetchType: 'active' 
-        })
-      } else {
-        throw new Error(response.message || '删除工具失败')
-      }
+      console.log('删除工具成功')
+      
+      toast.success('删除成功')
+      
+      // 刷新工具列表
+      queryClient.invalidateQueries({ 
+        queryKey: toolKeys.all,
+        refetchType: 'active' 
+      })
     },
     onError: (error: any) => {
       toast.dismiss('delete-tool')

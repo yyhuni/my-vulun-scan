@@ -1,5 +1,4 @@
 import { api } from "@/lib/api-client"
-import type { ApiResponse } from "@/types/api-response.types"
 import type { Tool, ToolsResponse, CreateToolRequest, UpdateToolRequest, GetToolsParams } from "@/types/tool.types"
 
 export class ToolService {
@@ -8,11 +7,11 @@ export class ToolService {
    * @param params - 查询参数对象
    * @param params.page - 当前页码，1-based
    * @param params.pageSize - 分页大小
-   * @returns Promise<ApiResponse<ToolsResponse>>
+   * @returns Promise<ToolsResponse>
    * @description 后端固定按更新时间降序排列，不支持自定义排序
    */
-  static async getTools(params?: GetToolsParams): Promise<ApiResponse<ToolsResponse>> {
-    const response = await api.get<ApiResponse<ToolsResponse>>(
+  static async getTools(params?: GetToolsParams): Promise<ToolsResponse> {
+    const response = await api.get<ToolsResponse>(
       '/tools',
       { params }
     )
@@ -26,10 +25,10 @@ export class ToolService {
    * @param data.repoUrl - 仓库地址
    * @param data.version - 版本号
    * @param data.description - 工具描述
-   * @returns Promise<ApiResponse<{ tool: Tool }>>
+   * @returns Promise<{ tool: Tool }>
    */
-  static async createTool(data: CreateToolRequest): Promise<ApiResponse<{ tool: Tool }>> {
-    const response = await api.post<ApiResponse<{ tool: Tool }>>('/tools/create', data)
+  static async createTool(data: CreateToolRequest): Promise<{ tool: Tool }> {
+    const response = await api.post<{ tool: Tool }>('/tools/create', data)
     return response.data
   }
 
@@ -37,20 +36,19 @@ export class ToolService {
    * 更新工具
    * @param id - 工具ID
    * @param data - 更新的工具信息（所有字段可选）
-   * @returns Promise<ApiResponse<{ tool: Tool }>>
+   * @returns Promise<{ tool: Tool }>
    */
-  static async updateTool(id: number, data: UpdateToolRequest): Promise<ApiResponse<{ tool: Tool }>> {
-    const response = await api.put<ApiResponse<{ tool: Tool }>>(`/tools/${id}`, data)
+  static async updateTool(id: number, data: UpdateToolRequest): Promise<{ tool: Tool }> {
+    const response = await api.put<{ tool: Tool }>(`/tools/${id}`, data)
     return response.data
   }
 
   /**
    * 删除工具
    * @param id - 工具ID
-   * @returns Promise<ApiResponse<{ message: string }>>
+   * @returns Promise<void>
    */
-  static async deleteTool(id: number): Promise<ApiResponse<{ message: string }>> {
-    const response = await api.delete<ApiResponse<{ message: string }>>(`/tools/${id}`)
-    return response.data
+  static async deleteTool(id: number): Promise<void> {
+    await api.delete(`/tools/${id}`)
   }
 }

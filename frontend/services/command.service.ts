@@ -1,5 +1,4 @@
-import api from "@/lib/api-client"
-import type { ApiResponse } from "@/types/api-response.types"
+import { api } from "@/lib/api-client"
 import type {
   Command,
   GetCommandsRequest,
@@ -19,9 +18,9 @@ export class CommandService {
    */
   static async getCommands(
     params: GetCommandsRequest = {}
-  ): Promise<ApiResponse<GetCommandsResponse>> {
-    const response = await api.get<ApiResponse<GetCommandsResponse>>(
-      "/api/v1/commands",
+  ): Promise<GetCommandsResponse> {
+    const response = await api.get<GetCommandsResponse>(
+      "/commands",
       { params }
     )
     return response.data
@@ -30,9 +29,9 @@ export class CommandService {
   /**
    * 获取单个命令
    */
-  static async getCommandById(id: number): Promise<ApiResponse<CommandResponseData>> {
-    const response = await api.get<ApiResponse<CommandResponseData>>(
-      `/api/v1/commands/${id}`
+  static async getCommandById(id: number): Promise<CommandResponseData> {
+    const response = await api.get<CommandResponseData>(
+      `/commands/${id}`
     )
     return response.data
   }
@@ -42,9 +41,9 @@ export class CommandService {
    */
   static async createCommand(
     data: CreateCommandRequest
-  ): Promise<ApiResponse<CommandResponseData>> {
-    const response = await api.post<ApiResponse<CommandResponseData>>(
-      "/api/v1/commands/create",
+  ): Promise<CommandResponseData> {
+    const response = await api.post<CommandResponseData>(
+      "/commands/create",
       data
     )
     return response.data
@@ -56,9 +55,9 @@ export class CommandService {
   static async updateCommand(
     id: number,
     data: UpdateCommandRequest
-  ): Promise<ApiResponse<CommandResponseData>> {
-    const response = await api.put<ApiResponse<CommandResponseData>>(
-      `/api/v1/commands/${id}`,
+  ): Promise<CommandResponseData> {
+    const response = await api.put<CommandResponseData>(
+      `/commands/${id}`,
       data
     )
     return response.data
@@ -69,11 +68,10 @@ export class CommandService {
    */
   static async deleteCommand(
     id: number
-  ): Promise<ApiResponse<BatchDeleteCommandsResponseData>> {
-    const response = await api.delete<ApiResponse<BatchDeleteCommandsResponseData>>(
-      `/api/v1/commands/${id}`
+  ): Promise<void> {
+    await api.delete(
+      `/commands/${id}`
     )
-    return response.data
   }
 
   /**
@@ -81,10 +79,10 @@ export class CommandService {
    */
   static async batchDeleteCommands(
     ids: number[]
-  ): Promise<ApiResponse<BatchDeleteCommandsResponseData>> {
-    const response = await api.delete<ApiResponse<BatchDeleteCommandsResponseData>>(
-      "/api/v1/commands/batch",
-      { data: { ids } }
+  ): Promise<BatchDeleteCommandsResponseData> {
+    const response = await api.post<BatchDeleteCommandsResponseData>(
+      "/commands/batch-delete",
+      { ids }
     )
     return response.data
   }

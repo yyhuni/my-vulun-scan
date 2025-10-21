@@ -23,13 +23,8 @@ export function useDomain(id: number) {
     queryKey: domainKeys.detail(id),
     queryFn: () => DomainService.getDomainById(id),
     select: (response) => {
-      if (response.state === 'success' && response.data) {
-        return response.data.domain
-      }
-      // 控制台打印后端响应，便于调试
-      console.error('获取域名详情失败 - 后端响应:', response)
-      // 抛出固定的用户友好错误信息
-      throw new Error('获取域名详情失败')
+      // RESTful 标准：直接返回数据
+      return response.domain
     },
     enabled: !!id,
   })
@@ -58,21 +53,16 @@ export function useOrganizationDomains(
     }),
     enabled: options?.enabled !== undefined ? options.enabled : true,
     select: (response) => {
-      if (response.state === 'success' && response.data) {
-        return {
-          domains: response.data.domains || [],
-          pagination: {
-            total: response.data.total || 0,
-            page: response.data.page || 1,
-            pageSize: response.data.pageSize || 10,
-            totalPages: response.data.totalPages || 0,
-          }
+      // RESTful 标准：直接返回数据
+      return {
+        domains: response.domains || [],
+        pagination: {
+          total: response.total || 0,
+          page: response.page || 1,
+          pageSize: response.pageSize || 10,
+          totalPages: response.totalPages || 0,
         }
       }
-      // 控制台打印后端响应，便于调试
-      console.error('获取组织域名列表失败 - 后端响应:', response)
-      // 抛出固定的用户友好错误信息
-      throw new Error('获取组织域名列表失败')
     },
   })
 }
@@ -96,28 +86,24 @@ export function useCreateDomain() {
       // 关闭加载提示
       toast.dismiss('create-domain')
       
-      if (response.state === 'success' && response.data) {
-        const { newCreated, alreadyExisted } = response.data
-        
-        // 打印后端响应
-        console.log('创建域名成功')
-        console.log('后端响应:', response)
-        
-        // 前端自己构造提示消息
-        if (alreadyExisted > 0) {
-          toast.warning(
-            `成功创建 ${newCreated} 个域名（${alreadyExisted} 个已存在）`
-          )
-        } else {
-          toast.success(`成功创建 ${newCreated} 个域名`)
-        }
-        
-        // 刷新所有域名和组织相关查询（通配符匹配）
-        queryClient.invalidateQueries({ queryKey: ['domains'] })
-        queryClient.invalidateQueries({ queryKey: ['organizations'] })
+      const { newCreated, alreadyExisted } = response
+      
+      // 打印后端响应
+      console.log('创建域名成功')
+      console.log('后端响应:', response)
+      
+      // 前端自己构造提示消息
+      if (alreadyExisted > 0) {
+        toast.warning(
+          `成功创建 ${newCreated} 个域名（${alreadyExisted} 个已存在）`
+        )
       } else {
-        throw new Error(response.message || '创建域名失败')
+        toast.success(`成功创建 ${newCreated} 个域名`)
       }
+      
+      // 刷新所有域名和组织相关查询（通配符匹配）
+      queryClient.invalidateQueries({ queryKey: ['domains'] })
+      queryClient.invalidateQueries({ queryKey: ['organizations'] })
     },
     onError: (error: any) => {
       // 关闭加载提示
@@ -145,20 +131,15 @@ export function useDeleteDomainFromOrganization() {
     onSuccess: (response, { organizationId, domainId }) => {
       toast.dismiss(`delete-${organizationId}-${domainId}`)
       
-      if (response.state === 'success') {
-        // 打印后端响应
-        console.log('移除域名成功')
-        console.log('后端响应:', response)
-        
-        // 前端自己构造成功提示消息
-        toast.success('域名已成功移除')
-        
-        // 刷新所有域名和组织相关查询（通配符匹配）
-        queryClient.invalidateQueries({ queryKey: ['domains'] })
-        queryClient.invalidateQueries({ queryKey: ['organizations'] })
-      } else {
-        throw new Error(response.message || '移除失败')
-      }
+      // 打印后端响应
+      console.log('移除域名成功')
+      
+      // 前端自己构造成功提示消息
+      toast.success('域名已成功移除')
+      
+      // 刷新所有域名和组织相关查询（通配符匹配）
+      queryClient.invalidateQueries({ queryKey: ['domains'] })
+      queryClient.invalidateQueries({ queryKey: ['organizations'] })
     },
     onError: (error: any, { organizationId, domainId }) => {
       toast.dismiss(`delete-${organizationId}-${domainId}`)
@@ -185,27 +166,23 @@ export function useBatchDeleteDomainsFromOrganization() {
     onSuccess: (response, { organizationId }) => {
       toast.dismiss(`batch-delete-${organizationId}`)
       
-      if (response.state === 'success') {
-        // 打印后端响应
-        console.log('批量移除域名成功')
-        console.log('后端响应:', response)
-        
-        // 前端自己构造成功提示消息
-        const successCount = response.data?.successCount || 0
-        const failedCount = response.data?.failedCount || 0
-        
-        if (failedCount > 0) {
-          toast.warning(`批量移除完成（成功：${successCount}，失败：${failedCount}）`)
-        } else {
-          toast.success(`成功移除 ${successCount} 个域名`)
-        }
-        
-        // 刷新所有域名和组织相关查询（通配符匹配）
-        queryClient.invalidateQueries({ queryKey: ['domains'] })
-        queryClient.invalidateQueries({ queryKey: ['organizations'] })
+      // 打印后端响应
+      console.log('批量移除域名成功')
+      console.log('后端响应:', response)
+      
+      // 前端自己构造成功提示消息
+      const successCount = response.successCount || 0
+      const failedCount = response.failedCount || 0
+      
+      if (failedCount > 0) {
+        toast.warning(`批量移除完成（成功：${successCount}，失败：${failedCount}）`)
       } else {
-        throw new Error(response.message || '批量移除失败')
+        toast.success(`成功移除 ${successCount} 个域名`)
       }
+      
+      // 刷新所有域名和组织相关查询（通配符匹配）
+      queryClient.invalidateQueries({ queryKey: ['domains'] })
+      queryClient.invalidateQueries({ queryKey: ['organizations'] })
     },
     onError: (error: any, { organizationId }) => {
       toast.dismiss(`batch-delete-${organizationId}`)
@@ -232,22 +209,18 @@ export function useBatchDeleteDomains() {
     onSuccess: (response) => {
       toast.dismiss('batch-delete-domains')
       
-      if (response.state === 'success') {
-        // 打印后端响应
-        console.log('批量删除域名成功')
-        console.log('后端响应:', response)
-        
-        // 前端自己构造成功提示消息
-        const deletedCount = response.data?.deletedCount || 0
-        
-        toast.success(`成功删除 ${deletedCount} 个域名`)
-        
-        // 刷新所有域名和组织相关查询（通配符匹配）
-        queryClient.invalidateQueries({ queryKey: ['domains'] })
-        queryClient.invalidateQueries({ queryKey: ['organizations'] })
-      } else {
-        throw new Error(response.message || '批量删除失败')
-      }
+      // 打印后端响应
+      console.log('批量删除域名成功')
+      console.log('后端响应:', response)
+      
+      // 前端自己构造成功提示消息
+      const deletedCount = response.deletedCount || 0
+      
+      toast.success(`成功删除 ${deletedCount} 个域名`)
+      
+      // 刷新所有域名和组织相关查询（通配符匹配）
+      queryClient.invalidateQueries({ queryKey: ['domains'] })
+      queryClient.invalidateQueries({ queryKey: ['organizations'] })
     },
     onError: (error: any) => {
       toast.dismiss('batch-delete-domains')
@@ -274,19 +247,15 @@ export function useUpdateDomain() {
     onSuccess: (response: any, { id }) => {
       toast.dismiss(`update-domain-${id}`)
       
-      if (response.state === 'success') {
-        // 打印后端响应
-        console.log('更新域名成功')
-        console.log('后端响应:', response)
-        
-        toast.success('更新成功')
-        
-        // 刷新所有域名和组织相关查询（通配符匹配）
-        queryClient.invalidateQueries({ queryKey: ['domains'] })
-        queryClient.invalidateQueries({ queryKey: ['organizations'] })
-      } else {
-        throw new Error(response.message || '更新域名失败')
-      }
+      // 打印后端响应
+      console.log('更新域名成功')
+      console.log('后端响应:', response)
+      
+      toast.success('更新成功')
+      
+      // 刷新所有域名和组织相关查询（通配符匹配）
+      queryClient.invalidateQueries({ queryKey: ['domains'] })
+      queryClient.invalidateQueries({ queryKey: ['organizations'] })
     },
     onError: (error: any, { id }) => {
       toast.dismiss(`update-domain-${id}`)
@@ -309,21 +278,16 @@ export function useAllDomains(params: GetAllDomainsParams = {}) {
     }],
     queryFn: () => DomainService.getAllDomains(params),
     select: (response) => {
-      if (response.state === 'success' && response.data) {
-        return {
-          domains: response.data.domains || [],
-          pagination: {
-            total: response.data.total || 0,
-            page: response.data.page || 1,
-            pageSize: response.data.pageSize || 10,
-            totalPages: response.data.totalPages || 0,
-          }
+      // RESTful 标准：直接返回数据
+      return {
+        domains: response.domains || [],
+        pagination: {
+          total: response.total || 0,
+          page: response.page || 1,
+          pageSize: response.pageSize || 10,
+          totalPages: response.totalPages || 0,
         }
       }
-      // 控制台打印后端响应，便于调试
-      console.error('获取所有域名列表失败 - 后端响应:', response)
-      // 抛出固定的用户友好错误信息
-      throw new Error('获取所有域名列表失败')
     },
   })
 }

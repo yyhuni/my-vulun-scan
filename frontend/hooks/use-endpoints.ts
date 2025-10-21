@@ -33,13 +33,8 @@ export function useEndpoint(id: number) {
     queryKey: endpointKeys.detail(id),
     queryFn: () => EndpointService.getEndpointById(id),
     select: (response) => {
-      if (response.state === 'success' && response.data) {
-        return response.data as Endpoint
-      }
-      // 控制台打印后端响应，便于调试
-      console.error('获取端点详情失败 - 后端响应:', response)
-      // 抛出固定的用户友好错误信息
-      throw new Error('获取端点详情失败')
+      // RESTful 标准：直接返回数据
+      return response as Endpoint
     },
     enabled: !!id,
   })
@@ -57,13 +52,8 @@ export function useEndpoints(params?: GetEndpointsRequest) {
     queryKey: endpointKeys.list(defaultParams),
     queryFn: () => EndpointService.getEndpoints(defaultParams),
     select: (response) => {
-      if (response.state === 'success' && response.data) {
-        return response.data as GetEndpointsResponse
-      }
-      // 控制台打印后端响应，便于调试
-      console.error('获取端点列表失败 - 后端响应:', response)
-      // 抛出固定的用户友好错误信息
-      throw new Error('获取端点列表失败')
+      // RESTful 标准：直接返回数据
+      return response as GetEndpointsResponse
     },
   })
 }
@@ -80,13 +70,8 @@ export function useEndpointsByDomain(domainId: number, params?: Omit<GetEndpoint
     queryKey: endpointKeys.byDomain(domainId, defaultParams),
     queryFn: () => EndpointService.getEndpointsByDomainId(domainId, defaultParams),
     select: (response) => {
-      if (response.state === 'success' && response.data) {
-        return response.data as GetEndpointsResponse
-      }
-      // 控制台打印后端响应，便于调试
-      console.error('获取域名端点列表失败 - 后端响应:', response)
-      // 抛出固定的用户友好错误信息
-      throw new Error('获取域名端点列表失败')
+      // RESTful 标准：直接返回数据
+      return response as GetEndpointsResponse
     },
     enabled: !!domainId,
   })
@@ -104,13 +89,8 @@ export function useEndpointsBySubdomain(subdomainId: number, params?: Omit<GetEn
     queryKey: endpointKeys.bySubdomain(subdomainId, defaultParams),
     queryFn: () => EndpointService.getEndpointsBySubdomainId(subdomainId, defaultParams),
     select: (response) => {
-      if (response.state === 'success' && response.data) {
-        return response.data as GetEndpointsResponse
-      }
-      // 控制台打印后端响应，便于调试
-      console.error('获取子域名端点列表失败 - 后端响应:', response)
-      // 抛出固定的用户友好错误信息
-      throw new Error('获取子域名端点列表失败')
+      // RESTful 标准：直接返回数据
+      return response as GetEndpointsResponse
     },
     enabled: !!subdomainId,
   })
@@ -131,27 +111,23 @@ export function useCreateEndpoint() {
       // 关闭加载提示
       toast.dismiss('create-endpoint')
       
-      if (response.state === 'success' && response.data) {
-        const { newCreated, alreadyExisted } = response.data
-        
-        // 打印后端响应
-        console.log('创建端点成功')
-        console.log('后端响应:', response)
-        
-        // 前端自己构造成功提示消息
-        if (alreadyExisted > 0) {
-          toast.warning(
-            `成功创建 ${newCreated} 个端点（${alreadyExisted} 个已存在）`
-          )
-        } else {
-          toast.success(`成功创建 ${newCreated} 个端点`)
-        }
-        
-        // 刷新所有端点相关查询（通配符匹配）
-        queryClient.invalidateQueries({ queryKey: ['endpoints'] })
+      const { newCreated, alreadyExisted } = response
+      
+      // 打印后端响应
+      console.log('创建端点成功')
+      console.log('后端响应:', response)
+      
+      // 前端自己构造成功提示消息
+      if (alreadyExisted > 0) {
+        toast.warning(
+          `成功创建 ${newCreated} 个端点（${alreadyExisted} 个已存在）`
+        )
       } else {
-        throw new Error('创建端点失败')
+        toast.success(`成功创建 ${newCreated} 个端点`)
       }
+      
+      // 刷新所有端点相关查询（通配符匹配）
+      queryClient.invalidateQueries({ queryKey: ['endpoints'] })
     },
     onError: (error: any) => {
       // 关闭加载提示
@@ -178,18 +154,13 @@ export function useDeleteEndpoint() {
     onSuccess: (response, id) => {
       toast.dismiss(`delete-endpoint-${id}`)
       
-      if (response.state === 'success') {
-        // 打印后端响应
-        console.log('删除端点成功')
-        console.log('后端响应:', response)
-        
-        toast.success('删除成功')
-        
-        // 刷新所有端点相关查询（通配符匹配）
-        queryClient.invalidateQueries({ queryKey: ['endpoints'] })
-      } else {
-        throw new Error(response.message || '删除端点失败')
-      }
+      // 打印后端响应
+      console.log('删除端点成功')
+      
+      toast.success('删除成功')
+      
+      // 刷新所有端点相关查询（通配符匹配）
+      queryClient.invalidateQueries({ queryKey: ['endpoints'] })
     },
     onError: (error: any, id) => {
       toast.dismiss(`delete-endpoint-${id}`)
@@ -215,19 +186,15 @@ export function useBatchDeleteEndpoints() {
     onSuccess: (response) => {
       toast.dismiss('batch-delete-endpoints')
       
-      if (response.state === 'success' && response.data) {
-        // 打印后端响应
-        console.log('批量删除端点成功')
-        console.log('后端响应:', response)
-        
-        const { deletedCount } = response.data
-        toast.success(`成功删除 ${deletedCount} 个端点`)
-        
-        // 刷新所有端点相关查询（通配符匹配）
-        queryClient.invalidateQueries({ queryKey: ['endpoints'] })
-      } else {
-        throw new Error(response.message || '批量删除端点失败')
-      }
+      // 打印后端响应
+      console.log('批量删除端点成功')
+      console.log('后端响应:', response)
+      
+      const { deletedCount } = response
+      toast.success(`成功删除 ${deletedCount} 个端点`)
+      
+      // 刷新所有端点相关查询（通配符匹配）
+      queryClient.invalidateQueries({ queryKey: ['endpoints'] })
     },
     onError: (error: any) => {
       toast.dismiss('batch-delete-endpoints')
