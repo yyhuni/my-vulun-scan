@@ -12,7 +12,7 @@ export class ToolService {
    */
   static async getTools(params?: GetToolsParams): Promise<ToolsResponse> {
     const response = await api.get<ToolsResponse>(
-      '/tools',
+      '/tools/',
       { params }
     )
     return response.data
@@ -28,7 +28,7 @@ export class ToolService {
    * @returns Promise<{ tool: Tool }>
    */
   static async createTool(data: CreateToolRequest): Promise<{ tool: Tool }> {
-    const response = await api.post<{ tool: Tool }>('/tools/create', data)
+    const response = await api.post<{ tool: Tool }>('/tools/create/', data)
     return response.data
   }
 
@@ -39,7 +39,7 @@ export class ToolService {
    * @returns Promise<{ tool: Tool }>
    */
   static async updateTool(id: number, data: UpdateToolRequest): Promise<{ tool: Tool }> {
-    const response = await api.put<{ tool: Tool }>(`/tools/${id}`, data)
+    const response = await api.put<{ tool: Tool }>(`/tools/${id}/`, data)
     return response.data
   }
 
@@ -49,6 +49,6 @@ export class ToolService {
    * @returns Promise<void>
    */
   static async deleteTool(id: number): Promise<void> {
-    await api.delete(`/tools/${id}`)
+    await api.delete(`/tools/${id}/`)
   }
 }

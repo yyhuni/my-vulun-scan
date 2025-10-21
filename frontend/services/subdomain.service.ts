@@ -21,7 +21,7 @@ export class SubDomainService {
     pageSize?: number
   }): Promise<GetSubDomainsResponse> {
     const response = await api.get<GetSubDomainsResponse>(
-      '/subdomains',
+      '/subdomains/',
       { params }
     )
     return response.data
@@ -33,7 +33,7 @@ export class SubDomainService {
    * @returns Promise<SubDomain> - 子域名详情
    */
   static async getSubDomainById(id: number): Promise<SubDomain> {
-    const response = await api.get<SubDomain>(`/subdomains/${id}`)
+    const response = await api.get<SubDomain>(`/subdomains/${id}/`)
     return response.data
   }
 
@@ -49,7 +49,7 @@ export class SubDomainService {
     pageSize?: number
   }): Promise<GetSubDomainsResponse> {
     const response = await api.get<GetSubDomainsResponse>(
-      `/domains/${domainId}/subdomains`,
+      `/domains/${domainId}/subdomains/`,
       { params }
     )
     return response.data
@@ -67,7 +67,7 @@ export class SubDomainService {
     pageSize?: number
   }): Promise<GetSubDomainsResponse> {
     const response = await api.get<GetSubDomainsResponse>(
-      `/organizations/${organizationId}/subdomains`,
+      `/organizations/${organizationId}/subdomains/`,
       { params }
     )
     return response.data
@@ -85,7 +85,7 @@ export class SubDomainService {
     domainId: number
     subdomains: string[]
   }): Promise<CreateSubDomainsResponse> {
-    const response = await api.post<CreateSubDomainsResponse>(`/domains/${data.domainId}/subdomains/create`, {
+    const response = await api.post<CreateSubDomainsResponse>(`/domains/${data.domainId}/subdomains/create/`, {
       subdomains: data.subdomains  // 拦截器会转换为 subdomains (已经是数组，不需要转换)
     })
     return response.data
@@ -98,7 +98,7 @@ export class SubDomainService {
    * @returns Promise<void>
    */
   static async deleteSubDomain(id: number): Promise<void> {
-    await api.delete(`/subdomains/${id}`)
+    await api.delete(`/subdomains/${id}/`)
   }
 
   /**
@@ -107,7 +107,7 @@ export class SubDomainService {
    * @returns Promise<BatchDeleteSubDomainsResponse> - 批量删除响应
    */
   static async batchDeleteSubDomains(subdomainIds: number[]): Promise<BatchDeleteSubDomainsResponse> {
-    const response = await api.post<BatchDeleteSubDomainsResponse>('/subdomains/batch-delete', {
+    const response = await api.post<BatchDeleteSubDomainsResponse>('/subdomains/batch-delete/', {
       subdomainIds  // 拦截器会转换为 subdomain_ids
     })
     return response.data

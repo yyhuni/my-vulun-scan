@@ -65,11 +65,6 @@ const apiClient = axios.create({
  */
 apiClient.interceptors.request.use(
   (config) => {
-    // 确保 URL 末尾有斜杠（匹配 Django URL 配置，避免 301 重定向）
-    if (config.url && !config.url.endsWith('/')) {
-      config.url = `${config.url}/`;
-    }
-    
     // 只在开发环境输出调试日志
     if (process.env.NODE_ENV === 'development') {
       console.log('🚀 API Request:', {

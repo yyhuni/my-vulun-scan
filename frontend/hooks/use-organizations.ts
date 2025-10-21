@@ -101,11 +101,11 @@ export function useCreateOrganization() {
   return useMutation({
     mutationFn: (data: CreateOrganizationRequest) => 
       OrganizationService.createOrganization(data),
-    onMutate: (data) => {
+    onMutate: () => {
       // 显示创建开始的提示
       toast.loading('正在创建组织...', { id: 'create-organization' })
     },
-    onSuccess: (response, variables) => {
+    onSuccess: () => {
       // 关闭加载提示
       toast.dismiss('create-organization')
       
@@ -123,7 +123,7 @@ export function useCreateOrganization() {
       console.error('后端响应:', error?.response?.data || error)
       
       // 前端自己构造错误提示
-      toast.error('创建组织失败，请稍后重试')
+      toast.error('创建组织失败，请查看控制台日志')
     },
   })
 }
@@ -141,7 +141,7 @@ export function useUpdateOrganization() {
       // 显示更新开始的提示
       toast.loading('正在更新组织...', { id: `update-${id}` })
     },
-    onSuccess: (response, { id }) => {
+    onSuccess: ({ id }) => {
       // 关闭加载提示
       toast.dismiss(`update-${id}`)
       
@@ -159,7 +159,7 @@ export function useUpdateOrganization() {
       console.error('后端响应:', error?.response?.data || error)
       
       // 前端自己构造错误提示
-      toast.error('更新组织失败，请稍后重试')
+      toast.error('更新组织失败，请查看控制台日志')
     },
   })
 }
@@ -221,7 +221,7 @@ export function useDeleteOrganization() {
       console.error('后端响应:', error?.response?.data || error)
       
       // 前端自己构造错误提示
-      toast.error('删除组织失败，请稍后重试')
+      toast.error('删除组织失败，请查看控制台日志')
     },
     onSettled: () => {
       // 无论成功失败都刷新数据
@@ -290,7 +290,7 @@ export function useBatchDeleteOrganizations() {
       console.error('后端响应:', error?.response?.data || error)
       
       // 前端自己构造错误提示
-      toast.error('批量删除失败，请稍后重试')
+      toast.error('批量删除失败，请查看控制台日志')
     },
     onSettled: () => {
       // 无论成功失败都刷新数据

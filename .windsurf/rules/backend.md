@@ -4,6 +4,7 @@ trigger: always_on
 
 1.后端网页应该是 8888 端口
 2.后端请运行虚拟环境再运行命令，环境在项目根目录~/Desktop/scanner/.venv/bin/python
+3.前端所有路由加上末尾斜杠，以匹配 django 的 DRF 规则
 4.网页测试可以用 curl
 8.所有前端 api 接口都应该写在@services 中，所有 type 类型都应该写在@types 中
 

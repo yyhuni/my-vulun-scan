@@ -90,11 +90,6 @@ class Domain(models.Model):
             )
         ]
     
-    def save(self, *args, **kwargs):
-        """保存前将域名转为小写"""
-        if self.name:
-            self.name = self.name.lower()
-        super().save(*args, **kwargs)
     
     def __str__(self):
         return self.name

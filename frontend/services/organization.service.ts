@@ -19,7 +19,7 @@ export class OrganizationService {
     pageSize?: number
   }): Promise<OrganizationsResponse<Organization>> {
     const response = await api.get<OrganizationsResponse<Organization>>(
-      '/organizations',
+      '/organizations/',
       { params }
     )
     return response.data
@@ -31,7 +31,7 @@ export class OrganizationService {
    * @returns Promise<Organization>
    */
   static async getOrganizationById(id: string | number): Promise<Organization> {
-    const response = await api.get<Organization>(`/organizations/${id}`)
+    const response = await api.get<Organization>(`/organizations/${id}/`)
     return response.data
   }
 
@@ -46,7 +46,7 @@ export class OrganizationService {
     pageSize?: number
   }): Promise<any> {
     const response = await api.get<any>(
-      `/organizations/${id}/domains`,
+      `/organizations/${id}/domains/`,
       { params }
     )
     return response.data
@@ -63,7 +63,7 @@ export class OrganizationService {
     name: string
     description: string
   }): Promise<Organization> {
-    const response = await api.post<Organization>('/organizations/create', data)
+    const response = await api.post<Organization>('/organizations/', data)
     return response.data
   }
 
@@ -80,8 +80,7 @@ export class OrganizationService {
     name: string
     description: string
   }): Promise<Organization> {
-    const response = await api.post<Organization>('/organizations/update', {
-      id: data.id,
+    const response = await api.put<Organization>(`/organizations/${data.id}/`, {
       name: data.name,
       description: data.description
     })
@@ -94,9 +93,7 @@ export class OrganizationService {
    * @returns Promise<void>
    */
   static async deleteOrganization(id: number): Promise<void> {
-    await api.post('/organizations/delete', {
-      id: id  // 后端期望字段名为 id
-    })
+    await api.delete(`/organizations/${id}/`)
   }
 
   /**
@@ -105,7 +102,7 @@ export class OrganizationService {
    * @returns Promise<void>
    */
   static async batchDeleteOrganizations(organizationIds: number[]): Promise<void> {
-    await api.post('/organizations/batch-delete', {
+    await api.post('/organizations/batch_delete/', {
       organizationIds  // ✅ 使用驼峰命名，拦截器会自动转换为 organization_ids
     })
   }

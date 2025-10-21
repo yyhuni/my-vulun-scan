@@ -86,19 +86,19 @@ export function useCreateDomain() {
       // 关闭加载提示
       toast.dismiss('create-domain')
       
-      const { newCreated, alreadyExisted } = response
+      const { createdCount, existedCount } = response
       
       // 打印后端响应
       console.log('创建域名成功')
       console.log('后端响应:', response)
       
       // 前端自己构造提示消息
-      if (alreadyExisted > 0) {
+      if (existedCount > 0) {
         toast.warning(
-          `成功创建 ${newCreated} 个域名（${alreadyExisted} 个已存在）`
+          `成功创建 ${createdCount} 个域名（${existedCount} 个已存在）`
         )
       } else {
-        toast.success(`成功创建 ${newCreated} 个域名`)
+        toast.success(`成功创建 ${createdCount} 个域名`)
       }
       
       // 刷新所有域名和组织相关查询（通配符匹配）
@@ -113,7 +113,7 @@ export function useCreateDomain() {
       console.error('后端响应:', error?.response?.data || error)
       
       // 前端自己构造错误提示
-      toast.error('创建域名失败，请稍后重试')
+      toast.error('创建域名失败，请查看控制台日志')
     },
   })
 }
@@ -148,7 +148,7 @@ export function useDeleteDomainFromOrganization() {
       console.error('后端响应:', error?.response?.data || error)
       
       // 前端自己构造错误提示
-      toast.error('移除域名失败，请稍后重试')
+      toast.error('移除域名失败，请查看控制台日志')
     },
   })
 }
@@ -191,7 +191,7 @@ export function useBatchDeleteDomainsFromOrganization() {
       console.error('后端响应:', error?.response?.data || error)
       
       // 前端自己构造错误提示
-      toast.error('批量移除失败，请稍后重试')
+      toast.error('批量移除失败，请查看控制台日志')
     },
   })
 }
@@ -229,7 +229,7 @@ export function useBatchDeleteDomains() {
       console.error('后端响应:', error?.response?.data || error)
       
       // 前端自己构造错误提示
-      toast.error('批量删除失败，请稍后重试')
+      toast.error('批量删除失败，请查看控制台日志')
     },
   })
 }
@@ -263,7 +263,7 @@ export function useUpdateDomain() {
       console.error('后端响应:', error?.response?.data || error)
       
       // 前端自己构造错误提示
-      toast.error('更新域名失败，请稍后重试')
+      toast.error('更新域名失败，请查看控制台日志')
     },
   })
 }

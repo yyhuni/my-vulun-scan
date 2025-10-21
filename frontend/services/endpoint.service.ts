@@ -26,7 +26,7 @@ export class EndpointService {
       endpoints: data.endpoints
     }
     
-    const response = await api.post<any>('/endpoints/create', requestData)
+    const response = await api.post<any>('/endpoints/create/', requestData)
     return response.data
   }
 
@@ -36,7 +36,7 @@ export class EndpointService {
    * @returns Promise<Endpoint>
    */
   static async getEndpointById(id: number): Promise<Endpoint> {
-    const response = await api.get<Endpoint>(`/endpoints/${id}`)
+    const response = await api.get<Endpoint>(`/endpoints/${id}/`)
     return response.data
   }
 
@@ -47,7 +47,7 @@ export class EndpointService {
    */
   static async getEndpoints(params: GetEndpointsRequest): Promise<GetEndpointsResponse> {
     // api-client.ts 会自动将 params 对象的驼峰转换为下划线
-    const response = await api.get<GetEndpointsResponse>('/endpoints', {
+    const response = await api.get<GetEndpointsResponse>('/endpoints/', {
       params
     })
     return response.data
@@ -61,7 +61,7 @@ export class EndpointService {
    */
   static async getEndpointsByDomainId(domainId: number, params: GetEndpointsRequest): Promise<GetEndpointsResponse> {
     // api-client.ts 会自动将 params 对象的驼峰转换为下划线
-    const response = await api.get<GetEndpointsResponse>(`/domains/${domainId}/endpoints`, {
+    const response = await api.get<GetEndpointsResponse>(`/domains/${domainId}/endpoints/`, {
       params
     })
     return response.data
@@ -75,7 +75,7 @@ export class EndpointService {
    */
   static async getEndpointsBySubdomainId(subdomainId: number, params: GetEndpointsRequest): Promise<GetEndpointsResponse> {
     // api-client.ts 会自动将 params 对象的驼峰转换为下划线
-    const response = await api.get<GetEndpointsResponse>(`/subdomains/${subdomainId}/endpoints`, {
+    const response = await api.get<GetEndpointsResponse>(`/subdomains/${subdomainId}/endpoints/`, {
       params
     })
     return response.data
@@ -87,7 +87,7 @@ export class EndpointService {
    * @returns Promise<void>
    */
   static async deleteEndpoint(id: number): Promise<void> {
-    await api.delete(`/endpoints/${id}`)
+    await api.delete(`/endpoints/${id}/`)
   }
 
   /**
@@ -98,7 +98,7 @@ export class EndpointService {
    */
   static async batchDeleteEndpoints(data: BatchDeleteEndpointsRequest): Promise<BatchDeleteEndpointsResponse> {
     // api-client.ts 会自动将请求体的驼峰转换为下划线
-    const response = await api.post<BatchDeleteEndpointsResponse>('/endpoints/batch-delete', data)
+    const response = await api.post<BatchDeleteEndpointsResponse>('/endpoints/batch-delete/', data)
     return response.data
   }
 

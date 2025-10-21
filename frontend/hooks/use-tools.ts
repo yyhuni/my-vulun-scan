@@ -63,7 +63,7 @@ export function useCreateTool() {
       console.error('后端响应:', error?.response?.data || error)
       
       // 前端自己构造错误提示
-      toast.error('创建工具失败，请稍后重试')
+      toast.error('创建工具失败，请查看控制台日志')
     },
   })
 }
@@ -98,7 +98,7 @@ export function useUpdateTool() {
       console.error('更新工具失败:', error)
       console.error('后端响应:', error?.response?.data || error)
       
-      toast.error('更新工具失败，请稍后重试')
+      toast.error('更新工具失败，请查看控制台日志')
     },
   })
 }
@@ -131,7 +131,7 @@ export function useDeleteTool() {
       console.error('删除工具失败:', error)
       console.error('后端响应:', error?.response?.data || error)
       
-      toast.error('删除工具失败，请稍后重试')
+      toast.error('删除工具失败，请查看控制台日志')
     },
   })
 }

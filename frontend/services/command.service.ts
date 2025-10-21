@@ -20,7 +20,7 @@ export class CommandService {
     params: GetCommandsRequest = {}
   ): Promise<GetCommandsResponse> {
     const response = await api.get<GetCommandsResponse>(
-      "/commands",
+      "/commands/",
       { params }
     )
     return response.data
@@ -31,7 +31,7 @@ export class CommandService {
    */
   static async getCommandById(id: number): Promise<CommandResponseData> {
     const response = await api.get<CommandResponseData>(
-      `/commands/${id}`
+      `/commands/${id}/`
     )
     return response.data
   }
@@ -43,7 +43,7 @@ export class CommandService {
     data: CreateCommandRequest
   ): Promise<CommandResponseData> {
     const response = await api.post<CommandResponseData>(
-      "/commands/create",
+      "/commands/create/",
       data
     )
     return response.data
@@ -57,7 +57,7 @@ export class CommandService {
     data: UpdateCommandRequest
   ): Promise<CommandResponseData> {
     const response = await api.put<CommandResponseData>(
-      `/commands/${id}`,
+      `/commands/${id}/`,
       data
     )
     return response.data
@@ -70,7 +70,7 @@ export class CommandService {
     id: number
   ): Promise<void> {
     await api.delete(
-      `/commands/${id}`
+      `/commands/${id}/`
     )
   }
 
@@ -81,7 +81,7 @@ export class CommandService {
     ids: number[]
   ): Promise<BatchDeleteCommandsResponseData> {
     const response = await api.post<BatchDeleteCommandsResponseData>(
-      "/commands/batch-delete",
+      "/commands/batch-delete/",
       { ids }
     )
     return response.data

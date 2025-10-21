@@ -20,7 +20,7 @@ export class NotificationService {
   static async getNotifications(
     params: GetNotificationsRequest = {}
   ): Promise<ApiResponse<GetNotificationsResponse>> {
-    const response = await api.get<ApiResponse<GetNotificationsResponse>>('/notifications', {
+    const response = await api.get<ApiResponse<GetNotificationsResponse>>('/notifications/', {
       params,
     })
     return response.data
@@ -30,7 +30,7 @@ export class NotificationService {
    * 标记通知为已读
    */
   static async markAsRead(data: MarkAsReadRequest): Promise<ApiResponse<null>> {
-    const response = await api.post<ApiResponse<null>>('/notifications/mark-as-read', data)
+    const response = await api.post<ApiResponse<null>>('/notifications/mark-as-read/', data)
     return response.data
   }
 
@@ -38,7 +38,7 @@ export class NotificationService {
    * 标记所有通知为已读
    */
   static async markAllAsRead(): Promise<ApiResponse<null>> {
-    const response = await api.post<ApiResponse<null>>('/notifications/mark-all-as-read')
+    const response = await api.post<ApiResponse<null>>('/notifications/mark-all-as-read/')
     return response.data
   }
 
@@ -46,7 +46,7 @@ export class NotificationService {
    * 删除通知
    */
   static async deleteNotifications(data: DeleteNotificationRequest): Promise<ApiResponse<null>> {
-    const response = await api.delete<ApiResponse<null>>('/notifications', {
+    const response = await api.delete<ApiResponse<null>>('/notifications/', {
       data,
     })
     return response.data
@@ -56,7 +56,7 @@ export class NotificationService {
    * 获取未读通知数量
    */
   static async getUnreadCount(): Promise<ApiResponse<{ count: number }>> {
-    const response = await api.get<ApiResponse<{ count: number }>>('/notifications/unread-count')
+    const response = await api.get<ApiResponse<{ count: number }>>('/notifications/unread-count/')
     return response.data
   }
 }

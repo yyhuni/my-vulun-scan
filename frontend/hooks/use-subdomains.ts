@@ -98,23 +98,23 @@ export function useCreateSubdomainForDomain() {
       // 关闭加载提示
       toast.dismiss('create-subdomain-for-domain')
       
-      const { newCreated, alreadyExisted } = response
+      const { createdCount, existedCount } = response
       
       // 打印后端响应
       console.log('创建子域名成功')
       console.log('后端响应:', response)
       
       // 根据不同情况构建友好的消息
-      if (newCreated > 0) {
-        let message = `✅ 成功创建 ${newCreated} 个子域名`
+      if (createdCount > 0) {
+        let message = `✅ 成功创建 ${createdCount} 个子域名`
         
-        if (alreadyExisted > 0) {
-          message += `\n⚠️ ${alreadyExisted} 个已存在`
+        if (existedCount > 0) {
+          message += `\n⚠️ ${existedCount} 个已存在`
         }
         
         toast.success(message, { duration: 4000 })
-      } else if (alreadyExisted > 0) {
-        toast.info(`📝 所有 ${alreadyExisted} 个子域名已存在`, { duration: 3000 })
+      } else if (existedCount > 0) {
+        toast.info(`📝 所有 ${existedCount} 个子域名已存在`, { duration: 3000 })
       } else {
         toast.success('操作成功')
       }
@@ -129,7 +129,7 @@ export function useCreateSubdomainForDomain() {
       console.error('后端响应:', error?.response?.data || error)
       
       // 前端自己构造错误提示
-      toast.error('创建子域名失败，请稍后重试')
+      toast.error('创建子域名失败，请查看控制台日志')
     },
   })
 }
@@ -159,7 +159,7 @@ export function useDeleteSubdomain() {
       console.error('删除子域名失败:', error)
       console.error('后端响应:', error?.response?.data || error)
       // 前端自己构造错误提示
-      toast.error('删除子域名失败，请稍后重试')
+      toast.error('删除子域名失败，请查看控制台日志')
     },
   })
 }
@@ -190,7 +190,7 @@ export function useBatchDeleteSubdomains() {
       console.error('批量删除子域名失败:', error)
       console.error('后端响应:', error?.response?.data || error)
       // 前端自己构造错误提示
-      toast.error('批量删除失败，请稍后重试')
+      toast.error('批量删除失败，请查看控制台日志')
     },
   })
 }

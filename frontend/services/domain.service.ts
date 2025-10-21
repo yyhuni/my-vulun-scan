@@ -18,7 +18,7 @@ export class DomainService {
     }>
     organizationId: number
   }): Promise<BatchCreateDomainsResponse> {
-    const response = await api.post<BatchCreateDomainsResponse>('/domains/create', {
+    const response = await api.post<BatchCreateDomainsResponse>('/domains/create/', {
       domains: data.domains,
       organizationId: data.organizationId  // ✅ 使用驼峰命名，拦截器会自动转换为 organization_id
     })
@@ -31,7 +31,7 @@ export class DomainService {
    * @returns Promise<GetDomainByIDResponse>
    */
   static async getDomainById(id: string | number): Promise<GetDomainByIDResponse> {
-    const response = await api.get<GetDomainByIDResponse>(`/domains/${id}`)
+    const response = await api.get<GetDomainByIDResponse>(`/domains/${id}/`)
     return response.data
   }
 
@@ -58,7 +58,7 @@ export class DomainService {
       requestBody.description = data.description
     }
     
-    const response = await api.post<Domain>('/domains/update', requestBody)
+    const response = await api.post<Domain>('/domains/update/', requestBody)
     return response.data
   }
 
@@ -74,7 +74,7 @@ export class DomainService {
     domainId: number
   }): Promise<void> {
     await api.delete(
-      `/organizations/${data.organizationId}/domains/${data.domainId}`
+      `/organizations/${data.organizationId}/domains/${data.domainId}/`
     )
   }
 
@@ -94,7 +94,7 @@ export class DomainService {
     failedCount: number
   }> {
     const response = await api.post<any>(
-      `/organizations/${data.organizationId}/domains/batch-remove`,
+      `/organizations/${data.organizationId}/domains/batch-remove/`,
       {
         domainIds: data.domainIds,  // 拦截器会转换为 domain_ids
       }
@@ -114,7 +114,7 @@ export class DomainService {
     deletedCount: number
   }> {
     const response = await api.post<any>(
-      `/domains/batch-delete`,
+      `/domains/batch-delete/`,
       {
         domainIds,  // 拦截器会转换为 domain_ids
       }
@@ -137,7 +137,7 @@ export class DomainService {
     }
   ): Promise<GetDomainsResponse> {
     const response = await api.get<GetDomainsResponse>(
-      `/organizations/${organizationId}/domains`,
+      `/organizations/${organizationId}/domains/`,
       {
         params: {
           page: params?.page || 1,
@@ -155,7 +155,7 @@ export class DomainService {
    * @description 后端固定按更新时间降序排列，不支持自定义排序
    */
   static async getAllDomains(params?: GetAllDomainsParams): Promise<GetAllDomainsResponse> {
-    const response = await api.get<GetAllDomainsResponse>('/domains', {
+    const response = await api.get<GetAllDomainsResponse>('/domains/', {
       params: {
         page: params?.page || 1,
         pageSize: params?.pageSize || 10,

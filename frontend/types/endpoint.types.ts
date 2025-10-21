@@ -47,7 +47,7 @@ export interface CreateEndpointRequest {
 
 // 创建 Endpoint 响应（继承通用批量创建响应）
 export interface CreateEndpointsResponse extends BatchCreateResponse {
-  // 继承的字段：message, totalRequested, newCreated, alreadyExisted
+  // 继承的字段：message, requestedCount, createdCount, existedCount
 }
 
 // 更新 Endpoint 请求参数

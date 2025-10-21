@@ -10,7 +10,7 @@ export interface ApiResponse<T = any> {
 // 适用于：域名、子域名、端点等批量创建操作
 export interface BatchCreateResponse {
   message: string          // 详细说明，如 "成功处理 5 个域名，新创建 3 个，2 个已存在"
-  totalRequested: number   // 请求创建的总数量
-  newCreated: number       // 新创建的数量
-  alreadyExisted: number   // 已存在的数量
+  requestedCount: number   // 请求创建的总数量
+  createdCount: number     // 新创建的数量
+  existedCount: number     // 已存在的数量
 }

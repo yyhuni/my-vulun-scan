@@ -38,7 +38,7 @@ export interface CreateSubDomainsRequest {
 
 // 创建子域名响应（继承通用批量创建响应）
 export interface CreateSubDomainsResponse extends BatchCreateResponse {
-  // 继承的字段：message, totalRequested, newCreated, alreadyExisted
+  // 继承的字段：message, requestedCount, createdCount, existedCount
 }
 
 export interface BatchDeleteSubDomainsRequest {
