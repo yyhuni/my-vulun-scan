@@ -81,10 +81,11 @@ class DomainViewSet(viewsets.ModelViewSet):
             )
         
         # 步骤2: 去重请求中的域名（FIFO 策略：保留第一次出现）
+        # 注意：域名已经在序列化器中规范化（小写、去空格、去末尾点）
         domain_map = {}
         for domain_data in domains_data:
             domain_map.setdefault(
-                domain_data['name'].lower(),
+                domain_data['name'],  # 已经是规范化后的域名
                 domain_data.get('description', '')
             )
         
