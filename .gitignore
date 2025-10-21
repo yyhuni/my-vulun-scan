@@ -35,6 +35,37 @@ front-back/.eslintcache
 front-back/.tsbuildinfo
 
 # ============================
+# 后端 (Python/Django) 相关
+# ============================
+# Python 虚拟环境
+.venv/
+venv/
+env/
+ENV/
+
+# Python 编译文件
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Django 相关
+backend/db.sqlite3
+backend/db.sqlite3-journal
+backend/media/
+backend/staticfiles/
+backend/.env
+backend/.env.local
+
+# Python 测试和覆盖率
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+
+# ============================
 # 后端 (Go) 相关
 # ============================
 # 编译产物

@@ -29,7 +29,7 @@ class OrganizationViewSet(viewsets.ModelViewSet):
     - add_domains: 添加域名到组织
     - remove_domains: 从组织移除域名
     """
-    queryset = Organization.objects.all().order_by('-updated_at')
+    queryset = Organization.objects.all()
     pagination_class = CustomPageNumberPagination
     
     def get_serializer_class(self):

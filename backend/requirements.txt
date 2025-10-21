@@ -4,7 +4,7 @@ djangorestframework==3.15.2
 psycopg2-binary==2.9.10
 
 # API 文档
-drf-yasg==1.21.7
+drf-yasg
 setuptools
 
 # CORS 支持
