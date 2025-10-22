@@ -139,34 +139,6 @@ export class OrganizationService {
   }
 
   /**
-   * 批量关联域名到组织
-   * @param data - 批量关联请求对象
-   * @param data.organizationId - 组织ID
-   * @param data.domainIds - 域名ID数组
-   * @returns Promise<{ message: string; successCount: number; failedCount: number }>
-   */
-  static async batchLinkDomainsToOrganization(data: {
-    organizationId: number
-    domainIds: number[]
-  }): Promise<{
-    message: string
-    successCount: number
-    failedCount: number
-  }> {
-    const response = await api.post<{
-      message: string
-      successCount: number
-      failedCount: number
-    }>(
-      `/organizations/${data.organizationId}/domains/add/`,
-      {
-        domainIds: data.domainIds  // 拦截器会转换为 domain_ids
-      }
-    )
-    return response.data
-  }
-
-  /**
    * 从组织中移除域名
    * @param data - 移除请求对象
    * @param data.organizationId - 组织ID

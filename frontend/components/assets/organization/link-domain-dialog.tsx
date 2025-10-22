@@ -1,7 +1,7 @@
 "use client"
 
-import React, { useState } from "react"
-import { Link as LinkIcon, Globe, Building2, AlertCircle, Loader2, Plus, X, ChevronLeft, ChevronRight } from "lucide-react"
+import React, { useState, useRef } from "react"
+import { Plus, Globe, Building2, Loader2 } from "lucide-react"
 
 // 导入 UI 组件
 import { Button } from "@/components/ui/button"
@@ -15,49 +15,39 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { LoadingSpinner } from "@/components/loading-spinner"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
-import { Checkbox } from "@/components/ui/checkbox"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { DomainValidator } from "@/lib/domain-validator"
 
 // 导入 React Query Hooks
-import { useBatchLinkDomainsToOrganization } from "@/hooks/use-organizations"
-import { useAllDomains } from "@/hooks/use-domains"
-import type { Domain } from "@/types/domain.types"
+import { useCreateDomain } from "@/hooks/use-domains"
+
+// 导入类型定义
+import type { BatchCreateResponse } from "@/types/api-response.types"
 
 // 组件属性类型定义
 interface LinkDomainDialogProps {
-  organizationId: number           // 组织ID
-  organizationName: string          // 组织名称
-  linkedDomainIds?: number[]        // 已关联的域名ID列表
-  onLink?: () => void               // 关联成功回调
-  open?: boolean                    // 外部控制对话框开关状态
-  onOpenChange?: (open: boolean) => void // 外部控制对话框开关回调
+  organizationId: number                                     // 组织ID（固定，不可修改）
+  organizationName: string                                   // 组织名称
+  onAdd?: (result: BatchCreateResponse) => void              // 添加成功回调，返回批量创建的统计信息
+  open?: boolean                                             // 外部控制对话框开关状态
+  onOpenChange?: (open: boolean) => void                     // 外部控制对话框开关回调
 }
 
 /**
  * 关联域名对话框组件（使用 React Query）
  * 
  * 功能特性：
- * 1. 从已存在的域名中选择并关联到组织
- * 2. 过滤已关联的域名
- * 3. 支持搜索域名
- * 4. 自动管理提交状态
- * 5. 自动错误处理和成功提示
+ * 1. 批量输入域名并关联到组织
+ * 2. 自动创建不存在的域名
+ * 3. 自动管理提交状态
+ * 4. 自动错误处理和成功提示
+ * 5. 固定组织ID，不可修改
  */
 export function LinkDomainDialog({ 
   organizationId,
   organizationName,
-  linkedDomainIds = [],
-  onLink,
+  onAdd,
   open: externalOpen, 
   onOpenChange: externalOnOpenChange,
 }: LinkDomainDialogProps) {
@@ -66,131 +56,103 @@ export function LinkDomainDialog({
   const open = externalOpen !== undefined ? externalOpen : internalOpen
   const setOpen = externalOnOpenChange || setInternalOpen
   
-  // 选中的域名ID列表（多选）
-  const [selectedDomainIds, setSelectedDomainIds] = useState<number[]>([])
-  
-  // 已选择的域名完整信息 Map（用于跨页显示）
-  const [selectedDomainsMap, setSelectedDomainsMap] = useState<Map<number, Domain>>(new Map())
-  
-  // 搜索关键词
-  const [searchKeyword, setSearchKeyword] = useState("")
-  
-  // 分页状态
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(20) // 每页显示数量，默认20
-  
-  // 使用 React Query 获取域名列表
-  // 性能优化：
-  // 1. 只在弹窗打开时才发送请求
-  // 2. 如果有缓存数据（预加载），立即显示，避免加载闪烁
-  const { 
-    data: domainsData, 
-    isLoading: isLoadingDomains,
-    error: domainsError 
-  } = useAllDomains(
-    {
-      page,
-      pageSize,
-    },
-    {
-      enabled: open, // 只在弹窗打开时才请求
-    }
-  )
-
-  // 使用 React Query 的批量关联域名 mutation
-  const batchLinkDomains = useBatchLinkDomainsToOrganization()
-
-  // 显示所有域名，并根据搜索关键词过滤，然后排序（未关联的在前）
-  const availableDomains = (domainsData?.domains.filter(
-    (domain: Domain) => {
-      // 根据搜索关键词过滤（前端过滤）
-      if (searchKeyword.trim()) {
-        const keyword = searchKeyword.toLowerCase()
-        return domain.name.toLowerCase().includes(keyword)
-      }
-      
-      return true
-    }
-  ) || []).sort((a, b) => {
-    // 未关联的域名排在前面
-    const aLinked = linkedDomainIds.includes(a.id)
-    const bLinked = linkedDomainIds.includes(b.id)
-    
-    if (aLinked === bLinked) return 0 // 相同状态保持原顺序
-    return aLinked ? 1 : -1 // 未关联的（false）排在前面
+  // 表单数据状态
+  const [formData, setFormData] = useState({
+    domains: "",  // 域名列表，每行一个
+    description: "",
   })
   
-  // 未关联的域名数量（用于空状态判断）
-  const unlinkedDomainsCount = availableDomains.filter(
-    (domain: Domain) => !linkedDomainIds.includes(domain.id)
-  ).length
+  // 验证错误状态
+  const [invalidDomains, setInvalidDomains] = useState<Array<{ index: number; originalDomain: string; error: string }>>([])
   
-  // 分页信息
-  const totalPages = domainsData?.pagination.totalPages || 0
-  const total = domainsData?.pagination.total || 0
+  // 行号列和输入框的 ref（用于同步滚动）
+  const lineNumbersRef = useRef<HTMLDivElement | null>(null)
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+  
+  // 使用 React Query 的创建域名 mutation
+  const createDomain = useCreateDomain()
 
-  // 切换域名选择
-  const toggleDomainSelection = (domainId: number, domain: Domain) => {
-    setSelectedDomainIds(prev => {
-      if (prev.includes(domainId)) {
-        // 取消选择
-        return prev.filter(id => id !== domainId)
-      } else {
-        // 添加选择
-        return [...prev, domainId]
-      }
-    })
-    
-    setSelectedDomainsMap(prev => {
-      const newMap = new Map(prev)
-      if (newMap.has(domainId)) {
-        // 取消选择时移除
-        newMap.delete(domainId)
-      } else {
-        // 添加选择时保存域名信息
-        newMap.set(domainId, domain)
-      }
-      return newMap
-    })
-  }
+  // 处理输入框变化
+  const handleInputChange = (field: keyof typeof formData, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }))
 
-  // 移除已选域名
-  const removeDomain = (domainId: number) => {
-    setSelectedDomainIds(prev => prev.filter(id => id !== domainId))
-    setSelectedDomainsMap(prev => {
-      const newMap = new Map(prev)
-      newMap.delete(domainId)
-      return newMap
-    })
+    if (field === "domains") {
+      const lines = value
+        .split("\n")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0)
+
+      if (lines.length === 0) {
+        setInvalidDomains([])
+        return
+      }
+
+      const results = DomainValidator.validateDomainBatch(lines)
+      const invalid = results
+        .filter((r) => !r.isValid)
+        .map((r) => ({ index: r.index, originalDomain: r.originalDomain, error: r.error || "域名格式无效" }))
+      setInvalidDomains(invalid)
+    }
   }
+  
+  // 计算域名数量
+  const domainCount = formData.domains
+    .split("\n")
+    .map(line => line.trim())
+    .filter(line => line.length > 0).length
+
 
   // 处理表单提交
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     // 表单验证
-    if (selectedDomainIds.length === 0) {
+    if (!formData.domains.trim()) {
+      return
+    }
+
+    if (invalidDomains.length > 0) {
+      return
+    }
+
+    // 解析域名列表（每行一个域名）
+    const domainList = formData.domains
+      .split("\n")
+      .map(line => line.trim())
+      .filter(line => line.length > 0)
+      .map(name => ({
+        name,
+        description: formData.description.trim() || undefined,
+      }))
+
+    if (domainList.length === 0) {
       return
     }
 
     // 使用 React Query mutation
-    batchLinkDomains.mutate(
+    createDomain.mutate(
       {
-        organizationId,
-        domainIds: selectedDomainIds,
+        domains: domainList,
+        organizationId: organizationId,
       },
       {
-        onSuccess: () => {
-          // 重置选择
-          setSelectedDomainIds([])
-          setSelectedDomainsMap(new Map())
+        onSuccess: (batchCreateResult) => {
+          // 重置表单
+          setFormData({
+            domains: "",
+            description: "",
+          })
           
           // 关闭对话框
           setOpen(false)
           
           // 调用外部回调（如果提供）
-          if (onLink) {
-            onLink()
+          if (onAdd) {
+            // 传递批量创建的统计信息给回调函数
+            onAdd(batchCreateResult)
           }
         }
       }
@@ -199,21 +161,28 @@ export function LinkDomainDialog({
 
   // 处理对话框关闭
   const handleOpenChange = (newOpen: boolean) => {
-    if (!batchLinkDomains.isPending) {
+    if (!createDomain.isPending) {
       setOpen(newOpen)
       if (!newOpen) {
         // 关闭时重置表单
-        setSelectedDomainIds([])
-        setSelectedDomainsMap(new Map())
-        setSearchKeyword("")
-        setPage(1)
-        setPageSize(20) // 重置每页数量
+        setFormData({
+          domains: "",
+          description: "",
+        })
+        setInvalidDomains([])
       }
     }
   }
 
   // 表单验证
-  const isFormValid = selectedDomainIds.length > 0
+  const isFormValid = formData.domains.trim().length > 0 && invalidDomains.length === 0
+  
+  // 同步输入框和行号列的滚动
+  const handleTextareaScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
+    if (lineNumbersRef.current) {
+      lineNumbersRef.current.scrollTop = e.currentTarget.scrollTop
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -221,228 +190,102 @@ export function LinkDomainDialog({
       {externalOpen === undefined && (
         <DialogTrigger asChild>
           <Button size="sm" variant="secondary">
-            <LinkIcon />
-            关联域名
+            <Plus />
+            添加域名
           </Button>
         </DialogTrigger>
       )}
       
       {/* 对话框内容 */}
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[650px]">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
-            <LinkIcon />
-            <span>关联域名到组织</span>
+            <Globe />
+            <span>添加域名到组织</span>
           </DialogTitle>
           <DialogDescription>
-            从已存在的域名中选择并关联到 &quot;{organizationName}&quot;。标有 * 的字段为必填项。
+            输入域名并关联到 &quot;{organizationName}&quot;。支持批量添加，每行一个域名。标有 * 的字段为必填项。
           </DialogDescription>
         </DialogHeader>
         
         {/* 表单 */}
         <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
-            {/* 组织信息（只读显示） */}
+          <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto">
+            {/* 域名输入框 - 支持多行，带行号 */}
+            <div className="grid gap-2">
+              <Label htmlFor="domains">
+                域名 <span className="text-destructive">*</span>
+              </Label>
+              <div className="relative border rounded-md overflow-hidden bg-background">
+                <div className="flex h-[324px]">
+                  {/* 行号列 - 固定显示15行 */}
+                  <div className="flex-shrink-0 w-12 bg-muted/30 border-r select-none overflow-hidden">
+                    <div 
+                      ref={lineNumbersRef}
+                      className="py-3 px-2 text-right font-mono text-xs text-muted-foreground leading-[1.4] h-full overflow-y-auto scrollbar-hide"
+                    >
+                      {Array.from({ length: Math.max(formData.domains.split('\n').length, 15) }, (_, i) => (
+                        <div key={i + 1} className="h-[20px]">
+                          {i + 1}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {/* 输入框 - 固定高度显示15行 */}
+                  <Textarea
+                    ref={textareaRef}
+                    id="domains"
+                    value={formData.domains}
+                    onChange={(e) => handleInputChange("domains", e.target.value)}
+                    onScroll={handleTextareaScroll}
+                    placeholder={`请输入域名，每行一个
+例如：
+example.com
+test.com
+demo.org`}
+                    disabled={createDomain.isPending}
+                    className="font-mono h-full overflow-y-auto resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 leading-[1.4] text-sm py-3"
+                    style={{ lineHeight: '20px' }}
+                  />
+                </div>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {domainCount} 个域名
+              </div>
+              {invalidDomains.length > 0 && (
+                <div className="text-xs text-destructive">
+                  {invalidDomains.length} 个无效域名，例如 第 {invalidDomains[0].index + 1} 行: &quot;{invalidDomains[0].originalDomain}&quot; - {invalidDomains[0].error}
+                </div>
+              )}
+            </div>
+
+            {/* 所属组织（只读显示） */}
             <div className="grid gap-2">
               <Label className="flex items-center space-x-2">
                 <Building2 />
-                <span>目标组织</span>
+                <span>所属组织</span>
               </Label>
               <div className="flex items-center gap-2 px-3 py-2 border rounded-md bg-muted/50">
                 <Building2 className="h-4 w-4 text-muted-foreground" />
                 <span className="font-medium">{organizationName}</span>
               </div>
             </div>
-
-            {/* 域名选择 */}
+            
+            {/* 域名描述输入框 */}
             <div className="grid gap-2">
-              <Label htmlFor="domain" className="flex items-center space-x-2">
-                <Globe />
-                <span>选择域名 <span className="text-destructive">*</span></span>
-              </Label>
-              
-              {/* 搜索框和每页数量选择 */}
-              {!isLoadingDomains && !domainsError && total > 0 && (
-                <div className="flex gap-2 mb-2">
-                  <Input
-                    type="text"
-                    placeholder="搜索当前页域名..."
-                    value={searchKeyword}
-                    onChange={(e) => setSearchKeyword(e.target.value)}
-                    disabled={batchLinkDomains.isPending}
-                    className="flex-1"
-                  />
-                  <Select
-                    value={pageSize.toString()}
-                    onValueChange={(value) => {
-                      setPageSize(Number(value))
-                      setPage(1) // 切换每页数量时重置到第一页
-                    }}
-                    disabled={batchLinkDomains.isPending}
-                  >
-                    <SelectTrigger className="w-[120px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="20">20条/页</SelectItem>
-                      <SelectItem value="50">50条/页</SelectItem>
-                      <SelectItem value="100">100条/页</SelectItem>
-                      <SelectItem value="200">200条/页</SelectItem>
-                      <SelectItem value="500">500条/页</SelectItem>
-                      <SelectItem value="1000">1000条/页</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              
-              {/* 加载状态 */}
-              {isLoadingDomains && (
-                <div className="flex items-center space-x-2 px-3 py-2 border rounded-md bg-muted/50">
-                  <Loader2 className="animate-spin text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">正在加载域名列表...</span>
-                </div>
-              )}
-              
-              {/* 错误状态 */}
-              {domainsError && (
-                <Alert variant="destructive">
-                  <AlertCircle />
-                  <AlertDescription>
-                    加载域名列表失败，请刷新页面重试
-                  </AlertDescription>
-                </Alert>
-              )}
-              
-              {/* 空状态 */}
-              {!isLoadingDomains && !domainsError && availableDomains.length === 0 && (
-                <Alert>
-                  <AlertCircle />
-                  <AlertDescription className="flex flex-col space-y-2">
-                    <span>暂无域名数据</span>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="w-fit"
-                      onClick={() => {
-                        // 可以触发创建新域名
-                        setOpen(false)
-                      }}
-                    >
-                      <Plus />
-                      创建新域名
-                    </Button>
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {/* 多选域名列表 */}
-              {!isLoadingDomains && !domainsError && availableDomains.length > 0 && (
-                <>
-                  <div className="border rounded-md max-h-[300px] overflow-y-auto">
-                    {availableDomains.map((domain: Domain) => (
-                      <label
-                        key={domain.id}
-                        className={`flex items-center gap-3 p-3 border-b last:border-b-0 ${
-                          linkedDomainIds.includes(domain.id) 
-                            ? 'bg-muted/30 cursor-not-allowed' 
-                            : 'hover:bg-muted/50 cursor-pointer'
-                        }`}
-                      >
-                        <Checkbox
-                          checked={linkedDomainIds.includes(domain.id) || selectedDomainIds.includes(domain.id)}
-                          onCheckedChange={() => toggleDomainSelection(domain.id, domain)}
-                          disabled={batchLinkDomains.isPending || linkedDomainIds.includes(domain.id)}
-                        />
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <span className={`font-medium ${
-                            linkedDomainIds.includes(domain.id) ? 'text-muted-foreground' : ''
-                          }`}>{domain.name}</span>
-                          {linkedDomainIds.includes(domain.id) && (
-                            <Badge variant="secondary" className="text-xs">已关联</Badge>
-                          )}
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                  
-                  {/* 已选择的域名（始终显示，显示所有已选域名，不仅是当前页） */}
-                  <div className="flex flex-wrap gap-2 p-3 border rounded-md bg-primary/5 min-h-[60px]">
-                    <div className="w-full text-xs font-medium text-muted-foreground mb-1">
-                      已选择 {selectedDomainIds.length} 个域名：
-                    </div>
-                    {selectedDomainIds.length > 0 ? (
-                      selectedDomainIds.map(domainId => {
-                        const domain = selectedDomainsMap.get(domainId)
-                        if (!domain) return null
-                        return (
-                          <Badge key={domainId} variant="secondary" className="px-2 py-1">
-                            <span className="mr-1">{domain.name}</span>
-                            <button
-                              type="button"
-                              onClick={() => removeDomain(domainId)}
-                              className="ml-1 hover:bg-destructive/20 rounded-sm"
-                              disabled={batchLinkDomains.isPending}
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </Badge>
-                        )
-                      })
-                    ) : (
-                      <div className="w-full text-center text-sm text-muted-foreground/60 py-2">
-                        暂无选择
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* 分页和辅助信息 */}
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <div>
-                      {searchKeyword.trim() ? (
-                        <>
-                          搜索到 {availableDomains.length} 个域名 · 可关联 {unlinkedDomainsCount} 个
-                          {selectedDomainIds.length > 0 && ` · 已选择 ${selectedDomainIds.length} 个`}
-                        </>
-                      ) : (
-                        <>
-                          总计 {total} 个域名 · 可关联 {unlinkedDomainsCount} 个
-                          {selectedDomainIds.length > 0 && ` · 已选择 ${selectedDomainIds.length} 个`}
-                        </>
-                      )}
-                    </div>
-                    
-                    {/* 分页控件 */}
-                    {totalPages > 1 && (
-                      <div className="flex items-center gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setPage(p => Math.max(1, p - 1))}
-                          disabled={page === 1 || batchLinkDomains.isPending}
-                          className="h-7 px-2"
-                        >
-                          <ChevronLeft className="h-3 w-3" />
-                        </Button>
-                        <span className="text-xs">
-                          {page} / {totalPages}
-                        </span>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                          disabled={page === totalPages || batchLinkDomains.isPending}
-                          className="h-7 px-2"
-                        >
-                          <ChevronRight className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
+              <Label htmlFor="description">域名描述</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => handleInputChange("description", e.target.value)}
+                placeholder="请输入域名描述（可选，将应用于所有域名）"
+                disabled={createDomain.isPending}
+                rows={2}
+                maxLength={200}
+              />
+              <div className="text-xs text-muted-foreground">
+                {formData.description.length}/200 字符
+              </div>
             </div>
           </div>
           
@@ -452,23 +295,23 @@ export function LinkDomainDialog({
               type="button" 
               variant="outline" 
               onClick={() => handleOpenChange(false)}
-              disabled={batchLinkDomains.isPending}
+              disabled={createDomain.isPending}
             >
               取消
             </Button>
             <Button 
               type="submit" 
-              disabled={batchLinkDomains.isPending || !isFormValid}
+              disabled={createDomain.isPending || !isFormValid}
             >
-              {batchLinkDomains.isPending ? (
+              {createDomain.isPending ? (
                 <>
                   <LoadingSpinner/>
-                  关联中...
+                  创建中...
                 </>
               ) : (
                 <>
-                  <LinkIcon />
-                  确认关联 {selectedDomainIds.length > 0 && `(${selectedDomainIds.length})`}
+                  <Plus />
+                  创建域名
                 </>
               )}
             </Button>

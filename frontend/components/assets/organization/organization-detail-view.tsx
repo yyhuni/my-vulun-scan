@@ -233,8 +233,7 @@ export function OrganizationDetailView({ organizationId }: OrganizationDetailVie
         onOpenChange={setIsLinkDomainDialogOpen}
         organizationId={organization.id}
         organizationName={organization.name}
-        linkedDomainIds={organization.domains?.map(d => d.id) || []}
-        onLink={() => {
+        onAdd={() => {
           // React Query 会自动刷新，无需手动 refetch
         }}
       />
