@@ -9,8 +9,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { IconBuilding, IconCalendar, IconClock, IconFileText, IconWorld, IconTrash } from "@tabler/icons-react"
 import Link from "next/link"
-import { AddDomainDialog } from "@/components/assets/domain/add-domain-dialog"
-import { Plus } from "lucide-react"
+import { LinkDomainDialog } from "@/components/assets/organization/link-domain-dialog"
+import { Link as LinkIcon } from "lucide-react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,8 +33,8 @@ interface OrganizationDetailViewProps {
 export function OrganizationDetailView({ organizationId }: OrganizationDetailViewProps) {
   const { data: organization, isLoading, error, refetch } = useOrganization(parseInt(organizationId))
   
-  // 添加域名对话框状态
-  const [isAddDomainDialogOpen, setIsAddDomainDialogOpen] = React.useState(false)
+  // 关联域名对话框状态
+  const [isLinkDomainDialogOpen, setIsLinkDomainDialogOpen] = React.useState(false)
   
   // 移除域名确认对话框状态
   const [domainToRemove, setDomainToRemove] = React.useState<{ id: number; name: string } | null>(null)
@@ -159,9 +159,9 @@ export function OrganizationDetailView({ organizationId }: OrganizationDetailVie
                 </CardDescription>
               </div>
             </div>
-            <Button size="sm" variant="secondary" onClick={() => setIsAddDomainDialogOpen(true)}>
-              <Plus />
-              添加域名
+            <Button size="sm" onClick={() => setIsLinkDomainDialogOpen(true)}>
+              <LinkIcon />
+              关联域名
             </Button>
           </div>
         </CardHeader>
@@ -211,11 +211,13 @@ export function OrganizationDetailView({ organizationId }: OrganizationDetailVie
         </CardContent>
       </Card>
 
-      <AddDomainDialog
-        open={isAddDomainDialogOpen}
-        onOpenChange={setIsAddDomainDialogOpen}
-        presetOrganizationId={organization.id}
-        onAdd={() => {
+      <LinkDomainDialog
+        open={isLinkDomainDialogOpen}
+        onOpenChange={setIsLinkDomainDialogOpen}
+        organizationId={organization.id}
+        organizationName={organization.name}
+        linkedDomainIds={organization.domains?.map(d => d.id) || []}
+        onLink={() => {
           refetch()
         }}
       />
@@ -235,7 +237,7 @@ export function OrganizationDetailView({ organizationId }: OrganizationDetailVie
                   </div>
                 )}
                 <p className="text-sm">
-                  <strong>注意：</strong>如果该域名不再归属于任何组织，系统将自动删除该域名及其所有关联数据（子域名、端点等）。
+                  <strong>注意：</strong>此操作只会解除域名与组织的关联关系，域名本身不会被删除，仍可正常使用。
                 </p>
               </div>
             </AlertDialogDescription>

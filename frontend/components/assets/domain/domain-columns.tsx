@@ -148,19 +148,6 @@ export const createDomainColumns = ({
     enableHiding: false,   // 禁用隐藏
   },
   
-  // ID 列
-  {
-    accessorKey: "id",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="ID" />
-    ),
-    cell: ({ row }) => (
-      <div className="text-sm text-muted-foreground">
-        {row.getValue("id")}
-      </div>
-    ),
-  },
-  
   // 域名名称列
   {
     accessorKey: "name",
@@ -201,8 +188,8 @@ export const createDomainColumns = ({
   // 所属组织列
   {
     accessorKey: "organizations",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="所属组织" />
+    header: () => (
+      <div className="-ml-3 font-medium">所属组织</div>
     ),
     cell: ({ row }) => {
       const organizations = row.original.organizations || []
@@ -231,21 +218,7 @@ export const createDomainColumns = ({
         </div>
       )
     },
-    // 启用排序：按第一个组织名称排序
-    sortingFn: (rowA, rowB) => {
-      const orgsA = rowA.original.organizations || []
-      const orgsB = rowB.original.organizations || []
-      
-      // 如果没有组织，排到最后
-      if (orgsA.length === 0 && orgsB.length === 0) return 0
-      if (orgsA.length === 0) return 1
-      if (orgsB.length === 0) return -1
-      
-      // 按第一个组织名称排序
-      const nameA = orgsA[0].name.toLowerCase()
-      const nameB = orgsB[0].name.toLowerCase()
-      return nameA.localeCompare(nameB)
-    },
+    enableSorting: false,  // 禁用排序
   },
   
   // 更新时间列 - 使用驼峰命名（响应拦截器已自动转换）

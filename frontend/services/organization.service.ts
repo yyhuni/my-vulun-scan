@@ -99,13 +99,87 @@ export class OrganizationService {
   /**
    * 批量删除组织
    * @param organizationIds - 组织ID数组，number类型
-   * @returns Promise<void>
+   * @returns Promise<{ message: string; deletedOrganizationCount: number }>
+   * 
+   * 注意: 删除组织不会删除域名实体，只会解除关联关系
    */
-  static async batchDeleteOrganizations(organizationIds: number[]): Promise<void> {
-    await api.post('/organizations/batch_delete/', {
+  static async batchDeleteOrganizations(organizationIds: number[]): Promise<{
+    message: string
+    deletedOrganizationCount: number
+  }> {
+    const response = await api.post<{
+      message: string
+      deletedOrganizationCount: number
+    }>('/organizations/batch_delete/', {
       organizationIds  // ✅ 使用驼峰命名，拦截器会自动转换为 organization_ids
     })
+    return response.data
   }
 
+  // ========== 组织与域名关联操作 ==========
+
+  /**
+   * 关联域名到组织（单个）
+   * @param data - 关联请求对象
+   * @param data.organizationId - 组织ID
+   * @param data.domainId - 域名ID
+   * @returns Promise<{ message: string }>
+   */
+  static async linkDomainToOrganization(data: {
+    organizationId: number
+    domainId: number
+  }): Promise<{ message: string }> {
+    const response = await api.post<{ message: string }>(
+      `/organizations/${data.organizationId}/domains/`,
+      {
+        domainId: data.domainId  // 拦截器会转换为 domain_id
+      }
+    )
+    return response.data
+  }
+
+  /**
+   * 批量关联域名到组织
+   * @param data - 批量关联请求对象
+   * @param data.organizationId - 组织ID
+   * @param data.domainIds - 域名ID数组
+   * @returns Promise<{ message: string; successCount: number; failedCount: number }>
+   */
+  static async batchLinkDomainsToOrganization(data: {
+    organizationId: number
+    domainIds: number[]
+  }): Promise<{
+    message: string
+    successCount: number
+    failedCount: number
+  }> {
+    const response = await api.post<{
+      message: string
+      successCount: number
+      failedCount: number
+    }>(
+      `/organizations/${data.organizationId}/domains/batch-add/`,
+      {
+        domainIds: data.domainIds  // 拦截器会转换为 domain_ids
+      }
+    )
+    return response.data
+  }
+
+  /**
+   * 从组织中移除域名
+   * @param data - 移除请求对象
+   * @param data.organizationId - 组织ID
+   * @param data.domainId - 域名ID
+   * @returns Promise<void>
+   */
+  static async unlinkDomainFromOrganization(data: {
+    organizationId: number
+    domainId: number
+  }): Promise<void> {
+    await api.delete(
+      `/organizations/${data.organizationId}/domains/${data.domainId}/`
+    )
+  }
 
 }

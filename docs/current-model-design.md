@@ -14,6 +14,11 @@
 | name | CharField(255) | unique，非空 | - | 组织名称 |
 | description | CharField(1000) | 可为空 | NULL | 描述信息 |
 
+**业务逻辑**:
+- **独立存在**: 组织可以独立存在，不需要关联任何域名
+- **松散耦合**: 删除组织不会影响域名实体，只会清理关联表中的记录
+- **灵活管理**: 支持先创建组织，后续再关联域名；也支持随时解除关联
+
 **关系**:
 - ManyToManyField: domains (通过 organization_domains 关联表)
 
@@ -32,6 +37,11 @@
 - **外键约束**: organization_id → organizations.id (CASCADE DELETE)
 - **外键约束**: domain_id → domains.id (CASCADE DELETE)
 - **唯一性保证**: 通过复合主键自动防止同一组织重复关联同一域名
+
+**删除行为**:
+- **删除组织**: 只删除关联表记录，域名实体保留（可能成为未分组域名）
+- **删除域名**: 只删除关联表记录，组织实体保留
+- **清理关联**: 解除关联时不影响任何一方的实体数据
 
 
 **关系**:
@@ -52,6 +62,9 @@
 | description | CharField(1000) | 可为空 | NULL | 描述信息 |
 
 **业务逻辑**:
+- **独立存在**: 域名可以独立存在，不需要关联任何组织（允许存在未分组域名）
+- **松散耦合**: 删除所有关联的组织不会删除域名本身，域名仍可正常使用
+- **灵活关联**: 支持先批量导入域名，后续再分配到组织；也支持域名在多个组织间共享
 - **自动创建根子域名**: 创建 Domain 时，系统自动创建一个同名的 Subdomain 作为根子域名（is_root = true），用于关联主域名的 URL
 - **根子域名保护**: 自动创建的根子域名受保护，不允许被手动删除，只能通过删除 Domain 时级联删除
 - **小写规范化**: name 字段在应用层统一转为小写存储，数据库层通过 CheckConstraint 约束防止插入大写值
@@ -584,12 +597,13 @@ Tool (工具管理)
 
 ### 核心领域模型
 1. **以 Domain 为中心**: 所有侦察活动围绕 Domain 实体展开，Domain 专门用于表示域名，关联子域名和组织。
-2. **规范化设计**: 避免数据冗余，保持关系完整性，使用 ForeignKey、ManyToManyField 和 reverse ForeignKey 关系。
-3. **查询优化**: 使用 Django ORM 的 `db_index=True` 和 `select_related()`/`prefetch_related()` 优化性能。
-4. **级联删除**: 删除父级记录时自动删除关联的子级记录（通过 `on_delete=CASCADE` 实现）。
-5. **数据保护**: 根子域名通过 is_root 字段标记并受保护，防止误删除 Domain 的专属子域名，确保数据完整性。
-6. **性能提升**: 统一字段长度减少碎片。
-7. **数据规范化**: 域名和子域名统一使用小写存储，通过应用层转换和数据库 CheckConstraint 约束双重保障数据一致性。
+2. **松散耦合设计**: Organization 和 Domain 通过 ManyToManyField 松散关联，两者可以独立存在。删除任何一方不影响另一方的实体数据，只清理关联表记录。这种设计提供了最大的灵活性，支持未分组域名、空组织等场景。
+3. **规范化设计**: 避免数据冗余，保持关系完整性，使用 ForeignKey、ManyToManyField 和 reverse ForeignKey 关系。
+4. **查询优化**: 使用 Django ORM 的 `db_index=True` 和 `select_related()`/`prefetch_related()` 优化性能。
+5. **级联删除**: 删除父级记录时自动删除关联的子级记录（通过 `on_delete=CASCADE` 实现）。注意：仅适用于强依赖关系（如 Domain → Subdomain），不适用于 Organization ⇄ Domain 的松散关联。
+6. **数据保护**: 根子域名通过 is_root 字段标记并受保护，防止误删除 Domain 的专属子域名，确保数据完整性。
+7. **性能提升**: 统一字段长度减少碎片。
+8. **数据规范化**: 域名和子域名统一使用小写存储，通过应用层转换和数据库 CheckConstraint 约束双重保障数据一致性。
 
 ### 工作流模型
 1. **四层架构**: Tool（工具管理） → Command（命令定义） → Workflow（工作流） → Execution（执行记录）

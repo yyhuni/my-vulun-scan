@@ -94,7 +94,7 @@ function DataTableColumnHeader({
   title: string 
 }) {
   if (!column.getCanSort()) {
-    return <div className="-ml-3 font-medium">{title}</div>
+    return <div className="font-medium">{title}</div>
   }
 
   const isSorted = column.getIsSorted()
@@ -156,19 +156,6 @@ export const createOrganizationColumns = ({
     enableHiding: false,   // 禁用隐藏
   },
   
-  // ID 列
-  {
-    accessorKey: "id",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="ID" />
-    ),
-    cell: ({ row }) => (
-      <div className="text-sm text-muted-foreground">
-        {row.getValue("id")}
-      </div>
-    ),
-  },
-  
   // 组织名称列
   {
     accessorKey: "name",
@@ -225,6 +212,74 @@ export const createOrganizationColumns = ({
         </div>
       )
     },
+  },
+  
+  // 关联域名列
+  {
+    accessorKey: "domains",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="关联域名" />
+    ),
+    cell: ({ row }) => {
+      const organization = row.original
+      const domains = organization.domains || []
+      
+      if (domains.length === 0) {
+        return (
+          <div className="text-sm text-muted-foreground">
+            -
+          </div>
+        )
+      }
+      
+      const displayDomains = domains.slice(0, 3)
+      const remainingCount = domains.length - 3
+      
+      return (
+        <div className="flex flex-col gap-1 py-1">
+          {displayDomains.map((domain) => (
+            <Badge 
+              key={domain.id} 
+              variant="secondary" 
+              className="justify-start truncate text-xs"
+              title={domain.name}
+            >
+              {domain.name}
+            </Badge>
+          ))}
+          {remainingCount > 0 && (
+            <TooltipProvider delayDuration={500} skipDelayDuration={0}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge 
+                    variant="outline" 
+                    className="justify-start text-xs cursor-default"
+                    title={`还有 ${remainingCount} 个域名`}
+                  >
+                    还有 {remainingCount} 个
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent 
+                  side="top" 
+                  align="start"
+                  sideOffset={5}
+                  className="max-w-sm"
+                >
+                  <div className="flex flex-col gap-1">
+                    {domains.slice(3).map((domain) => (
+                      <div key={domain.id} className="text-xs">
+                        {domain.name}
+                      </div>
+                    ))}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
+      )
+    },
+    enableSorting: false,
   },
   
   // 更新时间列

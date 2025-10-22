@@ -211,7 +211,7 @@ export function OrganizationList() {
           <AlertDialogHeader>
             <AlertDialogTitle>确认删除</AlertDialogTitle>
             <AlertDialogDescription>
-              此操作无法撤销。这将永久删除组织 &quot;{organizationToDelete?.name}&quot; 及其相关数据。
+              此操作将永久删除组织 &quot;{organizationToDelete?.name}&quot; 并解除其与域名的关联。域名本身不会被删除，仍可正常使用。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -250,7 +250,7 @@ export function OrganizationList() {
           <AlertDialogHeader>
             <AlertDialogTitle>确认批量删除</AlertDialogTitle>
             <AlertDialogDescription>
-              此操作无法撤销。这将永久删除以下 {selectedOrganizations.length} 个组织及其相关数据。
+              此操作将永久删除以下 {selectedOrganizations.length} 个组织并解除其与域名的关联。域名本身不会被删除，仍可正常使用。
             </AlertDialogDescription>
           </AlertDialogHeader>
           {/* 组织列表容器 - 固定最大高度并支持滚动 */}

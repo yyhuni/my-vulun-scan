@@ -9,7 +9,8 @@ from django.db import transaction
 from django.db.models import Q
 from .models import Organization, Domain, Subdomain
 from .serializers import (
-    OrganizationSerializer, 
+    OrganizationSerializer,
+    OrganizationDetailSerializer,
     DomainSerializer,
     DomainListSerializer,
     SubdomainSerializer,
@@ -25,6 +26,68 @@ class OrganizationViewSet(viewsets.ModelViewSet):
     queryset = Organization.objects.all()
     serializer_class = OrganizationSerializer
     pagination_class = OrganizationPagination
+    
+    def get_serializer_class(self):
+        """
+        根据 action 返回不同的序列化器
+        - retrieve/list: 返回带 domains 的序列化器
+        - 其他: 返回不带 domains 的基础序列化器
+        """
+        if self.action in ['retrieve', 'list']:
+            return OrganizationDetailSerializer
+        return OrganizationSerializer
+    
+    def get_queryset(self):
+        """
+        根据 action 优化查询
+        - retrieve/list: 预加载 domains，避免 N+1 查询
+        - 其他: 使用基础查询
+        """
+        queryset = super().get_queryset()
+        if self.action in ['retrieve', 'list']:
+            queryset = queryset.prefetch_related('domains')
+        return queryset
+    
+    @action(detail=False, methods=['post'], url_path='batch_delete')
+    def batch_delete(self, request):
+        """
+        批量删除组织
+        
+        请求体格式:
+        {
+            "organizationIds": [1, 2, 3]
+        }
+        
+        返回格式:
+        {
+            "message": "成功删除 3 个组织",
+            "deletedOrganizationCount": 3
+        }
+        
+        说明:
+        - message: 操作结果描述
+        - deletedOrganizationCount: 删除的组织数量
+        
+        注意:
+        - 删除组织不会删除域名实体，只会清理 organization_domains 关联表
+        - 域名可能成为未分组域名，但仍然可以正常使用
+        - 子域名、URL 等数据完全不受影响
+        """
+        organization_ids = request.data.get('organization_ids')  # 拦截器会自动转换
+        
+        if not organization_ids or not isinstance(organization_ids, list):
+            return Response(
+                {'error': 'organizationIds 是必需的，且必须是数组'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 批量删除组织（只删除组织实体和关联表记录，不删除域名）
+        deleted_count, _ = Organization.objects.filter(id__in=organization_ids).delete()
+        
+        return Response({
+            'message': f'成功删除 {deleted_count} 个组织',
+            'deletedOrganizationCount': deleted_count
+        }, status=status.HTTP_200_OK)
     
 
 class DomainViewSet(viewsets.ModelViewSet):
@@ -55,6 +118,29 @@ class DomainViewSet(viewsets.ModelViewSet):
         if self.action == 'list':
             queryset = queryset.prefetch_related('organizations')
         return queryset
+    
+    def update(self, request, *args, **kwargs):
+        """
+        重写更新方法，当域名 name 变更时，同步更新根子域名的 name
+        """
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        old_name = instance.name  # 保存旧的域名
+        
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        
+        # 如果域名 name 发生了变化，同步更新根子域名
+        new_name = serializer.instance.name
+        if old_name != new_name:
+            # 更新根子域名的 name（根子域名应该与域名同名）
+            Subdomain.objects.filter(
+                domain=instance,
+                is_root=True
+            ).update(name=new_name)
+        
+        return Response(serializer.data)
     
     @action(detail=False, methods=['post'], url_path='create')
     def bulk_create(self, request):
@@ -160,6 +246,36 @@ class DomainViewSet(viewsets.ModelViewSet):
         }
         
         return Response(response_data, status=status.HTTP_201_CREATED)
+    
+    @action(detail=False, methods=['post'], url_path='batch-delete')
+    def batch_delete(self, request):
+        """
+        批量删除域名（自定义接口，适配前端）
+        
+        请求体格式:
+        {
+            "domainIds": [1, 2, 3]
+        }
+        """
+        domain_ids = request.data.get('domain_ids')  # 拦截器会自动转换
+        if not domain_ids or not isinstance(domain_ids, list):
+            return Response(
+                {'error': 'domainIds 是必需的，且必须是数组'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 批量删除
+        _, deleted_info = Domain.objects.filter(id__in=domain_ids).delete()
+        
+        # 提取所有删除数量
+        deleted_domain_count = deleted_info.get('assets.Domain', 0)
+        deleted_subdomain_count = deleted_info.get('assets.Subdomain', 0)
+        
+        return Response({
+            'message': f'成功删除 {deleted_domain_count} 个域名（级联删除 {deleted_subdomain_count} 个子域名）',
+            'deletedDomainCount': deleted_domain_count,
+            'deletedSubdomainCount': deleted_subdomain_count
+        }, status=status.HTTP_200_OK)
 
 class SubdomainViewSet(viewsets.ModelViewSet):
     """

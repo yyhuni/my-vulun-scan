@@ -193,6 +193,38 @@ export function useBatchDeleteDomainsFromOrganization() {
   })
 }
 
+// 删除单个域名（使用标准 RESTful DELETE）
+export function useDeleteDomain() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (domainId: number) => 
+      DomainService.deleteDomain(domainId),
+    onMutate: (domainId) => {
+      toast.loading('正在删除域名...', { id: `delete-domain-${domainId}` })
+    },
+    onSuccess: (_, domainId) => {
+      toast.dismiss(`delete-domain-${domainId}`)
+      
+      console.log('删除域名成功')
+      
+      toast.success('域名已成功删除')
+      
+      // 刷新所有域名和组织相关查询
+      queryClient.invalidateQueries({ queryKey: ['domains'] })
+      queryClient.invalidateQueries({ queryKey: ['organizations'] })
+    },
+    onError: (error: any, domainId) => {
+      toast.dismiss(`delete-domain-${domainId}`)
+      
+      console.error('删除域名失败:', error)
+      console.error('后端响应:', error?.response?.data || error)
+      
+      toast.error('删除域名失败，请查看控制台日志')
+    },
+  })
+}
+
 // 批量删除域名（独立接口，不依赖组织）
 export function useBatchDeleteDomains() {
   const queryClient = useQueryClient()
@@ -210,10 +242,9 @@ export function useBatchDeleteDomains() {
       console.log('批量删除域名成功')
       console.log('后端响应:', response)
       
-      // 前端自己构造成功提示消息
-      const deletedCount = response.deletedCount || 0
-      
-      toast.success(`成功删除 ${deletedCount} 个域名`)
+      // 显示详细的删除信息
+      const { deletedDomainCount, deletedSubdomainCount } = response
+      toast.success(`成功删除 ${deletedDomainCount} 个域名（级联删除 ${deletedSubdomainCount} 个子域名）`)
       
       // 刷新所有域名和组织相关查询（通配符匹配）
       queryClient.invalidateQueries({ queryKey: ['domains'] })

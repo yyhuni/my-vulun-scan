@@ -36,7 +36,7 @@ export class DomainService {
   }
 
   /**
-   * 更新域名信息
+   * 更新域名信息（使用标准 RESTful PATCH 方法）
    * @param data - 更新请求对象
    * @param data.id - 域名ID
    * @param data.name - 域名名称（可选，不传表示不更新）
@@ -48,7 +48,7 @@ export class DomainService {
     name?: string
     description?: string
   }): Promise<Domain> {
-    const requestBody: any = { id: data.id }
+    const requestBody: any = {}
     
     // 只传递有值的字段，undefined 会被忽略
     if (data.name !== undefined) {
@@ -58,12 +58,23 @@ export class DomainService {
       requestBody.description = data.description
     }
     
-    const response = await api.post<Domain>('/domains/update/', requestBody)
+    // 使用标准 RESTful PATCH 方法
+    const response = await api.patch<Domain>(`/domains/${data.id}/`, requestBody)
     return response.data
   }
 
   /**
-   * 从组织中移除域名
+   * 删除单个域名（使用标准 RESTful DELETE 方法）
+   * @param id - 域名ID
+   * @returns Promise<void>
+   */
+  static async deleteDomain(id: number): Promise<void> {
+    await api.delete(`/domains/${id}/`)
+  }
+
+  /**
+   * 从组织中移除域名（已废弃，请使用 OrganizationService.unlinkDomainFromOrganization）
+   * @deprecated 此方法已移至 OrganizationService，保留仅为向后兼容
    * @param data - 移除请求对象
    * @param data.organizationId - 组织ID
    * @param data.domainId - 域名ID
@@ -105,15 +116,20 @@ export class DomainService {
   /**
    * 批量删除域名（独立接口，不依赖组织）
    * @param domainIds - 域名ID数组
-   * @returns Promise<{ message: string; deletedCount: number }>
+   * @returns Promise<{ message: string; deletedDomainCount: number; deletedSubdomainCount: number }>
    */
   static async batchDeleteDomains(
     domainIds: number[]
   ): Promise<{ 
     message: string
-    deletedCount: number
+    deletedDomainCount: number
+    deletedSubdomainCount: number
   }> {
-    const response = await api.post<any>(
+    const response = await api.post<{
+      message: string
+      deletedDomainCount: number
+      deletedSubdomainCount: number
+    }>(
       `/domains/batch-delete/`,
       {
         domainIds,  // 拦截器会转换为 domain_ids

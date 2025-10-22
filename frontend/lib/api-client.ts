@@ -195,6 +195,15 @@ export const api = {
   put: <T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig) => apiClient.put<T>(url, data, config),
   
   /**
+   * PATCH 请求（部分更新）
+   * @param url - 请求路径（相对于 baseURL）
+   * @param data - 请求体数据（会自动转换为 snake_case）
+   * @param config - axios 配置（可选）
+   * @returns Promise<AxiosResponse<T>>
+   */
+  patch: <T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig) => apiClient.patch<T>(url, data, config),
+  
+  /**
    * DELETE 请求
    * @param url - 请求路径（相对于 baseURL）
    * @param config - axios 配置（可选）

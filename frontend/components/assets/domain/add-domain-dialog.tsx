@@ -97,7 +97,7 @@ export function AddDomainDialog({
     }
   }, [presetOrganizationId])
 
-  // 使用 React Query 获取组织列表（仅在没有预设组织ID时才请求）
+  // 使用 React Query 获取组织列表
   const { 
     data: organizationsData, 
     isLoading: isLoadingOrganizations,
@@ -106,9 +106,6 @@ export function AddDomainDialog({
     {
       page: 1,
       pageSize: 1000, // 获取足够多的组织用于选择
-    },
-    {
-      enabled: !presetOrganizationId, // 有预设组织ID时不请求
     }
   )
 

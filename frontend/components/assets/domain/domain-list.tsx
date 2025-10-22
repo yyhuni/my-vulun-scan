@@ -32,6 +32,7 @@ import type { Domain } from "@/types/domain.types"
 // 导入 hooks
 import { 
   useAllDomains,
+  useDeleteDomain,
   useBatchDeleteDomains 
 } from "@/hooks/use-domains"
 
@@ -67,8 +68,9 @@ export function DomainList() {
     pageSize: pagination.pageSize,
   })
 
-  // 删除 hook（单个和批量删除统一使用批量删除 API）
-  const batchDeleteMutation = useBatchDeleteDomains()
+  // 删除 hooks
+  const deleteMutation = useDeleteDomain()  // 单个删除
+  const batchDeleteMutation = useBatchDeleteDomains()  // 批量删除
 
   // 辅助函数 - 格式化日期（使用 useCallback 优化）
   const formatDate = useCallback((dateString: string): string => {
@@ -117,9 +119,9 @@ export function DomainList() {
     // 关闭对话框
     setDeleteDialogOpen(false)
     
-    // ✅ 直接使用批量删除 API（一次调用完成）
+    // ✅ 使用标准 RESTful DELETE 方法
     try {
-      await batchDeleteMutation.mutateAsync([domainToDelete.id])
+      await deleteMutation.mutateAsync(domainToDelete.id)
       // mutation hook 内部已经处理了成功提示和刷新
       setDomainToDelete(null)
     } catch {
