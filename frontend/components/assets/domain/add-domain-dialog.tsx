@@ -34,6 +34,13 @@ import { LoadingSpinner } from "@/components/loading-spinner"
 import { DomainValidator } from "@/lib/domain-validator"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 
 // 导入 React Query Hooks
@@ -125,6 +132,18 @@ export function AddDomainDialog({
 
   // 使用 React Query 的创建域名 mutation
   const createDomain = useCreateDomain()
+  
+  // 根据搜索关键词过滤组织（前端过滤）
+  const filteredOrganizations = (organizationsData?.organizations || []).filter(org => {
+    if (!orgSearchKeyword.trim()) return true
+    const keyword = orgSearchKeyword.toLowerCase()
+    return org.name.toLowerCase().includes(keyword) || 
+           (org.description && org.description.toLowerCase().includes(keyword))
+  })
+  
+  // 分页信息
+  const orgTotalPages = organizationsData?.pagination.totalPages || 0
+  const orgTotal = organizationsData?.pagination.total || 0
 
   // 处理表单提交
   const handleSubmit = async (e: React.FormEvent) => {
@@ -224,6 +243,10 @@ export function AddDomainDialog({
         })
         setOpenOrgPopover(false)
         setInvalidDomains([])
+        // 重置组织分页状态
+        setOrgPage(1)
+        setOrgPageSize(20)
+        setOrgSearchKeyword("")
       }
     }
   }
@@ -257,7 +280,7 @@ export function AddDomainDialog({
       )}
       
       {/* 对话框内容 */}
-      <DialogContent className="sm:max-w-[650px] max-h-[85vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[650px]">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <Globe />
@@ -270,7 +293,7 @@ export function AddDomainDialog({
         
         {/* 表单 */}
         <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto">
             {/* 域名输入框 - 支持多行，带行号 */}
             <div className="grid gap-2">
               <Label htmlFor="domains">
@@ -328,7 +351,7 @@ demo.org`}
               
               {/* 加载状态 */}
               {isLoadingOrganizations && (
-                <div className="flex items-center space-x-2 px-3 py-2 border rounded-md bg-muted/50">
+                <div className="flex items-center justify-center space-x-2 px-3 py-2 border rounded-md bg-muted/50 h-[300px]">
                   <Loader2 className="animate-spin text-muted-foreground" />
                   <span className="text-sm text-muted-foreground">正在加载组织列表...</span>
                 </div>
@@ -367,84 +390,121 @@ demo.org`}
                 </Alert>
               )}
               
-              {/* 可搜索的组织选择器 */}
+              {/* 可搜索的组织选择器（支持分页） */}
               {!isLoadingOrganizations && !organizationsError && organizationsData && organizationsData.organizations.length > 0 && (
                 <>
-                  <div ref={popoverContainerRef}>
-                  <Popover open={openOrgPopover} onOpenChange={setOpenOrgPopover} modal={false}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={openOrgPopover}
-                        className="w-full justify-between"
-                        disabled={createDomain.isPending || !!presetOrganizationId}
+                  {/* 搜索框和每页数量选择 */}
+                  {!presetOrganizationId && (
+                    <div className="flex gap-2">
+                      <Input
+                        type="text"
+                        placeholder="搜索当前页组织..."
+                        value={orgSearchKeyword}
+                        onChange={(e) => setOrgSearchKeyword(e.target.value)}
+                        disabled={createDomain.isPending}
+                        className="flex-1"
+                      />
+                      <Select
+                        value={orgPageSize.toString()}
+                        onValueChange={(value) => {
+                          setOrgPageSize(Number(value))
+                          setOrgPage(1) // 切换每页数量时重置到第一页
+                        }}
+                        disabled={createDomain.isPending}
                       >
-                        {formData.organizationId
-                          ? organizationsData.organizations.find(
-                              (org) => org.id.toString() === formData.organizationId
-                            )?.name
-                          : "请选择组织"}
-                        <ChevronsUpDown className="shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[600px] p-0" align="start" container={popoverContainerRef.current}>
-                      <Command>
-                        <CommandInput placeholder="搜索组织..." />
-                        <CommandList className="max-h-[300px] overflow-y-auto">
-                          <CommandEmpty>未找到匹配的组织</CommandEmpty>
-                          <CommandGroup>
-                            {organizationsData.organizations.map((org) => (
-                              <CommandItem
-                                key={org.id}
-                                value={org.name}
-                                onSelect={() => {
-                                  handleInputChange("organizationId", org.id.toString())
-                                  setOpenOrgPopover(false)
-                                }}
-                                className="cursor-pointer"
-                              >
-                                <Check
-                                  className={cn(
-                                    formData.organizationId === org.id.toString()
-                                      ? "opacity-100"
-                                      : "opacity-0"
-                                  )}
-                                />
-                                <div className="flex flex-col">
-                                  <span className="font-medium">{org.name}</span>
-                                  {org.description && (
-                                    <span className="text-xs text-muted-foreground truncate">
-                                      {org.description}
-                                    </span>
-                                  )}
-                                </div>
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
+                        <SelectTrigger className="w-[120px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="20">20条/页</SelectItem>
+                          <SelectItem value="50">50条/页</SelectItem>
+                          <SelectItem value="100">100条/页</SelectItem>
+                          <SelectItem value="200">200条/页</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  
+                  {/* 组织列表 - 网格布局，每行两个 */}
+                  <div className="border rounded-md max-h-[300px] overflow-y-auto p-2">
+                    {filteredOrganizations.length === 0 ? (
+                      <div className="p-4 text-center text-sm text-muted-foreground">
+                        未找到匹配的组织
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2">
+                        {filteredOrganizations.map((org) => (
+                          <button
+                            key={org.id}
+                            type="button"
+                            onClick={() => {
+                              if (!presetOrganizationId) {
+                                handleInputChange("organizationId", org.id.toString())
+                              }
+                            }}
+                            disabled={createDomain.isPending || !!presetOrganizationId}
+                            className={cn(
+                              "flex items-center gap-2 p-3 rounded-md border text-left",
+                              formData.organizationId === org.id.toString()
+                                ? "bg-primary/10 border-primary"
+                                : "hover:bg-muted/50 border-border",
+                              (createDomain.isPending || presetOrganizationId) && "cursor-not-allowed opacity-60"
+                            )}
+                          >
+                            <Check
+                              className={cn(
+                                "shrink-0 h-4 w-4",
+                                formData.organizationId === org.id.toString()
+                                  ? "opacity-100 text-primary"
+                                  : "opacity-0"
+                              )}
+                            />
+                            <span className="font-medium truncate text-sm">{org.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   
-                  {/* 辅助信息 */}
+                  {/* 分页和辅助信息 */}
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>
-                      {presetOrganizationId ? "组织已预设（不可修改）" : `共 ${organizationsData.organizations.length} 个组织可选`}
-                    </span>
-                    {!presetOrganizationId && (
-                      <Button
-                        type="button"
-                        variant="link"
-                        size="sm"
-                        className="h-auto p-0 text-xs"
-                        onClick={() => {
-                          window.open('/assets/organization', '_blank')
-                        }}
-                      >
-                        管理组织 →
-                      </Button>
+                    <div>
+                      {presetOrganizationId ? (
+                        "组织已预设（不可修改）"
+                      ) : orgSearchKeyword.trim() ? (
+                        `搜索到 ${filteredOrganizations.length} 个组织`
+                      ) : (
+                        `总计 ${orgTotal} 个组织`
+                      )}
+                    </div>
+                    
+                    {/* 分页控件 */}
+                    {!presetOrganizationId && orgTotalPages > 1 && (
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setOrgPage(p => Math.max(1, p - 1))}
+                          disabled={orgPage === 1 || createDomain.isPending}
+                          className="h-7 px-2"
+                        >
+                          <ChevronLeft className="h-3 w-3" />
+                        </Button>
+                        <span className="text-xs">
+                          {orgPage} / {orgTotalPages}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setOrgPage(p => Math.min(orgTotalPages, p + 1))}
+                          disabled={orgPage === orgTotalPages || createDomain.isPending}
+                          className="h-7 px-2"
+                        >
+                          <ChevronRight className="h-3 w-3" />
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </>

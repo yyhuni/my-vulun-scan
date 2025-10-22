@@ -196,7 +196,7 @@ export const createDomainColumns = ({
       
       if (organizations.length === 0) {
         return (
-          <div className="text-sm text-muted-foreground">
+          <div className="-ml-3 text-sm text-muted-foreground">
             -
           </div>
         )
@@ -204,7 +204,7 @@ export const createDomainColumns = ({
       
       // 每个组织单独一行显示
       return (
-        <div className="flex flex-col gap-1 py-1">
+        <div className="-ml-3 flex flex-col gap-1 py-1">
           {organizations.map((org) => (
             <Badge 
               key={org.id} 
