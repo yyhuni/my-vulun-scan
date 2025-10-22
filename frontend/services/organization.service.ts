@@ -171,15 +171,19 @@ export class OrganizationService {
    * @param data - 移除请求对象
    * @param data.organizationId - 组织ID
    * @param data.domainId - 域名ID
-   * @returns Promise<void>
+   * @returns Promise<{ message: string }>
    */
   static async unlinkDomainFromOrganization(data: {
     organizationId: number
     domainId: number
-  }): Promise<void> {
-    await api.delete(
-      `/organizations/${data.organizationId}/domains/${data.domainId}/`
+  }): Promise<{ message: string }> {
+    const response = await api.post<{ message: string }>(
+      `/organizations/${data.organizationId}/domains/remove/`,
+      {
+        domainId: data.domainId  // 拦截器会转换为 domain_id
+      }
     )
+    return response.data
   }
 
 }

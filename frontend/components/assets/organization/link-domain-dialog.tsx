@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
-import { Link as LinkIcon, Globe, Building2, AlertCircle, Loader2, Plus, X } from "lucide-react"
+import { Link as LinkIcon, Globe, Building2, AlertCircle, Loader2, Plus, X, ChevronLeft, ChevronRight } from "lucide-react"
 
 // 导入 UI 组件
 import { Button } from "@/components/ui/button"
@@ -15,6 +15,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -61,23 +62,54 @@ export function LinkDomainDialog({
   // 选中的域名ID列表（多选）
   const [selectedDomainIds, setSelectedDomainIds] = useState<number[]>([])
   
+  // 搜索关键词
+  const [searchKeyword, setSearchKeyword] = useState("")
+  
+  // 分页状态
+  const [page, setPage] = useState(1)
+  const pageSize = 20 // 每页显示 20 个域名
+  
   // 使用 React Query 获取域名列表
+  // 性能优化：只在弹窗打开时才发送请求
   const { 
     data: domainsData, 
     isLoading: isLoadingDomains,
     error: domainsError 
-  } = useAllDomains({
-    page: 1,
-    pageSize: 1000, // 获取足够多的域名用于选择
-  })
+  } = useAllDomains(
+    {
+      page,
+      pageSize,
+    },
+    {
+      enabled: open, // 只在弹窗打开时才请求
+    }
+  )
 
   // 使用 React Query 的批量关联域名 mutation
   const batchLinkDomains = useBatchLinkDomainsToOrganization()
 
-  // 过滤出未关联的域名
+  // 过滤出未关联的域名，并根据搜索关键词过滤
   const availableDomains = domainsData?.domains.filter(
-    (domain: Domain) => !linkedDomainIds.includes(domain.id)
+    (domain: Domain) => {
+      // 过滤已关联的域名
+      if (linkedDomainIds.includes(domain.id)) return false
+      
+      // 根据搜索关键词过滤（前端过滤）
+      if (searchKeyword.trim()) {
+        const keyword = searchKeyword.toLowerCase()
+        return (
+          domain.name.toLowerCase().includes(keyword) ||
+          domain.description?.toLowerCase().includes(keyword)
+        )
+      }
+      
+      return true
+    }
   ) || []
+  
+  // 分页信息
+  const totalPages = domainsData?.pagination.totalPages || 0
+  const total = domainsData?.pagination.total || 0
 
   // 切换域名选择
   const toggleDomainSelection = (domainId: number) => {
@@ -134,6 +166,8 @@ export function LinkDomainDialog({
       if (!newOpen) {
         // 关闭时重置表单
         setSelectedDomainIds([])
+        setSearchKeyword("")
+        setPage(1)
       }
     }
   }
@@ -187,6 +221,18 @@ export function LinkDomainDialog({
                 <Globe />
                 <span>选择域名 <span className="text-destructive">*</span></span>
               </Label>
+              
+              {/* 搜索框 */}
+              {!isLoadingDomains && !domainsError && total > 0 && (
+                <Input
+                  type="text"
+                  placeholder="搜索当前页域名或描述..."
+                  value={searchKeyword}
+                  onChange={(e) => setSearchKeyword(e.target.value)}
+                  disabled={batchLinkDomains.isPending}
+                  className="mb-2"
+                />
+              )}
               
               {/* 加载状态 */}
               {isLoadingDomains && (
@@ -281,11 +327,50 @@ export function LinkDomainDialog({
                     ))}
                   </div>
                   
-                  {/* 辅助信息 */}
-                  <div className="text-xs text-muted-foreground">
-                    共 {availableDomains.length} 个域名可关联
-                    {selectedDomainIds.length > 0 && ` · 已选择 ${selectedDomainIds.length} 个`}
-                    {linkedDomainIds.length > 0 && ` · ${linkedDomainIds.length} 个已关联`}
+                  {/* 分页和辅助信息 */}
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <div>
+                      {searchKeyword.trim() ? (
+                        <>
+                          当前页搜索到 {availableDomains.length} 个域名
+                          {selectedDomainIds.length > 0 && ` · 已选择 ${selectedDomainIds.length} 个`}
+                        </>
+                      ) : (
+                        <>
+                          总计 {total} 个域名 · 当前页 {availableDomains.length} 个可关联
+                          {selectedDomainIds.length > 0 && ` · 已选择 ${selectedDomainIds.length} 个`}
+                        </>
+                      )}
+                    </div>
+                    
+                    {/* 分页控件 */}
+                    {totalPages > 1 && (
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPage(p => Math.max(1, p - 1))}
+                          disabled={page === 1 || batchLinkDomains.isPending}
+                          className="h-7 px-2"
+                        >
+                          <ChevronLeft className="h-3 w-3" />
+                        </Button>
+                        <span className="text-xs">
+                          {page} / {totalPages}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                          disabled={page === totalPages || batchLinkDomains.isPending}
+                          className="h-7 px-2"
+                        >
+                          <ChevronRight className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </>
               )}

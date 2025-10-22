@@ -67,7 +67,7 @@ export function OrganizationDetailView({ organizationId }: OrganizationDetailVie
       {
         onSuccess: () => {
           setDomainToRemove(null)
-          refetch() // 刷新组织详情
+          // React Query 会自动刷新，无需手动 refetch
         },
       }
     )
@@ -218,7 +218,7 @@ export function OrganizationDetailView({ organizationId }: OrganizationDetailVie
         organizationName={organization.name}
         linkedDomainIds={organization.domains?.map(d => d.id) || []}
         onLink={() => {
-          refetch()
+          // React Query 会自动刷新，无需手动 refetch
         }}
       />
 

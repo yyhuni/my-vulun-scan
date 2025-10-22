@@ -179,12 +179,11 @@ export function OrganizationDataTable({
                       checked={column.getIsVisible()}
                       onCheckedChange={(value) => column.toggleVisibility(!!value)}
                     >
-                      {column.id === "id" && "ID"}
                       {column.id === "name" && "Organization"}
                       {column.id === "description" && "Description"}
                       {column.id === "createdAt" && "Created At"}
                       {column.id === "updatedAt" && "Updated At"}
-                      {!["id", "name", "description", "createdAt", "updatedAt"].includes(column.id) && column.id}
+                      {!["name", "description", "createdAt", "updatedAt"].includes(column.id) && column.id}
                     </DropdownMenuCheckboxItem>
                   )
                 })}

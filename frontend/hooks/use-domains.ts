@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { DomainService } from "@/services/domain.service"
+import { OrganizationService } from "@/services/organization.service"
 import type { Asset } from "@/types/asset.types"
 import type { Domain, GetDomainsResponse, GetAllDomainsParams } from "@/types/domain.types"
 import type { PaginationParams } from "@/types/common.types"
@@ -121,7 +122,7 @@ export function useDeleteDomainFromOrganization() {
 
   return useMutation({
     mutationFn: (data: { organizationId: number; domainId: number }) => 
-      DomainService.deleteDomainFromOrganization(data),
+      OrganizationService.unlinkDomainFromOrganization(data),
     onMutate: ({ organizationId, domainId }) => {
       toast.loading('正在移除域名...', { id: `delete-${organizationId}-${domainId}` })
     },
@@ -298,7 +299,12 @@ export function useUpdateDomain() {
 
 // 获取所有域名列表
 // 后端固定按更新时间降序排列，不支持自定义排序
-export function useAllDomains(params: GetAllDomainsParams = {}) {
+export function useAllDomains(
+  params: GetAllDomainsParams = {},
+  options?: {
+    enabled?: boolean
+  }
+) {
   return useQuery({
     queryKey: ['domains', 'all', {
       page: params.page,
@@ -317,5 +323,6 @@ export function useAllDomains(params: GetAllDomainsParams = {}) {
         }
       }
     },
+    enabled: options?.enabled !== undefined ? options.enabled : true,
   })
 }

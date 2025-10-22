@@ -89,6 +89,54 @@ class OrganizationViewSet(viewsets.ModelViewSet):
             'deletedOrganizationCount': deleted_count
         }, status=status.HTTP_200_OK)
     
+    @action(detail=True, methods=['post'], url_path='domains/remove')
+    def remove_domain(self, request, pk=None):
+        """
+        解除组织与域名的关联
+        
+        路由: POST /api/organizations/{organization_id}/domains/remove/
+        
+        请求体格式:
+        {
+            "domainId": 23
+        }
+        
+        返回格式:
+        {
+            "message": "成功解除域名关联"
+        }
+        
+        说明:
+        - 只解除关联关系，不删除域名实体和组织实体
+        - 域名会变成未分组状态，但数据完整保留
+        """
+        domain_id = request.data.get('domain_id')  # 拦截器会自动转换
+        
+        if not domain_id:
+            return Response(
+                {'error': 'domainId 是必需的'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 获取组织对象
+        organization = self.get_object()
+        
+        # 直接删除中间表记录，通过删除行数判断是否成功（只需1次数据库操作）
+        deleted_count, _ = organization.domains.through.objects.filter(
+            organization_id=organization.id,
+            domain_id=domain_id
+        ).delete()
+        
+        if deleted_count == 0:
+            return Response(
+                {'error': f'域名不存在或未关联到该组织'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        return Response({
+            'message': '成功解除域名关联'
+        }, status=status.HTTP_200_OK)
+    
 
 class DomainViewSet(viewsets.ModelViewSet):
     """

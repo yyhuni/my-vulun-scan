@@ -73,23 +73,6 @@ export class DomainService {
   }
 
   /**
-   * 从组织中移除域名（已废弃，请使用 OrganizationService.unlinkDomainFromOrganization）
-   * @deprecated 此方法已移至 OrganizationService，保留仅为向后兼容
-   * @param data - 移除请求对象
-   * @param data.organizationId - 组织ID
-   * @param data.domainId - 域名ID
-   * @returns Promise<void>
-   */
-  static async deleteDomainFromOrganization(data: {
-    organizationId: number
-    domainId: number
-  }): Promise<void> {
-    await api.delete(
-      `/organizations/${data.organizationId}/domains/${data.domainId}/`
-    )
-  }
-
-  /**
    * 批量从组织中移除域名
    * @param data - 批量移除请求对象
    * @param data.organizationId - 组织ID（用于路径参数）
