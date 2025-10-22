@@ -100,14 +100,12 @@ export function EditDomainDialog({
         }
       },
       {
-        onSuccess: (response) => {
-          if (response.state === "success" && response.data) {
-            // 调用成功回调
-            onEdit(response.data)
-            
-            // 关闭对话框
-            onOpenChange(false)
-          }
+        onSuccess: (updatedDomain) => {
+          // 调用成功回调
+          onEdit(updatedDomain)
+          
+          // 关闭对话框
+          onOpenChange(false)
         }
       }
     )

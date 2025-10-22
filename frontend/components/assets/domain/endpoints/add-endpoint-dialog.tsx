@@ -164,17 +164,15 @@ export function AddEndpointDialog({
         endpoints
       },
       {
-        onSuccess: (response) => {
-          if (response.state === "success" && response.data) {
-            // 调用成功回调 - 只用于 UI 状态更新，不重复调用 API
-            onAdd(response.data)
-            
-            // 重置表单
-            resetForm()
-            
-            // 关闭对话框
-            setOpen(false)
-          }
+        onSuccess: (batchCreateResult) => {
+          // 调用成功回调 - 只用于 UI 状态更新，不重复调用 API
+          onAdd(batchCreateResult)
+          
+          // 重置表单
+          resetForm()
+          
+          // 关闭对话框
+          setOpen(false)
         }
       }
     )

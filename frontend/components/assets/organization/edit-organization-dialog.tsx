@@ -108,14 +108,12 @@ export function EditOrganizationDialog({
         }
       },
       {
-        onSuccess: (response) => {
-          if (response.state === "success" && response.data) {
-            // 调用成功回调
-            onEdit(response.data)
-            
-            // 关闭对话框
-            onOpenChange(false)
-          }
+        onSuccess: (updatedOrganization) => {
+          // 调用成功回调
+          onEdit(updatedOrganization)
+          
+          // 关闭对话框
+          onOpenChange(false)
         }
       }
     )

@@ -153,7 +153,7 @@ export function AddDomainDialog({
         organizationId: Number(formData.organizationId),
       },
       {
-        onSuccess: (response) => {
+        onSuccess: (batchCreateResult) => {
           // 重置表单
           setFormData({
             domains: "",
@@ -165,9 +165,9 @@ export function AddDomainDialog({
           setOpen(false)
           
           // 调用外部回调（如果提供）
-          if (onAdd && response.state === 'success' && response.data) {
+          if (onAdd) {
             // 传递批量创建的统计信息给回调函数
-            onAdd(response.data)
+            onAdd(batchCreateResult)
           }
         }
       }

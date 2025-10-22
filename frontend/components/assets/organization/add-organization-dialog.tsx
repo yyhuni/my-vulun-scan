@@ -84,7 +84,7 @@ export function AddOrganizationDialog({
         description: formData.description.trim(),
       },
       {
-        onSuccess: (response) => {
+        onSuccess: (newOrganization) => {
           // 重置表单
           setFormData({
             name: "",
@@ -95,8 +95,8 @@ export function AddOrganizationDialog({
           setOpen(false)
           
           // 调用外部回调（如果提供）
-          if (onAdd && response.state === 'success' && response.data) {
-            onAdd(response.data)
+          if (onAdd) {
+            onAdd(newOrganization)
           }
         }
       }

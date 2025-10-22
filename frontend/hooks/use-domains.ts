@@ -22,10 +22,7 @@ export function useDomain(id: number) {
   return useQuery({
     queryKey: domainKeys.detail(id),
     queryFn: () => DomainService.getDomainById(id),
-    select: (response) => {
-      // RESTful 标准：直接返回数据
-      return response.domain
-    },
+    // RESTful 标准：后端直接返回 Domain 对象
     enabled: !!id,
   })
 }

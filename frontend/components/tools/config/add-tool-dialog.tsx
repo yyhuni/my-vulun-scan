@@ -173,8 +173,8 @@ export function AddToolDialog({
       setOpen(false)
       
       // 调用外部回调（如果提供）
-      if (onAdd && response.state === 'success' && response.data?.tool) {
-        onAdd(response.data.tool)
+      if (onAdd && response?.tool) {
+        onAdd(response.tool)
       }
     }
 
