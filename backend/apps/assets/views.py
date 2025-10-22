@@ -92,7 +92,7 @@ class OrganizationViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='domains/remove')
     def remove_domain(self, request, pk=None):
         """
-        解除组织与域名的关联
+        解除组织与域名的关联（只删除 organization_domains 中间表的记录）
         
         路由: POST /api/organizations/{organization_id}/domains/remove/
         
