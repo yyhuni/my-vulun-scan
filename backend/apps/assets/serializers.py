@@ -6,18 +6,33 @@ from apps.common.validators import validate_domain
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
-    """组织信息序列化器"""
+    """组织信息序列化器（完整信息）"""
     
     class Meta:
         model = Organization
         fields = ['id', 'name', 'description', 'created_at', 'updated_at']
+
+class OrganizationSimpleSerializer(serializers.ModelSerializer):
+    """组织简化序列化器（仅 ID 和名称，用于嵌套展示）"""
+    
+    class Meta:
+        model = Organization
+        fields = ['id', 'name']
     
 class DomainSerializer(serializers.ModelSerializer):
-    """域名信息序列化器"""
+    """域名信息序列化器（基础版，不包含 organizations）"""
     
     class Meta:
         model = Domain
         fields = ['id', 'name', 'description', 'created_at', 'updated_at']
+
+class DomainListSerializer(serializers.ModelSerializer):
+    """域名列表序列化器（包含 organizations，用于列表展示）"""
+    organizations = OrganizationSimpleSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = Domain
+        fields = ['id', 'name', 'description', 'created_at', 'updated_at', 'organizations']
 
 class SubdomainSerializer(serializers.ModelSerializer):
     """子域名信息序列化器"""

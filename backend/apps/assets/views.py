@@ -10,7 +10,8 @@ from django.db.models import Q
 from .models import Organization, Domain, Subdomain
 from .serializers import (
     OrganizationSerializer, 
-    DomainSerializer, 
+    DomainSerializer,
+    DomainListSerializer,
     SubdomainSerializer,
     BulkCreateDomainSerializer
 )
@@ -33,6 +34,27 @@ class DomainViewSet(viewsets.ModelViewSet):
     queryset = Domain.objects.all()
     serializer_class = DomainSerializer
     pagination_class = DomainPagination
+    
+    def get_serializer_class(self):
+        """
+        根据 action 返回不同的序列化器
+        - list: 返回带 organizations 的序列化器
+        - 其他: 返回不带 organizations 的基础序列化器
+        """
+        if self.action == 'list':
+            return DomainListSerializer
+        return DomainSerializer
+    
+    def get_queryset(self):
+        """
+        根据 action 优化查询
+        - list: 预加载 organizations，避免 N+1 查询
+        - 其他: 使用基础查询
+        """
+        queryset = super().get_queryset()
+        if self.action == 'list':
+            queryset = queryset.prefetch_related('organizations')
+        return queryset
     
     @action(detail=False, methods=['post'], url_path='create')
     def bulk_create(self, request):
