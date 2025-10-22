@@ -195,7 +195,7 @@ function OrgSubdomainCard({
                 ))}
                 {totalSubdomains > subdomains.length && (
                   <div className="text-xs text-muted-foreground text-center py-2">
-                    还有 {totalSubdomains - subdomains.length} 个子域名未显示
+                    ...
                   </div>
                 )}
               </div>

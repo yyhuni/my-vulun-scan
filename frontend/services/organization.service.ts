@@ -158,7 +158,7 @@ export class OrganizationService {
       successCount: number
       failedCount: number
     }>(
-      `/organizations/${data.organizationId}/domains/batch-add/`,
+      `/organizations/${data.organizationId}/domains/add/`,
       {
         domainIds: data.domainIds  // 拦截器会转换为 domain_ids
       }

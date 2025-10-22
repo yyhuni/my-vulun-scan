@@ -171,4 +171,14 @@
   .dark * {
     scrollbar-color: oklch(0.556 0 0 / 0.4) transparent;
   }
+
+  /* 隐藏滚动条但保持可滚动 */
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari and Opera */
+  }
 }

@@ -89,6 +89,62 @@ class OrganizationViewSet(viewsets.ModelViewSet):
             'deletedOrganizationCount': deleted_count
         }, status=status.HTTP_200_OK)
     
+    @action(detail=True, methods=['post'], url_path='domains/add')
+    def add_domains(self, request, pk=None):
+        """
+        批量关联已存在的域名到组织
+        
+        路由: POST /api/organizations/{organization_id}/domains/add/
+        
+        请求体格式:
+        {
+            "domainIds": [1, 2, 3]
+        }
+        
+        返回格式:
+        {
+            "message": "成功关联 3 个域名，2 个已存在关联",
+            "successCount": 3,
+            "failedCount": 0
+        }
+        
+        说明:
+        - 只关联已存在的域名，不创建新域名
+        - 如果域名不存在，会统计到 failedCount
+        - 如果域名已经关联到该组织，会被自动忽略（不算失败）
+        """
+        domain_ids = request.data.get('domain_ids')  # 拦截器会自动转换
+        
+        if not domain_ids or not isinstance(domain_ids, list):
+            return Response(
+                {'error': 'domainIds 是必需的，且必须是数组'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 获取组织对象
+        organization = self.get_object()
+        
+        # 查询存在的域名
+        existing_domains = list(Domain.objects.filter(id__in=domain_ids))
+        existing_domain_ids = {domain.id for domain in existing_domains}
+        
+        # 计算失败的域名ID（不存在的）
+        requested_domain_ids = set(domain_ids)
+        failed_domain_ids = requested_domain_ids - existing_domain_ids
+        
+        # 批量关联（add 方法会自动忽略已存在的关联）
+        if existing_domains:
+            organization.domains.add(*existing_domains)
+        
+        success_count = len(existing_domains)
+        failed_count = len(failed_domain_ids)
+        
+        return Response({
+            'message': f'成功关联 {success_count} 个域名' + (f'，{failed_count} 个不存在' if failed_count > 0 else ''),
+            'successCount': success_count,
+            'failedCount': failed_count
+        }, status=status.HTTP_200_OK)
+    
     @action(detail=True, methods=['post'], url_path='domains/remove')
     def remove_domain(self, request, pk=None):
         """
@@ -298,7 +354,7 @@ class DomainViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='batch-delete')
     def batch_delete(self, request):
         """
-        批量删除域名（自定义接口，适配前端）
+        批量删除域名
         
         请求体格式:
         {

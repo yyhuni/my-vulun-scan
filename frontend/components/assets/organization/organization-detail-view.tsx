@@ -3,6 +3,7 @@
 import React from "react"
 import { useOrganization } from "@/hooks/use-organizations"
 import { useDeleteDomainFromOrganization } from "@/hooks/use-domains"
+import { useQueryClient } from "@tanstack/react-query"
 import { LoadingState } from "@/components/loading-spinner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -32,6 +33,7 @@ interface OrganizationDetailViewProps {
  */
 export function OrganizationDetailView({ organizationId }: OrganizationDetailViewProps) {
   const { data: organization, isLoading, error, refetch } = useOrganization(parseInt(organizationId))
+  const queryClient = useQueryClient()
   
   // 关联域名对话框状态
   const [isLinkDomainDialogOpen, setIsLinkDomainDialogOpen] = React.useState(false)
@@ -41,6 +43,17 @@ export function OrganizationDetailView({ organizationId }: OrganizationDetailVie
   
   // 移除域名的 mutation
   const deleteDomainMutation = useDeleteDomainFromOrganization()
+  
+  // 预加载域名列表数据（鼠标悬停时）
+  const handlePrefetchDomains = () => {
+    queryClient.prefetchQuery({
+      queryKey: ['domains', 'all', { page: 1, pageSize: 100 }],
+      queryFn: async () => {
+        const { DomainService } = await import('@/services/domain.service')
+        return DomainService.getAllDomains({ page: 1, pageSize: 100 })
+      },
+    })
+  }
 
   // 格式化日期
   const formatDate = (dateString: string): string => {
@@ -159,7 +172,11 @@ export function OrganizationDetailView({ organizationId }: OrganizationDetailVie
                 </CardDescription>
               </div>
             </div>
-            <Button size="sm" onClick={() => setIsLinkDomainDialogOpen(true)}>
+            <Button 
+              size="sm" 
+              onClick={() => setIsLinkDomainDialogOpen(true)}
+              onMouseEnter={handlePrefetchDomains}
+            >
               <LinkIcon />
               关联域名
             </Button>

@@ -254,9 +254,8 @@ export const createOrganizationColumns = ({
                   <Badge 
                     variant="outline" 
                     className="justify-start text-xs cursor-default"
-                    title={`还有 ${remainingCount} 个域名`}
                   >
-                    还有 {remainingCount} 个
+                    ...
                   </Badge>
                 </TooltipTrigger>
                 <TooltipContent 

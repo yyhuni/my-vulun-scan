@@ -87,6 +87,10 @@ export function AddDomainDialog({
   // Popover Portal 容器（挂载到对话框内部，避免滚动被锁定）
   const popoverContainerRef = useRef<HTMLDivElement | null>(null)
   
+  // 行号列和输入框的 ref（用于同步滚动）
+  const lineNumbersRef = useRef<HTMLDivElement | null>(null)
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+  
   // 同步 presetOrganizationId 的变化
   React.useEffect(() => {
     if (presetOrganizationId) {
@@ -223,6 +227,13 @@ export function AddDomainDialog({
   // 表单验证
   const isFormValid = formData.domains.trim().length > 0 && formData.organizationId !== "" && invalidDomains.length === 0
 
+  // 同步输入框和行号列的滚动
+  const handleTextareaScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
+    if (lineNumbersRef.current) {
+      lineNumbersRef.current.scrollTop = e.currentTarget.scrollTop
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {/* 触发按钮 - 仅在非外部控制时显示 */}
@@ -250,24 +261,44 @@ export function AddDomainDialog({
         {/* 表单 */}
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
-            {/* 域名输入框 - 支持多行 */}
+            {/* 域名输入框 - 支持多行，带行号 */}
             <div className="grid gap-2">
               <Label htmlFor="domains">
                 域名 <span className="text-destructive">*</span>
               </Label>
-              <Textarea
-                id="domains"
-                value={formData.domains}
-                onChange={(e) => handleInputChange("domains", e.target.value)}
-                placeholder={`请输入域名，每行一个
+              <div className="relative border rounded-md overflow-hidden bg-background">
+                <div className="flex">
+                  {/* 行号列 */}
+                  <div className="flex-shrink-0 w-12 bg-muted/30 border-r select-none overflow-hidden">
+                    <div 
+                      ref={lineNumbersRef}
+                      className="py-3 px-2 text-right font-mono text-xs text-muted-foreground leading-[1.4] min-h-[120px] max-h-[300px] overflow-y-auto scrollbar-hide"
+                    >
+                      {Array.from({ length: Math.max(formData.domains.split('\n').length, 5) }, (_, i) => (
+                        <div key={i + 1} className="h-[20px]">
+                          {i + 1}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {/* 输入框 */}
+                  <Textarea
+                    ref={textareaRef}
+                    id="domains"
+                    value={formData.domains}
+                    onChange={(e) => handleInputChange("domains", e.target.value)}
+                    onScroll={handleTextareaScroll}
+                    placeholder={`请输入域名，每行一个
 例如：
 example.com
 test.com
 demo.org`}
-                disabled={createDomain.isPending}
-                rows={5}
-                className="font-mono"
-              />
+                    disabled={createDomain.isPending}
+                    className="font-mono min-h-[120px] max-h-[300px] overflow-y-auto resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 leading-[1.4] text-sm py-3"
+                    style={{ lineHeight: '20px' }}
+                  />
+                </div>
+              </div>
               <div className="text-xs text-muted-foreground">
                 {domainCount} 个域名
               </div>
