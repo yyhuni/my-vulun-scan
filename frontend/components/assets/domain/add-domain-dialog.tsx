@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useRef } from "react"
-import { Plus, Globe, Building2, AlertCircle, Loader2, Check, ChevronsUpDown } from "lucide-react"
+import { Plus, Globe, Building2, AlertCircle, Loader2, Check, ChevronsUpDown, ChevronLeft, ChevronRight } from "lucide-react"
 
 // 导入 UI 组件
 import { Button } from "@/components/ui/button"
@@ -81,6 +81,13 @@ export function AddDomainDialog({
 
   // 组织选择器状态
   const [openOrgPopover, setOpenOrgPopover] = useState(false)
+  
+  // 组织列表分页状态
+  const [orgPage, setOrgPage] = useState(1)
+  const [orgPageSize, setOrgPageSize] = useState(20) // 默认每页20个
+  
+  // 组织搜索关键词（用于前端过滤）
+  const [orgSearchKeyword, setOrgSearchKeyword] = useState("")
 
   const [invalidDomains, setInvalidDomains] = useState<Array<{ index: number; originalDomain: string; error: string }>>([])
 
@@ -101,15 +108,18 @@ export function AddDomainDialog({
     }
   }, [presetOrganizationId])
 
-  // 使用 React Query 获取组织列表
+  // 使用 React Query 获取组织列表（支持分页）
   const { 
     data: organizationsData, 
     isLoading: isLoadingOrganizations,
     error: organizationsError 
   } = useOrganizations(
     {
-      page: 1,
-      pageSize: 1000, // 获取足够多的组织用于选择
+      page: orgPage,
+      pageSize: orgPageSize,
+    },
+    {
+      enabled: open, // 只在对话框打开时请求
     }
   )
 
@@ -267,21 +277,21 @@ export function AddDomainDialog({
                 域名 <span className="text-destructive">*</span>
               </Label>
               <div className="relative border rounded-md overflow-hidden bg-background">
-                <div className="flex">
-                  {/* 行号列 */}
+                <div className="flex h-[324px]">
+                  {/* 行号列 - 固定显示15行 */}
                   <div className="flex-shrink-0 w-12 bg-muted/30 border-r select-none overflow-hidden">
                     <div 
                       ref={lineNumbersRef}
-                      className="py-3 px-2 text-right font-mono text-xs text-muted-foreground leading-[1.4] min-h-[120px] max-h-[300px] overflow-y-auto scrollbar-hide"
+                      className="py-3 px-2 text-right font-mono text-xs text-muted-foreground leading-[1.4] h-full overflow-y-auto scrollbar-hide"
                     >
-                      {Array.from({ length: Math.max(formData.domains.split('\n').length, 5) }, (_, i) => (
+                      {Array.from({ length: Math.max(formData.domains.split('\n').length, 15) }, (_, i) => (
                         <div key={i + 1} className="h-[20px]">
                           {i + 1}
                         </div>
                       ))}
                     </div>
                   </div>
-                  {/* 输入框 */}
+                  {/* 输入框 - 固定高度显示15行 */}
                   <Textarea
                     ref={textareaRef}
                     id="domains"
@@ -294,7 +304,7 @@ example.com
 test.com
 demo.org`}
                     disabled={createDomain.isPending}
-                    className="font-mono min-h-[120px] max-h-[300px] overflow-y-auto resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 leading-[1.4] text-sm py-3"
+                    className="font-mono h-full overflow-y-auto resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 leading-[1.4] text-sm py-3"
                     style={{ lineHeight: '20px' }}
                   />
                 </div>
