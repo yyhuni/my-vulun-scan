@@ -77,70 +77,7 @@ export function useEndpointsByDomain(domainId: number, params?: Omit<GetEndpoint
   })
 }
 
-// 根据子域名ID获取 Endpoint 列表（使用专用路由）
-export function useEndpointsBySubdomain(subdomainId: number, params?: Omit<GetEndpointsRequest, 'subdomainId'>) {
-  const defaultParams: GetEndpointsRequest = {
-    page: 1,
-    pageSize: 10,
-    ...params
-  }
-  
-  return useQuery({
-    queryKey: endpointKeys.bySubdomain(subdomainId, defaultParams),
-    queryFn: () => EndpointService.getEndpointsBySubdomainId(subdomainId, defaultParams),
-    select: (response) => {
-      // RESTful 标准：直接返回数据
-      return response as GetEndpointsResponse
-    },
-    enabled: !!subdomainId,
-  })
-}
 
-// 创建 Endpoint（完全自动化）
-export function useCreateEndpoint() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (data: {
-      endpoints: Array<CreateEndpointRequest>
-    }) => EndpointService.createEndpoints(data),
-    onMutate: async () => {
-      toast.loading('正在创建端点...', { id: 'create-endpoint' })
-    },
-    onSuccess: (response) => {
-      // 关闭加载提示
-      toast.dismiss('create-endpoint')
-      
-      const { createdCount, existedCount } = response
-      
-      // 打印后端响应
-      console.log('创建端点成功')
-      console.log('后端响应:', response)
-      
-      // 前端自己构造成功提示消息
-      if (existedCount > 0) {
-        toast.warning(
-          `成功创建 ${createdCount} 个端点（${existedCount} 个已存在）`
-        )
-      } else {
-        toast.success(`成功创建 ${createdCount} 个端点`)
-      }
-      
-      // 刷新所有端点相关查询（通配符匹配）
-      queryClient.invalidateQueries({ queryKey: ['endpoints'] })
-    },
-    onError: (error: any) => {
-      // 关闭加载提示
-      toast.dismiss('create-endpoint')
-      
-      console.error('创建端点失败:', error)
-      console.error('后端响应:', error?.response?.data || error)
-      
-      // 前端自己构造错误提示
-      toast.error('创建端点失败，请查看控制台日志')
-    },
-  })
-}
 
 // 删除单个 Endpoint
 export function useDeleteEndpoint() {

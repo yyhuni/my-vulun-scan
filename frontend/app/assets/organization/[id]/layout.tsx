@@ -29,7 +29,7 @@ export default function OrganizationLayout({
 
   // 获取当前激活的 Tab
   const getActiveTab = () => {
-    if (pathname.includes("/subdomains")) return "subdomains"
+    if (pathname.includes("/domains")) return "domains"
     if (pathname.includes("/urls")) return "urls"
     if (pathname.includes("/assets")) return "assets"
     return ""
@@ -39,7 +39,7 @@ export default function OrganizationLayout({
   const basePath = `/assets/organization/${id}`
   const tabPaths = {
     assets: `${basePath}/assets`,
-    subdomains: `${basePath}/subdomains`,
+    domains: `${basePath}/domains`,
     urls: `${basePath}/urls`,
   }
 
@@ -123,8 +123,8 @@ export default function OrganizationLayout({
             <TabsTrigger value="assets" asChild>
               <Link href={tabPaths.assets}>主资产</Link>
             </TabsTrigger>
-            <TabsTrigger value="subdomains" asChild>
-              <Link href={tabPaths.subdomains}>子域名</Link>
+            <TabsTrigger value="domains" asChild>
+              <Link href={tabPaths.domains}>域名</Link>
             </TabsTrigger>
             <TabsTrigger value="urls" asChild>
               <Link href={tabPaths.urls}>URL</Link>

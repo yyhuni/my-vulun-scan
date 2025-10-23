@@ -1,6 +1,6 @@
 import { api } from "@/lib/api-client"
 import type { Organization, OrganizationsResponse } from "@/types/organization.types"
-import type { Domain } from "@/types/domain.types"
+import type { Asset } from "@/types/asset.types"
 
 
 export class OrganizationService {
@@ -113,6 +113,48 @@ export class OrganizationService {
     }>('/organizations/batch_delete/', {
       organizationIds  // ✅ 使用驼峰命名，拦截器会自动转换为 organization_ids
     })
+    return response.data
+  }
+
+  // ========== 组织与资产关联操作 ==========
+
+  /**
+   * 关联资产到组织（单个）
+   * @param data - 关联请求对象
+   * @param data.organizationId - 组织ID
+   * @param data.assetId - 资产ID
+   * @returns Promise<{ message: string }>
+   */
+  static async linkAssetToOrganization(data: {
+    organizationId: number
+    assetId: number
+  }): Promise<{ message: string }> {
+    const response = await api.post<{ message: string }>(
+      `/organizations/${data.organizationId}/assets/`,
+      {
+        assetId: data.assetId  // 拦截器会转换为 asset_id
+      }
+    )
+    return response.data
+  }
+
+  /**
+   * 从组织中移除资产
+   * @param data - 移除请求对象
+   * @param data.organizationId - 组织ID
+   * @param data.assetId - 资产ID
+   * @returns Promise<{ message: string }>
+   */
+  static async unlinkAssetFromOrganization(data: {
+    organizationId: number
+    assetId: number
+  }): Promise<{ message: string }> {
+    const response = await api.post<{ message: string }>(
+      `/organizations/${data.organizationId}/assets/remove/`,
+      {
+        assetId: data.assetId  // 拦截器会转换为 asset_id
+      }
+    )
     return response.data
   }
 

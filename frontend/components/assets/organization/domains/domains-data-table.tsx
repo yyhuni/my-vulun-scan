@@ -55,17 +55,17 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-// 导入子域名类型定义
-import type { SubDomain } from "@/types/subdomain.types"
+// 导入域名类型定义
+import type { Domain } from "@/types/domain.types"
 import type { PaginationInfo } from "@/types/common.types"
 
 // 组件属性类型定义
-interface SubdomainsDataTableProps {
-  data: SubDomain[]                                  // 子域名数据数组
-  columns: ColumnDef<SubDomain>[]                    // 列定义数组
-  onAddNew?: () => void                          // 添加新子域名的回调函数
+interface DomainsDataTableProps {
+  data: Domain[]                                  // 域名数据数组
+  columns: ColumnDef<Domain>[]                    // 列定义数组
+  onAddNew?: () => void                          // 添加新域名的回调函数
   onBulkDelete?: () => void                      // 批量删除回调函数
-  onSelectionChange?: (selectedRows: SubDomain[]) => void  // 选中行变化回调
+  onSelectionChange?: (selectedRows: Domain[]) => void  // 选中行变化回调
   searchPlaceholder?: string                     // 搜索框占位符
   searchColumn?: string                          // 搜索的列名
   addButtonText?: string                         // 添加按钮文本
@@ -77,24 +77,24 @@ interface SubdomainsDataTableProps {
 }
 
 /**
- * 子域名数据表格组件
- * 专门用于显示和管理子域名数据的表格
+ * 域名数据表格组件
+ * 专门用于显示和管理域名数据的表格
  * 包含搜索、分页、列显示控制等功能
  */
-export function SubdomainsDataTable({
+export function DomainsDataTable({
   data = [],
   columns,
   onAddNew,
   onBulkDelete,
   onSelectionChange,
-  searchPlaceholder = "Search subdomains...",
+  searchPlaceholder = "Search domains...",
   searchColumn = "name",
   addButtonText = "Add",
   pagination: externalPagination,
   setPagination: setExternalPagination,
   paginationInfo,
   onPaginationChange,
-}: SubdomainsDataTableProps) {
+}: DomainsDataTableProps) {
   // 表格状态管理
   // 选中行状态，key为行id，value为true或false
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({})
@@ -210,12 +210,12 @@ export function SubdomainsDataTable({
                       onCheckedChange={(value) => column.toggleVisibility(!!value)}
                     >
                       {column.id === "id" && "ID"}
-                      {column.id === "name" && "Subdomain"}
-                      {column.id === "domainId" && "Domain ID"}
-                      {column.id === "domain" && "Domain"}
+                      {column.id === "name" && "Domain"}
+                      {column.id === "assetId" && "Asset ID"}
+                      {column.id === "asset" && "Asset"}
                       {column.id === "createdAt" && "Created At"}
                       {column.id === "updatedAt" && "Updated At"}
-                      {!["id", "name", "domainId", "domain", "createdAt", "updatedAt"].includes(column.id) && column.id}
+                      {!["id", "name", "assetId", "asset", "createdAt", "updatedAt"].includes(column.id) && column.id}
                     </DropdownMenuCheckboxItem>
                   )
                 })}
@@ -239,7 +239,7 @@ export function SubdomainsDataTable({
             </Button>
           )}
 
-          {/* 添加新子域名按钮 */}
+          {/* 添加新域名按钮 */}
           {onAddNew && (
             <Button onClick={onAddNew} size="sm">
               <IconPlus />

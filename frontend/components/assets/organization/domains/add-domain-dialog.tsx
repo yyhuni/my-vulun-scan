@@ -22,55 +22,52 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 
 // 导入类型定义
-import type { SubDomain } from '@/types/subdomain.types'
-import { useCreateSubdomainForDomain } from "@/hooks/use-subdomains"
+import type { Domain } from '@/types/domain.types'
+import { useCreateDomain } from "@/hooks/use-domains"
 // 导入验证工具
 import { DomainValidator } from '@/lib/domain-validator'
 
 // 组件属性类型定义
-interface AddSubdomainDialogProps {
-  organizationId?: string                      // 组织ID（用于获取域名列表）
-  domainId?: string                            // 域名ID（可选）
-  domainName?: string                          // 域名名称（可选，用于验证）
-  onAdd: (subdomains: SubDomain[]) => void    // 添加成功回调函数
+interface AddDomainDialogProps {
+  assetId?: string                             // 资产ID（可选）
+  assetName?: string                           // 资产名称（可选，用于验证）
+  onAdd: (domains: Domain[]) => void          // 添加成功回调函数
   open?: boolean                               // 外部控制对话框开关状态
   onOpenChange?: (open: boolean) => void       // 外部控制对话框开关回调
 }
 
 /**
- * 添加子域名对话框组件
- * 提供添加新子域名的表单界面，支持批量添加
+ * 添加域名对话框组件
+ * 提供添加新域名的表单界面，支持批量添加
  * 
  * 功能特性：
- * 1. 支持添加多个子域名(每行一个)
- * 2. 选择所属域名
- * 3. 表单验证
- * 4. 错误处理
- * 5. 加载状态
- * 6. 用户友好的交互
+ * 1. 支持添加多个域名(每行一个)
+ * 2. 表单验证
+ * 3. 错误处理
+ * 4. 加载状态
+ * 5. 用户友好的交互
  */
-export function AddSubdomainDialog({ 
-  organizationId,
-  domainId,
-  domainName,
+export function AddDomainDialog({ 
+  assetId,
+  assetName,
   onAdd, 
   open: externalOpen, 
   onOpenChange: externalOnOpenChange 
-}: AddSubdomainDialogProps) {
+}: AddDomainDialogProps) {
   // 对话框开关状态 - 支持外部控制
   const [internalOpen, setInternalOpen] = useState(false)
   const open = externalOpen !== undefined ? externalOpen : internalOpen
   const setOpen = externalOnOpenChange || setInternalOpen
   
-  // 子域名文本输入
-  const [subdomainsText, setSubdomainsText] = useState("")
+  // 域名文本输入
+  const [domainsText, setDomainsText] = useState("")
   
   // 使用 React Query mutation
-  const createSubdomainMutation = useCreateSubdomainForDomain()
+  const createDomainMutation = useCreateDomain()
 
-  // 实时分析子域名输入
+  // 实时分析域名输入
   const domainAnalysis = useMemo(() => {
-    const lines = subdomainsText
+    const lines = domainsText
       .split('\n')
       .map(line => line.trim())
       .filter(line => line.length > 0)
@@ -86,13 +83,13 @@ export function AddSubdomainDialog({
     const valid: string[] = []
     const invalid: string[] = []
 
-    lines.forEach((subdomain) => {
-      const basic = DomainValidator.validateSubdomain(subdomain)
-      if (!basic.isValid) {
-        invalid.push(subdomain)
+    lines.forEach((domain) => {
+      const basic = DomainValidator.validateDomainBatch([domain])
+      if (basic.length === 0 || !basic[0].isValid) {
+        invalid.push(domain)
         return
       }
-      valid.push(subdomain)
+      valid.push(domain)
     })
 
     return {
@@ -100,7 +97,7 @@ export function AddSubdomainDialog({
       valid,
       invalid
     }
-  }, [subdomainsText])
+  }, [domainsText])
 
 
   // 处理表单提交
@@ -109,25 +106,25 @@ export function AddSubdomainDialog({
 
     // 验证是否有输入
     if (domainAnalysis.totalCount === 0) {
-      toast.error('请输入至少一个子域名')
+      toast.error('请输入至少一个域名')
       return
     }
 
     // 检查是否有无效域名格式
     if (domainAnalysis.invalid.length > 0) {
-      toast.error(`发现 ${domainAnalysis.invalid.length} 个无效子域名格式`)
+      toast.error(`发现 ${domainAnalysis.invalid.length} 个无效域名格式`)
       return
     }
 
-    // 检查是否有有效的子域名
+    // 检查是否有有效的域名
     if (domainAnalysis.valid.length === 0) {
-      toast.error('没有有效的子域名')
+      toast.error('没有有效的域名')
       return
     }
 
-    // TODO: 调用后端批量创建子域名API
-    toast.info('提交子域名列表：' + domainAnalysis.valid.join(', '))
-    console.log('准备提交的子域名列表:', domainAnalysis.valid)
+    // TODO: 调用后端批量创建域名API
+    toast.info('提交域名列表：' + domainAnalysis.valid.join(', '))
+    console.log('准备提交的域名列表:', domainAnalysis.valid)
     
     // 成功后调用回调函数
     onAdd([])
@@ -138,26 +135,26 @@ export function AddSubdomainDialog({
 
   // 处理对话框关闭
   const handleOpenChange = (newOpen: boolean) => {
-    if (!createSubdomainMutation.isPending) {
+    if (!createDomainMutation.isPending) {
       setOpen(newOpen)
       // 关闭时重置表单
       if (!newOpen) {
-        setSubdomainsText('')
+        setDomainsText('')
       }
     }
   }
 
-  // 移除无效的子域名
+  // 移除无效的域名
   const handleRemoveInvalid = () => {
     if (domainAnalysis.valid.length === 0) {
-      setSubdomainsText('')
+      setDomainsText('')
       toast.info('已清空所有内容')
       return
     }
     
-    // 只保留有效的子域名
-    setSubdomainsText(domainAnalysis.valid.join('\n'))
-    toast.success(`已移除 ${domainAnalysis.invalid.length} 个无效子域名`)
+    // 只保留有效的域名
+    setDomainsText(domainAnalysis.valid.join('\n'))
+    toast.success(`已移除 ${domainAnalysis.invalid.length} 个无效域名`)
   }
 
   return (
@@ -167,7 +164,7 @@ export function AddSubdomainDialog({
         <DialogTrigger asChild>
           <Button size="sm">
             <Plus />
-            添加子域名
+            添加域名
           </Button>
         </DialogTrigger>
       )}
@@ -177,34 +174,34 @@ export function AddSubdomainDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <Network />
-            <span>添加子域名</span>
+            <span>添加域名</span>
           </DialogTitle>
           <DialogDescription>
-            每行输入一个完整的子域名（如 www.example.com、api.test.com），后端会自动识别并归属到对应的域名
+            每行输入一个完整的域名（如 www.example.com、api.test.com）
           </DialogDescription>
         </DialogHeader>
         
         {/* 表单 */}
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
-            {/* 子域名输入框 */}
+            {/* 域名输入框 */}
             <div className="grid gap-2">
-              <Label htmlFor="subdomains">
-                子域名列表 <span className="text-destructive">*</span>
+              <Label htmlFor="domains">
+                域名列表 <span className="text-destructive">*</span>
               </Label>
               <Textarea
-                id="subdomains"
-                value={subdomainsText}
-                onChange={(e) => setSubdomainsText(e.target.value)}
+                id="domains"
+                value={domainsText}
+                onChange={(e) => setDomainsText(e.target.value)}
                 placeholder="www.example.com\napi.test.com\nadmin.domain.org\napp.site.net"
-                disabled={createSubdomainMutation.isPending}
+                disabled={createDomainMutation.isPending}
                 rows={20}
                 className="font-mono text-sm min-h-[400px] resize-y"
               />
               <div className="flex justify-between items-center text-xs">
                 <span className="text-muted-foreground flex items-center gap-1">
                   <AlertCircle />
-                  后端会自动识别并归属域名
+                  请输入有效的域名格式
                 </span>
                 <span className="font-medium text-primary">
                   共 {domainAnalysis.totalCount} 个，有效 {domainAnalysis.valid.length} 个
@@ -232,18 +229,18 @@ export function AddSubdomainDialog({
                   )}
                 </div>
 
-                {/* 无效子域名列表 */}
+                {/* 无效域名列表 */}
                 {domainAnalysis.invalid.length > 0 && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <div className="text-xs text-destructive">格式无效的子域名：</div>
+                      <div className="text-xs text-destructive">格式无效的域名：</div>
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
                         className="h-6 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
                         onClick={handleRemoveInvalid}
-                        disabled={createSubdomainMutation.isPending}
+                        disabled={createDomainMutation.isPending}
                       >
                         <X />
                         移除无效项
@@ -268,15 +265,15 @@ export function AddSubdomainDialog({
               type="button" 
               variant="outline" 
               onClick={() => handleOpenChange(false)}
-              disabled={createSubdomainMutation.isPending}
+              disabled={createDomainMutation.isPending}
             >
               取消
             </Button>
             <Button 
               type="submit" 
-              disabled={createSubdomainMutation.isPending || domainAnalysis.valid.length === 0}
+              disabled={createDomainMutation.isPending || domainAnalysis.valid.length === 0}
             >
-              {createSubdomainMutation.isPending ? (
+              {createDomainMutation.isPending ? (
                 <>
                   <LoadingSpinner/>
                   创建中...
@@ -284,7 +281,7 @@ export function AddSubdomainDialog({
               ) : (
                 <>
                   <Plus />
-                  创建子域名
+                  创建域名
                 </>
               )}
             </Button>

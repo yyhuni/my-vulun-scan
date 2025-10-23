@@ -48,9 +48,6 @@ class DomainPagination(BasePagination):
     data_key = 'domains'
 
 
-class SubdomainPagination(BasePagination):
-    """子域名专用分页器"""
-    data_key = 'sub_domains'  # 使用下划线格式，自动转换为 subDomains
 
 
 class EndpointPagination(BasePagination):

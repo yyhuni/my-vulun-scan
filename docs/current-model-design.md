@@ -60,13 +60,13 @@
 | updated_at | DateTimeField | 非空，auto_now，索引 | 当前时间 | 更新时间 |
 | name | CharField(255) | unique，非空，索引 | - | 完整的域名 FQDN（如 example.com） |
 | description | CharField(1000) | 可为空 | NULL | 描述信息 |
-| type | CharField(20) | 非空，索引 | domain | 资产类型：domain（域名）/ ip（IP地址），默认为 domain |
+| type | CharField(20) | 非空，索引 | domain | 资产类型：domain（域名）/ ip（IP地址）/ cidr（网段），自动判断|
 
 **业务逻辑**:
 - **独立存在**: 资产可以独立存在，不需要关联任何组织（允许存在未分组资产）
 - **松散耦合**: 删除所有关联的组织不会删除资产本身，资产仍可正常使用
 - **自动创建根域名**: 创建 Asset 时，系统自动创建一个同名的 Domain 
-- **类型扩展**: 目前 type 字段固定为 'domain'，未来可扩展为 'ip' 等类型
+- **类型扩展**: type 字段支持 'domain'（域名）、'ip'（IP地址）、'cidr'（网段）等类型
 
 **关系**:
 - reverse ForeignKey: domains (包括自动创建的根域名)

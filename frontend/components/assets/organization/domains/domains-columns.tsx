@@ -18,7 +18,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { MoreHorizontal, Eye, Trash2, ChevronsUpDown, ChevronUp, ChevronDown, Copy, Check } from "lucide-react"
-import type { SubDomain } from "@/types/subdomain.types"
+import type { Domain } from "@/types/domain.types"
 import { toast } from "sonner"
 
 /**
@@ -102,18 +102,18 @@ function CopyableCell({
 interface CreateColumnsProps {
   formatDate: (dateString: string) => string
   navigate: (path: string) => void
-  handleDelete: (subdomain: SubDomain) => void
+  handleDelete: (domain: Domain) => void
 }
 
 /**
- * 子域名行操作组件
+ * 域名行操作组件
  */
-function SubdomainRowActions({
-  subdomain,
+function DomainRowActions({
+  domain,
   onView,
   onDelete,
 }: {
-  subdomain: SubDomain
+  domain: Domain
   onView: () => void
   onDelete: () => void
 }) {
@@ -181,13 +181,13 @@ function DataTableColumnHeader({
 }
 
 /**
- * 创建子域名表格列定义
+ * 创建域名表格列定义
  */
-export const createSubdomainColumns = ({
+export const createDomainColumns = ({
   formatDate,
   navigate,
   handleDelete,
-}: CreateColumnsProps): ColumnDef<SubDomain>[] => [
+}: CreateColumnsProps): ColumnDef<Domain>[] => [
   // 选择列
   {
     id: "select",
@@ -212,15 +212,15 @@ export const createSubdomainColumns = ({
     enableHiding: false,
   },
 
-  // 子域名列
+  // 域名列
   {
     accessorKey: "name",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="子域名" />
+      <DataTableColumnHeader column={column} title="域名" />
     ),
     cell: ({ row }) => {
       const name = row.getValue("name") as string
-      return <CopyableCell value={name} maxWidth="400px" truncateLength={50} successMessage="已复制子域名" />
+      return <CopyableCell value={name} maxWidth="400px" truncateLength={50} successMessage="已复制域名" />
     },
   },
 
@@ -241,9 +241,9 @@ export const createSubdomainColumns = ({
   {
     id: "actions",
     cell: ({ row }) => (
-      <SubdomainRowActions
-        subdomain={row.original}
-        onView={() => navigate(`/assets/subdomain/${row.original.id}`)}
+      <DomainRowActions
+        domain={row.original}
+        onView={() => navigate(`/assets/domain/${row.original.id}`)}
         onDelete={() => handleDelete(row.original)}
       />
     ),

@@ -10,33 +10,7 @@ import type {
 } from "@/types/url.types"
 
 export class UrlService {
-  // ========== URL 基础操作 ==========
-  /**
-   * 批量创建 URL（自动匹配，缺失则跳过）
-   * @param data - URL 创建请求对象
-   * @param data.urls - URL 详细信息数组
-   * @returns Promise<any> - 创建成功后的 URL 信息数组
-   * @description 后端会自动从 URL 中提取根域名和子域名，仅对已存在的域名/子域名创建 URL；若不存在将被跳过。无需手动指定任何 ID
-   * @note 暂未接入后端 API
-   */
-  static async createUrls(data: {
-    urls: Array<CreateUrlRequest>
-  }): Promise<any> {
-    // TODO: 接入后端 API
-    // const requestData = {
-    //   urls: data.urls
-    // }
-    // const response = await api.post<any>('/urls/create/', requestData)
-    // return response.data
-    
-    // 暂时返回模拟数据
-    return {
-      message: '暂未接入后端 API',
-      requestedCount: data.urls.length,
-      createdCount: 0,
-      existedCount: 0
-    }
-  }
+
 
   /**
    * 获取单个 URL 详情
@@ -109,29 +83,6 @@ export class UrlService {
     }
   }
 
-  /**
-   * 根据子域名ID获取 URL 列表（专用路由）
-   * @param subdomainId - 子域名ID
-   * @param params - 其他查询参数
-   * @returns Promise<GetUrlsResponse>
-   * @note 暂未接入后端 API
-   */
-  static async getUrlsBySubdomainId(subdomainId: number, params: GetUrlsRequest): Promise<GetUrlsResponse> {
-    // TODO: 接入后端 API
-    // const response = await api.get<GetUrlsResponse>(`/subdomains/${subdomainId}/urls/`, {
-    //   params
-    // })
-    // return response.data
-    
-    // 暂时返回模拟数据
-    return {
-      urls: [],
-      total: 0,
-      page: params.page || 1,
-      pageSize: params.pageSize || 10,
-      totalPages: 0
-    }
-  }
 
   /**
    * 删除 URL

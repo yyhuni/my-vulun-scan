@@ -20,7 +20,6 @@ export function useRoutePrefetch(currentPath?: string) {
       const routes = [
         '/assets/organization',
         '/assets/domain',
-        '/assets/subdomain',
         '/assets/endpoint',
         '/scan/tools',
         '/scan/history',
@@ -38,9 +37,7 @@ export function useRoutePrefetch(currentPath?: string) {
         const domainIdMatch = currentPath.match(/\/assets\/domain\/(\d+)/)
         if (domainIdMatch) {
           const domainId = domainIdMatch[1]
-          router.prefetch(`/assets/domain/${domainId}/subdomains`)
           router.prefetch(`/assets/domain/${domainId}/endpoints`)
-          console.log(`  ↳ 智能预加载域名子路由: /assets/domain/${domainId}/subdomains`)
           console.log(`  ↳ 智能预加载域名子路由: /assets/domain/${domainId}/endpoints`)
         }
       }
@@ -70,23 +67,17 @@ export function useSmartRoutePrefetch(currentPath: string) {
         // 在组织页面，预加载域名页面
         router.prefetch('/assets/domain')
       } else if (currentPath.includes('/assets/domain')) {
-        // 在域名页面，预加载子域名和端点页面
-        router.prefetch('/assets/subdomain')
+        // 在域名页面，预加载端点页面
         router.prefetch('/assets/endpoint')
         
         // 如果是域名详情页（如 /assets/domain/146），预加载子路由
         const domainIdMatch = currentPath.match(/\/assets\/domain\/(\d+)$/)
         if (domainIdMatch) {
           const domainId = domainIdMatch[1]
-          router.prefetch(`/assets/domain/${domainId}/subdomains`)
           router.prefetch(`/assets/domain/${domainId}/endpoints`)
-          console.log(`  ↳ 预加载域名子路由: /assets/domain/${domainId}/subdomains`)
           console.log(`  ↳ 预加载域名子路由: /assets/domain/${domainId}/endpoints`)
         }
-      } else if (currentPath.includes('/assets/subdomain')) {
-        // 在子域名页面，预加载端点页面
-        router.prefetch('/assets/endpoint')
-      } else if (currentPath.includes('/scan')) {
+      } else if (currentPath.includes('/assets/scan')) {
         // 在扫描页面，预加载资产页面
         router.prefetch('/assets/organization')
         router.prefetch('/assets/domain')
