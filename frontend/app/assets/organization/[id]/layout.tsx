@@ -1,14 +1,16 @@
 "use client"
 
 import React from "react"
-import { useParams } from "next/navigation"
+import { usePathname, useParams } from "next/navigation"
+import Link from "next/link"
 import { Building2 } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useOrganization } from "@/hooks/use-organizations"
 
 /**
  * 组织详情布局
- * 为主资产页面提供共享的组织信息
+ * 为所有子页面提供共享的组织信息和导航
  */
 export default function OrganizationLayout({
   children,
@@ -16,6 +18,7 @@ export default function OrganizationLayout({
   children: React.ReactNode
 }) {
   const { id } = useParams<{ id: string }>()
+  const pathname = usePathname()
 
   // 使用 React Query 获取组织数据
   const {
@@ -23,6 +26,22 @@ export default function OrganizationLayout({
     isLoading,
     error
   } = useOrganization(Number(id))
+
+  // 获取当前激活的 Tab
+  const getActiveTab = () => {
+    if (pathname.includes("/subdomains")) return "subdomains"
+    if (pathname.includes("/urls")) return "urls"
+    if (pathname.includes("/assets")) return "assets"
+    return ""
+  }
+
+  // Tab 路径映射
+  const basePath = `/assets/organization/${id}`
+  const tabPaths = {
+    assets: `${basePath}/assets`,
+    subdomains: `${basePath}/subdomains`,
+    urls: `${basePath}/urls`,
+  }
 
   // 加载状态
   if (isLoading) {
@@ -36,6 +55,15 @@ export default function OrganizationLayout({
               <Skeleton className="h-7 w-48" />
             </div>
             <Skeleton className="h-4 w-72" />
+          </div>
+        </div>
+
+        {/* Tabs 导航骨架 */}
+        <div className="flex items-center justify-between px-4 lg:px-6">
+          <div className="flex gap-2">
+            <Skeleton className="h-9 w-20" />
+            <Skeleton className="h-9 w-20" />
+            <Skeleton className="h-9 w-24" />
           </div>
         </div>
       </div>
@@ -84,8 +112,25 @@ export default function OrganizationLayout({
             <Building2 />
             {organization.name}
           </h2>
-          <p className="text-muted-foreground">{organization.description}</p>
+          <p className="text-muted-foreground">{organization.description || "暂无描述"}</p>
         </div>
+      </div>
+
+      {/* Tabs 导航 - 使用 Link 确保触发进度条 */}
+      <div className="flex items-center justify-between px-4 lg:px-6">
+        <Tabs value={getActiveTab()} className="w-full">
+          <TabsList>
+            <TabsTrigger value="assets" asChild>
+              <Link href={tabPaths.assets}>主资产</Link>
+            </TabsTrigger>
+            <TabsTrigger value="subdomains" asChild>
+              <Link href={tabPaths.subdomains}>子域名</Link>
+            </TabsTrigger>
+            <TabsTrigger value="urls" asChild>
+              <Link href={tabPaths.urls}>URL</Link>
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
       {/* 子页面内容 */}

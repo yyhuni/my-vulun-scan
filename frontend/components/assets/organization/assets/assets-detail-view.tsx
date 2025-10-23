@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import React, { useState } from "react"
 import { useOrganization } from "@/hooks/use-organizations"
 import { useDeleteDomainFromOrganization } from "@/hooks/use-domains"
 import { useQueryClient } from "@tanstack/react-query"
@@ -8,7 +8,7 @@ import { LoadingState } from "@/components/loading-spinner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { IconBuilding, IconCalendar, IconClock, IconFileText, IconWorld, IconTrash } from "@tabler/icons-react"
+import { IconWorld, IconTrash } from "@tabler/icons-react"
 import Link from "next/link"
 import { LinkDomainDialog } from "@/components/assets/organization/assets/link-domain-dialog"
 import { Link as LinkIcon } from "lucide-react"
@@ -23,23 +23,23 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
-interface OrganizationDetailViewProps {
+interface OrganizationAssetsDetailViewProps {
   organizationId: string
 }
 
 /**
- * 组织详情视图组件
- * 显示组织的详细信息
+ * 组织主资产（域名）详情视图组件
+ * 显示和管理组织下的域名
  */
-export function OrganizationDetailView({ organizationId }: OrganizationDetailViewProps) {
+export function OrganizationAssetsDetailView({ organizationId }: OrganizationAssetsDetailViewProps) {
   const { data: organization, isLoading, error, refetch } = useOrganization(parseInt(organizationId))
   const queryClient = useQueryClient()
   
   // 关联域名对话框状态
-  const [isLinkDomainDialogOpen, setIsLinkDomainDialogOpen] = React.useState(false)
+  const [isLinkDomainDialogOpen, setIsLinkDomainDialogOpen] = useState(false)
   
   // 移除域名确认对话框状态
-  const [domainToRemove, setDomainToRemove] = React.useState<{ id: number; name: string } | null>(null)
+  const [domainToRemove, setDomainToRemove] = useState<{ id: number; name: string } | null>(null)
   
   // 移除域名的 mutation
   const deleteDomainMutation = useDeleteDomainFromOrganization()
@@ -52,19 +52,6 @@ export function OrganizationDetailView({ organizationId }: OrganizationDetailVie
         const { DomainService } = await import('@/services/domain.service')
         return DomainService.getAllDomains({ page: 1, pageSize: 100 })
       },
-    })
-  }
-
-  // 格式化日期
-  const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleString("zh-CN", {
-      year: "numeric",
-      month: "numeric",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false,
     })
   }
 
@@ -121,43 +108,7 @@ export function OrganizationDetailView({ organizationId }: OrganizationDetailVie
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col gap-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <IconBuilding className="text-primary" />
-                </div>
-                <div>
-                  <CardTitle className="text-2xl">{organization.name}</CardTitle>
-                  <CardDescription className="mt-1">Organization</CardDescription>
-                </div>
-              </div>
-
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <IconFileText />
-                <span className="truncate">{organization.description || "无描述"}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <IconCalendar />
-                <span>创建</span>
-                <span className="font-mono">{formatDate(organization.createdAt)}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <IconClock />
-                <span>更新</span>
-                <span className="font-mono">{formatDate(organization.updatedAt)}</span>
-              </div>
-            </div>
-            <div className="text-xs text-muted-foreground">ID: <span className="font-mono">{organization.id}</span></div>
-          </div>
-        </CardHeader>
-      </Card>
-
+    <>
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -192,7 +143,7 @@ export function OrganizationDetailView({ organizationId }: OrganizationDetailVie
                       <IconWorld className="h-4 w-4 text-blue-500" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <Link href={`/assets/domain/${domain.id}`} className="font-medium text-primary hover:underline block truncate">
+                      <Link href={`/assets/domain/${domain.id}/subdomains`} className="font-medium text-primary hover:underline block truncate">
                         {domain.name}
                       </Link>
                       {domain.description && (
@@ -270,6 +221,6 @@ export function OrganizationDetailView({ organizationId }: OrganizationDetailVie
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   )
 }
