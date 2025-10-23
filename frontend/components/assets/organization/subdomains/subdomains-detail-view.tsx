@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { SubdomainsDataTable } from "./subdomains-data-table"
 import { createSubdomainColumns } from "./subdomains-columns"
 import { AddSubdomainDialog } from "./add-subdomain-dialog"
@@ -199,16 +200,15 @@ export function OrganizationSubdomainsDetailView({
         onPaginationChange={handlePaginationChange}
       />
       
-      {/* 添加子域名对话框 - 只在通过 domainId 访问时显示 */}
-      {domainId && domainData && (
-        <AddSubdomainDialog
-          domainId={domainId}
-          domainName={domainData.name}
-          onAdd={handleAddSuccess}
-          open={isAddDialogOpen}
-          onOpenChange={setIsAddDialogOpen}
-        />
-      )}
+      {/* 添加子域名对话框 */}
+      <AddSubdomainDialog
+        organizationId={organizationId}
+        domainId={domainId}
+        domainName={domainData?.name}
+        onAdd={handleAddSuccess}
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+      />
 
       {/* 删除确认对话框 */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

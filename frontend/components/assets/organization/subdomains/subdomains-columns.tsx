@@ -212,19 +212,6 @@ export const createSubdomainColumns = ({
     enableHiding: false,
   },
 
-  // ID 列
-  {
-    accessorKey: "id",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="ID" />
-    ),
-    cell: ({ row }) => (
-      <div className="text-sm text-muted-foreground">
-        {row.getValue("id")}
-      </div>
-    ),
-  },
-
   // 子域名列
   {
     accessorKey: "name",
@@ -234,26 +221,6 @@ export const createSubdomainColumns = ({
     cell: ({ row }) => {
       const name = row.getValue("name") as string
       return <CopyableCell value={name} maxWidth="400px" truncateLength={50} successMessage="已复制子域名" />
-    },
-  },
-
-
-
-  // 所属域名列
-  {
-    accessorKey: "domain",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="所属域名" />
-    ),
-    cell: ({ row }) => {
-      const domain = row.getValue("domain") as { name?: string } | undefined
-      const domainName = domain?.name || "-"
-      
-      return (
-        <div className="text-sm truncate">
-          {domainName}
-        </div>
-      )
     },
   },
 

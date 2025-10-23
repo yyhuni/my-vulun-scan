@@ -29,8 +29,9 @@ import { DomainValidator } from '@/lib/domain-validator'
 
 // 组件属性类型定义
 interface AddSubdomainDialogProps {
-  domainId: string                             // 域名ID
-  domainName: string                           // 域名名称（用于验证）
+  organizationId?: string                      // 组织ID（用于获取域名列表）
+  domainId?: string                            // 域名ID（可选）
+  domainName?: string                          // 域名名称（可选，用于验证）
   onAdd: (subdomains: SubDomain[]) => void    // 添加成功回调函数
   open?: boolean                               // 外部控制对话框开关状态
   onOpenChange?: (open: boolean) => void       // 外部控制对话框开关回调
@@ -49,6 +50,7 @@ interface AddSubdomainDialogProps {
  * 6. 用户友好的交互
  */
 export function AddSubdomainDialog({ 
+  organizationId,
   domainId,
   domainName,
   onAdd, 
@@ -66,7 +68,7 @@ export function AddSubdomainDialog({
   // 使用 React Query mutation
   const createSubdomainMutation = useCreateSubdomainForDomain()
 
-  // 实时分析子域名输入，验证是否属于当前域名
+  // 实时分析子域名输入
   const domainAnalysis = useMemo(() => {
     const lines = subdomainsText
       .split('\n')
@@ -90,10 +92,6 @@ export function AddSubdomainDialog({
         invalid.push(subdomain)
         return
       }
-      if (!DomainValidator.isSubdomainOf(subdomain, domainName)) {
-        invalid.push(subdomain)
-        return
-      }
       valid.push(subdomain)
     })
 
@@ -102,7 +100,7 @@ export function AddSubdomainDialog({
       valid,
       invalid
     }
-  }, [subdomainsText, domainName])
+  }, [subdomainsText])
 
 
   // 处理表单提交
@@ -115,9 +113,9 @@ export function AddSubdomainDialog({
       return
     }
 
-    // 检查是否有无效域名
+    // 检查是否有无效域名格式
     if (domainAnalysis.invalid.length > 0) {
-      toast.error(`发现 ${domainAnalysis.invalid.length} 个无效子域名，这些子域名不属于 ${domainName}`)
+      toast.error(`发现 ${domainAnalysis.invalid.length} 个无效子域名格式`)
       return
     }
 
@@ -127,26 +125,15 @@ export function AddSubdomainDialog({
       return
     }
 
-    try {
-      // 调用后端 API
-      const response = await createSubdomainMutation.mutateAsync({
-        domainId: parseInt(domainId),
-        subdomains: domainAnalysis.valid
-      })
-      
-      // 成功后调用回调函数
-      if (response?.data) {
-        onAdd([])
-      }
-      
-      // 关闭对话框
-      setOpen(false)
-    } catch (error) {
-      // 错误处理已经在 hook 中处理了
-      if (process.env.NODE_ENV === 'development') {
-        console.error('创建子域名失败:', error)
-      }
-    }
+    // TODO: 调用后端批量创建子域名API
+    toast.info('提交子域名列表：' + domainAnalysis.valid.join(', '))
+    console.log('准备提交的子域名列表:', domainAnalysis.valid)
+    
+    // 成功后调用回调函数
+    onAdd([])
+    
+    // 关闭对话框
+    setOpen(false)
   }
 
   // 处理对话框关闭
@@ -193,7 +180,7 @@ export function AddSubdomainDialog({
             <span>添加子域名</span>
           </DialogTitle>
           <DialogDescription>
-            每行输入一个完整的子域名，必须属于当前域名 <span className="font-mono font-semibold">{domainName}</span>。格式：subdomain.{domainName}（如 www.{domainName}、api.{domainName}）
+            每行输入一个完整的子域名（如 www.example.com、api.test.com），后端会自动识别并归属到对应的域名
           </DialogDescription>
         </DialogHeader>
         
@@ -209,7 +196,7 @@ export function AddSubdomainDialog({
                 id="subdomains"
                 value={subdomainsText}
                 onChange={(e) => setSubdomainsText(e.target.value)}
-                placeholder={`www.${domainName}\napi.${domainName}\nadmin.${domainName}\ntest.${domainName}`}
+                placeholder="www.example.com\napi.test.com\nadmin.domain.org\napp.site.net"
                 disabled={createSubdomainMutation.isPending}
                 rows={20}
                 className="font-mono text-sm min-h-[400px] resize-y"
@@ -217,7 +204,7 @@ export function AddSubdomainDialog({
               <div className="flex justify-between items-center text-xs">
                 <span className="text-muted-foreground flex items-center gap-1">
                   <AlertCircle />
-                  所有子域名必须属于 {domainName}
+                  后端会自动识别并归属域名
                 </span>
                 <span className="font-medium text-primary">
                   共 {domainAnalysis.totalCount} 个，有效 {domainAnalysis.valid.length} 个
@@ -235,15 +222,12 @@ export function AddSubdomainDialog({
                 
                 {/* 统计信息 */}
                 <div className="flex flex-wrap gap-2">
-                  <Badge variant="secondary" className="text-xs">
-                    目标域名: {domainName}
-                  </Badge>
                   <Badge variant="default" className="text-xs bg-green-600">
-                    {domainAnalysis.valid.length} 个有效
+                    {domainAnalysis.valid.length} 个有效格式
                   </Badge>
                   {domainAnalysis.invalid.length > 0 && (
                     <Badge variant="destructive" className="text-xs">
-                      {domainAnalysis.invalid.length} 个无效
+                      {domainAnalysis.invalid.length} 个无效格式
                     </Badge>
                   )}
                 </div>
@@ -252,7 +236,7 @@ export function AddSubdomainDialog({
                 {domainAnalysis.invalid.length > 0 && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <div className="text-xs text-destructive">无效的子域名（不属于 {domainName}）：</div>
+                      <div className="text-xs text-destructive">格式无效的子域名：</div>
                       <Button
                         type="button"
                         variant="ghost"

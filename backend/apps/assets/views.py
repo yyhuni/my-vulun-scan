@@ -137,6 +137,59 @@ class OrganizationViewSet(viewsets.ModelViewSet):
             'message': '成功解除域名关联'
         }, status=status.HTTP_200_OK)
     
+    @action(detail=True, methods=['get'], url_path='subdomains')
+    def list_subdomains(self, request, pk=None):
+        """
+        获取组织下所有域名的子域名列表
+        
+        路由: GET /api/organizations/{organization_id}/subdomains/
+        
+        查询参数:
+        - page: 页码
+        - page_size: 每页数量
+        
+        返回格式:
+        {
+            "count": 100,
+            "next": "http://...",
+            "previous": null,
+            "results": [
+                {
+                    "id": 1,
+                    "name": "api.example.com",
+                    "domain": 5,
+                    "is_root": false,
+                    "created_at": "2024-01-01T00:00:00Z",
+                    "updated_at": "2024-01-01T00:00:00Z"
+                }
+            ]
+        }
+        
+        说明:
+        - 查询该组织关联的所有域名
+        - 返回这些域名下的所有子域名
+        - 支持分页
+        """
+        # 获取组织对象
+        organization = self.get_object()
+        
+        # 获取组织关联的所有域名ID
+        domain_ids = organization.domains.values_list('id', flat=True)
+        
+        # 查询这些域名下的所有子域名
+        queryset = Subdomain.objects.filter(domain_id__in=domain_ids).select_related('domain')
+        
+        # 分页
+        paginator = SubdomainPagination()
+        page = paginator.paginate_queryset(queryset, request)
+        
+        if page is not None:
+            serializer = SubdomainSerializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+        
+        serializer = SubdomainSerializer(queryset, many=True)
+        return Response(serializer.data)
+    
 
 class DomainViewSet(viewsets.ModelViewSet):
     """
@@ -167,28 +220,6 @@ class DomainViewSet(viewsets.ModelViewSet):
             queryset = queryset.prefetch_related('organizations')
         return queryset
     
-    def update(self, request, *args, **kwargs):
-        """
-        重写更新方法，当域名 name 变更时，同步更新根子域名的 name
-        """
-        partial = kwargs.pop('partial', False)
-        instance = self.get_object()
-        old_name = instance.name  # 保存旧的域名
-        
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
-        
-        # 如果域名 name 发生了变化，同步更新根子域名
-        new_name = serializer.instance.name
-        if old_name != new_name:
-            # 更新根子域名的 name（根子域名应该与域名同名）
-            Subdomain.objects.filter(
-                domain=instance,
-                is_root=True
-            ).update(name=new_name)
-        
-        return Response(serializer.data)
     
     @action(detail=False, methods=['post'], url_path='create')
     def bulk_create(self, request):
@@ -295,35 +326,7 @@ class DomainViewSet(viewsets.ModelViewSet):
         
         return Response(response_data, status=status.HTTP_201_CREATED)
     
-    @action(detail=False, methods=['post'], url_path='batch-delete')
-    def batch_delete(self, request):
-        """
-        批量删除域名
-        
-        请求体格式:
-        {
-            "domainIds": [1, 2, 3]
-        }
-        """
-        domain_ids = request.data.get('domain_ids')  # 拦截器会自动转换
-        if not domain_ids or not isinstance(domain_ids, list):
-            return Response(
-                {'error': 'domainIds 是必需的，且必须是数组'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # 批量删除
-        _, deleted_info = Domain.objects.filter(id__in=domain_ids).delete()
-        
-        # 提取所有删除数量
-        deleted_domain_count = deleted_info.get('assets.Domain', 0)
-        deleted_subdomain_count = deleted_info.get('assets.Subdomain', 0)
-        
-        return Response({
-            'message': f'成功删除 {deleted_domain_count} 个域名（级联删除 {deleted_subdomain_count} 个子域名）',
-            'deletedDomainCount': deleted_domain_count,
-            'deletedSubdomainCount': deleted_subdomain_count
-        }, status=status.HTTP_200_OK)
+
 
 class SubdomainViewSet(viewsets.ModelViewSet):
     """

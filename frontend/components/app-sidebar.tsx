@@ -94,10 +94,7 @@ const data = {
           title: "组织管理", // 组织管理
           url: "/assets/organization",
         },
-        {
-          title: "域名管理", // 域名管理
-          url: "/assets/domain",
-        },
+        
       ],
     },
     {
