@@ -4,7 +4,7 @@
 
 ## 核心领域模型
 ### Organization 模型
-**作用**: 组织管理，实现多个 Domain 的分组
+**作用**: 组织管理，实现多个 Asset 的分组
 
 | 字段名 | 类型 | 限制 | 默认值 | 说明 |
 |--------|------|------|--------|------|
@@ -15,103 +15,95 @@
 | description | CharField(1000) | 可为空 | NULL | 描述信息 |
 
 **业务逻辑**:
-- **独立存在**: 组织可以独立存在，不需要关联任何域名
-- **松散耦合**: 删除组织不会影响域名实体，只会清理关联表中的记录
-- **灵活管理**: 支持先创建组织，后续再关联域名；也支持随时解除关联
+- **独立存在**: 组织可以独立存在，不需要关联任何资产
+- **松散耦合**: 删除组织不会影响资产实体，只会清理关联表中的记录
+- **灵活管理**: 支持先创建组织，后续再关联资产；也支持随时解除关联
 
 **关系**:
-- ManyToManyField: domains (通过 organization_domains 关联表)
+- ManyToManyField: assets (通过 organization_assets 关联表)
 
 **数据库表名**: `organizations`
 
-### organization_domains 关联表
-**作用**: Organization 和 Domain 的多对多关联表
+### organization_assets 关联表
+**作用**: Organization 和 Asset 的多对多关联表
 
 | 字段名 | 类型 | 限制 | 默认值 | 说明 |
 |--------|------|------|--------|------|
 | organization_id | ForeignKey | 主键，非空 | - | 组织ID，外键关联 organizations 表 |
-| domain_id | ForeignKey | 主键，非空 | - | 域名ID，外键关联 domains 表 |
+| asset_id | ForeignKey | 主键，非空 | - | 资产ID，外键关联 assets 表 |
 
 **约束**:
-- **复合主键**: (organization_id, domain_id) - 确保每个组织-域名组合只能存在一条记录
+- **复合主键**: (organization_id, asset_id) - 确保每个组织-资产组合只能存在一条记录
 - **外键约束**: organization_id → organizations.id (CASCADE DELETE)
-- **外键约束**: domain_id → domains.id (CASCADE DELETE)
-- **唯一性保证**: 通过复合主键自动防止同一组织重复关联同一域名
+- **外键约束**: asset_id → assets.id (CASCADE DELETE)
+- **唯一性保证**: 通过复合主键自动防止同一组织重复关联同一资产
 
 **删除行为**:
-- **删除组织**: 只删除关联表记录，域名实体保留（可能成为未分组域名）
-- **删除域名**: 只删除关联表记录，组织实体保留
+- **删除组织**: 只删除关联表记录，资产实体保留（可能成为未分组资产）
+- **删除资产**: 只删除关联表记录，组织实体保留
 - **清理关联**: 解除关联时不影响任何一方的实体数据
 
 
 **关系**:
 - ForeignKey: Organization
-- ForeignKey: Domain
+- ForeignKey: Asset
 
-**数据库表名**: `assets_organization_domains` (Django 自动生成)
+**数据库表名**: `assets_organization_assets` (Django 自动生成)
+
+### Asset 模型
+**作用**: 侦察目标的核心实体，表示资产（目前专门表示域名，未来可扩展到 IP 等）
+
+| 字段名 | 类型 | 限制 | 默认值 | 说明 |
+|--------|------|------|--------|------|
+| id | AutoField | 主键，索引 | 自增 | 主键标识符 |
+| created_at | DateTimeField | 非空，auto_now_add | 当前时间 | 创建时间 |
+| updated_at | DateTimeField | 非空，auto_now，索引 | 当前时间 | 更新时间 |
+| name | CharField(255) | unique，非空，索引 | - | 完整的域名 FQDN（如 example.com） |
+| description | CharField(1000) | 可为空 | NULL | 描述信息 |
+| type | CharField(20) | 非空，索引 | domain | 资产类型：domain（域名）/ ip（IP地址），默认为 domain |
+
+**业务逻辑**:
+- **独立存在**: 资产可以独立存在，不需要关联任何组织（允许存在未分组资产）
+- **松散耦合**: 删除所有关联的组织不会删除资产本身，资产仍可正常使用
+- **自动创建根域名**: 创建 Asset 时，系统自动创建一个同名的 Domain 
+- **类型扩展**: 目前 type 字段固定为 'domain'，未来可扩展为 'ip' 等类型
+
+**关系**:
+- reverse ForeignKey: domains (包括自动创建的根域名)
+- reverse ForeignKey: vulnerabilities
+- ManyToManyField: organizations (通过 organization_assets 关联表)
+
+**数据库表名**: `assets`
+
 
 ### Domain 模型
-**作用**: 侦察目标的核心实体，专门表示域名
+**作用**: 域名发现和特征信息存储（包括根域名）
 
 | 字段名 | 类型 | 限制 | 默认值 | 说明 |
 |--------|------|------|--------|------|
 | id | AutoField | 主键，索引 | 自增 | 主键标识符 |
 | created_at | DateTimeField | 非空，auto_now_add | 当前时间 | 创建时间 |
 | updated_at | DateTimeField | 非空，auto_now，索引 | 当前时间 | 更新时间 |
-| name | CharField(255) | unique，非空，索引，**强制小写存储** (应用层转换 + CheckConstraint) | - | 完整的域名 FQDN（如 example.com，统一小写存储） |
-| description | CharField(1000) | 可为空 | NULL | 描述信息 |
-
-**业务逻辑**:
-- **独立存在**: 域名可以独立存在，不需要关联任何组织（允许存在未分组域名）
-- **松散耦合**: 删除所有关联的组织不会删除域名本身，域名仍可正常使用
-- **灵活关联**: 支持先批量导入域名，后续再分配到组织；也支持域名在多个组织间共享
-- **自动创建根子域名**: 创建 Domain 时，系统自动创建一个同名的 Subdomain 作为根子域名（is_root = true），用于关联主域名的 URL
-- **根子域名保护**: 自动创建的根子域名受保护，不允许被手动删除，只能通过删除 Domain 时级联删除
-- **小写规范化**: name 字段在应用层统一转为小写存储，数据库层通过 CheckConstraint 约束防止插入大写值
-
-**关系**:
-- reverse ForeignKey: subdomains (包括自动创建的根子域名)
-- reverse ForeignKey: vulnerabilities
-- ManyToManyField: organizations (通过 organization_domains 关联表)
-
-**数据库表名**: `domains`
-
-
-### Subdomain 模型
-**作用**: 子域名发现和特征信息存储（包括根子域名）
-
-| 字段名 | 类型 | 限制 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| id | AutoField | 主键，索引 | 自增 | 主键标识符 |
-| created_at | DateTimeField | 非空，auto_now_add | 当前时间 | 创建时间 |
-| updated_at | DateTimeField | 非空，auto_now，索引 | 当前时间 | 更新时间 |
-| name | CharField(255) | 非空，索引，**强制小写存储** (应用层转换 + CheckConstraint) | - | 完整的子域名 FQDN（如 api.example.com，统一小写存储，根子域名与 Domain 同名） |
-| domain_id | ForeignKey | 非空，外键，索引 | - | 所属域名 ID，关联到 Domain 模型 |
-| is_root | BooleanField | 非空，索引 | false | 是否为根子域名（Domain 自动创建的同名子域名，受保护不允许删除） |
+| name | CharField(255) | 非空，索引 | - | 完整的域名 FQDN（如 api.example.com，根域名与 Asset 同名） |
+| asset_id | ForeignKey | 非空，外键，索引 | - | 所属资产 ID，关联到 Asset 模型 |
 
 **约束**:
-- **唯一索引**: (domain_id, name) - 确保同一域名下不会出现重复的子域名
-- **外键约束**: domain_id → domains.id (CASCADE DELETE)
+
+- **唯一索引**: (asset_id, name) - 确保同一资产下不会出现重复的域名
+- **外键约束**: asset_id → assets.id (CASCADE DELETE)
 
 **业务逻辑**:
-- **根子域名**: 每个 Domain 创建时自动生成一个同名的 Subdomain（如 Domain 为 `example.com`，则根子域名也为 `example.com`），用于关联主域名的 URL
-- **根子域名保护**: 通过 `is_root` 字段标记 Domain 专属的根子域名（is_root = true），这些根子域名**不允许被手动删除**，只能通过删除 Domain 时级联删除
-  - 创建 Domain 时自动创建的同名 Subdomain 会设置 is_root = true
-  - 用户手动创建的子域名（如 media.baidu.com）is_root = false，可以正常删除
-  - 尝试删除根子域名时会返回错误信息，列出受保护的根子域名列表
-- **外键字段**: `domain_id` - 通过此字段建立与 Domain 的关联，Django 会自动在 `domain` 字段后面加 `_id` 后缀
-- **级联删除**: 删除域名时自动删除相关子域名（包括根子域名，通过 on_delete=CASCADE 实现）
-- **小写规范化**: name 字段在应用层统一转为小写存储，数据库层通过 CheckConstraint 约杞防止插入大写值
-- **FQDN 存储**: name 字段存储完整的子域名 FQDN（如 `api.example.com`、`www.example.com`），不同域名的子域名 FQDN 天然不同，不会冲突
-- **子域名归属验证**: 创建子域名时验证是否以 `.父域名` 结尾或与父域名相同（根子域名），防止将独立域名错误添加为子域名
-- **字段保护**: is_root 字段在创建后不可修改，通过 save() 方法验证，保证数据一致性
+- **根域名**: 每个 Asset 创建时自动生成一个同名的 Domain（如 Asset 为 `example.com`，则根域名也为 `example.com`），用于关联主域名的 URL
+- **外键字段**: `asset_id` - 通过此字段建立与 Asset 的关联，Django 会自动在 `asset` 字段后面加 `_id` 后缀
+- **级联删除**: 删除资产时自动删除相关域名（包括根域名，通过 on_delete=CASCADE 实现）
+- **FQDN 存储**: name 字段存储完整的域名 FQDN（如 `api.example.com`、`www.example.com`），不同资产的域名 FQDN 天然不同，不会冲突
 
 **关系**:
-- ForeignKey: domain (通过 domain_id 外键关联)
+- ForeignKey: asset (通过 asset_id 外键关联)
 - reverse ForeignKey: urls
 - reverse ForeignKey: vulnerabilities
 
-**数据库表名**: `subdomains`
+**数据库表名**: `domains`
 
 
 ### URL 模型
@@ -127,21 +119,21 @@
 | status_code | IntegerField | 可为空 | NULL | HTTP响应状态码 |
 | title | CharField(255) | 可为空 | NULL | 页面标题 |
 | content_length | BigIntegerField | 可为空 | NULL | 响应内容长度(字节) |
-| subdomain_id | ForeignKey | 非空，外键，索引 | - | 所属子域名 ID，关联到 Subdomain 模型 |
-| domain_id | ForeignKey | 非空，外键，索引 | - | 所属域名 ID（冗余字段，性能优化），关联到 Domain 模型 |
+| domain_id | ForeignKey | 非空，外键，索引 | - | 所属域名 ID，关联到 Domain 模型 |
+| asset_id | ForeignKey | 非空，外键，索引 | - | 所属资产 ID（冗余字段，性能优化），关联到 Asset 模型 |
 
 **业务逻辑约束**:
-- **统一归属**: 所有 URL 必须属于某个 Subdomain 和 Domain
-- **级联删除**: 删除子域名或域名时自动删除相关 URL（通过 on_delete=CASCADE 实现）
+- **统一归属**: 所有 URL 必须属于某个 Domain 和 Asset
+- **级联删除**: 删除域名或资产时自动删除相关 URL（通过 on_delete=CASCADE 实现）
 
 **性能优化说明**:
-- 添加 DomainID 冗余字段，查询组织下的所有 URL 只需 1 次 JOIN（从 3 次降低）
-- 查询路径优化：Organization → organization_domains → URL (通过 domain_id)
-- 复合索引：(domain_id, subdomain_id) 优化多维度查询
+- 添加 AssetID 冗余字段，查询组织下的所有 URL 只需1 次 JOIN（从 3 次降低）
+- 查询路径优化：Organization → organization_assets → URL (通过 asset_id)
+- 复合索引：(asset_id, domain_id) 优化多维度查询
 
 **关系**:
-- ForeignKey: subdomain (通过 subdomain_id 外键关联)
-- ForeignKey: domain (通过 domain_id 外键关联，冗余字段)
+- ForeignKey: domain (通过 domain_id 外键关联)
+- ForeignKey: asset (通过 asset_id 外键关联，冗余字段)
 - reverse ForeignKey: vulnerabilities
 
 **数据库表名**: `endpoints` (语义上应理解为 URL 模型)
@@ -575,20 +567,20 @@ Tool (工具管理)
 | response | CharField(8192) | 可为空 | NULL | 响应包 |
 | is_gpt_used | BooleanField | 可为空 | false | 是否使用 GPT |
 | scan_history_id | IntegerField | 非空 | - | 扫描历史 ID |
-| subdomain_id | ForeignKey | 可为空，外键，复合索引 | NULL | 所属子域名 ID，关联到 Subdomain 模型 |
+| domain_id | ForeignKey | 可为空，外键，复合索引 | NULL | 所属域名 ID，关联到 Domain 模型 |
 | url_id | ForeignKey | 可为空，外键，复合索引 | NULL | 所属 URL ID，关联到 URL 模型 |
-| domain_id | ForeignKey | 可为空，外键，复合索引 | NULL | 目标域名 ID，关联到 Domain 模型 |
-| domain_name | CharField(255) | 可为空 | NULL | 冗余域名名称（优化查询） |
+| asset_id | ForeignKey | 可为空，外键，复合索引 | NULL | 目标资产 ID，关联到 Asset 模型 |
+| asset_name | CharField(255) | 可为空 | NULL | 冗余资产名称（优化查询） |
 
 **业务逻辑约束**:
-- **灵活归属**: domain_id、subdomain_id 和 url_id 至少有一个非空
-- **级联删除**: 删除域名、子域名或 URL 时自动删除相关漏洞（通过 on_delete=CASCADE 实现）
+- **灵活归属**: asset_id、domain_id 和 url_id 至少有一个非空
+- **级联删除**: 删除资产、域名或 URL 时自动删除相关漏洞（通过 on_delete=CASCADE 实现）
 - **严重等级**: severity 字段必须在 -1 到 4 范围内
-- **复合索引**: (domain_id, subdomain_id, url_id) 优化关联查询
+- **复合索引**: (asset_id, domain_id, url_id) 优化关联查询
 
 **关系**:
+- ForeignKey: asset (通过 asset_id 外键关联，可选)
 - ForeignKey: domain (通过 domain_id 外键关联，可选)
-- ForeignKey: subdomain (通过 subdomain_id 外键关联，可选)
 - ForeignKey: url (通过 url_id 外键关联，可选)
 
 **数据库表名**: `vulnerabilities`
@@ -596,14 +588,12 @@ Tool (工具管理)
 ## 设计原则
 
 ### 核心领域模型
-1. **以 Domain 为中心**: 所有侦察活动围绕 Domain 实体展开，Domain 专门用于表示域名，关联子域名和组织。
-2. **松散耦合设计**: Organization 和 Domain 通过 ManyToManyField 松散关联，两者可以独立存在。删除任何一方不影响另一方的实体数据，只清理关联表记录。这种设计提供了最大的灵活性，支持未分组域名、空组织等场景。
+1. **以 Asset 为中心**: 所有侦察活动围绕 Asset 实体展开，Asset 表示资产（目前专门用于表示域名，未来可扩展到 IP），关联域名和组织。
+2. **松散耦合设计**: Organization 和 Asset 通过 ManyToManyField 松散关联，两者可以独立存在。删除任何一方不影响另一方的实体数据，只清理关联表记录。这种设计提供了最大的灵活性，支持未分组资产、空组织等场景。
 3. **规范化设计**: 避免数据冗余，保持关系完整性，使用 ForeignKey、ManyToManyField 和 reverse ForeignKey 关系。
 4. **查询优化**: 使用 Django ORM 的 `db_index=True` 和 `select_related()`/`prefetch_related()` 优化性能。
-5. **级联删除**: 删除父级记录时自动删除关联的子级记录（通过 `on_delete=CASCADE` 实现）。注意：仅适用于强依赖关系（如 Domain → Subdomain），不适用于 Organization ⇄ Domain 的松散关联。
-6. **数据保护**: 根子域名通过 is_root 字段标记并受保护，防止误删除 Domain 的专属子域名，确保数据完整性。
-7. **性能提升**: 统一字段长度减少碎片。
-8. **数据规范化**: 域名和子域名统一使用小写存储，通过应用层转换和数据库 CheckConstraint 约束双重保障数据一致性。
+5. **级联删除**: 删除父级记录时自动删除关联的子级记录（通过 `on_delete=CASCADE` 实现）。注意：仅适用于强依赖关系（如 Asset → Domain），不适用于 Organization ⇄ Asset 的松散关联。
+6. **性能提升**: 统一字段长度减少碎片。
 
 ### 工作流模型
 1. **四层架构**: Tool（工具管理） → Command（命令定义） → Workflow（工作流） → Execution（执行记录）
@@ -623,13 +613,13 @@ Tool (工具管理)
 
 ```mermaid
 erDiagram
-    Organization }o--o{ organization_domains : "管理"
-    Domain }o--o{ organization_domains : "属于"
-    Domain ||--o{ Subdomain : "包含子域名(含根子域名)"
-    Domain ||--o{ URL : "包含URL(冗余关联)"
+    Organization }o--o{ organization_assets : "管理"
+    Asset }o--o{ organization_assets : "属于"
+    Asset ||--o{ Domain : "包含域名(含根域名)"
+    Asset ||--o{ URL : "包含URL(冗余关联)"
+    Asset ||--o{ Vulnerability : "包含漏洞"
+    Domain ||--o{ URL : "包含URL"
     Domain ||--o{ Vulnerability : "包含漏洞"
-    Subdomain ||--o{ URL : "包含URL"
-    Subdomain ||--o{ Vulnerability : "包含漏洞"
     URL ||--o{ Vulnerability : "包含漏洞"
     
     Tool ||--o{ Command : "包含命令"
@@ -647,18 +637,19 @@ erDiagram
         datetime updated_at
     }
     
-    Domain {
+    Asset {
         int id PK
         string name
         string description
+        string type
         datetime created_at
         datetime updated_at
     }
     
-    Subdomain {
+    Domain {
         int id PK
         string name
-        int domain_id FK
+        int asset_id FK
         bool is_root
         datetime created_at
         datetime updated_at
@@ -671,8 +662,8 @@ erDiagram
         int status_code
         string title
         bigint content_length
-        int subdomain_id FK
         int domain_id FK
+        int asset_id FK
         datetime created_at
         datetime updated_at
     }
@@ -708,10 +699,10 @@ erDiagram
         string response
         bool is_gpt_used
         int scan_history_id
-        int subdomain_id FK
-        int url_id FK
         int domain_id FK
-        string domain_name
+        int url_id FK
+        int asset_id FK
+        string asset_name
         datetime created_at
         datetime updated_at
     }
@@ -803,7 +794,7 @@ erDiagram
         datetime updated_at
     }
     
-    organization_domains {
+    organization_assets {
         int organization_id PK
-        int domain_id PK
+        int asset_id PK
     }
