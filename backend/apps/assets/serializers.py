@@ -14,11 +14,22 @@ class OrganizationSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'description', 'created_at', 'updated_at']
 
 class AssetSimpleSerializer(serializers.ModelSerializer):
-    """资产简化序列化器（ID、名称和类型，用于嵌套展示）"""
+    """资产简化序列化器（ID、名称、类型、描述、域名数量、URL数量，用于嵌套展示）"""
+    domain_count = serializers.SerializerMethodField()
+    url_count = serializers.SerializerMethodField()
     
     class Meta:
         model = Asset
-        fields = ['id', 'name', 'type']
+        fields = ['id', 'name', 'description', 'type', 'domain_count', 'url_count']
+    
+    def get_domain_count(self, obj):
+        """计算资产的域名数量"""
+        return obj.domains.count()
+    
+    def get_url_count(self, obj):
+        """计算资产的 URL 数量（目前为 0，稍后扩展）"""
+        # TODO: 此字段正在待实现，目前为 0
+        return 0
 
 class OrganizationDetailSerializer(serializers.ModelSerializer):
     """组织详情序列化器（包含 assets，用于详情和列表展示）"""
@@ -43,12 +54,23 @@ class AssetSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'description', 'type', 'created_at', 'updated_at']
 
 class AssetListSerializer(serializers.ModelSerializer):
-    """资产列表序列化器（包含 organizations，用于列表展示）"""
+    """资产列表序列化器（包含 organizations、domain_count、url_count，用于列表展示）"""
     organizations = OrganizationSimpleSerializer(many=True, read_only=True)
+    domain_count = serializers.SerializerMethodField()
+    url_count = serializers.SerializerMethodField()
     
     class Meta:
         model = Asset
-        fields = ['id', 'name', 'description', 'type', 'created_at', 'updated_at', 'organizations']
+        fields = ['id', 'name', 'description', 'type', 'created_at', 'updated_at', 'organizations', 'domain_count', 'url_count']
+    
+    def get_domain_count(self, obj):
+        """计算资产的域名数量"""
+        return obj.domains.count()
+    
+    def get_url_count(self, obj):
+        """计算资产的 URL 数量（目前为 0，稍后扩展）"""
+        # TODO: 此字段正在待实现，目前为 0
+        return 0
 
 class DomainSerializer(serializers.ModelSerializer):
     """域名信息序列化器"""
@@ -147,3 +169,30 @@ class BulkCreateAssetSerializer(serializers.Serializer):
         help_text="资产列表"
     )
     organization_id = serializers.IntegerField(required=True, min_value=1, help_text="组织ID")
+
+
+class CreateDomainItemSerializer(serializers.Serializer):
+    """单个域名项序列化器"""
+    name = serializers.CharField(max_length=255, required=True, allow_blank=False)
+    
+    def validate_name(self, value):
+        """验证并规范化域名"""
+        try:
+            # 规范化域名（去除空格、小写、移除末尾点）
+            normalized = normalize_domain(value)
+            # 验证域名格式
+            validate_domain(normalized)
+            return normalized
+        except ValueError as e:
+            raise serializers.ValidationError(str(e))
+
+
+class BulkCreateDomainSerializer(serializers.Serializer):
+    """批量创建域名请求序列化器"""
+    domains = serializers.ListField(
+        child=CreateDomainItemSerializer(),
+        required=True,
+        allow_empty=False,
+        help_text="域名列表"
+    )
+    asset_id = serializers.IntegerField(required=True, min_value=1, help_text="资产ID")

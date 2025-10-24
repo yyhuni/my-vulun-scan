@@ -17,7 +17,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { LoadingSpinner } from "@/components/loading-spinner"
-import { DomainValidator } from "@/lib/domain-validator"
+import { AssetValidator } from "@/lib/asset-validator"
 
 // 导入 React Query Hooks
 import { useCreateAsset } from "@/hooks/use-assets"
@@ -63,7 +63,7 @@ export function LinkAssetDialog({
   })
   
   // 验证错误状态
-  const [invalidAssets, setInvalidAssets] = useState<Array<{ index: number; originalAsset: string; error: string }>>([])
+  const [invalidAssets, setInvalidAssets] = useState<Array<{ index: number; originalAsset: string; error: string; type?: string }>>([])
   
   // 行号列和输入框的 ref（用于同步滚动）
   const lineNumbersRef = useRef<HTMLDivElement | null>(null)
@@ -90,10 +90,10 @@ export function LinkAssetDialog({
         return
       }
 
-      const results = DomainValidator.validateDomainBatch(lines)
+      const results = AssetValidator.validateAssetBatch(lines)
       const invalid = results
         .filter((r) => !r.isValid)
-        .map((r) => ({ index: r.index, originalAsset: r.originalDomain, error: r.error || "资产格式无效" }))
+        .map((r) => ({ index: r.index, originalAsset: r.originalAsset, error: r.error || "资产格式无效", type: r.type }))
       setInvalidAssets(invalid)
     }
   }
@@ -239,10 +239,11 @@ export function LinkAssetDialog({
                     onChange={(e) => handleInputChange("assets", e.target.value)}
                     onScroll={handleTextareaScroll}
                     placeholder={`请输入资产，每行一个
+支持域名、IP、CIDR
 例如：
 example.com
-test.com
-demo.org`}
+192.168.1.1
+10.0.0.0/8`}
                     disabled={createAsset.isPending}
                     className="font-mono h-full overflow-y-auto resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 leading-[1.4] text-sm py-3"
                     style={{ lineHeight: '20px' }}

@@ -87,14 +87,13 @@ const data = {
       icon: IconDatabase,
       items: [
         {
-          title: "资产概览", // 资产概览
-          url: "/assets",
+          title: "所有资产", // 所有资产
+          url: "/assets/all",
         },
         {
           title: "组织管理", // 组织管理
           url: "/assets/organization",
         },
-        
       ],
     },
     {

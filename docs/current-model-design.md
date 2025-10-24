@@ -84,7 +84,7 @@
 | id | AutoField | 主键，索引 | 自增 | 主键标识符 |
 | created_at | DateTimeField | 非空，auto_now_add | 当前时间 | 创建时间 |
 | updated_at | DateTimeField | 非空，auto_now，索引 | 当前时间 | 更新时间 |
-| name | CharField(255) | 非空，索引 | - | 完整的域名 FQDN（如 api.example.com，根域名与 Asset 同名） |
+| name | CharField(255) | unique，非空，索引 | - | 完整的域名 FQDN（如 api.example.com，根域名与 Asset 同名） |
 | asset_id | ForeignKey | 非空，外键，索引 | - | 所属资产 ID，关联到 Asset 模型 |
 
 **约束**:

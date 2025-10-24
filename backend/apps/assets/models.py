@@ -136,8 +136,8 @@ class Domain(models.Model):
         verbose_name = '域名'
         verbose_name_plural = '域名'
         ordering = ['-updated_at']
-        unique_together = [['asset', 'name']]  # 同一资产下不会出现重复的域名
         constraints = [
+            models.UniqueConstraint(fields=['name'], name='domain_name_unique'),
             # 确保域名小写存储（使用原生 SQL）
             models.CheckConstraint(
                 check=models.Q(name__exact=models.Func(models.F('name'), function='LOWER')),

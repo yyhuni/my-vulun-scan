@@ -15,6 +15,8 @@ export interface Asset {
   updatedAt: string  // 响应拦截器自动从 updated_at 转换而来
   organizations?: Organization[]  // 关联的组织列表（仅在 Preload 时返回）
   type?: string  // 资产类型：domain、ip、cidr
+  domainCount?: number  // 域名数量
+  urlCount?: number  // URL 数量
 }
 
 // 获取资产列表请求参数

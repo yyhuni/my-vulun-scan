@@ -14,9 +14,10 @@ from .serializers import (
     AssetSerializer,
     AssetListSerializer,
     DomainSerializer,
-    BulkCreateAssetSerializer
+    BulkCreateAssetSerializer,
+    BulkCreateDomainSerializer
 )
-from apps.common.pagination import OrganizationPagination, DomainPagination
+from apps.common.pagination import OrganizationPagination, DomainPagination, AssetPagination
 
 
 class OrganizationViewSet(viewsets.ModelViewSet):
@@ -196,7 +197,7 @@ class AssetViewSet(viewsets.ModelViewSet):
     """
     queryset = Asset.objects.all()
     serializer_class = AssetSerializer
-    pagination_class = DomainPagination
+    pagination_class = AssetPagination
     
     def get_serializer_class(self):
         """
@@ -347,3 +348,101 @@ class DomainViewSet(viewsets.ModelViewSet):
     queryset = Domain.objects.all()
     serializer_class = DomainSerializer
     pagination_class = DomainPagination
+    
+    @action(detail=False, methods=['post'], url_path='create')
+    def bulk_create(self, request):
+        """
+        批量创建域名并绑定到资产
+        
+        路由: POST /api/domains/create/
+        
+        请求体格式:
+        {
+            "domains": [
+                {"name": "api.example.com"},
+                {"name": "www.example.com"},
+                {"name": "admin.example.com"}
+            ],
+            "assetId": 5
+        }
+        
+        返回格式:
+        {
+            "message": "成功处理 3 个域名，新创建 2 个，1 个已存在",
+            "requestedCount": 3,
+            "createdCount": 2,
+            "existedCount": 1
+        }
+        
+        核心流程：
+        1. 验证资产存在性
+        2. 验证请求数据
+        3. 事务处理：
+           - 查询已存在的域名集合
+           - 批量插入域名 (ignore_conflicts 自动忽略已存在)
+           - 计算新建数量
+        """
+        # 验证请求数据
+        serializer = BulkCreateDomainSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {'error': '请求数据格式错误', 'details': serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        validated_data = serializer.validated_data
+        domains_data = validated_data['domains']
+        asset_id = validated_data['asset_id']
+        
+        # 步骤1: 验证资产存在性
+        try:
+            asset = Asset.objects.get(id=asset_id)
+        except Asset.DoesNotExist:
+            return Response(
+                {'error': f'资产 ID {asset_id} 不存在'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # 步骤2: 去重请求中的域名（FIFO 策略：保留第一次出现）
+        domain_map = {}
+        for domain_data in domains_data:
+            domain_map.setdefault(
+                domain_data['name'],  # name 作为 key
+                {'name': domain_data['name']}
+            )
+        
+        # 步骤3: 使用事务处理批量创建
+        with transaction.atomic():
+            # 提取所有的 name
+            domain_names = list(domain_map.keys())
+            
+            # 步骤3.1: 查询已存在的域名集合（按 name 查询）
+            existing_domain_names = set(
+                Domain.objects.filter(
+                    name__in=domain_names
+                ).values_list('name', flat=True)
+            )
+            
+            # 步骤3.2: 批量插入域名 (ignore_conflicts 自动忽略已存在)
+            domains_to_create = [
+                Domain(name=domain_info['name'], asset_id=asset_id)
+                for domain_info in domain_map.values()
+            ]
+            
+            if domains_to_create:
+                Domain.objects.bulk_create(domains_to_create, ignore_conflicts=True)
+            
+            # 计算实际新创建的域名数量（使用集合操作，更准确）
+            count_existed = len(existing_domain_names)
+            count_created = len(domain_names) - count_existed
+        
+        # 返回统计信息
+        count_requested = len(domain_map)
+        response_data = {
+            'message': f'成功处理 {count_requested} 个域名，新创建 {count_created} 个，{count_existed} 个已存在',
+            'requestedCount': count_requested,
+            'createdCount': count_created,
+            'existedCount': count_existed
+        }
+        
+        return Response(response_data, status=status.HTTP_201_CREATED)

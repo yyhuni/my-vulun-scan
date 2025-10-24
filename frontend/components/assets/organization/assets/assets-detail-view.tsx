@@ -1,17 +1,12 @@
 "use client"
 
-import React, { useState } from "react"
-import { useOrganization } from "@/hooks/use-organizations"
-import { useDeleteAssetFromOrganization } from "@/hooks/use-assets"
-import { useQueryClient } from "@tanstack/react-query"
-import { LoadingState } from "@/components/loading-spinner"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { IconWorld, IconTrash } from "@tabler/icons-react"
-import Link from "next/link"
-import { LinkAssetDialog } from "@/components/assets/organization/assets/link-asset-dialog"
-import { Link as LinkIcon } from "lucide-react"
+import React, { useState, useMemo } from "react"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
+import { AssetsDataTable } from "./assets-data-table"
+import { createAssetColumns } from "./assets-columns"
+import { AddAssetDialog } from "./add-asset-dialog"
+import { LoadingState, LoadingSpinner } from "@/components/loading-spinner"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,56 +17,132 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-
-interface OrganizationAssetsDetailViewProps {
-  organizationId: string
-}
+import { useOrganization } from "@/hooks/use-organizations"
+import { useDeleteAssetFromOrganization } from "@/hooks/use-assets"
+import type { Asset } from "@/types/asset.types"
 
 /**
- * 组织主资产详情视图组件
- * 显示和管理组织下的资产
+ * 组织资产详情视图组件（使用 React Query）
+ * 用于显示和管理组织下的资产列表
+ * 支持通过组织ID获取数据
  */
-export function OrganizationAssetsDetailView({ organizationId }: OrganizationAssetsDetailViewProps) {
-  const { data: organization, isLoading, error, refetch } = useOrganization(parseInt(organizationId))
-  const queryClient = useQueryClient()
+export function OrganizationAssetsDetailView({ 
+  organizationId 
+}: { 
+  organizationId: string
+}) {
+  const [selectedAssets, setSelectedAssets] = useState<Asset[]>([])
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [assetToDelete, setAssetToDelete] = useState<Asset | null>(null)
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
   
-  // 关联资产对话框状态
-  const [isLinkAssetDialogOpen, setIsLinkAssetDialogOpen] = useState(false)
-  
-  // 移除资产确认对话框状态
-  const [assetToRemove, setAssetToRemove] = useState<{ id: number; name: string } | null>(null)
-  
-  // 移除资产的 mutation
+  // 分页状态
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  })
+
+  // 使用 React Query 获取组织数据
+  const {
+    data: organization,
+    isLoading,
+    error,
+    refetch
+  } = useOrganization(parseInt(organizationId))
+
+  // Mutations
   const deleteAssetMutation = useDeleteAssetFromOrganization()
-  
-  // 预加载资产列表数据（鼠标悬停时）
-  const handlePrefetchAssets = () => {
-    queryClient.prefetchQuery({
-      queryKey: ['assets', 'all', { page: 1, pageSize: 100 }],
-      queryFn: async () => {
-        const { AssetService } = await import('@/services/asset.service')
-        return AssetService.getAllAssets({ page: 1, pageSize: 100 })
-      },
+
+  // 辅助函数 - 格式化日期
+  const formatDate = (dateString: string): string => {
+    return new Date(dateString).toLocaleString("zh-CN", {
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
     })
   }
 
-  // 处理移除资产
-  const handleRemoveAsset = () => {
-    if (!assetToRemove) return
-    
-    deleteAssetMutation.mutate(
-      {
-        organizationId: parseInt(organizationId),
-        assetId: assetToRemove.id,
-      },
-      {
-        onSuccess: () => {
-          setAssetToRemove(null)
-          // React Query 会自动刷新，无需手动 refetch
-        },
-      }
-    )
+  // 导航函数（使用 Next.js 客户端路由）
+  const router = useRouter()
+  const navigate = (path: string) => {
+    router.push(path)
   }
+
+  // 处理删除资产
+  const handleDeleteAsset = (asset: Asset) => {
+    setAssetToDelete(asset)
+    setDeleteDialogOpen(true)
+  }
+
+  // 确认删除资产
+  const confirmDelete = async () => {
+    if (!assetToDelete) return
+
+    setDeleteDialogOpen(false)
+    setAssetToDelete(null)
+    
+    deleteAssetMutation.mutate({
+      organizationId: parseInt(organizationId),
+      assetId: assetToDelete.id,
+    })
+  }
+
+  // 处理批量删除
+  const handleBulkDelete = () => {
+    if (selectedAssets.length === 0) {
+      return
+    }
+    setBulkDeleteDialogOpen(true)
+  }
+
+  // 确认批量删除
+  const confirmBulkDelete = async () => {
+    if (selectedAssets.length === 0) return
+
+    const deletedIds = selectedAssets.map(asset => asset.id)
+    
+    setBulkDeleteDialogOpen(false)
+    setSelectedAssets([])
+    
+    // 逐个删除资产
+    for (const assetId of deletedIds) {
+      deleteAssetMutation.mutate({
+        organizationId: parseInt(organizationId),
+        assetId,
+      })
+    }
+  }
+
+  // 处理添加资产
+  const handleAddAsset = () => {
+    setIsAddDialogOpen(true)
+  }
+
+  // 处理添加成功
+  const handleAddSuccess = async (newAssets: Asset[]) => {
+    setIsAddDialogOpen(false)
+  }
+
+  // 处理分页变化
+  const handlePaginationChange = (newPagination: { pageIndex: number; pageSize: number }) => {
+    setPagination(newPagination)
+  }
+
+  // 创建列定义
+  const assetColumns = useMemo(
+    () =>
+      createAssetColumns({
+        formatDate,
+        navigate,
+        handleDelete: handleDeleteAsset,
+      }),
+    [formatDate, navigate, handleDeleteAsset]
+  )
 
   // 错误状态
   if (error) {
@@ -82,7 +153,7 @@ export function OrganizationAssetsDetailView({ organizationId }: OrganizationAss
         </div>
         <h3 className="text-lg font-semibold mb-2">加载失败</h3>
         <p className="text-muted-foreground text-center mb-4">
-          {error.message || "加载组织详情时出现错误，请重试"}
+          {error.message || "加载资产数据时出现错误，请重试"}
         </p>
         <button 
           onClick={() => refetch()}
@@ -96,7 +167,7 @@ export function OrganizationAssetsDetailView({ organizationId }: OrganizationAss
 
   // 加载状态
   if (isLoading) {
-    return <LoadingState message="加载组织详情中..." />
+    return <LoadingState message="加载资产数据中..." />
   }
 
   if (!organization) {
@@ -109,114 +180,101 @@ export function OrganizationAssetsDetailView({ organizationId }: OrganizationAss
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-500/10 rounded-lg">
-                <IconWorld className="text-blue-500" />
-              </div>
-              <div>
-                <CardTitle>主资产</CardTitle>
-                <CardDescription>
-                  {organization.assets && organization.assets.length > 0 ? `共 ${organization.assets.length} 个资产` : "暂无绑定资产"}
-                </CardDescription>
-              </div>
-            </div>
-            <Button 
-              size="sm" 
-              onClick={() => setIsLinkAssetDialogOpen(true)}
-              onMouseEnter={handlePrefetchAssets}
-            >
-              <LinkIcon />
-              关联资产
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {organization.assets && organization.assets.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-              {organization.assets.map((asset) => (
-                <div key={asset.id} className="group flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="p-1.5 bg-blue-500/10 rounded">
-                      <IconWorld className="h-4 w-4 text-blue-500" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <Link href={`/assets/asset/${asset.id}/domains`} className="font-medium text-primary hover:underline block truncate">
-                        {asset.name}
-                      </Link>
-                      {asset.description && (
-                        <p className="text-sm text-muted-foreground truncate mt-0.5">{asset.description}</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 ml-2 shrink-0">
-                    <Badge variant="secondary">ID: {asset.id}</Badge>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        setAssetToRemove({ id: asset.id, name: asset.name })
-                      }}
-                      title="从组织中移除"
-                    >
-                      <IconTrash className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-10 text-muted-foreground">
-              <IconWorld className="h-12 w-12 mx-auto mb-3 opacity-20" />
-              <p>暂无绑定的资产</p>
-              <p className="text-sm mt-1">可以在资产管理页面将资产关联到此组织</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <LinkAssetDialog
-        open={isLinkAssetDialogOpen}
-        onOpenChange={setIsLinkAssetDialogOpen}
-        organizationId={organization.id}
-        organizationName={organization.name}
-        onAdd={() => {
-          // React Query 会自动刷新，无需手动 refetch
+      <AssetsDataTable
+        data={organization.assets || []}
+        columns={assetColumns}
+        onAddNew={handleAddAsset}
+        onBulkDelete={handleBulkDelete}
+        onSelectionChange={setSelectedAssets}
+        searchPlaceholder="搜索资产..."
+        searchColumn="name"
+        addButtonText="关联资产"
+        pagination={pagination}
+        setPagination={setPagination}
+        paginationInfo={{
+          total: organization.assets?.length || 0,
+          page: 1,
+          pageSize: pagination.pageSize,
+          totalPages: Math.ceil((organization.assets?.length || 0) / pagination.pageSize),
         }}
+        onPaginationChange={handlePaginationChange}
+      />
+      
+      {/* 添加资产对话框 */}
+      <AddAssetDialog
+        organizationId={parseInt(organizationId)}
+        organizationName={organization.name}
+        onAdd={handleAddSuccess}
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
       />
 
-      {/* 移除资产确认对话框 */}
-      <AlertDialog open={!!assetToRemove} onOpenChange={(open) => !open && setAssetToRemove(null)}>
+      {/* 删除确认对话框 */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>确认移除资产</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-2">
-                <p>确定要从此组织中移除资产吗？</p>
-                {assetToRemove && (
-                  <div className="p-3 bg-muted rounded-md">
-                    <p className="font-medium text-foreground">{assetToRemove.name}</p>
-                    <p className="text-sm text-muted-foreground mt-1">ID: {assetToRemove.id}</p>
-                  </div>
-                )}
-                <p className="text-sm">
-                  <strong>注意：</strong>此操作只会解除资产与组织的关联关系，资产本身不会被删除，仍可正常使用。
-                </p>
-              </div>
+            <AlertDialogDescription>
+              确定要从此组织中移除资产 &quot;{assetToDelete?.name}&quot; 吗？此操作只会解除资产与组织的关联关系，资产本身不会被删除。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteAssetMutation.isPending}>取消</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleRemoveAsset}
-              disabled={deleteAssetMutation.isPending}
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete} 
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteAssetMutation.isPending}
             >
-              {deleteAssetMutation.isPending ? "移除中..." : "确认移除"}
+              {deleteAssetMutation.isPending ? (
+                <>
+                  <LoadingSpinner/>
+                  移除中...
+                </>
+              ) : (
+                "确认移除"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 批量删除确认对话框 */}
+      <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认批量移除资产</AlertDialogTitle>
+            <AlertDialogDescription>
+              此操作将从组织中移除以下 {selectedAssets.length} 个资产。资产本身不会被删除，仍可正常使用。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {/* 资产列表容器 - 固定最大高度并支持滚动 */}
+          <div className="mt-2 p-2 bg-muted rounded-md max-h-96 overflow-y-auto">
+            <ul className="text-sm space-y-1">
+              {selectedAssets.map((asset) => (
+                <li key={asset.id} className="flex items-center">
+                  <span className="font-medium">{asset.name}</span>
+                  {asset.description && (
+                    <span className="text-muted-foreground ml-2">- {asset.description}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmBulkDelete} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteAssetMutation.isPending}
+            >
+              {deleteAssetMutation.isPending ? (
+                <>
+                  <LoadingSpinner/>
+                  移除中...
+                </>
+              ) : (
+                `确认移除 ${selectedAssets.length} 个资产`
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
