@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select"
 
 // 导入 React Query Hook
-import { useCreateUrl } from "@/hooks/use-urls"
+import { useCreateEndpoint } from "@/hooks/use-endpoints"
 import {
   Dialog,
   DialogContent,
@@ -31,16 +31,16 @@ import {
 } from "@/components/ui/dialog"
 
 // 导入类型定义
-import type { Url, CreateUrlRequest } from "@/types/url.types"
-// 导入 URL 验证工具
-import { UrlValidator } from "@/lib/url-validator"
+import type { Endpoint, CreateEndpointRequest } from "@/types/endpoint.types"
+// 导入 Endpoint 验证工具
+import { EndpointValidator } from "@/lib/endpoint-validator"
 import { getDomain } from "tldts"
 
 // 组件属性类型定义
-interface AddUrlDialogProps {
+interface AddEndpointDialogProps {
   domainId?: string                            // 域名ID（可选，仅用于兼容性）
-  currentDomainName?: string                   // 当前域名名称（用于校验 URL）
-  onAdd: (urls: Url[]) => void      // 添加成功回调函数
+  currentDomainName?: string                   // 当前域名名称（用于校验端点）
+  onAdd: (endpoints: Endpoint[]) => void      // 添加成功回调函数
   open?: boolean                               // 外部控制对话框开关状态
   onOpenChange?: (open: boolean) => void       // 外部控制对话框开关回调
 }
@@ -48,33 +48,33 @@ interface AddUrlDialogProps {
 
 
 /**
- * 添加 URL 对话框组件
- * 提供添加新 URL 的表单界面，支持批量添加
+ * 添加端点对话框组件
+ * 提供添加新端点的表单界面，支持批量添加
  * 
  * 功能特性：
- * 1. 支持添加多个 URL (每行一个URL)
+ * 1. 支持添加多个端点 (每行一个完整URL)
  * 2. 完全自动化：从 URL 自动提取域名和子域名
  * 3. 表单验证
  * 4. 错误处理
  * 5. 加载状态
  * 6. 用户友好的交互
  */
-export function AddUrlDialog({ 
+export function AddEndpointDialog({ 
   domainId,
   currentDomainName,
   onAdd, 
   open: externalOpen, 
   onOpenChange: externalOnOpenChange 
-}: AddUrlDialogProps) {
+}: AddEndpointDialogProps) {
   // 对话框开关状态 - 支持外部控制
   const [internalOpen, setInternalOpen] = useState(false)
   const open = externalOpen !== undefined ? externalOpen : internalOpen
   const setOpen = externalOnOpenChange || setInternalOpen
   
   // 表单状态
-  const [urlsText, setUrlsText] = useState("")
+  const [endpointsText, setEndpointsText] = useState("")
   const [validationErrors, setValidationErrors] = useState<string[]>([])
-  const [parsedUrls, setParsedUrls] = useState<string[]>([])
+  const [parsedEndpoints, setParsedEndpoints] = useState<string[]>([])
   
   // 可选字段状态
   const [method, setMethod] = useState<string>("GET")
@@ -82,20 +82,20 @@ export function AddUrlDialog({
   const [title, setTitle] = useState<string>("")
   const [contentLength, setContentLength] = useState<string>("")
 
-  // 使用 React Query 的创建 URL mutation
-  const createUrl = useCreateUrl()
+  // 使用 React Query 的创建端点 mutation
+  const createEndpoint = useCreateEndpoint()
 
-  // 实时验证 URLs - 使用严格的验证工具
+  // 实时验证端点 - 使用严格的验证工具
   useEffect(() => {
-    const urls = urlsText
+    const urls = endpointsText
       .split('\n')
       .map(line => line.trim())
       .filter(line => line.length > 0)
     
-    setParsedUrls(urls)
+    setParsedEndpoints(urls)
     
-    // 使用 UrlValidator 进行批量验证
-    const validationResults = UrlValidator.validateBatch(urls)
+    // 使用 EndpointValidator 进行批量验证
+    const validationResults = EndpointValidator.validateBatch(urls)
     
     const errors: string[] = []
     validationResults.forEach((result) => {
@@ -126,14 +126,14 @@ export function AddUrlDialog({
     }
     
     setValidationErrors(errors)
-  }, [urlsText, currentDomainName])
+  }, [endpointsText, currentDomainName])
 
   // 处理表单提交
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // 解析 URL 文本，每行一个 URL
-    const urlLines = urlsText
+    // 解析端点文本，每行一个完整URL
+    const urlLines = endpointsText
       .split('\n')
       .map(line => line.trim())
       .filter(line => line.length > 0)
@@ -147,8 +147,8 @@ export function AddUrlDialog({
       return
     }
 
-    // 构建 URL 数据
-    const urls: CreateUrlRequest[] = urlLines.map(url => {
+    // 构建端点数据
+    const endpoints: CreateEndpointRequest[] = urlLines.map(url => {
       return {
         url,
         method: method || undefined,
@@ -159,12 +159,12 @@ export function AddUrlDialog({
     })
 
     // 使用 React Query mutation
-    createUrl.mutate(
+    createEndpoint.mutate(
       {
-        urls
+        endpoints
       },
       {
-        onSuccess: (batchCreateResult) => {
+        onSuccess: (batchCreateResult: any) => {
           // 调用成功回调 - 只用于 UI 状态更新，不重复调用 API
           onAdd(batchCreateResult)
           
@@ -180,9 +180,9 @@ export function AddUrlDialog({
 
   // 重置表单
   const resetForm = () => {
-    setUrlsText("")
+    setEndpointsText("")
     setValidationErrors([])
-    setParsedUrls([])
+    setParsedEndpoints([])
     setMethod("GET")
     setStatusCode("")
     setTitle("")
@@ -191,7 +191,7 @@ export function AddUrlDialog({
 
   // 处理对话框关闭
   const handleOpenChange = (newOpen: boolean) => {
-    if (!createUrl.isPending) {
+    if (!createEndpoint.isPending) {
       setOpen(newOpen)
       if (!newOpen) {
         // 关闭时重置表单
@@ -207,7 +207,7 @@ export function AddUrlDialog({
         <DialogTrigger asChild>
           <Button size="sm">
             <Plus />
-            Add URL
+            添加端点
           </Button>
         </DialogTrigger>
       )}
@@ -217,13 +217,13 @@ export function AddUrlDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <Link />
-            <span>Add URL</span>
+            <span>添加端点</span>
           </DialogTitle>
           <DialogDescription>
             每行输入一个完整 URL（如 https://example.com/api/v1/users），支持批量添加。<br />
             {currentDomainName && (
               <>
-                <strong>注意：URL 必须属于当前域名 {currentDomainName} 或其子域名</strong>。<br />
+                <strong>注意：端点 URL 必须属于当前域名 {currentDomainName} 或其子域名</strong>。<br />
               </>
             )}
             系统会自动从 URL 中提取根域名和子域名进行匹配。
@@ -233,33 +233,33 @@ export function AddUrlDialog({
         {/* 表单 */}
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
-            {/* URL 输入框 */}
+            {/* 端点输入框 */}
             <div className="grid gap-2">
-              <Label htmlFor="urls">
-                URL 列表 <span className="text-destructive">*</span>
+              <Label htmlFor="endpoints">
+                端点列表 <span className="text-destructive">*</span>
               </Label>
               <Textarea
-                id="urls"
-                value={urlsText}
-                onChange={(e) => setUrlsText(e.target.value)}
+                id="endpoints"
+                value={endpointsText}
+                onChange={(e) => setEndpointsText(e.target.value)}
                 placeholder={`https://example.com/api/v1/users
 https://example.com/api/v1/auth
 https://example.com/admin/login
 https://api.example.com/products
 https://example.com/health
 https://example.com/status`}
-                disabled={createUrl.isPending}
+                disabled={createEndpoint.isPending}
                 rows={15}
                 style={{ minHeight: '360px' }}
                 className={`font-mono text-sm ${validationErrors.length > 0 ? 'border-destructive' : ''}`}
               />
               
-              {/* URL 统计和校验状态 */}
+              {/* 端点统计和校验状态 */}
             <div className="flex items-center gap-2 text-xs">
               <span className="text-muted-foreground">
-                共 {parsedUrls.length} 个 URL
+                共 {parsedEndpoints.length} 个端点
               </span>
-              {parsedUrls.length > 0 && (
+              {parsedEndpoints.length > 0 && (
                 <Badge 
                   variant={validationErrors.length === 0 ? "secondary" : "destructive"}
                   className={`text-xs ${validationErrors.length === 0 ? "bg-green-100 text-green-800 border-green-200" : ""}`}
@@ -274,7 +274,7 @@ https://example.com/status`}
               <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <AlertCircle className="text-destructive" />
-                  <span className="text-sm font-medium text-destructive">URL 格式错误</span>
+                  <span className="text-sm font-medium text-destructive">端点格式错误</span>
                 </div>
                 <ul className="text-xs text-destructive space-y-1">
                   {validationErrors.slice(0, 5).map((error, index) => (
@@ -304,7 +304,7 @@ https://example.com/status`}
                     <Select
                       value={method}
                       onValueChange={setMethod}
-                      disabled={createUrl.isPending}
+                      disabled={createEndpoint.isPending}
                     >
                       <SelectTrigger id="method">
                         <SelectValue placeholder="选择 HTTP Method" />
@@ -335,7 +335,7 @@ https://example.com/status`}
                       value={statusCode}
                       onChange={(e) => setStatusCode(e.target.value)}
                       placeholder="例如: 200"
-                      disabled={createUrl.isPending}
+                      disabled={createEndpoint.isPending}
                       min="100"
                       max="599"
                     />
@@ -355,7 +355,7 @@ https://example.com/status`}
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                       placeholder="例如: 用户列表接口"
-                      disabled={createUrl.isPending}
+                      disabled={createEndpoint.isPending}
                     />
                     <p className="text-xs text-muted-foreground">
                       端点的描述性标题
@@ -373,7 +373,7 @@ https://example.com/status`}
                       value={contentLength}
                       onChange={(e) => setContentLength(e.target.value)}
                       placeholder="例如: 1024"
-                      disabled={createUrl.isPending}
+                      disabled={createEndpoint.isPending}
                       min="0"
                     />
                     <p className="text-xs text-muted-foreground">
@@ -390,21 +390,21 @@ https://example.com/status`}
             <Button 
               variant="outline" 
               onClick={() => handleOpenChange(false)}
-              disabled={createUrl.isPending}
+              disabled={createEndpoint.isPending}
             >
               取消
             </Button>
             <Button 
               type="submit" 
               disabled={
-                createUrl.isPending || 
-                !urlsText.trim() || 
-                parsedUrls.length === 0 || 
+                createEndpoint.isPending || 
+                !endpointsText.trim() || 
+                parsedEndpoints.length === 0 || 
                 validationErrors.length > 0
               }
               className="min-w-[120px]"
             >
-              {createUrl.isPending ? (
+              {createEndpoint.isPending ? (
                 <>
                   <LoadingSpinner/>
                   创建中...
@@ -412,7 +412,7 @@ https://example.com/status`}
               ) : (
                 <>
                   <Plus />
-                  Add {parsedUrls.length > 0 ? `${parsedUrls.length} 个` : ''} URL
+                  添加 {parsedEndpoints.length > 0 ? `${parsedEndpoints.length} 个` : ''} 端点
                 </>
               )}
             </Button>

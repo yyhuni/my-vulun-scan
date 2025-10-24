@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/tooltip"
 import { MoreHorizontal, Eye, Trash2, Network, ChevronsUpDown, ChevronUp, ChevronDown, Globe, Code, Copy, Check } from "lucide-react"
 import { IconCircleCheckFilled, IconLoader, IconAlertTriangle, IconX } from "@tabler/icons-react"
-import type { Url } from "@/types/url.types"
+import type { Endpoint } from "@/types/endpoint.types"
 import { toast } from "sonner"
 
 /**
@@ -104,18 +104,18 @@ function CopyableCell({
 interface CreateColumnsProps {
   formatDate: (dateString: string) => string
   navigate: (path: string) => void
-  handleDelete: (url: Url) => void
+  handleDelete: (endpoint: Endpoint) => void
 }
 
 /**
- * URL 行操作组件
+ * 端点行操作组件
  */
-function UrlRowActions({
-  url,
+function EndpointRowActions({
+  endpoint,
   onView,
   onDelete,
 }: {
-  url: Url
+  endpoint: Endpoint
   onView: () => void
   onDelete: () => void
 }) {
@@ -229,13 +229,13 @@ function HttpStatusBadge({ statusCode }: { statusCode: number | null | undefined
 }
 
 /**
- * 创建 URL 表格列定义
+ * 创建端点表格列定义
  */
-export const createUrlColumns = ({
+export const createEndpointColumns = ({
   formatDate,
   navigate,
   handleDelete,
-}: CreateColumnsProps): ColumnDef<Url>[] => [
+}: CreateColumnsProps): ColumnDef<Endpoint>[] => [
   // 选择列
   {
     id: "select",
@@ -400,9 +400,9 @@ export const createUrlColumns = ({
   {
     id: "actions",
     cell: ({ row }) => (
-      <UrlRowActions
-        url={row.original}
-        onView={() => navigate(`/assets/url/${row.original.id}`)}
+      <EndpointRowActions
+        endpoint={row.original}
+        onView={() => navigate(`/assets/endpoint/${row.original.id}`)}
         onDelete={() => handleDelete(row.original)}
       />
     ),

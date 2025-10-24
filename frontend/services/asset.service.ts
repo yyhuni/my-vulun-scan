@@ -202,7 +202,7 @@ export class AssetService {
     }
   ) {
     const response = await api.get(
-      `/assets/${assetId}/urls/`,
+      `/assets/${assetId}/endpoints/`,
       {
         params: {
           page: params?.page || 1,

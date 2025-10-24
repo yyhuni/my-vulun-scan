@@ -147,3 +147,78 @@ class Domain(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Endpoint(models.Model):
+    """
+    Endpoint 模型 - 存储发现的 URL 信息（包括完整的 URL、HTTP 探测结果等）
+    """
+    url = models.CharField(
+        max_length=2048,
+        unique=True,
+        null=False,
+        verbose_name='完整URL',
+        help_text='完整的 URL（包括协议、域名、路径、查询参数等，如 https://www.baidu.com/a/b?a=123）'
+    )
+    method = models.CharField(
+        max_length=10,
+        null=True,
+        blank=True,
+        verbose_name='HTTP方法',
+        help_text='HTTP方法(GET/POST/PUT/DELETE等)'
+    )
+    status_code = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name='HTTP状态码',
+        help_text='HTTP响应状态码'
+    )
+    title = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        verbose_name='页面标题'
+    )
+    content_length = models.BigIntegerField(
+        null=True,
+        blank=True,
+        verbose_name='响应内容长度',
+        help_text='响应内容长度(字节)'
+    )
+    domain = models.ForeignKey(
+        Domain,
+        on_delete=models.CASCADE,
+        related_name='endpoints',
+        db_index=True,
+        verbose_name='所属域名'
+    )
+    asset = models.ForeignKey(
+        Asset,
+        on_delete=models.CASCADE,
+        related_name='endpoints',
+        db_index=True,
+        verbose_name='所属资产',
+        help_text='冗余字段，性能优化'
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='创建时间'
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        db_index=True,
+        verbose_name='更新时间'
+    )
+    
+    class Meta:
+        db_table = 'endpoints'
+        verbose_name = 'Endpoint'
+        verbose_name_plural = 'Endpoints'
+        ordering = ['-updated_at']
+        indexes = [
+            # 复合索引：优化多维度查询
+            models.Index(fields=['asset', 'domain'], name='idx_url_asset_domain'),
+        ]
+    
+    def __str__(self):
+        return self.url

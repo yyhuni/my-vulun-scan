@@ -7,17 +7,19 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db import transaction
 from django.db.models import Q
-from .models import Organization, Asset, Domain
+from .models import Organization, Asset, Domain, Endpoint
 from .serializers import (
     OrganizationSerializer,
     OrganizationDetailSerializer,
     AssetSerializer,
     AssetListSerializer,
     DomainSerializer,
+    EndpointSerializer,
     BulkCreateAssetSerializer,
-    BulkCreateDomainSerializer
+    BulkCreateDomainSerializer,
+    BulkCreateEndpointSerializer
 )
-from apps.common.pagination import OrganizationPagination, DomainPagination, AssetPagination
+from apps.common.pagination import OrganizationPagination, DomainPagination, AssetPagination, EndpointPagination
 
 
 class OrganizationViewSet(viewsets.ModelViewSet):
@@ -72,7 +74,7 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         注意:
         - 删除组织不会删除资产实体，只会清理 organization_assets 关联表
         - 资产可能成为未分组资产，但仍然可以正常使用
-        - 域名、URL 等数据完全不受影响
+        - 域名、Endpoint 等数据完全不受影响
         """
         organization_ids = request.data.get('organization_ids')  # 拦截器会自动转换
         
@@ -429,12 +431,12 @@ class AssetViewSet(viewsets.ModelViewSet):
         serializer = DomainSerializer(queryset, many=True)
         return Response(serializer.data)
 
-    @action(detail=True, methods=['get'], url_path='urls')
-    def list_urls(self, request, pk=None):
+    @action(detail=True, methods=['get'], url_path='endpoints')
+    def list_endpoints(self, request, pk=None):
         """
-        获取资产的所有 URL 列表
+        获取资产的所有 Endpoint 列表
 
-        路由: GET /api/assets/{asset_id}/urls/
+        路由: GET /api/assets/{asset_id}/endpoints/
 
         查询参数:
         - page: 页码
@@ -442,7 +444,7 @@ class AssetViewSet(viewsets.ModelViewSet):
 
         返回格式:
         {
-            "urls": [...],
+            "endpoints": [...],
             "total": 100,
             "page": 1,
             "page_size": 10,
@@ -450,30 +452,23 @@ class AssetViewSet(viewsets.ModelViewSet):
         }
 
         说明:
-        - 查询该资产下所有域名的 URL
+        - 查询该资产下所有 Endpoint（通过 asset_id 冗余字段直接查询）
         """
-        from apps.urls.models import Url
-        from apps.urls.serializers import UrlSerializer
-        from apps.common.pagination import UrlPagination
-
         # 获取资产对象
         asset = self.get_object()
 
-        # 获取该资产下所有域名的ID
-        domain_ids = asset.domains.values_list('id', flat=True)
-
-        # 查询这些域名的所有 URL
-        queryset = Url.objects.filter(domain_id__in=domain_ids).select_related('domain')
+        # 直接通过 asset_id 查询 Endpoint（利用冗余字段优化性能）
+        queryset = Endpoint.objects.filter(asset_id=asset.id).select_related('domain')
 
         # 分页
-        paginator = UrlPagination()
+        paginator = EndpointPagination()
         page = paginator.paginate_queryset(queryset, request)
 
         if page is not None:
-            serializer = UrlSerializer(page, many=True)
+            serializer = EndpointSerializer(page, many=True)
             return paginator.get_paginated_response(serializer.data)
 
-        serializer = UrlSerializer(queryset, many=True)
+        serializer = EndpointSerializer(queryset, many=True)
         return Response(serializer.data)
 
 
@@ -622,3 +617,194 @@ class DomainViewSet(viewsets.ModelViewSet):
         }
         
         return Response(response_data, status=status.HTTP_201_CREATED)
+
+
+class EndpointViewSet(viewsets.ModelViewSet):
+    """
+    Endpoint 管理视图集
+    """
+    queryset = Endpoint.objects.all()
+    serializer_class = EndpointSerializer
+    pagination_class = EndpointPagination
+    
+    def get_queryset(self):
+        """
+        优化查询，预加载关联对象
+        """
+        return Endpoint.objects.select_related('domain', 'asset')
+    
+    @action(detail=False, methods=['post'], url_path='create')
+    def bulk_create(self, request):
+        """
+        批量创建 Endpoint 并绑定到域名和资产
+        
+        路由: POST /api/endpoints/create/
+        
+        请求体格式:
+        {
+            "endpoints": [
+                {
+                    "url": "https://api.example.com/v1/users",
+                    "method": "GET",
+                    "statusCode": 200,
+                    "title": "User API",
+                    "contentLength": 1024
+                },
+                {
+                    "url": "https://api.example.com/v1/posts",
+                    "method": "GET",
+                    "statusCode": 200
+                }
+            ],
+            "domainId": 5,
+            "assetId": 3
+        }
+        
+        返回格式（成功）:
+        {
+            "message": "成功处理 2 个 Endpoint，新创建 2 个，0 个已存在",
+            "requestedCount": 2,
+            "createdCount": 2,
+            "existedCount": 0
+        }
+        
+        核心流程：
+        1. 验证域名和资产存在性
+        2. 验证域名属于该资产
+        3. 去重请求中的 Endpoint
+        4. 事务处理：
+           - 查询已存在的 Endpoint 集合
+           - 批量插入 Endpoint (ignore_conflicts 自动忽略已存在)
+           - 计算新建数量
+        """
+        # 验证请求数据
+        serializer = BulkCreateEndpointSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {'error': '请求数据格式错误', 'details': serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        validated_data = serializer.validated_data
+        endpoints_data = validated_data['endpoints']
+        domain_id = validated_data['domain_id']
+        asset_id = validated_data['asset_id']
+        
+        # 步骤1: 验证域名存在性
+        try:
+            domain = Domain.objects.get(id=domain_id)
+        except Domain.DoesNotExist:
+            return Response(
+                {'error': f'域名 ID {domain_id} 不存在'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # 步骤2: 验证资产存在性
+        try:
+            asset = Asset.objects.get(id=asset_id)
+        except Asset.DoesNotExist:
+            return Response(
+                {'error': f'资产 ID {asset_id} 不存在'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # 步骤3: 验证域名属于该资产
+        if domain.asset_id != asset_id:
+            return Response(
+                {'error': f'域名 {domain.name} 不属于资产 {asset.name}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 步骤4: 去重请求中的 Endpoint（FIFO 策略：保留第一次出现）
+        endpoint_map = {}
+        for ep in endpoints_data:
+            url_str = ep['url']
+            endpoint_map.setdefault(
+                url_str,
+                {
+                    'url': url_str,
+                    'method': ep.get('method'),
+                    'status_code': ep.get('status_code'),
+                    'title': ep.get('title'),
+                    'content_length': ep.get('content_length')
+                }
+            )
+        
+        # 步骤5: 使用事务处理批量创建
+        with transaction.atomic():
+            # 提取所有的 url
+            url_strings = list(endpoint_map.keys())
+            
+            # 步骤5.1: 查询已存在的 Endpoint 集合
+            existing_urls = set(
+                Endpoint.objects.filter(
+                    url__in=url_strings
+                ).values_list('url', flat=True)
+            )
+            
+            # 步骤5.2: 批量插入 Endpoint (ignore_conflicts 自动忽略已存在)
+            endpoints_to_create = [
+                Endpoint(
+                    url=info['url'],
+                    method=info['method'],
+                    status_code=info['status_code'],
+                    title=info['title'],
+                    content_length=info['content_length'],
+                    domain_id=domain_id,
+                    asset_id=asset_id
+                )
+                for info in endpoint_map.values()
+            ]
+            
+            if endpoints_to_create:
+                Endpoint.objects.bulk_create(endpoints_to_create, ignore_conflicts=True)
+            
+            # 计算实际新创建的 Endpoint 数量
+            count_existed = len(existing_urls)
+            count_created = len(url_strings) - count_existed
+        
+        # 返回统计信息
+        count_requested = len(endpoint_map)
+        
+        response_data = {
+            'message': f'成功处理 {count_requested} 个 Endpoint，新创建 {count_created} 个，{count_existed} 个已存在',
+            'requestedCount': count_requested,
+            'createdCount': count_created,
+            'existedCount': count_existed
+        }
+        
+        return Response(response_data, status=status.HTTP_201_CREATED)
+    
+    @action(detail=False, methods=['post'], url_path='batch-delete')
+    def batch_delete(self, request):
+        """
+        批量删除 Endpoint
+        
+        路由: POST /api/endpoints/batch-delete/
+        
+        请求体格式:
+        {
+            "endpointIds": [1, 2, 3]
+        }
+        
+        返回格式:
+        {
+            "message": "成功删除 3 个 Endpoint",
+            "deletedEndpointCount": 3
+        }
+        """
+        endpoint_ids = request.data.get('endpoint_ids')  # 拦截器会自动转换
+        
+        if not endpoint_ids or not isinstance(endpoint_ids, list):
+            return Response(
+                {'error': 'endpointIds 是必需的，且必须是数组'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 批量删除 Endpoint
+        deleted_count, _ = Endpoint.objects.filter(id__in=endpoint_ids).delete()
+        
+        return Response({
+            'message': f'成功删除 {deleted_count} 个 Endpoint',
+            'deletedEndpointCount': deleted_count
+        }, status=status.HTTP_200_OK)

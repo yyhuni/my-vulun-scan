@@ -49,7 +49,7 @@ export function useOrganizationAssets(
       pageSize: params?.pageSize || 10,
     }),
     enabled: options?.enabled !== undefined ? options.enabled : true,
-    select: (response) => {
+    select: (response: any) => {
       // RESTful 标准：直接返回数据
       return {
         assets: response.assets || [],
@@ -347,7 +347,7 @@ export function useAssetDomains(
       pageSize: params?.pageSize || 10,
     }),
     enabled: options?.enabled !== undefined ? options.enabled : !!assetId,
-    select: (response) => {
+    select: (response: any) => {
       // RESTful 标准：直接返回数据
       return {
         domains: response.domains || [],
@@ -383,10 +383,10 @@ export function useAssetUrls(
       pageSize: params?.pageSize || 10,
     }),
     enabled: options?.enabled !== undefined ? options.enabled : !!assetId,
-    select: (response) => {
+    select: (response: any) => {
       // RESTful 标准：直接返回数据
       return {
-        urls: response.urls || [],
+        urls: response.endpoints || [],
         pagination: {
           total: response.total || 0,
           page: response.page || 1,

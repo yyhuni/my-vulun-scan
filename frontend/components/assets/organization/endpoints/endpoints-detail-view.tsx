@@ -2,9 +2,9 @@
 
 import React, { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { UrlsDataTable } from "./urls-data-table"
-import { createUrlColumns } from "./urls-columns"
-import { AddUrlDialog } from "./add-url-dialog"
+import { EndpointsDataTable } from "./endpoints-data-table"
+import { createEndpointColumns } from "./endpoints-columns"
+import { AddEndpointDialog } from "./add-endpoint-dialog"
 import { LoadingState, LoadingSpinner } from "@/components/loading-spinner"
 import {
   AlertDialog,
@@ -16,26 +16,26 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { useUrlsByDomain, useDeleteUrl, useBatchDeleteUrls } from "@/hooks/use-urls"
+import { useEndpointsByDomain, useDeleteEndpoint, useBatchDeleteEndpoints } from "@/hooks/use-endpoints"
 import { useDomain } from "@/hooks/use-domains"
-import type { Url } from "@/types/url.types"
+import type { Endpoint } from "@/types/endpoint.types"
 
 /**
- * 组织 URL 详情视图组件（使用 React Query）
- * 用于显示和管理组织下的 URL 列表
+ * 组织端点详情视图组件（使用 React Query）
+ * 用于显示和管理组织下的端点列表
  * 支持通过组织ID或域名ID获取数据
  */
-export function OrganizationUrlsDetailView({ 
+export function OrganizationEndpointsDetailView({ 
   organizationId, 
   domainId 
 }: { 
   organizationId?: string
   domainId?: string 
 }) {
-  const [selectedAssets, setSelectedAssets] = useState<Url[]>([])
+  const [selectedEndpoints, setSelectedEndpoints] = useState<Endpoint[]>([])
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [urlToDelete, setUrlToDelete] = useState<Url | null>(null)
+  const [endpointToDelete, setEndpointToDelete] = useState<Endpoint | null>(null)
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
   
   // 分页状态管理
@@ -48,24 +48,24 @@ export function OrganizationUrlsDetailView({
   const { data: currentDomain } = useDomain(domainId ? parseInt(domainId) : 0)
 
   // 删除相关 hooks
-  const deleteUrl = useDeleteUrl()
-  const batchDeleteUrls = useBatchDeleteUrls()
+  const deleteEndpoint = useDeleteEndpoint()
+  const batchDeleteEndpoints = useBatchDeleteEndpoints()
 
-  // 使用 React Query 获取 URL 数据（使用专用路由）
+  // 使用 React Query 获取端点数据（使用专用路由）
   const {
-    data: urlsResponse,
+    data: endpointsResponse,
     isLoading,
     error,
     refetch,
-  } = useUrlsByDomain(domainId ? parseInt(domainId) : 0, {
+  } = useEndpointsByDomain(domainId ? parseInt(domainId) : 0, {
     page: pagination.pageIndex + 1, // API 使用 1-based 页码
     pageSize: pagination.pageSize,
   })
   
-  // 提取 urls 数据
-  const urls = urlsResponse?.urls || []
-  const totalCount = urlsResponse?.total || 0
-  const totalPages = urlsResponse?.totalPages || 0  // 注意：已被 api-client 转换为驼峰
+  // 提取端点数据
+  const endpoints = endpointsResponse?.endpoints || []
+  const totalCount = endpointsResponse?.total || 0
+  const totalPages = endpointsResponse?.totalPages || 0  // 注意：已被 api-client 转换为驼峰
 
   // 辅助函数 - 格式化日期
   const formatDate = (dateString: string): string => {
@@ -86,25 +86,25 @@ export function OrganizationUrlsDetailView({
     router.push(path)
   }
 
-  // 处理删除资产
-  const handleDeleteAsset = (url: Url) => {
-    setUrlToDelete(url)
+  // 处理删除端点
+  const handleDeleteEndpoint = (endpoint: Endpoint) => {
+    setEndpointToDelete(endpoint)
     setDeleteDialogOpen(true)
   }
 
-  // 确认删除 URL
+  // 确认删除端点
   const confirmDelete = async () => {
-    if (!urlToDelete) return
+    if (!endpointToDelete) return
 
     setDeleteDialogOpen(false)
-    setUrlToDelete(null)
+    setEndpointToDelete(null)
     
-    deleteUrl.mutate(urlToDelete.id)
+    deleteEndpoint.mutate(endpointToDelete.id)
   }
 
   // 处理批量删除
   const handleBulkDelete = () => {
-    if (selectedAssets.length === 0) {
+    if (selectedEndpoints.length === 0) {
       return
     }
     setBulkDeleteDialogOpen(true)
@@ -112,36 +112,36 @@ export function OrganizationUrlsDetailView({
 
   // 确认批量删除
   const confirmBulkDelete = async () => {
-    if (selectedAssets.length === 0) return
+    if (selectedEndpoints.length === 0) return
 
-    const urlIds = selectedAssets.map(url => url.id)
+    const endpointIds = selectedEndpoints.map(endpoint => endpoint.id)
     
     setBulkDeleteDialogOpen(false)
-    setSelectedAssets([])
+    setSelectedEndpoints([])
     
-    batchDeleteUrls.mutate({ urlIds })
+    batchDeleteEndpoints.mutate({ endpointIds })
   }
 
-  // 处理添加 URL
-  const handleAddUrl = () => {
+  // 处理添加端点
+  const handleAddEndpoint = () => {
     setShowAddDialog(true)
   }
 
   // 处理添加成功回调
-  const handleAddSuccess = (newUrls: Url[]) => {
+  const handleAddSuccess = (newEndpoints: Endpoint[]) => {
     // React Query 会通过 invalidateQueries 自动刷新数据，无需手动 refetch
     setShowAddDialog(false)
   }
 
   // 创建列定义
-  const urlColumns = useMemo(
+  const endpointColumns = useMemo(
     () =>
-      createUrlColumns({
+      createEndpointColumns({
         formatDate,
         navigate,
-        handleDelete: handleDeleteAsset,
+        handleDelete: handleDeleteEndpoint,
       }),
-    [formatDate, navigate, handleDeleteAsset]
+    [formatDate, navigate, handleDeleteEndpoint]
   )
 
   // 错误状态
@@ -153,7 +153,7 @@ export function OrganizationUrlsDetailView({
         </div>
         <h3 className="text-lg font-semibold mb-2">加载失败</h3>
         <p className="text-muted-foreground text-center mb-4">
-          加载 URL 数据失败，请检查网络连接后重试
+          加载 端点 数据失败，请检查网络连接后重试
         </p>
         <button 
           onClick={() => refetch()}
@@ -167,30 +167,30 @@ export function OrganizationUrlsDetailView({
 
   // 加载状态
   if (isLoading) {
-    return <LoadingState message="加载 URL 数据中..." />
+    return <LoadingState message="加载端点数据中..." />
   }
 
 
 
   return (
     <>
-      <UrlsDataTable
-        data={urls}
-        columns={urlColumns}
-        onAddNew={handleAddUrl}
+      <EndpointsDataTable
+        data={endpoints}
+        columns={endpointColumns}
+        onAddNew={handleAddEndpoint}
         onBulkDelete={handleBulkDelete}
-        onSelectionChange={setSelectedAssets}
-        searchPlaceholder="搜索 URL..."
+        onSelectionChange={setSelectedEndpoints}
+        searchPlaceholder="搜索端点..."
         searchColumn="url"
-        addButtonText="添加 URL"
+        addButtonText="添加端点"
         pagination={pagination}
         onPaginationChange={setPagination}
         totalCount={totalCount}
         totalPages={totalPages}
       />
       
-      {/* 添加 URL 对话框 */}
-      <AddUrlDialog
+      {/* 添加端点对话框 */}
+      <AddEndpointDialog
         domainId={domainId}
         currentDomainName={currentDomain?.name}
         onAdd={handleAddSuccess}
@@ -204,7 +204,7 @@ export function OrganizationUrlsDetailView({
           <AlertDialogHeader>
             <AlertDialogTitle>确认删除</AlertDialogTitle>
             <AlertDialogDescription>
-              此操作无法撤销。这将永久删除 URL &quot;{urlToDelete?.url}&quot; 及其相关数据（包括关联的 Vulnerabilities）。
+              此操作无法撤销。这将永久删除端点 &quot;{endpointToDelete?.url}&quot; 及其相关数据（包括关联的 Vulnerabilities）。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -212,9 +212,9 @@ export function OrganizationUrlsDetailView({
             <AlertDialogAction 
               onClick={confirmDelete} 
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={deleteUrl.isPending}
+              disabled={deleteEndpoint.isPending}
             >
-              {deleteUrl.isPending ? (
+              {deleteEndpoint.isPending ? (
                 <>
                   <LoadingSpinner/>
                   删除中...
@@ -233,16 +233,16 @@ export function OrganizationUrlsDetailView({
           <AlertDialogHeader>
             <AlertDialogTitle>确认批量删除</AlertDialogTitle>
             <AlertDialogDescription>
-              此操作无法撤销。这将永久删除以下 {selectedAssets.length} 个 URL 及其相关数据（包括关联的 Vulnerabilities）。
+              此操作无法撤销。这将永久删除以下 {selectedEndpoints.length} 个端点及其相关数据（包括关联的 Vulnerabilities）。
             </AlertDialogDescription>
           </AlertDialogHeader>
-          {/* URL 列表容器 - 固定最大高度并支持滚动 */}
+          {/* 端点列表容器 - 固定最大高度并支持滚动 */}
           <div className="mt-2 p-2 bg-muted rounded-md max-h-96 overflow-y-auto">
             <ul className="text-sm space-y-1">
-              {selectedAssets.map((url) => (
-                <li key={url.id} className="flex items-center flex-wrap">
-                  <span className="font-medium text-xs mr-2">{url.method || 'GET'}</span>
-                  <span className="font-mono text-xs truncate flex-1">{url.url}</span>
+              {selectedEndpoints.map((endpoint) => (
+                <li key={endpoint.id} className="flex items-center flex-wrap">
+                  <span className="font-medium text-xs mr-2">{endpoint.method || 'GET'}</span>
+                  <span className="font-mono text-xs truncate flex-1">{endpoint.url}</span>
                 </li>
               ))}
             </ul>
@@ -252,15 +252,15 @@ export function OrganizationUrlsDetailView({
             <AlertDialogAction 
               onClick={confirmBulkDelete} 
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={batchDeleteUrls.isPending}
+              disabled={batchDeleteEndpoints.isPending}
             >
-              {batchDeleteUrls.isPending ? (
+              {batchDeleteEndpoints.isPending ? (
                 <>
                   <LoadingSpinner/>
                   删除中...
                 </>
               ) : (
-                `删除 ${selectedAssets.length} 个 URL`
+                `删除 ${selectedEndpoints.length} 个端点`
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

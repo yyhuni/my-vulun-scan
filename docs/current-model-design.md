@@ -106,7 +106,7 @@
 **数据库表名**: `domains`
 
 
-### URL 模型
+### Endpoint 模型
 **作用**: 存储发现的 URL 信息（包括完整的 URL、HTTP 探测结果等）
 
 | 字段名 | 类型 | 限制 | 默认值 | 说明 |
@@ -616,11 +616,11 @@ erDiagram
     Organization }o--o{ organization_assets : "管理"
     Asset }o--o{ organization_assets : "属于"
     Asset ||--o{ Domain : "包含域名(含根域名)"
-    Asset ||--o{ URL : "包含URL(冗余关联)"
+    Asset ||--o{ Endpoint : "包含URL(冗余关联)"
     Asset ||--o{ Vulnerability : "包含漏洞"
-    Domain ||--o{ URL : "包含URL"
+    Domain ||--o{ Endpoint : "包含URL"
     Domain ||--o{ Vulnerability : "包含漏洞"
-    URL ||--o{ Vulnerability : "包含漏洞"
+    Endpoint ||--o{ Vulnerability : "包含漏洞"
     
     Tool ||--o{ Command : "包含命令"
     Command ||--o{ WorkflowStep : "被步骤使用"
@@ -655,7 +655,7 @@ erDiagram
         datetime updated_at
     }
     
-    URL {
+    Endpoint {
         int id PK
         string url
         string method

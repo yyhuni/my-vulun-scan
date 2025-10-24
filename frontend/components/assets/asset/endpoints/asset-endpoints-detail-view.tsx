@@ -3,9 +3,9 @@
 import React, { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { useAssetUrls } from "@/hooks/use-assets"
-import { useDeleteUrl, useBatchDeleteUrls } from "@/hooks/use-urls"
-import { UrlsDataTable } from "@/components/assets/organization/urls/urls-data-table"
-import { createUrlColumns } from "@/components/assets/organization/urls/urls-columns"
+import { useDeleteEndpoint, useBatchDeleteEndpoints } from "@/hooks/use-endpoints"
+import { EndpointsDataTable } from "@/components/assets/organization/endpoints/endpoints-data-table"
+import { createEndpointColumns } from "@/components/assets/organization/endpoints/endpoints-columns"
 import { LoadingState, LoadingSpinner } from "@/components/loading-spinner"
 import {
   AlertDialog,
@@ -17,20 +17,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import type { Url } from "@/types/url.types"
+import type { Endpoint } from "@/types/endpoint.types"
 
 /**
- * 资产 URL 详情视图组件
- * 用于显示和管理资产下的 URL 列表
+ * 资产端点详情视图组件
+ * 用于显示和管理资产下的端点列表
  */
-export function AssetUrlsDetailView({
+export function AssetEndpointsDetailView({
   assetId
 }: {
   assetId: number
 }) {
-  const [selectedUrls, setSelectedUrls] = useState<Url[]>([])
+  const [selectedEndpoints, setSelectedEndpoints] = useState<Endpoint[]>([])
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [urlToDelete, setUrlToDelete] = useState<Url | null>(null)
+  const [endpointToDelete, setEndpointToDelete] = useState<Endpoint | null>(null)
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
 
   // 分页状态管理
@@ -40,10 +40,10 @@ export function AssetUrlsDetailView({
   })
 
   // 删除相关 hooks
-  const deleteUrl = useDeleteUrl()
-  const batchDeleteUrls = useBatchDeleteUrls()
+  const deleteEndpoint = useDeleteEndpoint()
+  const batchDeleteEndpoints = useBatchDeleteEndpoints()
 
-  // 使用 React Query 获取资产 URL 数据
+  // 使用 React Query 获取资产端点数据
   const {
     data,
     isLoading,
@@ -73,25 +73,25 @@ export function AssetUrlsDetailView({
     router.push(path)
   }
 
-  // 处理删除 URL
-  const handleDeleteUrl = (url: Url) => {
-    setUrlToDelete(url)
+  // 处理删除端点
+  const handleDeleteEndpoint = (endpoint: Endpoint) => {
+    setEndpointToDelete(endpoint)
     setDeleteDialogOpen(true)
   }
 
-  // 确认删除 URL
+  // 确认删除端点
   const confirmDelete = async () => {
-    if (!urlToDelete) return
+    if (!endpointToDelete) return
 
     setDeleteDialogOpen(false)
-    setUrlToDelete(null)
+    setEndpointToDelete(null)
 
-    deleteUrl.mutate(urlToDelete.id)
+    deleteEndpoint.mutate(endpointToDelete.id)
   }
 
   // 处理批量删除
   const handleBulkDelete = () => {
-    if (selectedUrls.length === 0) {
+    if (selectedEndpoints.length === 0) {
       return
     }
     setBulkDeleteDialogOpen(true)
@@ -99,14 +99,14 @@ export function AssetUrlsDetailView({
 
   // 确认批量删除
   const confirmBulkDelete = async () => {
-    if (selectedUrls.length === 0) return
+    if (selectedEndpoints.length === 0) return
 
-    const urlIds = selectedUrls.map(url => url.id)
+    const endpointIds = selectedEndpoints.map(endpoint => endpoint.id)
 
     setBulkDeleteDialogOpen(false)
-    setSelectedUrls([])
+    setSelectedEndpoints([])
 
-    batchDeleteUrls.mutate({ urlIds })
+    batchDeleteEndpoints.mutate({ endpointIds })
   }
 
   // 处理分页变化
@@ -115,14 +115,14 @@ export function AssetUrlsDetailView({
   }
 
   // 创建列定义
-  const urlColumns = useMemo(
+  const endpointColumns = useMemo(
     () =>
-      createUrlColumns({
+      createEndpointColumns({
         formatDate,
         navigate,
-        handleDelete: handleDeleteUrl,
+        handleDelete: handleDeleteEndpoint,
       }),
-    [formatDate, navigate, handleDeleteUrl]
+    [formatDate, navigate, handleDeleteEndpoint]
   )
 
   // 错误状态
@@ -134,7 +134,7 @@ export function AssetUrlsDetailView({
         </div>
         <h3 className="text-lg font-semibold mb-2">加载失败</h3>
         <p className="text-muted-foreground text-center mb-4">
-          {error.message || "加载 URL 数据时出现错误，请重试"}
+          {error.message || "加载端点数据时出现错误，请重试"}
         </p>
         <button
           onClick={() => refetch()}
@@ -148,27 +148,22 @@ export function AssetUrlsDetailView({
 
   // 加载状态
   if (isLoading) {
-    return <LoadingState message="加载 URL 数据中..." />
+    return <LoadingState message="加载端点数据中..." />
   }
 
   return (
     <>
-      <UrlsDataTable
+      <EndpointsDataTable
         data={data?.urls || []}
-        columns={urlColumns}
+        columns={endpointColumns}
         onBulkDelete={handleBulkDelete}
-        onSelectionChange={setSelectedUrls}
-        searchPlaceholder="搜索 URL..."
+        onSelectionChange={setSelectedEndpoints}
+        searchPlaceholder="搜索端点..."
         searchColumn="url"
         pagination={pagination}
-        setPagination={setPagination}
-        paginationInfo={{
-          total: data?.pagination.total || 0,
-          page: data?.pagination.page || 1,
-          pageSize: data?.pagination.pageSize || 10,
-          totalPages: data?.pagination.totalPages || 1,
-        }}
         onPaginationChange={handlePaginationChange}
+        totalCount={data?.pagination?.total || 0}
+        totalPages={data?.pagination?.totalPages || 1}
       />
 
       {/* 删除确认对话框 */}
@@ -177,7 +172,7 @@ export function AssetUrlsDetailView({
           <AlertDialogHeader>
             <AlertDialogTitle>确认删除</AlertDialogTitle>
             <AlertDialogDescription>
-              此操作无法撤销。这将永久删除该 URL 及其相关数据。
+              此操作无法撤销。这将永久删除该端点及其相关数据。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -185,9 +180,9 @@ export function AssetUrlsDetailView({
             <AlertDialogAction
               onClick={confirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={deleteUrl.isPending}
+              disabled={deleteEndpoint.isPending}
             >
-              {deleteUrl.isPending ? (
+              {deleteEndpoint.isPending ? (
                 <>
                   <LoadingSpinner/>
                   删除中...
@@ -206,14 +201,14 @@ export function AssetUrlsDetailView({
           <AlertDialogHeader>
             <AlertDialogTitle>确认批量删除</AlertDialogTitle>
             <AlertDialogDescription>
-              此操作无法撤销。这将永久删除以下 {selectedUrls.length} 个 URL 及其相关数据。
+              此操作无法撤销。这将永久删除以下 {selectedEndpoints.length} 个端点及其相关数据。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="mt-2 p-2 bg-muted rounded-md max-h-96 overflow-y-auto">
             <ul className="text-sm space-y-1">
-              {selectedUrls.map((url) => (
-                <li key={url.id} className="flex items-center">
-                  <span className="font-medium font-mono text-xs break-all">{url.url}</span>
+              {selectedEndpoints.map((endpoint) => (
+                <li key={endpoint.id} className="flex items-center">
+                  <span className="font-medium font-mono text-xs break-all">{endpoint.url}</span>
                 </li>
               ))}
             </ul>
@@ -223,15 +218,15 @@ export function AssetUrlsDetailView({
             <AlertDialogAction
               onClick={confirmBulkDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={batchDeleteUrls.isPending}
+              disabled={batchDeleteEndpoints.isPending}
             >
-              {batchDeleteUrls.isPending ? (
+              {batchDeleteEndpoints.isPending ? (
                 <>
                   <LoadingSpinner/>
                   删除中...
                 </>
               ) : (
-                `删除 ${selectedUrls.length} 个 URL`
+                `删除 ${selectedEndpoints.length} 个端点`
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

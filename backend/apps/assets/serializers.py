@@ -1,7 +1,7 @@
 """资产管理序列化器"""
 import ipaddress
 from rest_framework import serializers
-from .models import Organization, Asset, Domain
+from .models import Organization, Asset, Domain, Endpoint
 from apps.common.normalizer import normalize_domain
 from apps.common.validators import validate_domain
 
@@ -14,22 +14,21 @@ class OrganizationSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'description', 'created_at', 'updated_at']
 
 class AssetSimpleSerializer(serializers.ModelSerializer):
-    """资产简化序列化器（ID、名称、类型、描述、域名数量、URL数量，用于嵌套展示）"""
+    """资产简化序列化器（ID、名称、类型、描述、域名数量、Endpoint 数量，用于嵌套展示）"""
     domain_count = serializers.SerializerMethodField()
-    url_count = serializers.SerializerMethodField()
+    endpoint_count = serializers.SerializerMethodField()
     
     class Meta:
         model = Asset
-        fields = ['id', 'name', 'description', 'type', 'domain_count', 'url_count']
+        fields = ['id', 'name', 'description', 'type', 'domain_count', 'endpoint_count']
     
     def get_domain_count(self, obj):
         """计算资产的域名数量"""
         return obj.domains.count()
     
-    def get_url_count(self, obj):
-        """计算资产的 URL 数量（目前为 0，稍后扩展）"""
-        # TODO: 此字段正在待实现，目前为 0
-        return 0
+    def get_endpoint_count(self, obj):
+        """计算资产的 Endpoint 数量"""
+        return obj.endpoints.count()
 
 class OrganizationDetailSerializer(serializers.ModelSerializer):
     """组织详情序列化器（包含 assets，用于详情和列表展示）"""
@@ -54,23 +53,22 @@ class AssetSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'description', 'type', 'created_at', 'updated_at']
 
 class AssetListSerializer(serializers.ModelSerializer):
-    """资产列表序列化器（包含 organizations、domain_count、url_count，用于列表展示）"""
+    """资产列表序列化器（包含 organizations、domain_count、endpoint_count，用于列表展示）"""
     organizations = OrganizationSimpleSerializer(many=True, read_only=True)
     domain_count = serializers.SerializerMethodField()
-    url_count = serializers.SerializerMethodField()
+    endpoint_count = serializers.SerializerMethodField()
     
     class Meta:
         model = Asset
-        fields = ['id', 'name', 'description', 'type', 'created_at', 'updated_at', 'organizations', 'domain_count', 'url_count']
+        fields = ['id', 'name', 'description', 'type', 'created_at', 'updated_at', 'organizations', 'domain_count', 'endpoint_count']
     
     def get_domain_count(self, obj):
         """计算资产的域名数量"""
         return obj.domains.count()
     
-    def get_url_count(self, obj):
-        """计算资产的 URL 数量（目前为 0，稍后扩展）"""
-        # TODO: 此字段正在待实现，目前为 0
-        return 0
+    def get_endpoint_count(self, obj):
+        """计算资产的 Endpoint 数量"""
+        return obj.endpoints.count()
 
 class DomainSerializer(serializers.ModelSerializer):
     """域名信息序列化器"""
@@ -195,4 +193,43 @@ class BulkCreateDomainSerializer(serializers.Serializer):
         allow_empty=False,
         help_text="域名列表"
     )
+    asset_id = serializers.IntegerField(required=True, min_value=1, help_text="资产ID")
+
+
+class EndpointSerializer(serializers.ModelSerializer):
+    """Endpoint 信息序列化器"""
+    
+    class Meta:
+        model = Endpoint
+        fields = [
+            'id', 'url', 'method', 'status_code', 'title', 
+            'content_length', 'domain', 'asset', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['created_at', 'updated_at']
+
+
+class CreateEndpointItemSerializer(serializers.Serializer):
+    """单个 Endpoint 项序列化器"""
+    url = serializers.CharField(max_length=2048, required=True, allow_blank=False)
+    method = serializers.CharField(max_length=10, required=False, allow_blank=True, allow_null=True)
+    status_code = serializers.IntegerField(required=False, allow_null=True)
+    title = serializers.CharField(max_length=255, required=False, allow_blank=True, allow_null=True)
+    content_length = serializers.IntegerField(required=False, allow_null=True)
+    
+    def validate_url(self, value):
+        """验证 URL 格式"""
+        if not value.startswith(('http://', 'https://')):
+            raise serializers.ValidationError('URL 必须以 http:// 或 https:// 开头')
+        return value.strip()
+
+
+class BulkCreateEndpointSerializer(serializers.Serializer):
+    """批量创建 Endpoint 请求序列化器"""
+    endpoints = serializers.ListField(
+        child=CreateEndpointItemSerializer(),
+        required=True,
+        allow_empty=False,
+        help_text="Endpoint 列表"
+    )
+    domain_id = serializers.IntegerField(required=True, min_value=1, help_text="域名ID")
     asset_id = serializers.IntegerField(required=True, min_value=1, help_text="资产ID")

@@ -55,16 +55,16 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-// 导入资产类型定义
-import type { Url } from "@/types/url.types"
+// 导入类型定义
+import type { Endpoint } from "@/types/endpoint.types"
 
 // 组件属性类型定义
-interface UrlDataTableProps {
-  data: Url[]                                  // URL 数据数组
-  columns: ColumnDef<Url>[]                    // 列定义数组
-  onAddNew?: () => void                          // 添加新 URL 的回调函数
+interface EndpointDataTableProps {
+  data: Endpoint[]                                  // 端点数据数组
+  columns: ColumnDef<Endpoint>[]                    // 列定义数组
+  onAddNew?: () => void                          // 添加新端点的回调函数
   onBulkDelete?: () => void                      // 批量删除回调函数
-  onSelectionChange?: (selectedRows: Url[]) => void  // 选中行变化回调
+  onSelectionChange?: (selectedRows: Endpoint[]) => void  // 选中行变化回调
   searchPlaceholder?: string                     // 搜索框占位符
   searchColumn?: string                          // 搜索的列名
   addButtonText?: string                         // 添加按钮文本
@@ -76,24 +76,24 @@ interface UrlDataTableProps {
 }
 
 /**
- * URL 数据表格组件
- * 专门用于显示和管理 URL 数据的表格
+ * 端点数据表格组件
+ * 专门用于显示和管理端点数据的表格
  * 包含搜索、分页、列显示控制等功能
  */
-export function UrlsDataTable({
+export function EndpointsDataTable({
   data,
   columns,
   onAddNew,
   onBulkDelete,
   onSelectionChange,
-  searchPlaceholder = "Search URLs...",
+  searchPlaceholder = "搜索端点...",
   searchColumn = "url",
   addButtonText = "Add",
   pagination: externalPagination,
   onPaginationChange,
   totalCount,
   totalPages,
-}: UrlDataTableProps) {
+}: EndpointDataTableProps) {
   // 表格状态管理
   // 选中行状态，key为行id，value为true或false
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({})
@@ -236,11 +236,11 @@ export function UrlsDataTable({
               }
             >
               <IconTrash />
-              Delete
+              删除
             </Button>
           )}
 
-          {/* 添加新资产按钮 */}
+          {/* 添加新端点按钮 */}
           {onAddNew && (
             <Button onClick={onAddNew} size="sm">
               <IconPlus />

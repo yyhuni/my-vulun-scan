@@ -48,7 +48,17 @@ export class EndpointService {
     return response.data
   }
 
-
+  /**
+   * 批量创建 Endpoint
+   * @param data - 创建请求对象
+   * @param data.endpoints - Endpoint 数据数组
+   * @returns Promise<CreateEndpointsResponse>
+   */
+  static async createEndpoints(data: { endpoints: Array<CreateEndpointRequest> }): Promise<any> {
+    // api-client.ts 会自动将请求体的驼峰转换为下划线
+    const response = await api.post('/endpoints/create/', data)
+    return response.data
+  }
 
   /**
    * 删除 Endpoint

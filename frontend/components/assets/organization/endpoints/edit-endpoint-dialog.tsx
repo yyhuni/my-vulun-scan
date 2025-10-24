@@ -28,12 +28,12 @@ import {
 } from "@/components/ui/dialog"
 
 // 导入类型定义
-import type { Url } from "@/types/url.types"
+import type { Endpoint } from "@/types/endpoint.types"
 
 // 组件属性类型定义
-interface EditUrlDialogProps {
-  url: Url                           // 要编辑的 URL 数据
-  onEdit: (url: Url) => void        // 编辑成功回调函数
+interface EditEndpointDialogProps {
+  endpoint: Endpoint                           // 要编辑的端点数据
+  onEdit: (endpoint: Endpoint) => void        // 编辑成功回调函数
   open?: boolean                               // 外部控制对话框开关状态
   onOpenChange?: (open: boolean) => void       // 外部控制对话框开关回调
   trigger?: React.ReactNode                    // 自定义触发器
@@ -70,8 +70,8 @@ const getStatusCodeColor = (code: number) => {
 }
 
 /**
- * 编辑 URL 对话框组件
- * 提供编辑现有 URL 的表单界面
+ * 编辑端点对话框组件
+ * 提供编辑现有端点的表单界面
  * 
  * 功能特性：
  * 1. 预填充现有数据
@@ -81,24 +81,24 @@ const getStatusCodeColor = (code: number) => {
  * 5. 加载状态
  * 6. 用户友好的交互
  */
-export function EditUrlDialog({ 
-  url,
+export function EditEndpointDialog({ 
+  endpoint,
   onEdit, 
   open: externalOpen, 
   onOpenChange: externalOnOpenChange,
   trigger
-}: EditUrlDialogProps) {
+}: EditEndpointDialogProps) {
   // 对话框开关状态 - 支持外部控制
   const [internalOpen, setInternalOpen] = useState(false)
   const open = externalOpen !== undefined ? externalOpen : internalOpen
   const setOpen = externalOnOpenChange || setInternalOpen
   
   // 表单状态 - 使用原始数据初始化
-  const [urlValue, setUrlValue] = useState(url.url)
-  const [method, setMethod] = useState(url.method)
-  const [statusCode, setStatusCode] = useState(url.statusCode)
-  const [title, setTitle] = useState(url.title)
-  const [contentLength, setContentLength] = useState(url.contentLength)
+  const [urlValue, setUrlValue] = useState(endpoint.url)
+  const [method, setMethod] = useState(endpoint.method)
+  const [statusCode, setStatusCode] = useState(endpoint.statusCode)
+  const [title, setTitle] = useState(endpoint.title)
+  const [contentLength, setContentLength] = useState(endpoint.contentLength)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   const [hasChanges, setHasChanges] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -116,14 +116,14 @@ export function EditUrlDialog({
   // 检测表单变更
   useEffect(() => {
     const hasFormChanges = 
-      urlValue !== url.url ||
-      method !== url.method ||
-      statusCode !== url.statusCode ||
-      title !== url.title ||
-      contentLength !== url.contentLength
+      urlValue !== endpoint.url ||
+      method !== endpoint.method ||
+      statusCode !== endpoint.statusCode ||
+      title !== endpoint.title ||
+      contentLength !== endpoint.contentLength
     
     setHasChanges(hasFormChanges)
-  }, [urlValue, method, statusCode, title, contentLength, url])
+  }, [urlValue, method, statusCode, title, contentLength, endpoint])
 
   // 实时验证
   useEffect(() => {
@@ -144,11 +144,11 @@ export function EditUrlDialog({
 
   // 重置表单到原始状态
   const resetForm = () => {
-    setUrlValue(url.url)
-    setMethod(url.method)
-    setStatusCode(url.statusCode)
-    setTitle(url.title)
-    setContentLength(url.contentLength)
+    setUrlValue(endpoint.url)
+    setMethod(endpoint.method)
+    setStatusCode(endpoint.statusCode)
+    setTitle(endpoint.title)
+    setContentLength(endpoint.contentLength)
     setValidationErrors([])
     setHasChanges(false)
   }
@@ -163,8 +163,8 @@ export function EditUrlDialog({
     }
 
     // 构建更新数据
-    const updatedUrl: Url = {
-      ...url,
+    const updatedEndpoint: Endpoint = {
+      ...endpoint,
       url: urlValue?.trim() || "",
       method,
       statusCode,
@@ -175,7 +175,7 @@ export function EditUrlDialog({
     try {
       setSaving(true)
       // 直接回调上层以更新本地数据
-      onEdit(updatedUrl)
+      onEdit(updatedEndpoint)
       // 关闭对话框
       setOpen(false)
     } finally {
@@ -212,7 +212,7 @@ export function EditUrlDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <Edit />
-            <span>编辑 URL</span>
+            <span>编辑端点</span>
             {hasChanges && (
               <Badge variant="secondary" className="text-xs">
                 <AlertCircle />
@@ -221,7 +221,7 @@ export function EditUrlDialog({
             )}
           </DialogTitle>
           <DialogDescription>
-            修改 URL 的详细信息。需要输入完整 URL（如 https://example.com/api/v1/users）。
+            修改端点的详细信息。需要输入完整 URL（如 https://example.com/api/v1/users）。
           </DialogDescription>
         </DialogHeader>
         

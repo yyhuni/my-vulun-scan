@@ -3,7 +3,7 @@
 """
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import OrganizationViewSet, AssetViewSet, DomainViewSet
+from .views import OrganizationViewSet, AssetViewSet, DomainViewSet, EndpointViewSet
 
 # 应用命名空间
 app_name = 'assets'
@@ -15,6 +15,7 @@ router = DefaultRouter()
 router.register(r'organizations', OrganizationViewSet, basename='organization')
 router.register(r'assets', AssetViewSet, basename='asset')
 router.register(r'domains', DomainViewSet, basename='domain')
+router.register(r'endpoints', EndpointViewSet, basename='endpoint')
 
 urlpatterns = [
     # 包含路由器生成的路由

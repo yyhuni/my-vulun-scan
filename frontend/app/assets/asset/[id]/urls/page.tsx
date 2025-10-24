@@ -2,18 +2,18 @@
 
 import React from "react"
 import { useParams } from "next/navigation"
-import { AssetUrlsDetailView } from "@/components/assets/asset/urls/asset-urls-detail-view"
+import { AssetEndpointsDetailView } from "@/components/assets/asset/endpoints/asset-endpoints-detail-view"
 
 /**
- * 资产 URL 页面
- * 显示资产下的 URL 详情
+ * 资产端点页面
+ * 显示资产下的端点详情
  */
-export default function AssetUrlsPage() {
+export default function AssetEndpointsPage() {
   const { id } = useParams<{ id: string }>()
 
   return (
     <div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
-      <AssetUrlsDetailView assetId={parseInt(id)} />
+      <AssetEndpointsDetailView assetId={parseInt(id)} />
     </div>
   )
 }
