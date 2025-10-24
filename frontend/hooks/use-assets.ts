@@ -297,7 +297,7 @@ export function useUpdateAsset() {
 }
 
 // 获取所有资产列表
-// 后端固定按更新时间降序排列，不支持自定义排序
+// 后端固定按更新时间降序排列,不支持自定义排序
 export function useAllAssets(
   params: GetAllAssetsParams = {},
   options?: {
@@ -323,5 +323,77 @@ export function useAllAssets(
       }
     },
     enabled: options?.enabled !== undefined ? options.enabled : true,
+  })
+}
+
+// 获取资产的域名列表
+export function useAssetDomains(
+  assetId: number,
+  params?: {
+    page?: number
+    pageSize?: number
+  },
+  options?: {
+    enabled?: boolean
+  }
+) {
+  return useQuery({
+    queryKey: ['assets', 'detail', assetId, 'domains', {
+      page: params?.page,
+      pageSize: params?.pageSize,
+    }],
+    queryFn: () => AssetService.getDomainsByAssetId(assetId, {
+      page: params?.page || 1,
+      pageSize: params?.pageSize || 10,
+    }),
+    enabled: options?.enabled !== undefined ? options.enabled : !!assetId,
+    select: (response) => {
+      // RESTful 标准：直接返回数据
+      return {
+        domains: response.domains || [],
+        pagination: {
+          total: response.total || 0,
+          page: response.page || 1,
+          pageSize: response.pageSize || 10,
+          totalPages: response.totalPages || 0,
+        }
+      }
+    },
+  })
+}
+
+// 获取资产的 URL 列表
+export function useAssetUrls(
+  assetId: number,
+  params?: {
+    page?: number
+    pageSize?: number
+  },
+  options?: {
+    enabled?: boolean
+  }
+) {
+  return useQuery({
+    queryKey: ['assets', 'detail', assetId, 'urls', {
+      page: params?.page,
+      pageSize: params?.pageSize,
+    }],
+    queryFn: () => AssetService.getUrlsByAssetId(assetId, {
+      page: params?.page || 1,
+      pageSize: params?.pageSize || 10,
+    }),
+    enabled: options?.enabled !== undefined ? options.enabled : !!assetId,
+    select: (response) => {
+      // RESTful 标准：直接返回数据
+      return {
+        urls: response.urls || [],
+        pagination: {
+          total: response.total || 0,
+          page: response.page || 1,
+          pageSize: response.pageSize || 10,
+          totalPages: response.totalPages || 0,
+        }
+      }
+    },
   })
 }

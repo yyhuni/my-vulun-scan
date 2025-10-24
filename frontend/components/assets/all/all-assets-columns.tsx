@@ -220,7 +220,18 @@ export const createAllAssetsColumns = ({
     ),
     cell: ({ row }) => {
       const name = row.getValue("name") as string
-      return <CopyableCell value={name} maxWidth="400px" truncateLength={50} successMessage="已复制主资产名称" />
+      const assetId = row.original.id
+      return (
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate(`/assets/asset/${assetId}/domains`)}
+            className="text-sm font-medium text-primary hover:underline cursor-pointer truncate max-w-[350px]"
+            title={name}
+          >
+            {name}
+          </button>
+        </div>
+      )
     },
   },
 

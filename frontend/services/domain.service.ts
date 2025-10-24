@@ -5,22 +5,21 @@ export class DomainService {
   // ========== 域名基础操作 ==========
 
   /**
-   * 批量创建域名
+   * 批量创建域名（绑定到资产）
    * @param data - 域名创建请求对象
-   * @param data.domains - 域名详细信息数组
-   * @param data.organizationId - 组织ID
+   * @param data.domains - 域名名称数组
+   * @param data.assetId - 资产ID
    * @returns Promise<BatchCreateDomainsResponse> - 创建统计信息
    */
   static async createDomains(data: {
     domains: Array<{
       name: string
-      description?: string
     }>
-    organizationId: number
+    assetId: number
   }): Promise<BatchCreateDomainsResponse> {
     const response = await api.post<BatchCreateDomainsResponse>('/domains/create/', {
       domains: data.domains,
-      organizationId: data.organizationId  // ✅ 使用驼峰命名，拦截器会自动转换为 organization_id
+      assetId: data.assetId  // ✅ 使用驼峰命名，拦截器会自动转换为 asset_id
     })
     return response.data
   }

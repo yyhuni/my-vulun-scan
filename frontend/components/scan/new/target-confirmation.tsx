@@ -4,10 +4,8 @@ import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { IconBuilding, IconWorld, IconChevronDown, IconChevronUp, IconLoader2 } from "@tabler/icons-react"
+import { IconBuilding, IconWorld, IconChevronDown, IconChevronUp } from "@tabler/icons-react"
 import type { Organization } from "@/types/organization.types"
-import type { SubDomain } from "@/types/subdomain.types"
-import { useSubdomains } from "@/hooks/use-subdomains"
 
 interface TargetConfirmationProps {
   organizations: Organization[]
@@ -65,13 +63,9 @@ export function TargetConfirmation({ organizations }: TargetConfirmationProps) {
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-primary">
-                {organizations.reduce((sum, org) => sum + (org.domains?.length || 0), 0)}
+                {organizations.reduce((sum, org) => sum + (org.assets?.length || 0), 0)}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">域名数量</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-primary">-</p>
-              <p className="text-xs text-muted-foreground mt-1">子域名数量</p>
+              <p className="text-xs text-muted-foreground mt-1">资产数量</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-primary">-</p>
@@ -85,7 +79,7 @@ export function TargetConfirmation({ organizations }: TargetConfirmationProps) {
 }
 
 /**
- * 单个组织的子域名卡片
+ * 单个组织的域名卡片
  */
 function OrgSubdomainCard({
   organization,
@@ -96,15 +90,6 @@ function OrgSubdomainCard({
   isExpanded: boolean
   onToggle: () => void
 }) {
-  // 获取组织的子域名（只在展开时加载）
-  const { data: subdomainsData, isLoading } = useSubdomains({
-    organizationId: organization.id.toString(),
-    page: 1,
-    pageSize: 100, // 显示前100个子域名
-  })
-
-  const subdomains = subdomainsData?.subDomains || []
-  const totalSubdomains = subdomainsData?.total || 0
 
   return (
     <Card>
@@ -123,7 +108,7 @@ function OrgSubdomainCard({
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="secondary">
-              {organization.domains?.length || 0} 域名
+              {organization.assets?.length || 0} 资产
             </Badge>
             <Button
               variant="ghost"
@@ -144,67 +129,27 @@ function OrgSubdomainCard({
       {/* 展开内容 */}
       {isExpanded && (
         <CardContent>
-          {/* 域名列表 */}
-          {organization.domains && organization.domains.length > 0 && (
-            <div className="space-y-2 mb-4">
-              <p className="text-sm font-medium text-muted-foreground">域名列表</p>
+          {/* 资产列表 */}
+          {organization.assets && organization.assets.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-muted-foreground">资产列表</p>
               <div className="space-y-1.5">
-                {organization.domains.map((domain) => (
+                {organization.assets.map((asset) => (
                   <div
-                    key={domain.id}
+                    key={asset.id}
                     className="flex items-center gap-2 p-2 rounded-md bg-muted/30 text-sm"
                   >
                     <IconWorld className="size-4 text-primary flex-shrink-0" />
-                    <span className="font-mono truncate">{domain.name}</span>
+                    <span className="font-mono truncate">{asset.name}</span>
                   </div>
                 ))}
               </div>
+            </div>
+          ) : (
+            <div className="text-sm text-muted-foreground text-center py-4">
+              暂无资产
             </div>
           )}
-
-          {/* 子域名列表 */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-muted-foreground">子域名列表</p>
-              {totalSubdomains > 0 && (
-                <Badge variant="outline" className="text-xs">
-                  共 {totalSubdomains} 个
-                </Badge>
-              )}
-            </div>
-
-            {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <IconLoader2 className="size-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : subdomains.length > 0 ? (
-              <div className="space-y-1.5 max-h-[300px] overflow-y-auto">
-                {subdomains.map((subdomain: SubDomain) => (
-                  <div
-                    key={subdomain.id}
-                    className="flex items-center gap-2 p-2 rounded-md bg-muted/30 text-sm"
-                  >
-                    <IconWorld className="size-4 text-blue-500 flex-shrink-0" />
-                    <span className="font-mono truncate">{subdomain.name}</span>
-                    {subdomain.isRoot && (
-                      <Badge variant="secondary" className="text-xs ml-auto flex-shrink-0">
-                        根域名
-                      </Badge>
-                    )}
-                  </div>
-                ))}
-                {totalSubdomains > subdomains.length && (
-                  <div className="text-xs text-muted-foreground text-center py-2">
-                    ...
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="text-sm text-muted-foreground text-center py-4">
-                暂无子域名
-              </div>
-            )}
-          </div>
         </CardContent>
       )}
     </Card>

@@ -163,4 +163,54 @@ export class AssetService {
     return response.data
   }
 
+  /**
+   * 获取资产的域名列表
+   * @param assetId - 资产ID
+   * @param params - 分页参数
+   * @returns Promise<GetDomainsResponse>
+   */
+  static async getDomainsByAssetId(
+    assetId: number,
+    params?: {
+      page?: number
+      pageSize?: number
+    }
+  ) {
+    const response = await api.get(
+      `/assets/${assetId}/domains/`,
+      {
+        params: {
+          page: params?.page || 1,
+          pageSize: params?.pageSize || 10,
+        }
+      }
+    )
+    return response.data
+  }
+
+  /**
+   * 获取资产的 URL 列表
+   * @param assetId - 资产ID
+   * @param params - 分页参数
+   * @returns Promise<GetUrlsResponse>
+   */
+  static async getUrlsByAssetId(
+    assetId: number,
+    params?: {
+      page?: number
+      pageSize?: number
+    }
+  ) {
+    const response = await api.get(
+      `/assets/${assetId}/urls/`,
+      {
+        params: {
+          page: params?.page || 1,
+          pageSize: params?.pageSize || 10,
+        }
+      }
+    )
+    return response.data
+  }
+
 }

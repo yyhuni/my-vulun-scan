@@ -218,13 +218,13 @@ export const createOrganizationColumns = ({
   {
     accessorKey: "domains",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="关联域名" />
+      <DataTableColumnHeader column={column} title="关联资产" />
     ),
     cell: ({ row }) => {
       const organization = row.original
-      const domains = organization.domains || []
+      const assets = organization.assets || []
       
-      if (domains.length === 0) {
+      if (assets.length === 0) {
         return (
           <div className="text-sm text-muted-foreground">
             -
@@ -232,19 +232,19 @@ export const createOrganizationColumns = ({
         )
       }
       
-      const displayDomains = domains.slice(0, 3)
-      const remainingCount = domains.length - 3
+      const displayAssets = assets.slice(0, 3)
+      const remainingCount = assets.length - 3
       
       return (
         <div className="flex flex-col gap-1 py-1">
-          {displayDomains.map((domain) => (
+          {displayAssets.map((asset) => (
             <Badge 
-              key={domain.id} 
+              key={asset.id} 
               variant="secondary" 
               className="justify-start truncate text-xs"
-              title={domain.name}
+              title={asset.name}
             >
-              {domain.name}
+              {asset.name}
             </Badge>
           ))}
           {remainingCount > 0 && (
@@ -265,9 +265,9 @@ export const createOrganizationColumns = ({
                   className="max-w-sm"
                 >
                   <div className="flex flex-col gap-1">
-                    {domains.slice(3).map((domain) => (
-                      <div key={domain.id} className="text-xs">
-                        {domain.name}
+                    {assets.slice(3).map((asset) => (
+                      <div key={asset.id} className="text-xs">
+                        {asset.name}
                       </div>
                     ))}
                   </div>

@@ -2,9 +2,11 @@
 
 import React, { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { toast } from "sonner"
-import { DomainsDataTable } from "./domains-data-table"
-import { createDomainColumns } from "./domains-columns"
+import { useAssetDomains, useAsset } from "@/hooks/use-assets"
+import { useDeleteDomain, useBatchDeleteDomains } from "@/hooks/use-domains"
+import { DomainsDataTable } from "@/components/assets/organization/domains/domains-data-table"
+import { createDomainColumns } from "@/components/assets/organization/domains/domains-columns"
+import { AddDomainDialog } from "./add-domain-dialog"
 import { LoadingState, LoadingSpinner } from "@/components/loading-spinner"
 import {
   AlertDialog,
@@ -16,46 +18,42 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { useAllDomains, useDeleteDomain, useBatchDeleteDomains } from "@/hooks/use-domains"
-import { useAsset } from "@/hooks/use-assets"
 import type { Domain } from "@/types/domain.types"
 
 /**
- * 组织域名详情视图组件（使用 React Query）
- * 用于显示和管理组织下的域名列表
- * 支持通过组织ID获取数据
+ * 资产域名详情视图组件
+ * 用于显示和管理资产下的域名列表
  */
-export function OrganizationDomainsDetailView({ 
-  assetId 
-}: { 
-  assetId?: string
+export function AssetDomainsDetailView({
+  assetId
+}: {
+  assetId: number
 }) {
   const [selectedDomains, setSelectedDomains] = useState<Domain[]>([])
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [domainToDelete, setDomainToDelete] = useState<Domain | null>(null)
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
-  
+
   // 分页状态
   const [pagination, setPagination] = useState({
     pageIndex: 0,  // 0-based for react-table
     pageSize: 10,
   })
 
-  // 使用 React Query 获取域名数据
+  // 使用 React Query 获取资产域名数据
   const {
     data,
     isLoading,
     error,
     refetch
-  } = useAllDomains({
+  } = useAssetDomains(assetId, {
     page: pagination.pageIndex + 1, // 转换为 1-based
     pageSize: pagination.pageSize,
   })
 
-  // 如果是通过 assetId 访问，需要先获取资产信息
-  const { data: assetData } = useAsset(
-    assetId ? parseInt(assetId) : undefined
-  )
+  // 获取资产信息
+  const { data: assetData } = useAsset(assetId)
 
   // Mutations
   const deleteDomain = useDeleteDomain()
@@ -74,7 +72,7 @@ export function OrganizationDomainsDetailView({
     })
   }
 
-  // 导航函数（使用 Next.js 客户端路由）
+  // 导航函数
   const router = useRouter()
   const navigate = (path: string) => {
     router.push(path)
@@ -92,8 +90,7 @@ export function OrganizationDomainsDetailView({
 
     setDeleteDialogOpen(false)
     setDomainToDelete(null)
-    
-    // 使用 React Query 的删除 mutation
+
     deleteDomain.mutate(domainToDelete.id)
   }
 
@@ -110,12 +107,22 @@ export function OrganizationDomainsDetailView({
     if (selectedDomains.length === 0) return
 
     const deletedIds = selectedDomains.map(domain => domain.id)
-    
+
     setBulkDeleteDialogOpen(false)
     setSelectedDomains([])
-    
-    // 使用 React Query 的批量删除 mutation
+
     batchDeleteDomains.mutate(deletedIds)
+  }
+
+  // 处理添加域名
+  const handleAddDomain = () => {
+    setIsAddDialogOpen(true)
+  }
+
+  // 处理添加成功
+  const handleAddSuccess = async (newDomains: Domain[]) => {
+    // React Query 会自动刷新数据，不需要手动处理
+    setIsAddDialogOpen(false)
   }
 
   // 处理分页变化
@@ -145,7 +152,7 @@ export function OrganizationDomainsDetailView({
         <p className="text-muted-foreground text-center mb-4">
           {error.message || "加载域名数据时出现错误，请重试"}
         </p>
-        <button 
+        <button
           onClick={() => refetch()}
           className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
         >
@@ -165,10 +172,12 @@ export function OrganizationDomainsDetailView({
       <DomainsDataTable
         data={data?.domains || []}
         columns={domainColumns}
+        onAddNew={handleAddDomain}
         onBulkDelete={handleBulkDelete}
         onSelectionChange={setSelectedDomains}
         searchPlaceholder="搜索域名..."
         searchColumn="name"
+        addButtonText="添加域名"
         pagination={pagination}
         setPagination={setPagination}
         paginationInfo={{
@@ -178,6 +187,15 @@ export function OrganizationDomainsDetailView({
           totalPages: data?.pagination.totalPages || 1,
         }}
         onPaginationChange={handlePaginationChange}
+      />
+
+      {/* 添加域名对话框 */}
+      <AddDomainDialog
+        assetId={assetId.toString()}
+        assetName={assetData?.name}
+        onAdd={handleAddSuccess}
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
       />
 
       {/* 删除确认对话框 */}
@@ -191,8 +209,8 @@ export function OrganizationDomainsDetailView({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmDelete} 
+            <AlertDialogAction
+              onClick={confirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={deleteDomain.isPending}
             >
@@ -218,7 +236,6 @@ export function OrganizationDomainsDetailView({
               此操作无法撤销。这将永久删除以下 {selectedDomains.length} 个域名及其相关数据。
             </AlertDialogDescription>
           </AlertDialogHeader>
-          {/* 域名列表容器 - 固定最大高度并支持滚动 */}
           <div className="mt-2 p-2 bg-muted rounded-md max-h-96 overflow-y-auto">
             <ul className="text-sm space-y-1">
               {selectedDomains.map((domain) => (
@@ -230,8 +247,8 @@ export function OrganizationDomainsDetailView({
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmBulkDelete} 
+            <AlertDialogAction
+              onClick={confirmBulkDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={batchDeleteDomains.isPending}
             >

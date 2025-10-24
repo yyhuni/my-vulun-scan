@@ -2,9 +2,10 @@
 
 import React, { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { toast } from "sonner"
-import { DomainsDataTable } from "./domains-data-table"
-import { createDomainColumns } from "./domains-columns"
+import { useAssetUrls } from "@/hooks/use-assets"
+import { useDeleteUrl, useBatchDeleteUrls } from "@/hooks/use-urls"
+import { UrlsDataTable } from "@/components/assets/organization/urls/urls-data-table"
+import { createUrlColumns } from "@/components/assets/organization/urls/urls-columns"
 import { LoadingState, LoadingSpinner } from "@/components/loading-spinner"
 import {
   AlertDialog,
@@ -16,50 +17,42 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { useAllDomains, useDeleteDomain, useBatchDeleteDomains } from "@/hooks/use-domains"
-import { useAsset } from "@/hooks/use-assets"
-import type { Domain } from "@/types/domain.types"
+import type { Url } from "@/types/url.types"
 
 /**
- * 组织域名详情视图组件（使用 React Query）
- * 用于显示和管理组织下的域名列表
- * 支持通过组织ID获取数据
+ * 资产 URL 详情视图组件
+ * 用于显示和管理资产下的 URL 列表
  */
-export function OrganizationDomainsDetailView({ 
-  assetId 
-}: { 
-  assetId?: string
+export function AssetUrlsDetailView({
+  assetId
+}: {
+  assetId: number
 }) {
-  const [selectedDomains, setSelectedDomains] = useState<Domain[]>([])
+  const [selectedUrls, setSelectedUrls] = useState<Url[]>([])
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [domainToDelete, setDomainToDelete] = useState<Domain | null>(null)
+  const [urlToDelete, setUrlToDelete] = useState<Url | null>(null)
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
-  
-  // 分页状态
+
+  // 分页状态管理
   const [pagination, setPagination] = useState({
-    pageIndex: 0,  // 0-based for react-table
-    pageSize: 10,
+    pageIndex: 0,
+    pageSize: 10
   })
 
-  // 使用 React Query 获取域名数据
+  // 删除相关 hooks
+  const deleteUrl = useDeleteUrl()
+  const batchDeleteUrls = useBatchDeleteUrls()
+
+  // 使用 React Query 获取资产 URL 数据
   const {
     data,
     isLoading,
     error,
-    refetch
-  } = useAllDomains({
-    page: pagination.pageIndex + 1, // 转换为 1-based
+    refetch,
+  } = useAssetUrls(assetId, {
+    page: pagination.pageIndex + 1,
     pageSize: pagination.pageSize,
   })
-
-  // 如果是通过 assetId 访问，需要先获取资产信息
-  const { data: assetData } = useAsset(
-    assetId ? parseInt(assetId) : undefined
-  )
-
-  // Mutations
-  const deleteDomain = useDeleteDomain()
-  const batchDeleteDomains = useBatchDeleteDomains()
 
   // 辅助函数 - 格式化日期
   const formatDate = (dateString: string): string => {
@@ -74,32 +67,31 @@ export function OrganizationDomainsDetailView({
     })
   }
 
-  // 导航函数（使用 Next.js 客户端路由）
+  // 导航函数
   const router = useRouter()
   const navigate = (path: string) => {
     router.push(path)
   }
 
-  // 处理删除域名
-  const handleDeleteDomain = (domain: Domain) => {
-    setDomainToDelete(domain)
+  // 处理删除 URL
+  const handleDeleteUrl = (url: Url) => {
+    setUrlToDelete(url)
     setDeleteDialogOpen(true)
   }
 
-  // 确认删除域名
+  // 确认删除 URL
   const confirmDelete = async () => {
-    if (!domainToDelete) return
+    if (!urlToDelete) return
 
     setDeleteDialogOpen(false)
-    setDomainToDelete(null)
-    
-    // 使用 React Query 的删除 mutation
-    deleteDomain.mutate(domainToDelete.id)
+    setUrlToDelete(null)
+
+    deleteUrl.mutate(urlToDelete.id)
   }
 
   // 处理批量删除
   const handleBulkDelete = () => {
-    if (selectedDomains.length === 0) {
+    if (selectedUrls.length === 0) {
       return
     }
     setBulkDeleteDialogOpen(true)
@@ -107,15 +99,14 @@ export function OrganizationDomainsDetailView({
 
   // 确认批量删除
   const confirmBulkDelete = async () => {
-    if (selectedDomains.length === 0) return
+    if (selectedUrls.length === 0) return
 
-    const deletedIds = selectedDomains.map(domain => domain.id)
-    
+    const urlIds = selectedUrls.map(url => url.id)
+
     setBulkDeleteDialogOpen(false)
-    setSelectedDomains([])
-    
-    // 使用 React Query 的批量删除 mutation
-    batchDeleteDomains.mutate(deletedIds)
+    setSelectedUrls([])
+
+    batchDeleteUrls.mutate({ urlIds })
   }
 
   // 处理分页变化
@@ -124,14 +115,14 @@ export function OrganizationDomainsDetailView({
   }
 
   // 创建列定义
-  const domainColumns = useMemo(
+  const urlColumns = useMemo(
     () =>
-      createDomainColumns({
+      createUrlColumns({
         formatDate,
         navigate,
-        handleDelete: handleDeleteDomain,
+        handleDelete: handleDeleteUrl,
       }),
-    [formatDate, navigate, handleDeleteDomain]
+    [formatDate, navigate, handleDeleteUrl]
   )
 
   // 错误状态
@@ -143,9 +134,9 @@ export function OrganizationDomainsDetailView({
         </div>
         <h3 className="text-lg font-semibold mb-2">加载失败</h3>
         <p className="text-muted-foreground text-center mb-4">
-          {error.message || "加载域名数据时出现错误，请重试"}
+          {error.message || "加载 URL 数据时出现错误，请重试"}
         </p>
-        <button 
+        <button
           onClick={() => refetch()}
           className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
         >
@@ -157,18 +148,18 @@ export function OrganizationDomainsDetailView({
 
   // 加载状态
   if (isLoading) {
-    return <LoadingState message="加载域名数据中..." />
+    return <LoadingState message="加载 URL 数据中..." />
   }
 
   return (
     <>
-      <DomainsDataTable
-        data={data?.domains || []}
-        columns={domainColumns}
+      <UrlsDataTable
+        data={data?.urls || []}
+        columns={urlColumns}
         onBulkDelete={handleBulkDelete}
-        onSelectionChange={setSelectedDomains}
-        searchPlaceholder="搜索域名..."
-        searchColumn="name"
+        onSelectionChange={setSelectedUrls}
+        searchPlaceholder="搜索 URL..."
+        searchColumn="url"
         pagination={pagination}
         setPagination={setPagination}
         paginationInfo={{
@@ -186,17 +177,17 @@ export function OrganizationDomainsDetailView({
           <AlertDialogHeader>
             <AlertDialogTitle>确认删除</AlertDialogTitle>
             <AlertDialogDescription>
-              此操作无法撤销。这将永久删除域名 &quot;{domainToDelete?.name}&quot; 及其相关数据。
+              此操作无法撤销。这将永久删除该 URL 及其相关数据。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmDelete} 
+            <AlertDialogAction
+              onClick={confirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={deleteDomain.isPending}
+              disabled={deleteUrl.isPending}
             >
-              {deleteDomain.isPending ? (
+              {deleteUrl.isPending ? (
                 <>
                   <LoadingSpinner/>
                   删除中...
@@ -215,33 +206,32 @@ export function OrganizationDomainsDetailView({
           <AlertDialogHeader>
             <AlertDialogTitle>确认批量删除</AlertDialogTitle>
             <AlertDialogDescription>
-              此操作无法撤销。这将永久删除以下 {selectedDomains.length} 个域名及其相关数据。
+              此操作无法撤销。这将永久删除以下 {selectedUrls.length} 个 URL 及其相关数据。
             </AlertDialogDescription>
           </AlertDialogHeader>
-          {/* 域名列表容器 - 固定最大高度并支持滚动 */}
           <div className="mt-2 p-2 bg-muted rounded-md max-h-96 overflow-y-auto">
             <ul className="text-sm space-y-1">
-              {selectedDomains.map((domain) => (
-                <li key={domain.id} className="flex items-center">
-                  <span className="font-medium font-mono">{domain.name}</span>
+              {selectedUrls.map((url) => (
+                <li key={url.id} className="flex items-center">
+                  <span className="font-medium font-mono text-xs break-all">{url.url}</span>
                 </li>
               ))}
             </ul>
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmBulkDelete} 
+            <AlertDialogAction
+              onClick={confirmBulkDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={batchDeleteDomains.isPending}
+              disabled={batchDeleteUrls.isPending}
             >
-              {batchDeleteDomains.isPending ? (
+              {batchDeleteUrls.isPending ? (
                 <>
                   <LoadingSpinner/>
                   删除中...
                 </>
               ) : (
-                `删除 ${selectedDomains.length} 个域名`
+                `删除 ${selectedUrls.length} 个 URL`
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

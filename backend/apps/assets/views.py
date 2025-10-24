@@ -338,7 +338,143 @@ class AssetViewSet(viewsets.ModelViewSet):
         }
         
         return Response(response_data, status=status.HTTP_201_CREATED)
-    
+
+    @action(detail=False, methods=['post'], url_path='batch-delete')
+    def batch_delete(self, request):
+        """
+        批量删除资产
+
+        路由: POST /api/assets/batch-delete/
+
+        请求体格式:
+        {
+            "assetIds": [1, 2, 3]
+        }
+
+        返回格式:
+        {
+            "message": "成功删除 3 个资产（级联删除 10 个域名）",
+            "deletedAssetCount": 3,
+            "deletedDomainCount": 10
+        }
+
+        说明:
+        - 删除资产会级联删除所有关联的域名（通过 ForeignKey on_delete=CASCADE）
+        - 同时会清理 organization_assets 关联表
+        - 删除操作在事务中执行，保证数据一致性
+        """
+        # 拦截器会自动将 assetIds 转换为 asset_ids
+        asset_ids = request.data.get('asset_ids')
+
+        if not asset_ids or not isinstance(asset_ids, list):
+            return Response(
+                {'error': 'assetIds 是必需的，且必须是数组'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 使用事务确保删除操作的原子性
+        with transaction.atomic():
+            # 批量删除资产
+            # Django 的 delete() 会自动处理级联删除（ForeignKey on_delete=CASCADE）
+            # 同时会清理 ManyToMany 关联表（organization_assets）
+            deleted_count, deleted_objects = Asset.objects.filter(id__in=asset_ids).delete()
+
+            # deleted_objects 是一个字典，包含了所有被删除的对象统计
+            # 例如: {'assets.Asset': 3, 'assets.Domain': 10, 'assets.Organization_assets': 5}
+            asset_label = Asset._meta.label
+            domain_label = Domain._meta.label
+            deleted_asset_count = deleted_objects.get(asset_label, 0)
+            deleted_domain_count = deleted_objects.get(domain_label, 0)
+
+        return Response({
+            'message': f'成功删除 {deleted_asset_count} 个资产（级联删除 {deleted_domain_count} 个域名）',
+            'deletedAssetCount': deleted_asset_count,
+            'deletedDomainCount': deleted_domain_count
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['get'], url_path='domains')
+    def list_domains(self, request, pk=None):
+        """
+        获取资产的域名列表
+
+        路由: GET /api/assets/{asset_id}/domains/
+
+        查询参数:
+        - page: 页码
+        - page_size: 每页数量
+
+        返回格式:
+        {
+            "domains": [...],
+            "total": 100,
+            "page": 1,
+            "page_size": 10,
+            "total_pages": 10
+        }
+        """
+        # 获取资产对象
+        asset = self.get_object()
+
+        # 查询该资产的所有域名
+        queryset = asset.domains.all()
+
+        # 分页
+        paginator = DomainPagination()
+        page = paginator.paginate_queryset(queryset, request)
+
+        if page is not None:
+            serializer = DomainSerializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+
+        serializer = DomainSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['get'], url_path='urls')
+    def list_urls(self, request, pk=None):
+        """
+        获取资产的所有 URL 列表
+
+        路由: GET /api/assets/{asset_id}/urls/
+
+        查询参数:
+        - page: 页码
+        - page_size: 每页数量
+
+        返回格式:
+        {
+            "urls": [...],
+            "total": 100,
+            "page": 1,
+            "page_size": 10,
+            "total_pages": 10
+        }
+
+        说明:
+        - 查询该资产下所有域名的 URL
+        """
+        from apps.urls.models import Url
+        from apps.urls.serializers import UrlSerializer
+        from apps.common.pagination import UrlPagination
+
+        # 获取资产对象
+        asset = self.get_object()
+
+        # 获取该资产下所有域名的ID
+        domain_ids = asset.domains.values_list('id', flat=True)
+
+        # 查询这些域名的所有 URL
+        queryset = Url.objects.filter(domain_id__in=domain_ids).select_related('domain')
+
+        # 分页
+        paginator = UrlPagination()
+        page = paginator.paginate_queryset(queryset, request)
+
+        if page is not None:
+            serializer = UrlSerializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+
+        serializer = UrlSerializer(queryset, many=True)
+        return Response(serializer.data)
 
 
 class DomainViewSet(viewsets.ModelViewSet):
@@ -366,21 +502,36 @@ class DomainViewSet(viewsets.ModelViewSet):
             "assetId": 5
         }
         
-        返回格式:
+        返回格式（成功）:
         {
-            "message": "成功处理 3 个域名，新创建 2 个，1 个已存在",
+            "message": "成功处理 3 个域名，新创建 2 个，1 个已存在，1 个已跳过",
             "requestedCount": 3,
             "createdCount": 2,
-            "existedCount": 1
+            "existedCount": 1,
+            "skippedCount": 1,
+            "skippedDomains": [
+                {
+                    "name": "test.other.com",
+                    "reason": "不是 example.com 的子域名"
+                }
+            ]
         }
         
         核心流程：
         1. 验证资产存在性
-        2. 验证请求数据
-        3. 事务处理：
+        2. 验证资产类型必须为 domain
+        3. 验证每个域名是否为资产的子域名（无效的域名会被跳过，不会报错）
+        4. 验证请求数据
+        5. 事务处理：
            - 查询已存在的域名集合
            - 批量插入域名 (ignore_conflicts 自动忽略已存在)
            - 计算新建数量
+        
+        注意：
+        - 资产类型必须为 domain（如果不是会返回错误）
+        - 域名必须是资产的子域名（如资产为 example.com，域名可以是 api.example.com、www.example.com 或 example.com 本身）
+        - 不是子域名的域名会被跳过，不会导致整个请求失败
+        - 返回结果中会包含跳过的域名列表和原因
         """
         # 验证请求数据
         serializer = BulkCreateDomainSerializer(data=request.data)
@@ -403,12 +554,33 @@ class DomainViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         
+        # 步骤1.1: 验证资产类型必须为 domain
+        if asset.type != 'domain':
+            return Response(
+                {'error': f'资产类型必须为 domain，当前资产类型为 {asset.type}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
         # 步骤2: 去重请求中的域名（FIFO 策略：保留第一次出现）
+        # 同时验证每个域名是否为资产的子域名，跳过无效的域名
         domain_map = {}
+        skipped_domains = []
+        
         for domain_data in domains_data:
+            domain_name = domain_data['name']
+            
+            # 验证域名是否为资产的子域名
+            # 例如：资产名为 example.com，域名必须以 .example.com 结尾或等于 example.com
+            if domain_name != asset.name and not domain_name.endswith('.' + asset.name):
+                skipped_domains.append({
+                    'name': domain_name,
+                    'reason': f'不是 {asset.name} 的子域名'
+                })
+                continue
+            
             domain_map.setdefault(
-                domain_data['name'],  # name 作为 key
-                {'name': domain_data['name']}
+                domain_name,  # name 作为 key
+                {'name': domain_name}
             )
         
         # 步骤3: 使用事务处理批量创建
@@ -438,11 +610,15 @@ class DomainViewSet(viewsets.ModelViewSet):
         
         # 返回统计信息
         count_requested = len(domain_map)
+        count_skipped = len(skipped_domains)
+        
         response_data = {
-            'message': f'成功处理 {count_requested} 个域名，新创建 {count_created} 个，{count_existed} 个已存在',
+            'message': f'成功处理 {count_requested} 个域名，新创建 {count_created} 个，{count_existed} 个已存在，{count_skipped} 个已跳过',
             'requestedCount': count_requested,
             'createdCount': count_created,
-            'existedCount': count_existed
+            'existedCount': count_existed,
+            'skippedCount': count_skipped,
+            'skippedDomains': skipped_domains if skipped_domains else []
         }
         
         return Response(response_data, status=status.HTTP_201_CREATED)

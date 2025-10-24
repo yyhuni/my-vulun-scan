@@ -58,6 +58,7 @@ interface AssetsDataTableProps {
   data: Asset[]
   columns: ColumnDef<Asset>[]
   onAddNew?: () => void
+  onAddHover?: () => void
   onBulkDelete?: () => void
   onSelectionChange?: (selectedRows: Asset[]) => void
   searchPlaceholder?: string
@@ -78,6 +79,7 @@ export function AssetsDataTable({
   data = [],
   columns,
   onAddNew,
+  onAddHover,
   onBulkDelete,
   onSelectionChange,
   searchPlaceholder = "搜索资产...",
@@ -219,7 +221,7 @@ export function AssetsDataTable({
 
           {/* 添加新资产按钮 */}
           {onAddNew && (
-            <Button onClick={onAddNew} size="sm">
+            <Button onClick={onAddNew} onMouseEnter={onAddHover} size="sm">
               <IconPlus />
               {addButtonText}
             </Button>

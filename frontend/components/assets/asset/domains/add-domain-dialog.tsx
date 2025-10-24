@@ -126,15 +126,28 @@ export function AddDomainDialog({
       return
     }
 
-    // TODO: 调用后端批量创建域名API
-    toast.info('提交域名列表：' + domainAnalysis.valid.join(', '))
-    console.log('准备提交的域名列表:', domainAnalysis.valid)
+    // 验证 assetId
+    if (!assetId) {
+      toast.error('缺少资产ID')
+      return
+    }
+
+    // 调用后端批量创建域名API
+    const domains = domainAnalysis.valid.map(name => ({ name }))
     
-    // 成功后调用回调函数
-    onAdd([])
-    
-    // 关闭对话框
-    setOpen(false)
+    createDomainMutation.mutate({
+      domains,
+      assetId: parseInt(assetId)
+    }, {
+      onSuccess: () => {
+        // 成功后调用回调函数
+        onAdd([])
+        // 重置表单
+        setDomainsText('')
+        // 关闭对话框
+        setOpen(false)
+      }
+    })
   }
 
   // 处理对话框关闭

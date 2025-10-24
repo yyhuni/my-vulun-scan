@@ -245,7 +245,7 @@ export function OrganizationSelectionTable({
                   </TableCell>
                   <TableCell>
                     <Badge variant="secondary">
-                      {org.domains?.length || 0}
+                      {org.assets?.length || 0}
                     </Badge>
                   </TableCell>
                   <TableCell>

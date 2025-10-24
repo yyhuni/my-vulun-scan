@@ -49,6 +49,7 @@ interface AddAssetDialogProps {
   onAdd?: (result: BatchCreateResponse) => void              // 添加成功回调
   open?: boolean                                             // 外部控制对话框开关状态
   onOpenChange?: (open: boolean) => void                     // 外部控制对话框开关回调
+  prefetchEnabled?: boolean                                  // 是否提前预取组织列表
 }
 
 /**
@@ -65,6 +66,7 @@ export function AddAssetDialog({
   onAdd,
   open: externalOpen, 
   onOpenChange: externalOnOpenChange,
+  prefetchEnabled,
 }: AddAssetDialogProps) {
   // 对话框开关状态 - 支持外部控制
   const [internalOpen, setInternalOpen] = useState(false)
@@ -96,10 +98,14 @@ export function AddAssetDialog({
   const createAsset = useCreateAsset()
   
   // 获取组织列表（支持分页）
-  const { data: organizationsData, isLoading: isLoadingOrganizations } = useOrganizations({
-    page: orgPage,
-    pageSize: orgPageSize,  // 动态每页数量
-  })
+  const shouldEnableOrgsQuery = Boolean(prefetchEnabled || orgPickerOpen)
+  const { data: organizationsData, isLoading: isLoadingOrganizations } = useOrganizations(
+    {
+      page: orgPage,
+      pageSize: orgPageSize,  // 动态每页数量
+    },
+    { enabled: shouldEnableOrgsQuery }
+  )
 
   // 处理输入框变化
   const handleInputChange = (field: keyof typeof formData, value: string) => {

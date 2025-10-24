@@ -22,8 +22,8 @@ export function ScanConfirmation({
   scanType,
   description,
 }: ScanConfirmationProps) {
-  // 计算总域名数
-  const totalDomains = organizations.reduce((sum, org) => sum + (org.domains?.length || 0), 0)
+  // 计算总资产数
+  const totalAssets = organizations.reduce((sum, org) => sum + (org.assets?.length || 0), 0)
   const getScanTypeLabel = (type: string) => {
     switch (type) {
       case "full":
@@ -55,7 +55,7 @@ export function ScanConfirmation({
               <CardTitle className="text-base">目标组织</CardTitle>
             </div>
             <CardDescription>
-              已选择 {organizations.length} 个组织，共 {totalDomains} 个域名
+              已选择 {organizations.length} 个组织，共 {totalAssets} 个资产
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -77,7 +77,7 @@ export function ScanConfirmation({
                     )}
                   </div>
                   <Badge variant="secondary" className="ml-2 flex-shrink-0">
-                    {org.domains?.length || 0}
+                    {org.assets?.length || 0}
                   </Badge>
                 </div>
               ))}
@@ -117,8 +117,8 @@ export function ScanConfirmation({
                 <span className="text-sm font-medium">{organizations.length}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">域名数量</span>
-                <span className="text-sm font-medium">{totalDomains}</span>
+                <span className="text-sm text-muted-foreground">资产数量</span>
+                <span className="text-sm font-medium">{totalAssets}</span>
               </div>
             </CardContent>
           </Card>

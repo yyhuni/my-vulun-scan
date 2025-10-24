@@ -65,7 +65,7 @@ export function useOrganizationDomains(
   })
 }
 
-// 创建域名
+// 创建域名（绑定到资产）
 export function useCreateDomain() {
   const queryClient = useQueryClient()
 
@@ -73,9 +73,8 @@ export function useCreateDomain() {
     mutationFn: (data: {
       domains: Array<{
         name: string
-        description?: string
       }>
-      organizationId: number
+      assetId: number
     }) => DomainService.createDomains(data),
     onMutate: async () => {
       toast.loading('正在创建域名...', { id: 'create-domain' })
@@ -84,14 +83,22 @@ export function useCreateDomain() {
       // 关闭加载提示
       toast.dismiss('create-domain')
       
-      const { createdCount, existedCount } = response
+      const { createdCount, existedCount, skippedCount = 0, skippedDomains = [] } = response
       
       // 打印后端响应
       console.log('创建域名成功')
       console.log('后端响应:', response)
       
       // 前端自己构造提示消息
-      if (existedCount > 0) {
+      if (skippedCount > 0 && existedCount > 0) {
+        toast.warning(
+          `成功创建 ${createdCount} 个域名（${existedCount} 个已存在，${skippedCount} 个已跳过）`
+        )
+      } else if (skippedCount > 0) {
+        toast.warning(
+          `成功创建 ${createdCount} 个域名（${skippedCount} 个已跳过）`
+        )
+      } else if (existedCount > 0) {
         toast.warning(
           `成功创建 ${createdCount} 个域名（${existedCount} 个已存在）`
         )
@@ -99,9 +106,14 @@ export function useCreateDomain() {
         toast.success(`成功创建 ${createdCount} 个域名`)
       }
       
-      // 刷新所有域名和组织相关查询（通配符匹配）
+      // 如果有跳过的域名，打印详细信息到控制台
+      if (skippedDomains.length > 0) {
+        console.log('跳过的域名:', skippedDomains)
+      }
+      
+      // 刷新所有域名和资产相关查询（通配符匹配）
       queryClient.invalidateQueries({ queryKey: ['domains'] })
-      queryClient.invalidateQueries({ queryKey: ['organizations'] })
+      queryClient.invalidateQueries({ queryKey: ['assets'] })
     },
     onError: (error: any) => {
       // 关闭加载提示
