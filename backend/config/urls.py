@@ -23,7 +23,7 @@ from drf_yasg import openapi
 # API 文档配置
 schema_view = get_schema_view(
    openapi.Info(
-      title="my-vulun-scan API",
+      title="XingRin API",
       default_version='v1',
       description="Web 应用侦察工具 API 文档",
    ),

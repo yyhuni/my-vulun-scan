@@ -13,7 +13,7 @@ version: '3.8'
 services:
   # 服务名称：vulun-scanner
   # 可以通过这个名称在命令中引用，如：docker-compose exec vulun-scanner bash
-  vulun-scanner:
+  xingrin:
     
     # ----------------------------------------
     # 镜像构建配置
@@ -31,12 +31,12 @@ services:
     # 容器基础配置
     # ----------------------------------------
     # container_name: 容器的名称（在 docker ps 中看到的名称）
-    # 不指定的话会自动生成类似 docker_vulun-scanner_1 的名称
-    container_name: vulun-scanner
+    # 不指定的话会自动生成类似 docker_xingrin_1 的名称
+    container_name: xingrin
     
     # hostname: 容器内部的主机名（在容器内执行 hostname 命令看到的）
     # 有些工具会依赖主机名，所以最好设置一个
-    hostname: vulun-scanner
+    hostname: xingrin
     
     # ----------------------------------------
     # 交互式终端配置
@@ -373,7 +373,7 @@ networks:
   default:
     # name: 网络的名称
     # 不指定的话会自动生成类似 docker_default 的名称
-    name: vulun-scan-network
+    name: xingrin-network
     
     # driver: 网络驱动类型
     # bridge 是最常用的类型，适合单机环境

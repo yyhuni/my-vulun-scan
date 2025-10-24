@@ -1,6 +1,6 @@
-# my-vulun-scan 数据模型设计：当前实现版本
+# XingRin 数据模型设计：当前实现版本
 
-基于 Django ORM 的数据库模型设计文档，针对 my-vulun-scan 开源 Web 应用侦察工具的核心模型。
+基于 Django ORM 的数据库模型设计文档，针对 XingRin 开源 Web 应用侦察工具的核心模型。
 
 ## 核心领域模型
 ### Organization 模型

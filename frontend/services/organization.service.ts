@@ -150,7 +150,7 @@ export class OrganizationService {
     assetId: number
   }): Promise<{ message: string }> {
     const response = await api.post<{ message: string }>(
-      `/organizations/${data.organizationId}/assets/remove/`,
+      `/organizations/${data.organizationId}/assets/unlink/`,
       {
         assetId: data.assetId  // 拦截器会转换为 asset_id
       }

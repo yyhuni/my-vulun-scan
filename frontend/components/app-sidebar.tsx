@@ -202,7 +202,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 {/* 公司 Logo 图标 */}
                 <IconInnerShadowTop className="!size-5" />
                 {/* 公司名称 */}
-                <span className="text-base font-semibold">Acme Inc.</span>
+                <span className="text-base font-semibold">XingRin</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

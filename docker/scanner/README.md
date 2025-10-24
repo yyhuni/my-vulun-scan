@@ -1,4 +1,4 @@
-# Vulun Scan Docker 环境
+# XingRin Docker 环境
 
 基于 Kali Linux 的安全扫描工具执行环境。
 
@@ -66,20 +66,20 @@ docker-compose restart
 docker-compose ps
 
 # 查看日志
-docker-compose logs -f vulun-scanner
+docker-compose logs -f xingrin
 ```
 
 ### 进入容器
 
 ```bash
 # 交互式进入
-docker-compose exec vulun-scanner bash
+docker-compose exec xingrin bash
 
 # 以 root 用户进入
-docker-compose exec -u root vulun-scanner bash
+docker-compose exec -u root xingrin bash
 
 # 执行单个命令
-docker-compose exec vulun-scanner nmap --version
+docker-compose exec xingrin nmap --version
 ```
 
 ### 数据管理
@@ -216,7 +216,7 @@ sudo chown -R $(id -u):$(id -g) workspace/ output/
 ```bash
 # 检查网络
 docker network ls
-docker network inspect vulun-scan-network
+docker network inspect xingrin-network
 
 # 重建网络
 docker-compose down
@@ -263,7 +263,7 @@ docker system prune -a --volumes
 # 挂载源代码进行开发
 docker-compose run --rm \
   -v $(pwd)/../backend:/backend \
-  vulun-scanner bash
+  xingrin bash
 ```
 
 ### 调试模式

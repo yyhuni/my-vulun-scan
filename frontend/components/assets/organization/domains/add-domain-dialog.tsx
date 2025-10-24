@@ -193,7 +193,7 @@ export function AddDomainDialog({
                 id="domains"
                 value={domainsText}
                 onChange={(e) => setDomainsText(e.target.value)}
-                placeholder="www.example.com\napi.test.com\nadmin.domain.org\napp.site.net"
+                placeholder={`www.example.com\napi.test.com\nadmin.domain.org\napp.site.net`}
                 disabled={createDomainMutation.isPending}
                 rows={20}
                 className="font-mono text-sm min-h-[400px] resize-y"

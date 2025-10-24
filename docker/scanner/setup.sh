@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Vulun Scan Docker 环境初始化脚本
+# XingRin Docker 环境初始化脚本
 
 set -e
 
 echo "=========================================="
-echo "初始化 Vulun Scan Docker 环境"
+echo "初始化 XingRin Docker 环境"
 echo "=========================================="
 
 # 颜色定义
@@ -73,7 +73,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
         echo -e "${GREEN}✓ 容器启动完成${NC}"
         echo ""
         echo "使用以下命令进入容器："
-        echo "  docker-compose exec vulun-scanner bash"
+        echo "  docker-compose exec xingrin bash"
     fi
 fi
 
@@ -86,7 +86,7 @@ echo "常用命令："
 echo "  docker-compose up -d          # 启动容器"
 echo "  docker-compose down           # 停止容器"
 echo "  docker-compose logs -f        # 查看日志"
-echo "  docker-compose exec vulun-scanner bash  # 进入容器"
+echo "  docker-compose exec xingrin bash  # 进入容器"
 echo ""
 echo "详细文档请查看 README.md"
 echo ""

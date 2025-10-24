@@ -89,12 +89,12 @@ class OrganizationViewSet(viewsets.ModelViewSet):
             'deletedOrganizationCount': deleted_count
         }, status=status.HTTP_200_OK)
     
-    @action(detail=True, methods=['post'], url_path='assets/remove')
-    def remove_asset(self, request, pk=None):
+    @action(detail=True, methods=['post'], url_path='assets/unlink')
+    def unlink_asset(self, request, pk=None):
         """
         解除组织与资产的关联（只删除 organization_assets 中间表的记录）
         
-        路由: POST /api/organizations/{organization_id}/assets/remove/
+        路由: POST /api/organizations/{organization_id}/assets/unlink/
         
         请求体格式:
         {
