@@ -197,7 +197,7 @@ export function LinkAssetDialog({
       )}
       
       {/* 对话框内容 */}
-      <DialogContent className="sm:max-w-[650px]">
+      <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <Globe />
@@ -210,7 +210,7 @@ export function LinkAssetDialog({
         
         {/* 表单 */}
         <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto">
+          <div className="grid gap-4 py-4">
             {/* 资产输入框 - 支持多行，带行号 */}
             <div className="grid gap-2">
               <Label htmlFor="assets">

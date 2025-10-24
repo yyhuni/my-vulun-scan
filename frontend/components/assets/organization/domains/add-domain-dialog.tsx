@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useMemo } from "react"
+import React, { useState, useMemo, useRef } from "react"
 import { Plus, Network, AlertCircle, Info, X } from "lucide-react"
 import { toast } from "sonner"
 
@@ -61,6 +61,10 @@ export function AddDomainDialog({
   
   // 域名文本输入
   const [domainsText, setDomainsText] = useState("")
+  
+  // 行号列和输入框的 ref（用于同步滚动）
+  const lineNumbersRef = useRef<HTMLDivElement | null>(null)
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   
   // 使用 React Query mutation
   const createDomainMutation = useCreateDomain()
@@ -157,6 +161,13 @@ export function AddDomainDialog({
     toast.success(`已移除 ${domainAnalysis.invalid.length} 个无效域名`)
   }
 
+  // 同步输入框和行号列的滚动
+  const handleTextareaScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
+    if (lineNumbersRef.current) {
+      lineNumbersRef.current.scrollTop = e.currentTarget.scrollTop
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {/* 触发按钮 - 仅在非外部控制时显示 */}
@@ -184,27 +195,50 @@ export function AddDomainDialog({
         {/* 表单 */}
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
-            {/* 域名输入框 */}
+            {/* 域名输入框 - 支持多行，带行号 */}
             <div className="grid gap-2">
               <Label htmlFor="domains">
                 域名列表 <span className="text-destructive">*</span>
               </Label>
-              <Textarea
-                id="domains"
-                value={domainsText}
-                onChange={(e) => setDomainsText(e.target.value)}
-                placeholder={`www.example.com\napi.test.com\nadmin.domain.org\napp.site.net`}
-                disabled={createDomainMutation.isPending}
-                rows={20}
-                className="font-mono text-sm min-h-[400px] resize-y"
-              />
+              <div className="relative border rounded-md overflow-hidden bg-background">
+                <div className="flex h-[324px]">
+                  {/* 行号列 - 固定显示15行 */}
+                  <div className="flex-shrink-0 w-12 bg-muted/30 border-r select-none overflow-hidden">
+                    <div 
+                      ref={lineNumbersRef}
+                      className="py-3 px-2 text-right font-mono text-xs text-muted-foreground leading-[1.4] h-full overflow-y-auto scrollbar-hide"
+                    >
+                      {Array.from({ length: Math.max(domainsText.split('\n').length, 15) }, (_, i) => (
+                        <div key={i + 1} className="h-[20px]">
+                          {i + 1}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {/* 输入框 - 固定高度显示15行 */}
+                  <Textarea
+                    ref={textareaRef}
+                    id="domains"
+                    value={domainsText}
+                    onChange={(e) => setDomainsText(e.target.value)}
+                    onScroll={handleTextareaScroll}
+                    placeholder={`www.example.com\napi.test.com\nadmin.domain.org\napp.site.net`}
+                    disabled={createDomainMutation.isPending}
+                    className="font-mono h-full overflow-y-auto resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 leading-[1.4] text-sm py-3"
+                    style={{ lineHeight: '20px' }}
+                  />
+                </div>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {domainAnalysis.totalCount} 个域名
+              </div>
               <div className="flex justify-between items-center text-xs">
                 <span className="text-muted-foreground flex items-center gap-1">
                   <AlertCircle />
                   请输入有效的域名格式
                 </span>
                 <span className="font-medium text-primary">
-                  共 {domainAnalysis.totalCount} 个，有效 {domainAnalysis.valid.length} 个
+                  有效 {domainAnalysis.valid.length} 个
                 </span>
               </div>
             </div>
