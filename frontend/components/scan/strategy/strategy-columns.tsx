@@ -101,7 +101,7 @@ function CopyableCell({
               onClick={handleCopy}
             >
               {copied ? (
-                <Check className="h-3.5 w-3.5 text-green-600" />
+                <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
               ) : (
                 <Copy className="h-3.5 w-3.5 text-muted-foreground" />
               )}
@@ -118,30 +118,31 @@ function CopyableCell({
 
 /**
  * 策略类型徽章组件
+ * 使用 shadcn Badge 的标准 variant
  */
 function StrategyTypeBadge({ type }: { type: StrategyType }) {
   const config = {
     comprehensive: {
       icon: IconTarget,
       label: "全面扫描",
-      className: "bg-purple-50 text-purple-700 border-purple-300",
+      variant: "secondary" as const,
     },
     quick: {
       icon: IconBolt,
       label: "快速扫描",
-      className: "bg-blue-50 text-blue-700 border-blue-300",
+      variant: "default" as const,
     },
     custom: {
       icon: IconSettings,
       label: "自定义扫描",
-      className: "bg-orange-50 text-orange-700 border-orange-300",
+      variant: "outline" as const,
     },
   }
 
-  const { icon: Icon, label, className } = config[type]
+  const { icon: Icon, label, variant } = config[type]
 
   return (
-    <Badge variant="outline" className={className}>
+    <Badge variant={variant}>
       <Icon className="h-3.5 w-3.5" />
       {label}
     </Badge>

@@ -114,7 +114,7 @@ function CopyableCell({
               onClick={handleCopy}
             >
               {copied ? (
-                <Check className="h-3.5 w-3.5 text-green-600" />
+                <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
               ) : (
                 <Copy className="h-3.5 w-3.5 text-muted-foreground" />
               )}
@@ -131,35 +131,37 @@ function CopyableCell({
 
 /**
  * 状态徽章组件
+ * 使用 shadcn Badge 的标准 variant
  */
 function StatusBadge({ status }: { status: ScanStatus }) {
   const config = {
     pending: {
       icon: IconClock,
       label: "等待中",
-      className: "bg-yellow-50 text-yellow-700 border-yellow-300",
+      variant: "secondary" as const,
     },
     running: {
       icon: IconLoader,
       label: "运行中",
-      className: "bg-blue-50 text-blue-700 border-blue-300 animate-pulse",
+      variant: "default" as const,
+      className: "animate-pulse" as const,
     },
     completed: {
       icon: IconCircleCheck,
       label: "已完成",
-      className: "bg-green-50 text-green-700 border-green-300",
+      variant: "outline" as const,
     },
     failed: {
       icon: IconCircleX,
       label: "失败",
-      className: "bg-red-50 text-red-700 border-red-300",
+      variant: "destructive" as const,
     },
   }
 
-  const { icon: Icon, label, className } = config[status]
+  const { icon: Icon, label, variant, className } = config[status]
 
   return (
-    <Badge variant="outline" className={className}>
+    <Badge variant={variant} className={className}>
       <Icon className="h-3.5 w-3.5" />
       {label}
     </Badge>
@@ -313,14 +315,14 @@ export const createScanHistoryColumns = ({
     ),
     cell: ({ row }) => {
       const type = row.getValue("type") as string
-      const typeMap: Record<string, { label: string; className: string }> = {
-        "全面扫描": { label: "全面扫描", className: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300" },
-        "快速扫描": { label: "快速扫描", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300" },
-        "自定义扫描": { label: "自定义扫描", className: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300" },
+      const typeMap: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
+        "全面扫描": { label: "全面扫描", variant: "secondary" },
+        "快速扫描": { label: "快速扫描", variant: "default" },
+        "自定义扫描": { label: "自定义扫描", variant: "outline" },
       }
-      const typeInfo = typeMap[type] || { label: type, className: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300" }
+      const typeInfo = typeMap[type] || { label: type, variant: "secondary" as const }
       return (
-        <Badge variant="secondary" className={typeInfo.className}>
+        <Badge variant={typeInfo.variant}>
           {typeInfo.label}
         </Badge>
       )

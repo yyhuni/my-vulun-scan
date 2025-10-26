@@ -1,17 +1,15 @@
 "use client"
 
-import React from "react"
-import { useOrganization } from "@/hooks/use-organizations"
-import { useDeleteAssetFromOrganization } from "@/hooks/use-assets"
-import { useQueryClient } from "@tanstack/react-query"
-import { LoadingState } from "@/components/loading-spinner"
+import React, { useState, useMemo } from "react"
+import { useRouter } from "next/navigation"
+import { Building2, Database, Globe, LinkIcon, TrendingUp } from "lucide-react"
+import { AssetsDataTable } from "./assets/assets-data-table"
+import { createAssetColumns } from "./assets/assets-columns"
+import { AddAssetDialog } from "./assets/add-asset-dialog"
+import { LoadingState, LoadingSpinner } from "@/components/loading-spinner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { IconBuilding, IconCalendar, IconClock, IconFileText, IconWorld, IconTrash } from "@tabler/icons-react"
-import Link from "next/link"
-import { LinkAssetDialog } from "@/components/assets/organization/assets/link-asset-dialog"
-import { Link as LinkIcon } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,40 +20,59 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-
-interface OrganizationDetailViewProps {
-  organizationId: string
-}
+import { useOrganization, useOrganizationAssets } from "@/hooks/use-organizations"
+import { useDeleteAssetFromOrganization } from "@/hooks/use-assets"
+import type { Asset } from "@/types/asset.types"
 
 /**
  * 组织详情视图组件
- * 显示组织的详细信息
+ * 显示组织的统计信息和资产列表
  */
-export function OrganizationDetailView({ organizationId }: OrganizationDetailViewProps) {
-  const { data: organization, isLoading, error, refetch } = useOrganization(parseInt(organizationId))
-  const queryClient = useQueryClient()
+export function OrganizationDetailView({ 
+  organizationId 
+}: { 
+  organizationId: string
+}) {
+  const [selectedAssets, setSelectedAssets] = useState<Asset[]>([])
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [assetToDelete, setAssetToDelete] = useState<Asset | null>(null)
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
   
-  // 关联资产对话框状态
-  const [isLinkAssetDialogOpen, setIsLinkAssetDialogOpen] = React.useState(false)
-  
-  // 移除资产确认对话框状态
-  const [assetToRemove, setAssetToRemove] = React.useState<{ id: number; name: string } | null>(null)
-  
-  // 移除资产的 mutation
-  const deleteAssetMutation = useDeleteAssetFromOrganization()
-  
-  // 预加载资产列表数据（鼠标悬停时）
-  const handlePrefetchAssets = () => {
-    queryClient.prefetchQuery({
-      queryKey: ['assets', 'all', { page: 1, pageSize: 100 }],
-      queryFn: async () => {
-        const { AssetService } = await import('@/services/asset.service')
-        return AssetService.getAllAssets({ page: 1, pageSize: 100 })
-      },
-    })
-  }
+  // 分页状态
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  })
 
-  // 格式化日期
+  // 使用 React Query 获取组织基本信息
+  const {
+    data: organization,
+    isLoading: isLoadingOrg,
+    error: orgError,
+  } = useOrganization(parseInt(organizationId))
+
+  // 使用 React Query 获取组织资产列表（支持分页）
+  const {
+    data: assetsData,
+    isLoading: isLoadingAssets,
+    error: assetsError,
+    refetch
+  } = useOrganizationAssets(
+    parseInt(organizationId),
+    {
+      page: pagination.pageIndex + 1,
+      pageSize: pagination.pageSize,
+    }
+  )
+
+  const isLoading = isLoadingOrg || isLoadingAssets
+  const error = orgError || assetsError
+
+  // Mutations
+  const deleteAssetMutation = useDeleteAssetFromOrganization()
+
+  // 辅助函数 - 格式化日期
   const formatDate = (dateString: string): string => {
     return new Date(dateString).toLocaleString("zh-CN", {
       year: "numeric",
@@ -68,23 +85,84 @@ export function OrganizationDetailView({ organizationId }: OrganizationDetailVie
     })
   }
 
-  // 处理移除资产
-  const handleRemoveAsset = () => {
-    if (!assetToRemove) return
-    
-    deleteAssetMutation.mutate(
-      {
-        organizationId: parseInt(organizationId),
-        assetId: assetToRemove.id,
-      },
-      {
-        onSuccess: () => {
-          setAssetToRemove(null)
-          // React Query 会自动刷新，无需手动 refetch
-        },
-      }
-    )
+  // 导航函数
+  const router = useRouter()
+  const navigate = (path: string) => {
+    router.push(path)
   }
+
+  // 处理删除资产
+  const handleDeleteAsset = (asset: Asset) => {
+    setAssetToDelete(asset)
+    setDeleteDialogOpen(true)
+  }
+
+  // 确认删除资产
+  const confirmDelete = async () => {
+    if (!assetToDelete) return
+
+    setDeleteDialogOpen(false)
+    setAssetToDelete(null)
+    
+    deleteAssetMutation.mutate({
+      organizationId: parseInt(organizationId),
+      assetId: assetToDelete.id,
+    })
+  }
+
+  // 处理批量删除
+  const handleBulkDelete = () => {
+    if (selectedAssets.length === 0) {
+      return
+    }
+    setBulkDeleteDialogOpen(true)
+  }
+
+  // 确认批量删除
+  const confirmBulkDelete = async () => {
+    if (selectedAssets.length === 0) return
+
+    const deletedIds = selectedAssets.map(asset => asset.id)
+    
+    setBulkDeleteDialogOpen(false)
+    setSelectedAssets([])
+    
+    // 逐个删除资产
+    for (const assetId of deletedIds) {
+      deleteAssetMutation.mutate({
+        organizationId: parseInt(organizationId),
+        assetId,
+      })
+    }
+  }
+
+  // 处理添加资产
+  const handleAddAsset = () => {
+    setIsAddDialogOpen(true)
+  }
+
+  // 处理添加成功
+  const handleAddSuccess = () => {
+    setIsAddDialogOpen(false)
+    refetch()
+  }
+
+  // 处理分页变化
+  const handlePaginationChange = (newPagination: { pageIndex: number; pageSize: number }) => {
+    setPagination(newPagination)
+    setSelectedAssets([])
+  }
+
+  // 创建列定义
+  const assetColumns = useMemo(
+    () =>
+      createAssetColumns({
+        formatDate,
+        navigate,
+        handleDelete: handleDeleteAsset,
+      }),
+    [formatDate, navigate, handleDeleteAsset]
+  )
 
   // 错误状态
   if (error) {
@@ -95,7 +173,7 @@ export function OrganizationDetailView({ organizationId }: OrganizationDetailVie
         </div>
         <h3 className="text-lg font-semibold mb-2">加载失败</h3>
         <p className="text-muted-foreground text-center mb-4">
-          {error.message || "加载组织详情时出现错误，请重试"}
+          {error.message || "加载数据时出现错误，请重试"}
         </p>
         <button 
           onClick={() => refetch()}
@@ -109,167 +187,234 @@ export function OrganizationDetailView({ organizationId }: OrganizationDetailVie
 
   // 加载状态
   if (isLoading) {
-    return <LoadingState message="加载组织详情中..." />
+    return (
+      <div className="flex flex-col gap-4 px-4 lg:px-6">
+        {/* 页面头部骨架 */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-8 w-8 rounded-md" />
+            <Skeleton className="h-8 w-64" />
+          </div>
+          <Skeleton className="h-4 w-96" />
+        </div>
+
+        {/* 统计卡片骨架 */}
+        <div className="grid grid-cols-1 gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-8 w-16" />
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
+
+        {/* 表格骨架 */}
+        <Skeleton className="h-96 w-full" />
+      </div>
+    )
   }
 
   if (!organization) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
-        <p className="text-muted-foreground">组织不存在</p>
+        <Building2 className="mx-auto text-muted-foreground mb-4 h-12 w-12" />
+        <h3 className="text-lg font-semibold mb-2">组织不存在</h3>
+        <p className="text-muted-foreground">未找到ID为 {organizationId} 的组织</p>
       </div>
     )
   }
 
+  // 计算统计数据
+  const stats = {
+    totalAssets: assetsData?.total || 0,
+    // 这里可以从后端获取更多统计信息，暂时使用占位数据
+    totalDomains: organization.stats?.total_domains || 0,
+    totalEndpoints: organization.stats?.total_endpoints || 0,
+  }
+
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col gap-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <IconBuilding className="text-primary" />
-                </div>
-                <div>
-                  <CardTitle className="text-2xl">{organization.name}</CardTitle>
-                  <CardDescription className="mt-1">Organization</CardDescription>
-                </div>
-              </div>
-
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <IconFileText />
-                <span className="truncate">{organization.description || "无描述"}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <IconCalendar />
-                <span>创建</span>
-                <span className="font-mono">{formatDate(organization.createdAt)}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <IconClock />
-                <span>更新</span>
-                <span className="font-mono">{formatDate(organization.updatedAt)}</span>
-              </div>
-            </div>
-            <div className="text-xs text-muted-foreground">ID: <span className="font-mono">{organization.id}</span></div>
+    <>
+      {/* 页面头部 */}
+      <div className="px-4 lg:px-6">
+        <div className="flex items-start justify-between">
+          <div className="space-y-1">
+            <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+              <Building2 className="h-6 w-6" />
+              {organization.name}
+            </h2>
+            <p className="text-muted-foreground">
+              {organization.description || "暂无描述"}
+            </p>
           </div>
-        </CardHeader>
-      </Card>
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-500/10 rounded-lg">
-                <IconWorld className="text-blue-500" />
-              </div>
-              <div>
-                <CardTitle>主资产</CardTitle>
-                <CardDescription>
-                  {organization.assets && organization.assets.length > 0 ? `共 ${organization.assets.length} 个资产` : "暂无绑定资产"}
-                </CardDescription>
-              </div>
+      {/* 统计卡片 */}
+      <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-3">
+        <Card className="@container/card">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardDescription>主资产总数</CardDescription>
+              <Database className="h-4 w-4 text-muted-foreground" />
             </div>
-            <Button 
-              size="sm" 
-              onClick={() => setIsLinkAssetDialogOpen(true)}
-              onMouseEnter={handlePrefetchAssets}
-            >
-              <LinkIcon />
-              关联资产
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {organization.assets && organization.assets.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-              {organization.assets.map((asset) => (
-                <div key={asset.id} className="group flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="p-1.5 bg-blue-500/10 rounded">
-                      <IconWorld className="h-4 w-4 text-blue-500" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <Link href={`/assets/asset/${asset.id}`} className="font-medium text-primary hover:underline block truncate">
-                        {asset.name}
-                      </Link>
-                      {asset.description && (
-                        <p className="text-sm text-muted-foreground truncate mt-0.5">{asset.description}</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 ml-2 shrink-0">
-                    <Badge variant="secondary">ID: {asset.id}</Badge>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        setAssetToRemove({ id: asset.id, name: asset.name })
-                      }}
-                      title="从组织中移除"
-                    >
-                      <IconTrash className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+            <CardTitle className="text-3xl font-semibold tabular-nums">
+              {stats.totalAssets}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <TrendingUp className="h-4 w-4" />
+              <span>组织关联的主资产数量</span>
             </div>
-          ) : (
-            <div className="text-center py-10 text-muted-foreground">
-              <IconWorld className="h-12 w-12 mx-auto mb-3 opacity-20" />
-              <p>暂无绑定的资产</p>
-              <p className="text-sm mt-1">可以在资产管理页面将资产关联到此组织</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      <LinkAssetDialog
-        open={isLinkAssetDialogOpen}
-        onOpenChange={setIsLinkAssetDialogOpen}
-        organizationId={organization.id}
+        <Card className="@container/card">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardDescription>域名总数</CardDescription>
+              <Globe className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <CardTitle className="text-3xl font-semibold tabular-nums">
+              {stats.totalDomains}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <TrendingUp className="h-4 w-4" />
+              <span>已发现的域名数量</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="@container/card">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardDescription>端点总数</CardDescription>
+              <LinkIcon className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <CardTitle className="text-3xl font-semibold tabular-nums">
+              {stats.totalEndpoints}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <TrendingUp className="h-4 w-4" />
+              <span>已识别的端点数量</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 资产列表 */}
+      <div className="px-4 lg:px-6">
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold">主资产列表</h3>
+          <p className="text-sm text-muted-foreground">
+            管理组织关联的所有主资产
+          </p>
+        </div>
+        <AssetsDataTable
+          data={assetsData?.assets || []}
+          columns={assetColumns}
+          onAddNew={handleAddAsset}
+          onBulkDelete={handleBulkDelete}
+          onSelectionChange={setSelectedAssets}
+          searchPlaceholder="搜索资产..."
+          searchColumn="name"
+          addButtonText="关联资产"
+          pagination={pagination}
+          setPagination={setPagination}
+          paginationInfo={assetsData ? {
+            total: assetsData.total,
+            page: assetsData.page,
+            pageSize: assetsData.pageSize,
+            totalPages: assetsData.totalPages,
+          } : undefined}
+          onPaginationChange={handlePaginationChange}
+        />
+      </div>
+      
+      {/* 添加资产对话框 */}
+      <AddAssetDialog
+        organizationId={parseInt(organizationId)}
         organizationName={organization.name}
-        onAdd={() => {
-          // React Query 会自动刷新，无需手动 refetch
-        }}
+        onAdd={handleAddSuccess}
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
       />
 
-      {/* 移除资产确认对话框 */}
-      <AlertDialog open={!!assetToRemove} onOpenChange={(open) => !open && setAssetToRemove(null)}>
+      {/* 删除确认对话框 */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>确认移除资产</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-2">
-                <p>确定要从此组织中移除资产吗？</p>
-                {assetToRemove && (
-                  <div className="p-3 bg-muted rounded-md">
-                    <p className="font-medium text-foreground">{assetToRemove.name}</p>
-                    <p className="text-sm text-muted-foreground mt-1">ID: {assetToRemove.id}</p>
-                  </div>
-                )}
-                <p className="text-sm">
-                  <strong>注意：</strong>此操作只会解除资产与组织的关联关系，资产本身不会被删除，仍可正常使用。
-                </p>
-              </div>
+            <AlertDialogDescription>
+              确定要从此组织中移除资产 &quot;{assetToDelete?.name}&quot; 吗？此操作只会解除资产与组织的关联关系，资产本身不会被删除。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteAssetMutation.isPending}>取消</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleRemoveAsset}
-              disabled={deleteAssetMutation.isPending}
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete} 
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteAssetMutation.isPending}
             >
-              {deleteAssetMutation.isPending ? "移除中..." : "确认移除"}
+              {deleteAssetMutation.isPending ? (
+                <>
+                  <LoadingSpinner/>
+                  移除中...
+                </>
+              ) : (
+                "确认移除"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+
+      {/* 批量删除确认对话框 */}
+      <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认批量移除资产</AlertDialogTitle>
+            <AlertDialogDescription>
+              此操作将从组织中移除以下 {selectedAssets.length} 个资产。资产本身不会被删除，仍可正常使用。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="mt-2 p-2 bg-muted rounded-md max-h-96 overflow-y-auto">
+            <ul className="text-sm space-y-1">
+              {selectedAssets.map((asset) => (
+                <li key={asset.id} className="flex items-center">
+                  <span className="font-medium">{asset.name}</span>
+                  {asset.description && (
+                    <span className="text-muted-foreground ml-2">- {asset.description}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmBulkDelete} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteAssetMutation.isPending}
+            >
+              {deleteAssetMutation.isPending ? (
+                <>
+                  <LoadingSpinner/>
+                  移除中...
+                </>
+              ) : (
+                `确认移除 ${selectedAssets.length} 个资产`
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }

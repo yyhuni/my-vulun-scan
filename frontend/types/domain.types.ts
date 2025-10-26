@@ -10,7 +10,9 @@ import type { BatchCreateResponse } from "./api-response.types"
 export interface Domain {
   id: number
   name: string
-  description: string
+  description?: string
+  assetId?: number   // 响应拦截器自动从 asset_id 转换而来（部分接口返回）
+  asset?: number     // 后端返回的 asset 字段（外键ID）
   createdAt: string  // 响应拦截器自动从 created_at 转换而来
   updatedAt: string  // 响应拦截器自动从 updated_at 转换而来
   organizations?: Organization[]  // 关联的组织列表（仅在 Preload 时返回）

@@ -33,13 +33,19 @@ function CopyableCell({
   successMessage = "已复制",
   className = "font-mono"
 }: { 
-  value: string
+  value: string | undefined | null
   maxWidth?: string
   truncateLength?: number
   successMessage?: string
   className?: string
 }) {
   const [copied, setCopied] = React.useState(false)
+  
+  // 防御性编程：处理空值
+  if (!value) {
+    return <span className="text-muted-foreground text-sm">-</span>
+  }
+  
   const isLong = value.length > truncateLength
   
   const handleCopy = async () => {
@@ -85,9 +91,9 @@ function CopyableCell({
               onClick={handleCopy}
             >
               {copied ? (
-                <Check className="h-3.5 w-3.5 text-green-600" />
+                <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
               ) : (
-                <Copy className="h-3.5 w-3.5" />
+                <Copy className="h-3.5 w-3.5 text-muted-foreground" />
               )}
             </Button>
           </TooltipTrigger>
@@ -184,45 +190,41 @@ function DataTableColumnHeader({
 
 /**
  * HTTP 状态码徽章组件
+ * 使用 shadcn/ui 主题变量，自动适配暗黑模式
  */
 function HttpStatusBadge({ statusCode }: { statusCode: number | null | undefined }) {
   // 处理空值情况
   if (statusCode === null || statusCode === undefined) {
     return (
-      <Badge variant="outline" className="px-2 py-1 text-gray-700 border-gray-300 bg-gray-50">
+      <Badge variant="outline" className="text-muted-foreground px-2 py-1 font-mono">
         -
       </Badge>
     )
   }
 
-  const getStatusInfo = (code: number) => {
+  const getStatusVariant = (code: number): "default" | "secondary" | "destructive" | "outline" => {
     if (code >= 200 && code < 300) {
-      return {
-        className: "text-green-700 border-green-300 bg-green-50"
-      }
+      // 2xx - 成功
+      return "outline"
     } else if (code >= 300 && code < 400) {
-      return {
-        className: "text-blue-700 border-blue-300 bg-blue-50"
-      }
+      // 3xx - 重定向
+      return "secondary"
     } else if (code >= 400 && code < 500) {
-      return {
-        className: "text-orange-700 border-orange-300 bg-orange-50"
-      }
+      // 4xx - 客户端错误
+      return "default"
     } else if (code >= 500) {
-      return {
-        className: "text-red-700 border-red-300 bg-red-50"
-      }
+      // 5xx - 服务器错误
+      return "destructive"
     } else {
-      return {
-        className: "text-gray-700 border-gray-300 bg-gray-50"
-      }
+      // 其他
+      return "secondary"
     }
   }
 
-  const { className } = getStatusInfo(statusCode)
+  const variant = getStatusVariant(statusCode)
 
   return (
-    <Badge variant="outline" className={`px-2 py-1 ${className}`}>
+    <Badge variant={variant} className="px-2 py-1 font-mono tabular-nums">
       {statusCode}
     </Badge>
   )
@@ -287,14 +289,22 @@ export const createEndpointColumns = ({
 
   // 路径列（从 URL 中提取路径）
   {
-    accessorKey: "endpoint",
+    id: "path",
+    accessorFn: (row) => {
+      try {
+        const url = new URL(row.url)
+        return url.pathname + url.search + url.hash
+      } catch {
+        return row.url
+      }
+    },
     enableSorting: false,
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="路径" />
     ),
     cell: ({ row }) => {
-      const endpoint = row.getValue("endpoint") as string
-      return <CopyableCell value={endpoint} maxWidth="400px" truncateLength={30} successMessage="已复制路径" />
+      const path = row.getValue("path") as string
+      return <CopyableCell value={path} maxWidth="400px" truncateLength={30} successMessage="已复制路径" />
     },
   },
 
@@ -305,19 +315,30 @@ export const createEndpointColumns = ({
       <DataTableColumnHeader column={column} title="方法" />
     ),
     cell: ({ row }) => {
-      const method = row.getValue("method") as string
-      const getMethodColor = (method: string) => {
+      const method = row.getValue("method") as string | undefined
+      
+      if (!method) {
+        return <span className="text-muted-foreground text-sm">-</span>
+      }
+      
+      const getMethodVariant = (method: string): "default" | "secondary" | "destructive" | "outline" => {
         switch (method.toUpperCase()) {
-          case "GET": return "bg-green-100 text-green-800 border-green-200"
-          case "POST": return "bg-blue-100 text-blue-800 border-blue-200"
-          case "PUT": return "bg-orange-100 text-orange-800 border-orange-200"
-          case "DELETE": return "bg-red-100 text-red-800 border-red-200"
-          case "PATCH": return "bg-purple-100 text-purple-800 border-purple-200"
-          default: return "bg-gray-100 text-gray-800 border-gray-200"
+          case "GET": 
+            return "outline"
+          case "POST": 
+            return "default"
+          case "PUT": 
+            return "secondary"
+          case "DELETE": 
+            return "destructive"
+          case "PATCH": 
+            return "outline"
+          default: 
+            return "secondary"
         }
       }
       return (
-        <Badge variant="outline" className={getMethodColor(method)}>
+        <Badge variant={getMethodVariant(method)}>
           {method}
         </Badge>
       )

@@ -108,7 +108,7 @@ function CopyableCell({
               onClick={handleCopy}
             >
               {copied ? (
-                <Check className="h-3.5 w-3.5 text-green-600" />
+                <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
               ) : (
                 <Copy className="h-3.5 w-3.5 text-muted-foreground" />
               )}
@@ -125,40 +125,41 @@ function CopyableCell({
 
 /**
  * 执行频率徽章组件
+ * 使用 shadcn Badge 的标准 variant
  */
 function FrequencyBadge({ frequency }: { frequency: ScheduleFrequency }) {
   const config = {
     once: {
       icon: IconClock,
       label: "仅一次",
-      className: "bg-gray-50 text-gray-700 border-gray-300",
+      variant: "secondary" as const,
     },
     daily: {
       icon: IconCalendar,
       label: "每天",
-      className: "bg-blue-50 text-blue-700 border-blue-300",
+      variant: "default" as const,
     },
     weekly: {
       icon: IconCalendarRepeat,
       label: "每周",
-      className: "bg-green-50 text-green-700 border-green-300",
+      variant: "outline" as const,
     },
     monthly: {
       icon: IconCalendarTime,
       label: "每月",
-      className: "bg-purple-50 text-purple-700 border-purple-300",
+      variant: "secondary" as const,
     },
     custom: {
       icon: IconAdjustments,
       label: "自定义",
-      className: "bg-orange-50 text-orange-700 border-orange-300",
+      variant: "outline" as const,
     },
   }
 
-  const { icon: Icon, label, className } = config[frequency]
+  const { icon: Icon, label, variant } = config[frequency]
 
   return (
-    <Badge variant="outline" className={className}>
+    <Badge variant={variant}>
       <Icon className="h-3.5 w-3.5" />
       {label}
     </Badge>
@@ -321,7 +322,7 @@ export const createScheduledScanColumns = ({
     cell: ({ row }) => {
       const strategyName = row.getValue("strategy_name") as string
       return (
-        <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+        <Badge variant="secondary">
           {strategyName}
         </Badge>
       )

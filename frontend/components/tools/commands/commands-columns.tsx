@@ -85,7 +85,7 @@ function CopyableCell({
               onClick={handleCopy}
             >
               {copied ? (
-                <Check className="h-3.5 w-3.5 text-green-600" />
+                <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
               ) : (
                 <Copy className="h-3.5 w-3.5 text-muted-foreground" />
               )}

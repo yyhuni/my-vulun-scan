@@ -84,7 +84,7 @@ function CopyableCell({
               onClick={handleCopy}
             >
               {copied ? (
-                <Check className="h-3.5 w-3.5 text-green-600" />
+                <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
               ) : (
                 <Copy className="h-3.5 w-3.5 text-muted-foreground" />
               )}
@@ -259,7 +259,7 @@ export const createAssetColumns = ({
                   onClick={handleCopy}
                 >
                   {copied ? (
-                    <Check className="h-3.5 w-3.5 text-green-600" />
+                    <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
                   ) : (
                     <Copy className="h-3.5 w-3.5 text-muted-foreground" />
                   )}
@@ -286,14 +286,14 @@ export const createAssetColumns = ({
       if (!type) {
         return <span className="text-sm text-muted-foreground">-</span>
       }
-      const typeMap: Record<string, { label: string; className: string }> = {
-        domain: { label: "域名", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300" },
-        ip: { label: "IP", className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300" },
-        cidr: { label: "CIDR", className: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300" },
+      const typeMap: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
+        domain: { label: "域名", variant: "default" },
+        ip: { label: "IP", variant: "secondary" },
+        cidr: { label: "CIDR", variant: "outline" },
       }
-      const typeInfo = typeMap[type] || { label: type, className: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300" }
+      const typeInfo = typeMap[type] || { label: type, variant: "secondary" as const }
       return (
-        <Badge variant="secondary" className={typeInfo.className}>
+        <Badge variant={typeInfo.variant}>
           {typeInfo.label}
         </Badge>
       )
