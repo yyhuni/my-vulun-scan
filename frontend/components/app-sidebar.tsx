@@ -91,6 +91,10 @@ const data = {
           url: "/assets/all",
         },
         {
+          title: "目标管理", // 目标管理
+          url: "/assets/target",
+        },
+        {
           title: "组织管理", // 组织管理
           url: "/assets/organization",
         },

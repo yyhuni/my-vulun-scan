@@ -17,7 +17,6 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/sonner"
 import { LoadingState } from "@/components/loading-spinner"
 import { RoutePrefetch } from "@/components/route-prefetch"
-import { MockProvider } from "./mock-provider"
 
 // 定义页面的元数据信息,用于 SEO 优化
 export const metadata: Metadata = {
@@ -71,12 +70,10 @@ export default function RootLayout({
           />
           {/* 使用 QueryProvider 提供 React Query 功能 */}
           <QueryProvider>
-            {/* MSW Mock Provider: 在开发环境启用 Mock 数据 */}
-            <MockProvider>
-              {/* 路由预加载：在后台预加载常用页面的 JS/CSS 资源 */}
-              <RoutePrefetch />
-              {/* SidebarProvider 提供侧边栏的上下文状态管理 */}
-              <SidebarProvider
+            {/* 路由预加载：在后台预加载常用页面的 JS/CSS 资源 */}
+            <RoutePrefetch />
+            {/* SidebarProvider 提供侧边栏的上下文状态管理 */}
+            <SidebarProvider
               // 自定义 CSS 变量,设置侧边栏宽度和头部高度
               style={
                 {
@@ -110,7 +107,6 @@ export default function RootLayout({
                 </div>
               </SidebarInset>
             </SidebarProvider>
-            </MockProvider>
           </QueryProvider>
         </ThemeProvider>
       </body>
