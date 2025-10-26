@@ -2,7 +2,7 @@
 
 基于 Django ORM 的数据库模型设计文档，针对 XingRin 开源 Web 应用侦察工具的核心模型。
 
-## 核心领域模型
+## 资产模型
 ### Organization 模型
 **作用**: 组织管理，实现多个 Asset 的分组
 

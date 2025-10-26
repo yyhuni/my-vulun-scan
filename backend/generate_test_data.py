@@ -67,7 +67,8 @@ def create_test_data():
     # 3. 为每个资产创建 3 个子域名
     print("\n[3/6] 为每个资产创建子域名（每个 3 个）...")
     domain_counter = 0
-    for asset in assets_data[:20]:  # 只为前 20 个资产创建子域名
+    all_assets = Asset.objects.all()
+    for asset in all_assets:
         for prefix in ["www", "api", "admin"]:
             domain, created = Domain.objects.get_or_create(
                 name=f"{prefix}.{asset.name}",
@@ -77,11 +78,11 @@ def create_test_data():
             if created:
                 domain_counter += 1
     
-    print(f"✓ 成功为 20 个资产创建子域名（约 60 个）")
+    print(f"✓ 成功为所有资产创建子域名（共 {domain_counter} 个）")
     
-    # 4. 为部分域名创建 Endpoint
-    print("\n[4/6] 为部分域名创建 Endpoint...")
-    domains = Domain.objects.all()[:60]
+    # 4. 为所有域名创建 Endpoint
+    print("\n[4/6] 为所有域名创建 Endpoint...")
+    domains = Domain.objects.all()
     endpoint_counter = 0
     
     paths = [

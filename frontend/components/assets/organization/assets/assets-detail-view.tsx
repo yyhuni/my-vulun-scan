@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { useOrganization } from "@/hooks/use-organizations"
+import { useOrganization, useOrganizationAssets } from "@/hooks/use-organizations"
 import { useDeleteAssetFromOrganization } from "@/hooks/use-assets"
 import type { Asset } from "@/types/asset.types"
 
@@ -43,13 +43,29 @@ export function OrganizationAssetsDetailView({
     pageSize: 10,
   })
 
-  // 使用 React Query 获取组织数据
+  // 使用 React Query 获取组织基本信息
   const {
     data: organization,
-    isLoading,
-    error,
-    refetch
+    isLoading: isLoadingOrg,
+    error: orgError,
   } = useOrganization(parseInt(organizationId))
+
+  // 使用 React Query 获取组织资产列表（支持分页）
+  const {
+    data: assetsData,
+    isLoading: isLoadingAssets,
+    error: assetsError,
+    refetch
+  } = useOrganizationAssets(
+    parseInt(organizationId),
+    {
+      page: pagination.pageIndex + 1,  // API 使用 1-based 页码
+      pageSize: pagination.pageSize,
+    }
+  )
+
+  const isLoading = isLoadingOrg || isLoadingAssets
+  const error = orgError || assetsError
 
   // Mutations
   const deleteAssetMutation = useDeleteAssetFromOrganization()
@@ -124,13 +140,17 @@ export function OrganizationAssetsDetailView({
   }
 
   // 处理添加成功
-  const handleAddSuccess = async (newAssets: Asset[]) => {
+  const handleAddSuccess = () => {
     setIsAddDialogOpen(false)
+    // 刷新资产列表
+    refetch()
   }
 
   // 处理分页变化
   const handlePaginationChange = (newPagination: { pageIndex: number; pageSize: number }) => {
     setPagination(newPagination)
+    // 清空选中状态
+    setSelectedAssets([])
   }
 
   // 创建列定义
@@ -181,7 +201,7 @@ export function OrganizationAssetsDetailView({
   return (
     <>
       <AssetsDataTable
-        data={organization.assets || []}
+        data={assetsData?.assets || []}
         columns={assetColumns}
         onAddNew={handleAddAsset}
         onBulkDelete={handleBulkDelete}
@@ -191,12 +211,12 @@ export function OrganizationAssetsDetailView({
         addButtonText="关联资产"
         pagination={pagination}
         setPagination={setPagination}
-        paginationInfo={{
-          total: organization.assets?.length || 0,
-          page: 1,
-          pageSize: pagination.pageSize,
-          totalPages: Math.ceil((organization.assets?.length || 0) / pagination.pageSize),
-        }}
+        paginationInfo={assetsData ? {
+          total: assetsData.total,
+          page: assetsData.page,
+          pageSize: assetsData.pageSize,
+          totalPages: assetsData.totalPages,
+        } : undefined}
         onPaginationChange={handlePaginationChange}
       />
       

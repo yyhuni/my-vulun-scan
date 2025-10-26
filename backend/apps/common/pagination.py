@@ -55,9 +55,11 @@ class DomainPagination(BasePagination):
 
 
 
-class URLPagination(BasePagination):
-    """URL 专用分页器"""
-    data_key = 'urls'
+class EndpointPagination(BasePagination):
+    """端点专用分页器"""
+    data_key = 'endpoints'
+
+
 
 
 

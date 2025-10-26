@@ -362,8 +362,8 @@ export function useAssetDomains(
   })
 }
 
-// 获取资产的 URL 列表
-export function useAssetUrls(
+// 获取资产的端点列表
+export function useAssetEndpoints(
   assetId: number,
   params?: {
     page?: number
@@ -374,11 +374,11 @@ export function useAssetUrls(
   }
 ) {
   return useQuery({
-    queryKey: ['assets', 'detail', assetId, 'urls', {
+    queryKey: ['assets', 'detail', assetId, 'endpoints', {
       page: params?.page,
       pageSize: params?.pageSize,
     }],
-    queryFn: () => AssetService.getUrlsByAssetId(assetId, {
+    queryFn: () => AssetService.getEndpointsByAssetId(assetId, {
       page: params?.page || 1,
       pageSize: params?.pageSize || 10,
     }),
@@ -386,7 +386,7 @@ export function useAssetUrls(
     select: (response: any) => {
       // RESTful 标准：直接返回数据
       return {
-        urls: response.endpoints || [],
+        endpoints: response.endpoints || [],
         pagination: {
           total: response.total || 0,
           page: response.page || 1,

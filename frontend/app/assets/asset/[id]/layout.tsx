@@ -30,7 +30,7 @@ export default function AssetLayout({
   // 获取当前激活的 Tab
   const getActiveTab = () => {
     if (pathname.includes("/domains")) return "domains"
-    if (pathname.includes("/urls")) return "urls"
+    if (pathname.includes("/endpoints")) return "endpoints"
     return ""
   }
 
@@ -38,7 +38,7 @@ export default function AssetLayout({
   const basePath = `/assets/asset/${id}`
   const tabPaths = {
     domains: `${basePath}/domains`,
-    urls: `${basePath}/urls`,
+    endpoints: `${basePath}/endpoints`,
   }
 
   // 加载状态
@@ -120,8 +120,8 @@ export default function AssetLayout({
             <TabsTrigger value="domains" asChild>
               <Link href={tabPaths.domains}>域名</Link>
             </TabsTrigger>
-            <TabsTrigger value="urls" asChild>
-              <Link href={tabPaths.urls}>URL</Link>
+            <TabsTrigger value="endpoints" asChild>
+              <Link href={tabPaths.endpoints}>URL</Link>
             </TabsTrigger>
           </TabsList>
         </Tabs>

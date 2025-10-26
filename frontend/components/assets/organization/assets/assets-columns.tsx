@@ -4,6 +4,7 @@ import React from "react"
 import { ColumnDef } from "@tanstack/react-table"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -220,7 +221,57 @@ export const createAssetColumns = ({
     ),
     cell: ({ row }) => {
       const name = row.getValue("name") as string
-      return <CopyableCell value={name} maxWidth="400px" truncateLength={50} successMessage="已复制资产名称" />
+      const assetId = row.original.id
+      const [copied, setCopied] = React.useState(false)
+      
+      const handleCopy = async (e: React.MouseEvent) => {
+        e.stopPropagation() // 防止触发跳转
+        try {
+          await navigator.clipboard.writeText(name)
+          setCopied(true)
+          toast.success("已复制资产名称")
+          setTimeout(() => setCopied(false), 2000)
+        } catch {
+          toast.error('复制失败')
+        }
+      }
+      
+      return (
+        <div className="group inline-flex items-center gap-1" style={{ maxWidth: "400px" }}>
+          <Button
+            variant="link"
+            className="p-0 h-auto font-medium text-primary hover:text-primary/80 text-sm truncate"
+            onClick={() => navigate(`/assets/asset/${assetId}/domains/`)}
+            title={name}
+          >
+            {name}
+          </Button>
+          
+          <TooltipProvider delayDuration={500} skipDelayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={`h-6 w-6 flex-shrink-0 hover:bg-accent transition-opacity ${
+                    copied ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                  }`}
+                  onClick={handleCopy}
+                >
+                  {copied ? (
+                    <Check className="h-3.5 w-3.5 text-green-600" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p className="text-xs">{copied ? '已复制!' : '点击复制'}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      )
     },
   },
 
@@ -235,16 +286,16 @@ export const createAssetColumns = ({
       if (!type) {
         return <span className="text-sm text-muted-foreground">-</span>
       }
-      const typeMap: Record<string, { label: string; color: string }> = {
-        domain: { label: "域名", color: "bg-blue-100 text-blue-800" },
-        ip: { label: "IP", color: "bg-green-100 text-green-800" },
-        cidr: { label: "CIDR", color: "bg-purple-100 text-purple-800" },
+      const typeMap: Record<string, { label: string; className: string }> = {
+        domain: { label: "域名", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300" },
+        ip: { label: "IP", className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300" },
+        cidr: { label: "CIDR", className: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300" },
       }
-      const typeInfo = typeMap[type] || { label: type, color: "bg-gray-100 text-gray-800" }
+      const typeInfo = typeMap[type] || { label: type, className: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300" }
       return (
-        <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${typeInfo.color}`}>
+        <Badge variant="secondary" className={typeInfo.className}>
           {typeInfo.label}
-        </span>
+        </Badge>
       )
     },
   },
@@ -267,12 +318,12 @@ export const createAssetColumns = ({
 
   // URL 数量列
   {
-    accessorKey: "urlCount",
+    accessorKey: "endpointCount",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="URL 数" />
     ),
     cell: ({ row }) => {
-      const count = row.getValue("urlCount") as number | undefined
+      const count = row.getValue("endpointCount") as number | undefined
       return (
         <div className="text-sm font-medium text-center">
           {count ?? 0}

@@ -36,6 +36,35 @@ export class OrganizationService {
   }
 
   /**
+   * 获取组织的资产列表（支持分页）
+   * @param id - 组织ID
+   * @param params - 查询参数
+   * @returns Promise<GetAssetsResponse>
+   */
+  static async getOrganizationAssets(id: string | number, params?: {
+    page?: number
+    pageSize?: number
+  }): Promise<{
+    assets: Asset[]
+    total: number
+    page: number
+    pageSize: number
+    totalPages: number
+  }> {
+    const response = await api.get<{
+      assets: Asset[]
+      total: number
+      page: number
+      pageSize: number
+      totalPages: number
+    }>(
+      `/organizations/${id}/assets/`,
+      { params }
+    )
+    return response.data
+  }
+
+  /**
    * 获取组织的域名列表
    * @param id - 组织ID
    * @param params - 查询参数

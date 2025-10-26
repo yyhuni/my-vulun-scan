@@ -313,9 +313,15 @@ export const createScanHistoryColumns = ({
     ),
     cell: ({ row }) => {
       const type = row.getValue("type") as string
+      const typeMap: Record<string, { label: string; className: string }> = {
+        "全面扫描": { label: "全面扫描", className: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300" },
+        "快速扫描": { label: "快速扫描", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300" },
+        "自定义扫描": { label: "自定义扫描", className: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300" },
+      }
+      const typeInfo = typeMap[type] || { label: type, className: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300" }
       return (
-        <Badge variant="secondary" className="font-normal">
-          {type}
+        <Badge variant="secondary" className={typeInfo.className}>
+          {typeInfo.label}
         </Badge>
       )
     },

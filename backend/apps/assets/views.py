@@ -140,6 +140,47 @@ class OrganizationViewSet(viewsets.ModelViewSet):
             'message': '成功解除资产关联'
         }, status=status.HTTP_200_OK)
     
+    @action(detail=True, methods=['get'], url_path='assets')
+    def list_assets(self, request, pk=None):
+        """
+        获取组织的资产列表（支持分页）
+        
+        路由: GET /api/organizations/{organization_id}/assets/
+        
+        查询参数:
+        - page: 页码
+        - page_size: 每页数量
+        
+        返回格式:
+        {
+            "assets": [...],
+            "total": 100,
+            "page": 1,
+            "pageSize": 10,
+            "totalPages": 10
+        }
+        
+        说明:
+        - 查询该组织关联的所有资产
+        - 支持分页
+        """
+        # 获取组织对象
+        organization = self.get_object()
+        
+        # 查询该组织的所有资产
+        queryset = organization.assets.all()
+        
+        # 分页
+        paginator = AssetPagination()
+        page = paginator.paginate_queryset(queryset, request)
+        
+        if page is not None:
+            serializer = AssetSerializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+        
+        serializer = AssetSerializer(queryset, many=True)
+        return Response(serializer.data)
+    
     @action(detail=True, methods=['get'], url_path='domains')
     def list_domains(self, request, pk=None):
         """

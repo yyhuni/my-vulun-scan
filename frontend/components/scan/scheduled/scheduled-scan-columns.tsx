@@ -321,7 +321,7 @@ export const createScheduledScanColumns = ({
     cell: ({ row }) => {
       const strategyName = row.getValue("strategy_name") as string
       return (
-        <Badge variant="secondary" className="font-normal">
+        <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
           {strategyName}
         </Badge>
       )

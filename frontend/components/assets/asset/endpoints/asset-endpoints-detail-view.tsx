@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { useAssetUrls } from "@/hooks/use-assets"
+import { useAssetEndpoints } from "@/hooks/use-assets"
 import { useDeleteEndpoint, useBatchDeleteEndpoints } from "@/hooks/use-endpoints"
 import { EndpointsDataTable } from "@/components/assets/organization/endpoints/endpoints-data-table"
 import { createEndpointColumns } from "@/components/assets/organization/endpoints/endpoints-columns"
@@ -49,7 +49,7 @@ export function AssetEndpointsDetailView({
     isLoading,
     error,
     refetch,
-  } = useAssetUrls(assetId, {
+  } = useAssetEndpoints(assetId, {
     page: pagination.pageIndex + 1,
     pageSize: pagination.pageSize,
   })
@@ -154,7 +154,7 @@ export function AssetEndpointsDetailView({
   return (
     <>
       <EndpointsDataTable
-        data={data?.urls || []}
+        data={data?.endpoints || []}
         columns={endpointColumns}
         onBulkDelete={handleBulkDelete}
         onSelectionChange={setSelectedEndpoints}

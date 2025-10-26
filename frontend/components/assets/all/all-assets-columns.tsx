@@ -18,6 +18,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { MoreHorizontal, Eye, Trash2, ChevronsUpDown, ChevronUp, ChevronDown, Copy, Check } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import type { Asset } from "@/types/asset.types"
 import { toast } from "sonner"
 
@@ -246,16 +247,16 @@ export const createAllAssetsColumns = ({
       if (!type) {
         return <span className="text-sm text-muted-foreground">-</span>
       }
-      const typeMap: Record<string, { label: string; color: string }> = {
-        domain: { label: "域名", color: "bg-blue-100 text-blue-800" },
-        ip: { label: "IP", color: "bg-green-100 text-green-800" },
-        cidr: { label: "CIDR", color: "bg-purple-100 text-purple-800" },
+      const typeMap: Record<string, { label: string; className: string }> = {
+        domain: { label: "域名", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300" },
+        ip: { label: "IP", className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300" },
+        cidr: { label: "CIDR", className: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300" },
       }
-      const typeInfo = typeMap[type] || { label: type, color: "bg-gray-100 text-gray-800" }
+      const typeInfo = typeMap[type] || { label: type, className: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300" }
       return (
-        <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${typeInfo.color}`}>
+        <Badge variant="secondary" className={typeInfo.className}>
           {typeInfo.label}
-        </span>
+        </Badge>
       )
     },
   },
@@ -271,16 +272,54 @@ export const createAllAssetsColumns = ({
       if (!organizations || organizations.length === 0) {
         return <span className="text-sm text-muted-foreground">-</span>
       }
+      
+      const displayOrgs = organizations.slice(0, 3)
+      const remainingCount = organizations.length - 3
+      
       return (
-        <div className="flex flex-wrap gap-1">
-          {organizations.map((org) => (
-            <span key={org.id} className="inline-block px-2 py-1 rounded text-xs font-medium bg-amber-100 text-amber-800">
+        <div className="flex flex-col gap-1 py-1">
+          {displayOrgs.map((org) => (
+            <Badge 
+              key={org.id} 
+              variant="secondary" 
+              className="justify-start truncate text-xs"
+              title={org.name}
+            >
               {org.name}
-            </span>
+            </Badge>
           ))}
+          {remainingCount > 0 && (
+            <TooltipProvider delayDuration={500} skipDelayDuration={0}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge 
+                    variant="outline" 
+                    className="justify-start text-xs cursor-default"
+                  >
+                    ...
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent 
+                  side="top" 
+                  align="start"
+                  sideOffset={5}
+                  className="max-w-sm"
+                >
+                  <div className="flex flex-col gap-1">
+                    {organizations.slice(3).map((org) => (
+                      <div key={org.id} className="text-xs">
+                        {org.name}
+                      </div>
+                    ))}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </div>
       )
     },
+    enableSorting: false,
   },
 
   // 域名数量列
@@ -299,14 +338,14 @@ export const createAllAssetsColumns = ({
     },
   },
 
-  // URL 数量列
+  // 端点数量列
   {
-    accessorKey: "urlCount",
+    accessorKey: "endpointCount",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="URL 数" />
     ),
     cell: ({ row }) => {
-      const count = row.getValue("urlCount") as number | undefined
+      const count = row.getValue("endpointCount") as number | undefined
       return (
         <div className="text-sm font-medium text-center">
           {count ?? 0}

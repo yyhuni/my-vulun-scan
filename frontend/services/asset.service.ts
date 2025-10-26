@@ -189,12 +189,12 @@ export class AssetService {
   }
 
   /**
-   * 获取资产的 URL 列表
+   * 获取资产的端点列表
    * @param assetId - 资产ID
    * @param params - 分页参数
-   * @returns Promise<GetUrlsResponse>
+   * @returns Promise<GetEndpointsResponse>
    */
-  static async getUrlsByAssetId(
+  static async getEndpointsByAssetId(
     assetId: number,
     params?: {
       page?: number
