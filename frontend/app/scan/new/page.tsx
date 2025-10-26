@@ -3,7 +3,8 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { IconRadar, IconChevronRight, IconChevronLeft, IconSearch, IconCheck } from "@tabler/icons-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { IconRadar, IconChevronRight, IconChevronLeft, IconSearch, IconCheck, IconSettings, IconTarget, IconEye, IconRocket } from "@tabler/icons-react"
 import { useRouter } from "next/navigation"
 import { useOrganizations } from "@/hooks/use-organizations"
 import type { Organization } from "@/types/organization.types"
@@ -15,10 +16,10 @@ import { ScanConfirmation } from "@/components/scan/new/scan-confirmation"
 
 // 步骤定义
 const STEPS = [
-  { id: 1, title: "扫描策略" },
-  { id: 2, title: "选择目标" },
-  { id: 3, title: "确认目标" },
-  { id: 4, title: "确认启动" },
+  { id: 1, title: "扫描策略", icon: IconSettings, description: "配置扫描参数" },
+  { id: 2, title: "选择目标", icon: IconTarget, description: "选择扫描组织" },
+  { id: 3, title: "确认目标", icon: IconEye, description: "查看并确认" },
+  { id: 4, title: "确认启动", icon: IconRocket, description: "准备就绪" },
 ]
 
 /**
@@ -99,129 +100,135 @@ export default function NewScanPage() {
     }
   }
 
+  const currentStepData = STEPS[currentStep - 1]
+  const StepIcon = currentStepData.icon
+
   return (
-    <div className="flex flex-col gap-6 py-4 md:py-6">
-      <div className="px-4 lg:px-6">
-        {/* 页面标题 */}
-        <div className="flex items-center gap-3 mb-6">
-          <IconRadar className="size-8 text-primary" />
-          <div>
-            <h1 className="text-3xl font-bold">新建扫描</h1>
-            <p className="text-muted-foreground">按照步骤配置并启动新的安全扫描任务</p>
-          </div>
+    <div className="flex flex-col gap-6 py-4 md:py-6 px-4 lg:px-6">
+      {/* 页面标题 */}
+      <div className="flex items-center gap-3">
+        <div className="flex size-12 items-center justify-center rounded-lg bg-primary/10">
+          <IconRadar className="size-6 text-primary" />
         </div>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">新建扫描任务</h1>
+          <p className="text-muted-foreground">按照步骤配置并启动安全扫描</p>
+        </div>
+      </div>
 
-        {/* 步骤指示器 */}
-        <StepIndicator steps={STEPS} currentStep={currentStep} />
+      {/* 步骤指示器 */}
+      <StepIndicator steps={STEPS} currentStep={currentStep} />
 
-        {/* 分隔线 */}
-        <div className="border-t" />
-
-        {/* 操作栏 */}
-        <div className="flex items-center gap-4 py-4">
-          {/* 左侧：步骤标题（仅步骤1显示） */}
-          {currentStep === 1 && (
-            <div>
-              <h3 className="text-lg font-semibold">配置扫描参数</h3>
-              <p className="text-sm text-muted-foreground">
-                设置扫描任务的名称、类型和其他参数
-              </p>
+      {/* 主内容卡片 */}
+      <Card className="@container/card">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10">
+              <StepIcon className="size-5 text-primary" />
             </div>
-          )}
-
-          {/* 左侧：搜索框（仅步骤2显示） */}
-          {currentStep === 2 && (
-            <div className="relative flex-1 max-w-md">
-              <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-              <Input
-                placeholder="搜索组织名称或描述..."
-                className="pl-9"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+            <div className="flex-1">
+              <CardTitle className="text-xl">{currentStepData.title}</CardTitle>
+              <CardDescription>{currentStepData.description}</CardDescription>
             </div>
-          )}
-
-          {/* 中间：已选择提示（仅步骤2且已选择时显示） */}
+            {/* 右侧：搜索框（仅步骤2显示） */}
+            {currentStep === 2 && (
+              <div className="relative w-full max-w-sm">
+                <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <Input
+                  placeholder="搜索组织..."
+                  className="pl-9"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+          {/* 已选择提示（仅步骤2且已选择时显示） */}
           {currentStep === 2 && selectedOrganizations.length > 0 && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/5 border border-primary/20 rounded-md">
+            <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded-lg mt-4">
               <IconCheck className="size-4 text-primary flex-shrink-0" />
-              <span className="text-sm whitespace-nowrap">
-                已选择: <span className="font-medium">{selectedOrganizations.length} 个组织</span>
+              <span className="text-sm">
+                已选择 <span className="font-semibold">{selectedOrganizations.length}</span> 个组织
               </span>
             </div>
           )}
-
-          {/* 右侧：操作按钮 */}
-          <div className="ml-auto flex items-center gap-2">
-            {/* 上一步按钮（步骤2、3、4显示） */}
-            {currentStep > 1 && (
-              <Button variant="outline" onClick={handlePrevious}>
-                <IconChevronLeft />
-                上一步
-              </Button>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* 步骤内容 */}
+          <div>
+            {/* 步骤 1: 扫描策略 */}
+            {currentStep === 1 && (
+              <ScanConfigForm
+                scanName={scanName}
+                scanType={scanType}
+                description={description}
+                onScanNameChange={setScanName}
+                onScanTypeChange={setScanType}
+                onDescriptionChange={setDescription}
+              />
             )}
-            
-            {/* 下一步/启动扫描按钮 */}
-            {currentStep < STEPS.length ? (
-              <Button onClick={handleNext} disabled={!canProceed()}>
-                下一步
-                <IconChevronRight />
-              </Button>
-            ) : (
-              <Button onClick={handleSubmit}>
-                <IconRadar />
-                启动扫描
-              </Button>
+
+            {/* 步骤 2: 选择目标 */}
+            {currentStep === 2 && (
+              <OrganizationSelectionTable
+                organizations={organizations}
+                selectedOrganizations={selectedOrganizations}
+                onSelectionChange={setSelectedOrganizations}
+                isLoading={isLoading}
+                searchQuery={searchQuery}
+                pagination={pagination}
+                onPaginationChange={setPagination}
+                totalCount={totalCount}
+                totalPages={totalPages}
+              />
+            )}
+
+            {/* 步骤 3: 确认目标 */}
+            {currentStep === 3 && (
+              <TargetConfirmation organizations={selectedOrganizations} />
+            )}
+
+            {/* 步骤 4: 确认启动 */}
+            {currentStep === 4 && (
+              <ScanConfirmation
+                organizations={selectedOrganizations}
+                scanName={scanName}
+                scanType={scanType}
+                description={description}
+              />
             )}
           </div>
-        </div>
 
-        {/* 步骤内容 */}
-        <div className="pt-4 pb-6">
-          {/* 步骤 1: 扫描策略 */}
-          {currentStep === 1 && (
-            <ScanConfigForm
-              scanName={scanName}
-              scanType={scanType}
-              description={description}
-              onScanNameChange={setScanName}
-              onScanTypeChange={setScanType}
-              onDescriptionChange={setDescription}
-            />
-          )}
-
-          {/* 步骤 2: 选择目标 */}
-          {currentStep === 2 && (
-            <OrganizationSelectionTable
-              organizations={organizations}
-              selectedOrganizations={selectedOrganizations}
-              onSelectionChange={setSelectedOrganizations}
-              isLoading={isLoading}
-              searchQuery={searchQuery}
-              pagination={pagination}
-              onPaginationChange={setPagination}
-              totalCount={totalCount}
-              totalPages={totalPages}
-            />
-          )}
-
-          {/* 步骤 3: 确认目标 */}
-          {currentStep === 3 && (
-            <TargetConfirmation organizations={selectedOrganizations} />
-          )}
-
-          {/* 步骤 4: 确认启动 */}
-          {currentStep === 4 && (
-            <ScanConfirmation
-              organizations={selectedOrganizations}
-              scanName={scanName}
-              scanType={scanType}
-              description={description}
-            />
-          )}
-        </div>
-      </div>
+          {/* 操作按钮 */}
+          <div className="flex items-center justify-between pt-4 border-t">
+            <div className="text-sm text-muted-foreground">
+              第 {currentStep} 步，共 {STEPS.length} 步
+            </div>
+            <div className="flex items-center gap-2">
+              {/* 上一步按钮 */}
+              {currentStep > 1 && (
+                <Button variant="outline" onClick={handlePrevious}>
+                  <IconChevronLeft />
+                  上一步
+                </Button>
+              )}
+              
+              {/* 下一步/启动扫描按钮 */}
+              {currentStep < STEPS.length ? (
+                <Button onClick={handleNext} disabled={!canProceed()}>
+                  下一步
+                  <IconChevronRight />
+                </Button>
+              ) : (
+                <Button onClick={handleSubmit} className="gap-2">
+                  <IconRocket className="size-4" />
+                  启动扫描
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
