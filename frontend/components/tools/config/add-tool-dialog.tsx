@@ -417,10 +417,10 @@ export function AddToolDialog({
                         />
                       </FormControl>
                       <FormDescription className="space-y-1">
-                        <p><strong>示例：</strong></p>
-                        <p>• 使用 git: <code className="bg-muted px-1 py-0.5 rounded">git clone https://github.com/user/tool</code></p>
-                        <p>• 使用 go: <code className="bg-muted px-1 py-0.5 rounded">go install -v github.com/tool@latest</code></p>
-                        <p className="text-amber-600">⚠️ 注意：go get 已不再支持，请使用 go install</p>
+                        <span className="block"><strong>示例：</strong></span>
+                        <span className="block">• 使用 git: <code className="bg-muted px-1 py-0.5 rounded">git clone https://github.com/user/tool</code></span>
+                        <span className="block">• 使用 go: <code className="bg-muted px-1 py-0.5 rounded">go install -v github.com/tool@latest</code></span>
+                        <span className="block text-amber-600">⚠️ 注意：go get 已不再支持，请使用 go install</span>
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -444,8 +444,8 @@ export function AddToolDialog({
                         />
                       </FormControl>
                       <FormDescription className="space-y-1">
-                        <p>• 使用 git clone 安装的工具，推荐使用 <code className="bg-muted px-1 py-0.5 rounded">git pull</code></p>
-                        <p>• 使用 go install 安装的工具，推荐使用相同的安装命令</p>
+                        <span className="block">• 使用 git clone 安装的工具，推荐使用 <code className="bg-muted px-1 py-0.5 rounded">git pull</code></span>
+                        <span className="block">• 使用 go install 安装的工具，推荐使用相同的安装命令</span>
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -476,11 +476,11 @@ export function AddToolDialog({
                         />
                       </FormControl>
                       <FormDescription className="space-y-1">
-                        <p>系统会使用此命令检查工具版本并提示更新。常见格式：</p>
-                        <p>• <code className="bg-muted px-1 py-0.5 rounded">toolname -v</code></p>
-                        <p>• <code className="bg-muted px-1 py-0.5 rounded">toolname -V</code></p>
-                        <p>• <code className="bg-muted px-1 py-0.5 rounded">toolname --version</code></p>
-                        <p>• <code className="bg-muted px-1 py-0.5 rounded">python tool_name.py -v</code></p>
+                        <span className="block">系统会使用此命令检查工具版本并提示更新。常见格式：</span>
+                        <span className="block">• <code className="bg-muted px-1 py-0.5 rounded">toolname -v</code></span>
+                        <span className="block">• <code className="bg-muted px-1 py-0.5 rounded">toolname -V</code></span>
+                        <span className="block">• <code className="bg-muted px-1 py-0.5 rounded">toolname --version</code></span>
+                        <span className="block">• <code className="bg-muted px-1 py-0.5 rounded">python tool_name.py -v</code></span>
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
