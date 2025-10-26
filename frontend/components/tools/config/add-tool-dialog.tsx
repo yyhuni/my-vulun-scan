@@ -3,6 +3,9 @@
 import React, { useState, useEffect } from "react"
 import { Wrench, AlertTriangle } from "lucide-react"
 import { IconPlus } from "@tabler/icons-react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
 
 // 导入 UI 组件
 import { Button } from "@/components/ui/button"
@@ -16,12 +19,20 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { IconX } from "@tabler/icons-react"
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
 
 // 导入 React Query Hook
 import { useCreateTool, useUpdateTool } from "@/hooks/use-tools"
@@ -29,6 +40,22 @@ import { useCreateTool, useUpdateTool } from "@/hooks/use-tools"
 // 导入类型定义
 import type { Tool } from "@/types/tool.types"
 import { CategoryNameMap } from "@/types/tool.types"
+
+// 表单验证 Schema
+const formSchema = z.object({
+  name: z.string()
+    .min(2, { message: "工具名称至少需要 2 个字符" })
+    .max(255, { message: "工具名称不能超过 255 个字符" }),
+  repoUrl: z.string().optional().or(z.literal("")),
+  version: z.string().max(100).optional().or(z.literal("")),
+  description: z.string().max(1000).optional().or(z.literal("")),
+  categoryNames: z.array(z.string()),
+  installCommand: z.string().min(1, { message: "安装命令不能为空" }),
+  updateCommand: z.string().min(1, { message: "更新命令不能为空" }),
+  versionCommand: z.string().min(1, { message: "版本查询命令不能为空" }),
+})
+
+type FormValues = z.infer<typeof formSchema>
 
 // 组件属性类型定义
 interface AddToolDialogProps {
@@ -84,23 +111,33 @@ export function AddToolDialog({
   const [internalOpen, setInternalOpen] = useState(false)
   const open = externalOpen !== undefined ? externalOpen : internalOpen
   const setOpen = externalOnOpenChange || setInternalOpen
+
+  // 使用预定义的分类列表
+  const availableCategories = Object.keys(CategoryNameMap)
+
+  // 使用 React Query 的创建和更新工具 mutation
+  const createTool = useCreateTool()
+  const updateTool = useUpdateTool()
   
-  // 表单数据状态 - 如果是编辑模式，使用工具数据初始化
-  const [formData, setFormData] = useState({
-    name: tool?.name || "",
-    repoUrl: tool?.repoUrl || "",
-    version: tool?.version || "",
-    description: tool?.description || "",
-    categoryNames: tool?.categoryNames || [] as string[],
-    installCommand: tool?.installCommand || "",
-    updateCommand: tool?.updateCommand || "",
-    versionCommand: tool?.versionCommand || "",
+  // 初始化表单
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: tool?.name || "",
+      repoUrl: tool?.repoUrl || "",
+      version: tool?.version || "",
+      description: tool?.description || "",
+      categoryNames: tool?.categoryNames || [],
+      installCommand: tool?.installCommand || "",
+      updateCommand: tool?.updateCommand || "",
+      versionCommand: tool?.versionCommand || "",
+    },
   })
 
-  // 当 tool 变化时更新表单数据
+  // 当 tool 变化时重置表单
   useEffect(() => {
     if (tool) {
-      setFormData({
+      form.reset({
         name: tool.name || "",
         repoUrl: tool.repoUrl || "",
         version: tool.version || "",
@@ -111,68 +148,44 @@ export function AddToolDialog({
         versionCommand: tool.versionCommand || "",
       })
     }
-  }, [tool])
+  }, [tool, form])
 
-  // 使用预定义的分类列表
-  const availableCategories = Object.keys(CategoryNameMap)
-
-  // 使用 React Query 的创建和更新工具 mutation
-  const createTool = useCreateTool()
-  const updateTool = useUpdateTool()
-
+  // 监听表单值变化
+  const watchName = form.watch("name")
+  const watchInstallCommand = form.watch("installCommand")
+  const watchVersionCommand = form.watch("versionCommand")
+  const watchCategoryNames = form.watch("categoryNames")
+  
   // 自动生成版本命令
   useEffect(() => {
-    if (formData.name && formData.installCommand && !formData.versionCommand) {
-      const generatedCmd = generateVersionCommand(formData.name, formData.installCommand)
-      setFormData(prev => ({
-        ...prev,
-        versionCommand: generatedCmd
-      }))
+    if (watchName && watchInstallCommand && !watchVersionCommand) {
+      const generatedCmd = generateVersionCommand(watchName, watchInstallCommand)
+      form.setValue("versionCommand", generatedCmd)
     }
-  }, [formData.name, formData.installCommand])
+  }, [watchName, watchInstallCommand, watchVersionCommand, form])
 
   // 处理表单提交
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    // 表单验证
-    if (!formData.name.trim() || !formData.installCommand.trim() || !formData.updateCommand.trim() || !formData.versionCommand.trim()) {
-      return
-    }
-
-    if (formData.name.trim().length < 2 || formData.name.trim().length > 255) {
-      return
-    }
-
+  const onSubmit = (values: FormValues) => {
     const toolData = {
-      name: formData.name.trim(),
-      type: 'opensource' as const, // 开源工具
-      repoUrl: formData.repoUrl.trim() || undefined,
-      version: formData.version.trim() || undefined,
-      description: formData.description.trim() || undefined,
-      categoryNames: formData.categoryNames.length > 0 ? formData.categoryNames : undefined,
-      installCommand: formData.installCommand.trim(),
-      updateCommand: formData.updateCommand.trim(),
-      versionCommand: formData.versionCommand.trim(),
+      name: values.name.trim(),
+      type: 'opensource' as const,
+      repoUrl: values.repoUrl?.trim() || undefined,
+      version: values.version?.trim() || undefined,
+      description: values.description?.trim() || undefined,
+      categoryNames: values.categoryNames.length > 0 ? values.categoryNames : undefined,
+      installCommand: values.installCommand.trim(),
+      updateCommand: values.updateCommand.trim(),
+      versionCommand: values.versionCommand.trim(),
     }
 
     const onSuccessCallback = (response: any) => {
       // 重置表单
-      setFormData({
-        name: "",
-        repoUrl: "",
-        version: "",
-        description: "",
-        categoryNames: [],
-        installCommand: "",
-        updateCommand: "",
-        versionCommand: "",
-      })
+      form.reset()
       
       // 关闭对话框
       setOpen(false)
       
-      // 调用外部回调（如果提供）
+      // 调用外部回调
       if (onAdd && response?.tool) {
         onAdd(response.tool)
       }
@@ -180,74 +193,42 @@ export function AddToolDialog({
 
     // 根据模式选择创建或更新
     if (isEditMode && tool?.id) {
-      // 编辑模式：调用更新 API
       updateTool.mutate(
         { id: tool.id, data: toolData },
         { onSuccess: onSuccessCallback }
       )
     } else {
-      // 创建模式：调用创建 API
       createTool.mutate(toolData, { onSuccess: onSuccessCallback })
     }
   }
 
-  // 处理输入框变化
-  const handleInputChange = (field: keyof typeof formData, value: string | string[]) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }))
-  }
-
   // 处理分类标签点击
   const handleCategoryToggle = (categoryName: string) => {
-    setFormData((prev) => {
-      const isSelected = prev.categoryNames.includes(categoryName)
-      return {
-        ...prev,
-        categoryNames: isSelected
-          ? prev.categoryNames.filter(c => c !== categoryName)
-          : [...prev.categoryNames, categoryName]
-      }
-    })
+    const current = form.getValues("categoryNames")
+    const isSelected = current.includes(categoryName)
+    form.setValue(
+      "categoryNames",
+      isSelected
+        ? current.filter(c => c !== categoryName)
+        : [...current, categoryName]
+    )
   }
 
   // 移除分类标签
   const handleCategoryRemove = (categoryName: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      categoryNames: prev.categoryNames.filter(c => c !== categoryName)
-    }))
+    const current = form.getValues("categoryNames")
+    form.setValue("categoryNames", current.filter(c => c !== categoryName))
   }
 
   // 处理对话框关闭
   const handleOpenChange = (newOpen: boolean) => {
-    // 正在提交时不允许关闭
     if (!createTool.isPending && !updateTool.isPending) {
       setOpen(newOpen)
       if (!newOpen) {
-        // 关闭时重置表单
-        setFormData({
-          name: "",
-          repoUrl: "",
-          version: "",
-          description: "",
-          categoryNames: [],
-          installCommand: "",
-          updateCommand: "",
-          versionCommand: "",
-        })
+        form.reset()
       }
     }
   }
-
-  // 表单验证
-  const isFormValid = 
-    formData.name.trim().length >= 2 && 
-    formData.name.trim().length <= 255 &&
-    formData.installCommand.trim().length > 0 &&
-    formData.updateCommand.trim().length > 0 &&
-    formData.versionCommand.trim().length > 0
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -274,234 +255,269 @@ export function AddToolDialog({
         </DialogHeader>
         
         {/* 表单 */}
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-6 py-4">
-            {/* 基本信息部分 */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-muted-foreground">基本信息</h3>
-              
-              {/* 工具名称 */}
-              <div className="grid gap-2">
-                <Label htmlFor="name">
-                  工具名称 <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => handleInputChange("name", e.target.value)}
-                  placeholder="例如: Nuclei, Subfinder, HTTPX"
-                  disabled={createTool.isPending || updateTool.isPending}
-                  maxLength={255}
-                  required
-                />
-                <div className="text-xs text-muted-foreground">
-                  {formData.name.length}/255 字符
-                </div>
-              </div>
-              
-              {/* 仓库地址 */}
-              <div className="grid gap-2">
-                <Label htmlFor="repoUrl">仓库地址</Label>
-                <Input
-                  id="repoUrl"
-                  type="url"
-                  value={formData.repoUrl}
-                  onChange={(e) => handleInputChange("repoUrl", e.target.value)}
-                  placeholder="https://github.com/projectdiscovery/nuclei"
-                  disabled={createTool.isPending || updateTool.isPending}
-                  maxLength={512}
-                />
-              </div>
-
-              {/* 版本号 */}
-              <div className="grid gap-2">
-                <Label htmlFor="version">当前版本</Label>
-                <Input
-                  id="version"
-                  value={formData.version}
-                  onChange={(e) => handleInputChange("version", e.target.value)}
-                  placeholder="v3.0.0"
-                  disabled={createTool.isPending || updateTool.isPending}
-                  maxLength={100}
-                />
-              </div>
-              
-              {/* 工具描述 */}
-              <div className="grid gap-2">
-                <Label htmlFor="description">工具描述</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => handleInputChange("description", e.target.value)}
-                  placeholder="描述工具的功能、特点和使用场景..."
-                  disabled={createTool.isPending || updateTool.isPending}
-                  rows={3}
-                  maxLength={1000}
-                />
-                <div className="text-xs text-muted-foreground">
-                  {formData.description.length}/1000 字符
-                </div>
-              </div>
-
-              {/* 分类标签 */}
-              <div className="grid gap-2">
-                <Label>分类标签</Label>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <div className="grid gap-6 py-4">
+              {/* 基本信息部分 */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-muted-foreground">基本信息</h3>
                 
-                {/* 已选择的标签 */}
-                {formData.categoryNames.length > 0 && (
-                  <div className="flex flex-wrap gap-2 p-3 border rounded-md bg-muted/50">
-                    {formData.categoryNames.map((categoryName) => (
-                      <Badge 
-                        key={categoryName} 
-                        variant="default"
-                        className="flex items-center gap-1 px-2 py-1"
-                      >
-                        {CategoryNameMap[categoryName] || categoryName}
-                        <button
-                          type="button"
-                          onClick={() => handleCategoryRemove(categoryName)}
+                {/* 工具名称 */}
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>工具名称 <span className="text-destructive">*</span></FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="例如: Nuclei, Subfinder, HTTPX"
                           disabled={createTool.isPending || updateTool.isPending}
-                          className="ml-1 hover:bg-primary/20 rounded-full p-0.5"
-                        >
-                          <IconX className="h-3 w-3" />
-                        </button>
-                      </Badge>
-                    ))}
-                  </div>
-                )}
+                          maxLength={255}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>{field.value.length}/255 字符</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {/* 仓库地址 */}
+                <FormField
+                  control={form.control}
+                  name="repoUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>仓库地址</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="url"
+                          placeholder="https://github.com/projectdiscovery/nuclei"
+                          disabled={createTool.isPending || updateTool.isPending}
+                          maxLength={512}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                {/* 可选择的标签 */}
-                <div className="flex flex-wrap gap-2 p-3 border rounded-md">
-                  {availableCategories.length > 0 ? (
-                    availableCategories.map((categoryName) => {
-                      const isSelected = formData.categoryNames.includes(categoryName)
-                      return (
+                {/* 版本号 */}
+                <FormField
+                  control={form.control}
+                  name="version"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>当前版本</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="v3.0.0"
+                          disabled={createTool.isPending || updateTool.isPending}
+                          maxLength={100}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {/* 工具描述 */}
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>工具描述</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="描述工具的功能、特点和使用场景..."
+                          disabled={createTool.isPending || updateTool.isPending}
+                          rows={3}
+                          maxLength={1000}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>{(field.value || "").length}/1000 字符</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* 分类标签 */}
+                <div className="grid gap-2">
+                  <FormLabel>分类标签</FormLabel>
+                  
+                  {/* 已选择的标签 */}
+                  {watchCategoryNames.length > 0 && (
+                    <div className="flex flex-wrap gap-2 p-3 border rounded-md bg-muted/50">
+                      {watchCategoryNames.map((categoryName) => (
                         <Badge 
-                          key={categoryName}
-                          variant={isSelected ? "secondary" : "outline"}
-                          className="cursor-pointer hover:bg-secondary/80 transition-colors"
-                          onClick={() => handleCategoryToggle(categoryName)}
+                          key={categoryName} 
+                          variant="default"
+                          className="flex items-center gap-1 px-2 py-1"
                         >
                           {CategoryNameMap[categoryName] || categoryName}
+                          <button
+                            type="button"
+                            onClick={() => handleCategoryRemove(categoryName)}
+                            disabled={createTool.isPending || updateTool.isPending}
+                            className="ml-1 hover:bg-primary/20 rounded-full p-0.5"
+                          >
+                            <IconX className="h-3 w-3" />
+                          </button>
                         </Badge>
-                      )
-                    })
-                  ) : (
-                    <p className="text-sm text-muted-foreground">暂无可用分类</p>
+                      ))}
+                    </div>
                   )}
+
+                  {/* 可选择的标签 */}
+                  <div className="flex flex-wrap gap-2 p-3 border rounded-md">
+                    {availableCategories.length > 0 ? (
+                      availableCategories.map((categoryName) => {
+                        const isSelected = watchCategoryNames.includes(categoryName)
+                        return (
+                          <Badge 
+                            key={categoryName}
+                            variant={isSelected ? "secondary" : "outline"}
+                            className="cursor-pointer hover:bg-secondary/80 transition-colors"
+                            onClick={() => handleCategoryToggle(categoryName)}
+                          >
+                            {CategoryNameMap[categoryName] || categoryName}
+                          </Badge>
+                        )
+                      })
+                    ) : (
+                      <p className="text-sm text-muted-foreground">暂无可用分类</p>
+                    )}
+                  </div>
                 </div>
+              </div>
+
+              {/* 命令配置部分 */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-muted-foreground">命令配置</h3>
+
+                {/* 安装命令 */}
+                <FormField
+                  control={form.control}
+                  name="installCommand"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>安装命令 <span className="text-destructive">*</span></FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="git clone https://github.com/user/tool&#10;或&#10;go install -v github.com/tool@latest"
+                          disabled={createTool.isPending || updateTool.isPending}
+                          rows={3}
+                          className="font-mono text-sm"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription className="space-y-1">
+                        <p><strong>示例：</strong></p>
+                        <p>• 使用 git: <code className="bg-muted px-1 py-0.5 rounded">git clone https://github.com/user/tool</code></p>
+                        <p>• 使用 go: <code className="bg-muted px-1 py-0.5 rounded">go install -v github.com/tool@latest</code></p>
+                        <p className="text-amber-600">⚠️ 注意：go get 已不再支持，请使用 go install</p>
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* 更新命令 */}
+                <FormField
+                  control={form.control}
+                  name="updateCommand"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>更新命令 <span className="text-destructive">*</span></FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="git pull&#10;或&#10;go install -v github.com/tool@latest"
+                          disabled={createTool.isPending || updateTool.isPending}
+                          rows={2}
+                          className="font-mono text-sm"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription className="space-y-1">
+                        <p>• 使用 git clone 安装的工具，推荐使用 <code className="bg-muted px-1 py-0.5 rounded">git pull</code></p>
+                        <p>• 使用 go install 安装的工具，推荐使用相同的安装命令</p>
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* 版本查询命令 */}
+                <FormField
+                  control={form.control}
+                  name="versionCommand"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        版本查询命令 <span className="text-destructive">*</span>
+                        {field.value && (
+                          <span className="ml-2 text-xs text-muted-foreground font-normal">
+                            已自动生成
+                          </span>
+                        )}
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="toolname --version"
+                          disabled={createTool.isPending || updateTool.isPending}
+                          maxLength={500}
+                          className="font-mono text-sm"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription className="space-y-1">
+                        <p>系统会使用此命令检查工具版本并提示更新。常见格式：</p>
+                        <p>• <code className="bg-muted px-1 py-0.5 rounded">toolname -v</code></p>
+                        <p>• <code className="bg-muted px-1 py-0.5 rounded">toolname -V</code></p>
+                        <p>• <code className="bg-muted px-1 py-0.5 rounded">toolname --version</code></p>
+                        <p>• <code className="bg-muted px-1 py-0.5 rounded">python tool_name.py -v</code></p>
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
             </div>
-
-            {/* 命令配置部分 */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-muted-foreground">命令配置</h3>
-              
-  
-
-              {/* 安装命令 */}
-              <div className="grid gap-2">
-                <Label htmlFor="installCommand">
-                  安装命令 <span className="text-destructive">*</span>
-                </Label>
-                <Textarea
-                  id="installCommand"
-                  value={formData.installCommand}
-                  onChange={(e) => handleInputChange("installCommand", e.target.value)}
-                  placeholder="git clone https://github.com/user/tool&#10;或&#10;go install -v github.com/tool@latest"
-                  disabled={createTool.isPending || updateTool.isPending}
-                  rows={3}
-                  required
-                  className="font-mono text-sm"
-                />
-                <div className="text-xs text-muted-foreground space-y-1">
-                  <p><strong>示例：</strong></p>
-                  <p>• 使用 git: <code className="bg-muted px-1 py-0.5 rounded">git clone https://github.com/user/tool</code></p>
-                  <p>• 使用 go: <code className="bg-muted px-1 py-0.5 rounded">go install -v github.com/tool@latest</code></p>
-                  <p className="text-amber-600">⚠️ 注意：go get 已不再支持，请使用 go install</p>
-                </div>
-              </div>
-
-              {/* 更新命令 */}
-              <div className="grid gap-2">
-                <Label htmlFor="updateCommand">
-                  更新命令 <span className="text-destructive">*</span>
-                </Label>
-                <Textarea
-                  id="updateCommand"
-                  value={formData.updateCommand}
-                  onChange={(e) => handleInputChange("updateCommand", e.target.value)}
-                  placeholder="git pull&#10;或&#10;go install -v github.com/tool@latest"
-                  disabled={createTool.isPending || updateTool.isPending}
-                  rows={2}
-                  className="font-mono text-sm"
-                  required
-                />
-                <div className="text-xs text-muted-foreground space-y-1">
-                  <p>• 使用 git clone 安装的工具，推荐使用 <code className="bg-muted px-1 py-0.5 rounded">git pull</code></p>
-                  <p>• 使用 go install 安装的工具，推荐使用相同的安装命令</p>
-                </div>
-              </div>
-
-              {/* 版本查询命令 */}
-              <div className="grid gap-2">
-                <Label htmlFor="versionCommand">
-                  版本查询命令 <span className="text-destructive">*</span>
-                  {formData.versionCommand && (
-                    <span className="ml-2 text-xs text-muted-foreground font-normal">
-                      已自动生成
-                    </span>
-                  )}
-                </Label>
-                <Input
-                  id="versionCommand"
-                  value={formData.versionCommand}
-                  onChange={(e) => handleInputChange("versionCommand", e.target.value)}
-                  placeholder="toolname --version"
-                  disabled={createTool.isPending || updateTool.isPending}
-                  maxLength={500}
-                  className="font-mono text-sm"
-                  required
-                />
-                <div className="text-xs text-muted-foreground space-y-1">
-                  <p>系统会使用此命令检查工具版本并提示更新。常见格式：</p>
-                  <p>• <code className="bg-muted px-1 py-0.5 rounded">toolname -v</code></p>
-                  <p>• <code className="bg-muted px-1 py-0.5 rounded">toolname -V</code></p>
-                  <p>• <code className="bg-muted px-1 py-0.5 rounded">toolname --version</code></p>
-                  <p>• <code className="bg-muted px-1 py-0.5 rounded">python tool_name.py -v</code></p>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* 对话框底部按钮 */}
-          <DialogFooter>
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => handleOpenChange(false)}
-              disabled={createTool.isPending || updateTool.isPending}
-            >
-              取消
-            </Button>
-            <Button 
-              type="submit" 
-              disabled={createTool.isPending || updateTool.isPending || !isFormValid}
-            >
-              {(createTool.isPending || updateTool.isPending) ? (
-                <>
-                  <LoadingSpinner/>
-                  {isEditMode ? "保存中..." : "创建中..."}
-                </>
-              ) : (
-                <>
-                  <IconPlus className="h-5 w-5" />
-                  {isEditMode ? "保存修改" : "创建工具"}
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </form>
+            
+            {/* 对话框底部按钮 */}
+            <DialogFooter>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => handleOpenChange(false)}
+                disabled={createTool.isPending || updateTool.isPending}
+              >
+                取消
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={createTool.isPending || updateTool.isPending || !form.formState.isValid}
+              >
+                {(createTool.isPending || updateTool.isPending) ? (
+                  <>
+                    <LoadingSpinner/>
+                    {isEditMode ? "保存中..." : "创建中..."}
+                  </>
+                ) : (
+                  <>
+                    <IconPlus className="h-5 w-5" />
+                    {isEditMode ? "保存修改" : "创建工具"}
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   )

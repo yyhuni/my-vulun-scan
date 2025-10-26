@@ -2,6 +2,9 @@
 
 import React, { useState } from "react"
 import { Plus, Building2 } from "lucide-react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
 
 // 导入 UI 组件
 import { Button } from "@/components/ui/button"
@@ -15,15 +18,33 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { LoadingSpinner } from "@/components/loading-spinner"
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
 
 // 导入 React Query Hook
 import { useCreateOrganization } from "@/hooks/use-organizations"
 
 // 导入类型定义
 import type { Organization } from "@/types/organization.types"
+
+// 表单验证 Schema
+const formSchema = z.object({
+  name: z.string()
+    .min(2, { message: "组织名称至少需要 2 个字符" })
+    .max(50, { message: "组织名称不能超过 50 个字符" }),
+  description: z.string().max(200, { message: "描述不能超过 200 个字符" }).optional(),
+})
+
+type FormValues = z.infer<typeof formSchema>
 
 // 组件属性类型定义
 interface AddOrganizationDialogProps {
@@ -50,46 +71,30 @@ export function AddOrganizationDialog({
   const [internalOpen, setInternalOpen] = useState(false)
   const open = externalOpen !== undefined ? externalOpen : internalOpen
   const setOpen = externalOnOpenChange || setInternalOpen
-  
-  // 表单数据状态
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-  })
 
   // 使用 React Query 的创建组织 mutation
   const createOrganization = useCreateOrganization()
+  
+  // 初始化表单
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+    },
+  })
 
   // 处理表单提交
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    // 表单验证
-    if (!formData.name.trim()) {
-      return // React Query 会自动处理错误提示
-    }
-
-    if (formData.name.trim().length < 2) {
-      return
-    }
-
-    if (formData.name.trim().length > 50) {
-      return
-    }
-
-    // 使用 React Query mutation
+  const onSubmit = (values: FormValues) => {
     createOrganization.mutate(
       {
-        name: formData.name.trim(),
-        description: formData.description.trim(),
+        name: values.name.trim(),
+        description: values.description?.trim() || "",
       },
       {
         onSuccess: (newOrganization) => {
           // 重置表单
-          setFormData({
-            name: "",
-            description: "",
-          })
+          form.reset()
           
           // 关闭对话框
           setOpen(false)
@@ -103,30 +108,16 @@ export function AddOrganizationDialog({
     )
   }
 
-  // 处理输入框变化
-  const handleInputChange = (field: keyof typeof formData, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }))
-  }
-
   // 处理对话框关闭
   const handleOpenChange = (newOpen: boolean) => {
     if (!createOrganization.isPending) {
       setOpen(newOpen)
       if (!newOpen) {
         // 关闭时重置表单
-        setFormData({
-          name: "",
-          description: "",
-        })
+        form.reset()
       }
     }
   }
-
-  // 表单验证
-  const isFormValid = formData.name.trim().length >= 2 && formData.name.trim().length <= 50
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -153,73 +144,88 @@ export function AddOrganizationDialog({
         </DialogHeader>
         
         {/* 表单 */}
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
-            {/* 组织名称输入框 */}
-            <div className="grid gap-2">
-              <Label htmlFor="name">
-                组织名称 <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => handleInputChange("name", e.target.value)}
-                placeholder="请输入组织名称"
-                disabled={createOrganization.isPending}
-                maxLength={50}
-                required
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <div className="grid gap-4 py-4">
+              {/* 组织名称输入框 */}
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      组织名称 <span className="text-destructive">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="请输入组织名称"
+                        disabled={createOrganization.isPending}
+                        maxLength={50}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {field.value.length}/50 字符
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-              <div className="text-xs text-muted-foreground">
-                {formData.name.length}/50 字符
-              </div>
+              
+              {/* 组织描述输入框 */}
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>组织描述</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="请输入组织描述（可选）"
+                        disabled={createOrganization.isPending}
+                        rows={3}
+                        maxLength={200}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {(field.value || "").length}/200 字符
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
             
-            {/* 组织描述输入框 */}
-            <div className="grid gap-2">
-              <Label htmlFor="description">组织描述</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => handleInputChange("description", e.target.value)}
-                placeholder="请输入组织描述（可选）"
+            {/* 对话框底部按钮 */}
+            <DialogFooter>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => handleOpenChange(false)}
                 disabled={createOrganization.isPending}
-                rows={3}
-                maxLength={200}
-              />
-              <div className="text-xs text-muted-foreground">
-                {formData.description.length}/200 字符
-              </div>
-            </div>
-          </div>
-          
-          {/* 对话框底部按钮 */}
-          <DialogFooter>
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => handleOpenChange(false)}
-              disabled={createOrganization.isPending}
-            >
-              取消
-            </Button>
-            <Button 
-              type="submit" 
-              disabled={createOrganization.isPending || !isFormValid}
-            >
-              {createOrganization.isPending ? (
-                <>
-                  <LoadingSpinner/>
-                  创建中...
-                </>
-              ) : (
-                <>
-                  <Plus />
-                  创建组织
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </form>
+              >
+                取消
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={createOrganization.isPending || !form.formState.isValid}
+              >
+                {createOrganization.isPending ? (
+                  <>
+                    <LoadingSpinner/>
+                    创建中...
+                  </>
+                ) : (
+                  <>
+                    <Plus />
+                    创建组织
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   )

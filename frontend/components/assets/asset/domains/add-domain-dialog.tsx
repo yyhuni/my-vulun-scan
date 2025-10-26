@@ -2,13 +2,15 @@
 
 import React, { useState, useMemo, useRef } from "react"
 import { Plus, Network, AlertCircle, Info, X } from "lucide-react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
 import { toast } from "sonner"
 
 // 导入 UI 组件
 import { Button } from "@/components/ui/button"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { Badge } from "@/components/ui/badge"
-
 import {
   Dialog,
   DialogContent,
@@ -18,14 +20,37 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
 
 // 导入类型定义
 import type { Domain } from '@/types/domain.types'
 import { useCreateDomain } from "@/hooks/use-domains"
 // 导入验证工具
 import { DomainValidator } from '@/lib/domain-validator'
+
+// 表单验证 Schema
+const formSchema = z.object({
+  domainsText: z.string()
+    .min(1, { message: "请输入至少一个域名" })
+    .refine(
+      (val) => {
+        const lines = val.split('\n').map(l => l.trim()).filter(l => l.length > 0)
+        return lines.length > 0
+      },
+      { message: "请输入至少一个域名" }
+    ),
+})
+
+type FormValues = z.infer<typeof formSchema>
 
 // 组件属性类型定义
 interface AddDomainDialogProps {
@@ -59,15 +84,23 @@ export function AddDomainDialog({
   const open = externalOpen !== undefined ? externalOpen : internalOpen
   const setOpen = externalOnOpenChange || setInternalOpen
   
-  // 域名文本输入
-  const [domainsText, setDomainsText] = useState("")
-  
   // 行号列和输入框的 ref（用于同步滚动）
   const lineNumbersRef = useRef<HTMLDivElement | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   
   // 使用 React Query mutation
   const createDomainMutation = useCreateDomain()
+  
+  // 初始化表单
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      domainsText: "",
+    },
+  })
+  
+  // 监听表单值变化
+  const domainsText = form.watch("domainsText")
 
   // 实时分析域名输入
   const domainAnalysis = useMemo(() => {
@@ -105,15 +138,7 @@ export function AddDomainDialog({
 
 
   // 处理表单提交
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    // 验证是否有输入
-    if (domainAnalysis.totalCount === 0) {
-      toast.error('请输入至少一个域名')
-      return
-    }
-
+  const onSubmit = (values: FormValues) => {
     // 检查是否有无效域名格式
     if (domainAnalysis.invalid.length > 0) {
       toast.error(`发现 ${domainAnalysis.invalid.length} 个无效域名格式`)
@@ -143,7 +168,7 @@ export function AddDomainDialog({
         // 成功后调用回调函数
         onAdd([])
         // 重置表单
-        setDomainsText('')
+        form.reset()
         // 关闭对话框
         setOpen(false)
       }
@@ -156,7 +181,7 @@ export function AddDomainDialog({
       setOpen(newOpen)
       // 关闭时重置表单
       if (!newOpen) {
-        setDomainsText('')
+        form.reset()
       }
     }
   }
@@ -164,13 +189,13 @@ export function AddDomainDialog({
   // 移除无效的域名
   const handleRemoveInvalid = () => {
     if (domainAnalysis.valid.length === 0) {
-      setDomainsText('')
+      form.setValue("domainsText", "")
       toast.info('已清空所有内容')
       return
     }
     
     // 只保留有效的域名
-    setDomainsText(domainAnalysis.valid.join('\n'))
+    form.setValue("domainsText", domainAnalysis.valid.join('\n'))
     toast.success(`已移除 ${domainAnalysis.invalid.length} 个无效域名`)
   }
 
@@ -206,55 +231,57 @@ export function AddDomainDialog({
         </DialogHeader>
         
         {/* 表单 */}
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
-            {/* 域名输入框 - 支持多行，带行号 */}
-            <div className="grid gap-2">
-              <Label htmlFor="domains">
-                域名列表 <span className="text-destructive">*</span>
-              </Label>
-              <div className="relative border rounded-md overflow-hidden bg-background">
-                <div className="flex h-[324px]">
-                  {/* 行号列 - 固定显示15行 */}
-                  <div className="flex-shrink-0 w-12 bg-muted/30 border-r select-none overflow-hidden">
-                    <div 
-                      ref={lineNumbersRef}
-                      className="py-3 px-2 text-right font-mono text-xs text-muted-foreground leading-[1.4] h-full overflow-y-auto scrollbar-hide"
-                    >
-                      {Array.from({ length: Math.max(domainsText.split('\n').length, 15) }, (_, i) => (
-                        <div key={i + 1} className="h-[20px]">
-                          {i + 1}
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <div className="grid gap-4 py-4">
+              {/* 域名输入框 - 支持多行，带行号 */}
+              <FormField
+                control={form.control}
+                name="domainsText"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      域名列表 <span className="text-destructive">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <div className="relative border rounded-md overflow-hidden bg-background">
+                        <div className="flex h-[324px]">
+                          {/* 行号列 - 固定显示15行 */}
+                          <div className="flex-shrink-0 w-12 bg-muted/30 border-r select-none overflow-hidden">
+                            <div 
+                              ref={lineNumbersRef}
+                              className="py-3 px-2 text-right font-mono text-xs text-muted-foreground leading-[1.4] h-full overflow-y-auto scrollbar-hide"
+                            >
+                              {Array.from({ length: Math.max(field.value.split('\n').length, 15) }, (_, i) => (
+                                <div key={i + 1} className="h-[20px]">
+                                  {i + 1}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          {/* 输入框 - 固定高度显示15行 */}
+                          <Textarea
+                            {...field}
+                            ref={(e) => {
+                              field.ref(e)
+                              textareaRef.current = e
+                            }}
+                            onScroll={handleTextareaScroll}
+                            placeholder={`www.example.com\napi.test.com\nadmin.domain.org\napp.site.net`}
+                            disabled={createDomainMutation.isPending}
+                            className="font-mono h-full overflow-y-auto resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 leading-[1.4] text-sm py-3"
+                            style={{ lineHeight: '20px' }}
+                          />
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                  {/* 输入框 - 固定高度显示15行 */}
-                  <Textarea
-                    ref={textareaRef}
-                    id="domains"
-                    value={domainsText}
-                    onChange={(e) => setDomainsText(e.target.value)}
-                    onScroll={handleTextareaScroll}
-                    placeholder={`www.example.com\napi.test.com\nadmin.domain.org\napp.site.net`}
-                    disabled={createDomainMutation.isPending}
-                    className="font-mono h-full overflow-y-auto resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 leading-[1.4] text-sm py-3"
-                    style={{ lineHeight: '20px' }}
-                  />
-                </div>
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {domainAnalysis.totalCount} 个域名
-              </div>
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-muted-foreground flex items-center gap-1">
-                  <AlertCircle />
-                  请输入有效的域名格式
-                </span>
-                <span className="font-medium text-primary">
-                  有效 {domainAnalysis.valid.length} 个
-                </span>
-              </div>
-            </div>
+                      </div>
+                    </FormControl>
+                    <FormDescription>
+                      {domainAnalysis.totalCount} 个域名 | 有效 {domainAnalysis.valid.length} 个
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
             {/* 域名分析预览 */}
             {domainAnalysis.totalCount > 0 && (
@@ -304,10 +331,10 @@ export function AddDomainDialog({
                 )}
               </div>
             )}
-          </div>
-          
-          {/* 对话框底部按钮 */}
-          <DialogFooter>
+            </div>
+            
+            {/* 对话框底部按钮 */}
+            <DialogFooter>
             <Button 
               type="button" 
               variant="outline" 
@@ -332,8 +359,9 @@ export function AddDomainDialog({
                 </>
               )}
             </Button>
-          </DialogFooter>
-        </form>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   )
