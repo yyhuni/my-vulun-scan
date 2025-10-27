@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { DomainService } from "@/services/domain.service"
 import { OrganizationService } from "@/services/organization.service"
-import type { Asset } from "@/types/asset.types"
 import type { Domain, GetDomainsResponse, GetAllDomainsParams } from "@/types/domain.types"
 import type { PaginationParams } from "@/types/common.types"
 

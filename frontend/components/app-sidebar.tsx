@@ -87,10 +87,6 @@ const data = {
       icon: IconDatabase,
       items: [
         {
-          title: "所有资产", // 所有资产
-          url: "/assets/all",
-        },
-        {
           title: "目标管理", // 目标管理
           url: "/assets/target",
         },

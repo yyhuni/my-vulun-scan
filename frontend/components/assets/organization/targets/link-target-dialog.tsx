@@ -20,7 +20,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { LoadingSpinner } from "@/components/loading-spinner"
-import { AssetValidator } from "@/lib/asset-validator"
+import { TargetValidator } from "@/lib/target-validator"
 import {
   Form,
   FormControl,
@@ -118,10 +118,10 @@ export function LinkTargetDialog({
       }
     }
 
-    const results = AssetValidator.validateAssetBatch(lines)
+    const results = TargetValidator.validateTargetBatch(lines)
     const invalid = results
       .filter((r) => !r.isValid)
-      .map((r) => ({ index: r.index, originalAsset: r.originalAsset, error: r.error || "目标格式无效", type: r.type }))
+      .map((r) => ({ index: r.index, originalTarget: r.originalTarget, error: r.error || "目标格式无效", type: r.type }))
     
     return {
       count: lines.length,
@@ -275,7 +275,7 @@ export function LinkTargetDialog({
                     </FormDescription>
                     {targetValidation.invalid.length > 0 && (
                       <div className="text-xs text-destructive">
-                        例如 第 {targetValidation.invalid[0].index + 1} 行: &quot;{targetValidation.invalid[0].originalAsset}&quot; - {targetValidation.invalid[0].error}
+                        例如 第 {targetValidation.invalid[0].index + 1} 行: &quot;{targetValidation.invalid[0].originalTarget}&quot; - {targetValidation.invalid[0].error}
                       </div>
                     )}
                     <FormMessage />

@@ -10,7 +10,6 @@ import {
   deleteOrganization,
   batchDeleteOrganizations,
 } from '../fixtures/organizations'
-import { getAssetsByOrganizationId } from '../fixtures/assets'
 import { getDomainsByOrganizationId } from '../fixtures/domains'
 
 const BASE_URL = '/api'
@@ -100,17 +99,6 @@ export const organizationHandlers = [
     }, { status: 200 })
   }),
 
-  // 获取组织的资产列表
-  http.get(`${BASE_URL}/organizations/:id/assets/`, ({ params, request }) => {
-    const id = Number(params.id)
-    const url = new URL(request.url)
-    const page = Number(url.searchParams.get('page')) || 1
-    const pageSize = Number(url.searchParams.get('pageSize')) || 10
-
-    const data = getAssetsByOrganizationId(id, page, pageSize)
-    return HttpResponse.json(data, { status: 200 })
-  }),
-
   // 获取组织的域名列表
   http.get(`${BASE_URL}/organizations/:id/domains/`, ({ params, request }) => {
     const id = Number(params.id)
@@ -120,26 +108,6 @@ export const organizationHandlers = [
 
     const data = getDomainsByOrganizationId(id, page, pageSize)
     return HttpResponse.json(data, { status: 200 })
-  }),
-
-  // 关联资产到组织
-  http.post(`${BASE_URL}/organizations/:id/assets/`, async ({ params, request }) => {
-    const organizationId = Number(params.id)
-    const body = await request.json() as { assetId: number }
-
-    return HttpResponse.json({
-      message: `成功将资产 ${body.assetId} 关联到组织 ${organizationId}`,
-    }, { status: 200 })
-  }),
-
-  // 从组织中移除资产
-  http.post(`${BASE_URL}/organizations/:id/assets/unlink/`, async ({ params, request }) => {
-    const organizationId = Number(params.id)
-    const body = await request.json() as { assetId: number }
-
-    return HttpResponse.json({
-      message: `成功从组织 ${organizationId} 中移除资产 ${body.assetId}`,
-    }, { status: 200 })
   }),
 
   // 关联域名到组织
@@ -162,16 +130,5 @@ export const organizationHandlers = [
     }, { status: 200 })
   }),
 
-  // 批量从组织中移除资产
-  http.post(`${BASE_URL}/organizations/:id/assets/batch-remove/`, async ({ params, request }) => {
-    const organizationId = Number(params.id)
-    const body = await request.json() as { assetIds: number[] }
-
-    return HttpResponse.json({
-      message: `成功从组织 ${organizationId} 中移除 ${body.assetIds.length} 个资产`,
-      successCount: body.assetIds.length,
-      failedCount: 0,
-    }, { status: 200 })
-  }),
 ]
 

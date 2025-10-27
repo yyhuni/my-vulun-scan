@@ -1,12 +1,11 @@
 import { ColumnDef } from "@tanstack/react-table"
 import { PaginationInfo } from "./common.types"
-import type { Asset } from "./asset.types"
 
 // 组织统计数据
 export interface OrganizationStats {
   total_domains?: number    // 域名总数
   total_endpoints?: number  // 端点总数
-  total_assets?: number     // 资产总数
+  total_targets?: number    // 目标总数
 }
 
 // 组织相关类型定义（匹配后端 Organization 模型）
@@ -16,9 +15,8 @@ export interface Organization {
   description: string
   createdAt: string      // 后端 created_at 由 Django 自动转换为 camelCase
   updatedAt: string      // 后端 updated_at 由 Django 自动转换为 camelCase
-  assets?: Asset[]       // 关联的资产列表（仅在 Preload 时返回）
   stats?: OrganizationStats  // 组织统计数据（可选）
-  assetCount?: number    // 资产数量（用于列表展示）
+  targetCount?: number   // 目标数量（用于列表展示）
   domainCount?: number   // 域名数量（用于列表展示）
   endpointCount?: number // 端点数量（用于列表展示）
 }

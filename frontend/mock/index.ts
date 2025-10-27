@@ -26,7 +26,6 @@ export { handlers } from './handlers'
 
 // 导出 fixtures 供测试使用
 export * from './fixtures/organizations'
-export * from './fixtures/assets'
 export * from './fixtures/domains'
 export * from './fixtures/endpoints'
 

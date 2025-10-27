@@ -2,7 +2,6 @@
  * Mock Handlers - 统一导出
  */
 import { organizationHandlers } from './organizations'
-import { assetHandlers } from './assets'
 import { targetHandlers } from './targets'
 
 /**
@@ -10,7 +9,6 @@ import { targetHandlers } from './targets'
  */
 export const handlers = [
   ...organizationHandlers,
-  ...assetHandlers,
   ...targetHandlers,
 ]
 

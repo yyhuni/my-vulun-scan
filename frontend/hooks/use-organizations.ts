@@ -66,26 +66,6 @@ export function useOrganization(id: number) {
 }
 
 /**
- * 获取组织的资产列表 Hook（支持分页）
- */
-export function useOrganizationAssets(
-  id: number,
-  params?: {
-    page?: number
-    pageSize?: number
-  },
-  options?: {
-    enabled?: boolean
-  }
-) {
-  return useQuery({
-    queryKey: [...organizationKeys.detail(id), 'assets', params],
-    queryFn: () => OrganizationService.getOrganizationAssets(id, params),
-    enabled: options?.enabled !== undefined ? (options.enabled && !!id) : !!id,
-  })
-}
-
-/**
  * 获取组织的域名列表 Hook
  */
 export function useOrganizationDomains(

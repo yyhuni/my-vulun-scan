@@ -17,7 +17,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { useAllDomains, useDeleteDomain, useBatchDeleteDomains } from "@/hooks/use-domains"
-import { useAsset } from "@/hooks/use-assets"
 import type { Domain } from "@/types/domain.types"
 
 /**
@@ -51,11 +50,6 @@ export function OrganizationDomainsDetailView({
     page: pagination.pageIndex + 1, // 转换为 1-based
     pageSize: pagination.pageSize,
   })
-
-  // 如果是通过 assetId 访问，需要先获取资产信息
-  const { data: assetData } = useAsset(
-    assetId ? parseInt(assetId) : undefined
-  )
 
   // Mutations
   const deleteDomain = useDeleteDomain()

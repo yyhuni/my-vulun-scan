@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import { LoadingSpinner } from "@/components/loading-spinner"
-import { AssetValidator } from "@/lib/asset-validator"
+import { TargetValidator } from "@/lib/target-validator"
 
 // 导入 React Query Hooks
 import { useOrganizations } from "@/hooks/use-organizations"
@@ -120,10 +120,10 @@ export function AddTargetDialog({
         return
       }
 
-      const results = AssetValidator.validateAssetBatch(lines)
+      const results = TargetValidator.validateTargetBatch(lines)
       const invalid = results
         .filter((r) => !r.isValid)
-        .map((r) => ({ index: r.index, originalTarget: r.originalAsset, error: r.error || "目标格式无效", type: r.type }))
+        .map((r) => ({ index: r.index, originalTarget: r.originalTarget, error: r.error || "目标格式无效", type: r.type }))
       setInvalidTargets(invalid)
     }
   }

@@ -2,25 +2,25 @@ import validator from 'validator'
 import { parse as parseDomain } from 'tldts'
 
 /**
- * 资产验证工具类
- * 支持验证三种资产类型：域名、IP、CIDR
+ * 目标验证工具类
+ * 支持验证三种目标类型：域名、IP、CIDR
  */
 
-export interface AssetValidationResult {
+export interface TargetValidationResult {
   isValid: boolean
   error?: string
   type?: 'domain' | 'ip' | 'cidr'
 }
 
-export class AssetValidator {
+export class TargetValidator {
   /**
    * 验证域名格式（如 example.com）
    */
-  static validateDomain(domain: string): AssetValidationResult {
+  static validateDomain(domain: string): TargetValidationResult {
     if (!domain || domain.trim().length === 0) {
       return {
         isValid: false,
-        error: '资产不能为空'
+        error: '目标不能为空'
       }
     }
 
@@ -29,14 +29,14 @@ export class AssetValidator {
     if (trimmedDomain.includes(' ')) {
       return {
         isValid: false,
-        error: '资产不能包含空格'
+        error: '目标不能包含空格'
       }
     }
 
     if (!validator.isLength(trimmedDomain, { min: 1, max: 253 })) {
       return {
         isValid: false,
-        error: '资产长度不能超过 253 个字符'
+        error: '目标长度不能超过 253 个字符'
       }
     }
 
@@ -67,11 +67,11 @@ export class AssetValidator {
   /**
    * 验证 IPv4 地址（如 192.168.1.1）
    */
-  static validateIPv4(ip: string): AssetValidationResult {
+  static validateIPv4(ip: string): TargetValidationResult {
     if (!ip || ip.trim().length === 0) {
       return {
         isValid: false,
-        error: '资产不能为空'
+        error: '目标不能为空'
       }
     }
 
@@ -90,11 +90,11 @@ export class AssetValidator {
   /**
    * 验证 IPv6 地址（如 2001:db8::1）
    */
-  static validateIPv6(ip: string): AssetValidationResult {
+  static validateIPv6(ip: string): TargetValidationResult {
     if (!ip || ip.trim().length === 0) {
       return {
         isValid: false,
-        error: '资产不能为空'
+        error: '目标不能为空'
       }
     }
 
@@ -113,11 +113,11 @@ export class AssetValidator {
   /**
    * 验证 IP 地址（IPv4 或 IPv6）
    */
-  static validateIP(ip: string): AssetValidationResult {
+  static validateIP(ip: string): TargetValidationResult {
     if (!ip || ip.trim().length === 0) {
       return {
         isValid: false,
-        error: '资产不能为空'
+        error: '目标不能为空'
       }
     }
 
@@ -136,11 +136,11 @@ export class AssetValidator {
   /**
    * 验证 CIDR 网段（如 10.0.0.0/8, 192.168.0.0/16）
    */
-  static validateCIDR(cidr: string): AssetValidationResult {
+  static validateCIDR(cidr: string): TargetValidationResult {
     if (!cidr || cidr.trim().length === 0) {
       return {
         isValid: false,
-        error: '资产不能为空'
+        error: '目标不能为空'
       }
     }
 
@@ -177,41 +177,41 @@ export class AssetValidator {
   }
 
   /**
-   * 自动检测资产类型并验证
+   * 自动检测目标类型并验证
    * 支持：域名、IPv4、IPv6、CIDR
    */
-  static validateAsset(asset: string): AssetValidationResult {
-    if (!asset || asset.trim().length === 0) {
+  static validateTarget(target: string): TargetValidationResult {
+    if (!target || target.trim().length === 0) {
       return {
         isValid: false,
-        error: '资产不能为空'
+        error: '目标不能为空'
       }
     }
 
-    const trimmedAsset = asset.trim()
+    const trimmedTarget = target.trim()
 
     // 1. 先尝试 CIDR 验证（包含 /）
-    if (trimmedAsset.includes('/')) {
-      return this.validateCIDR(trimmedAsset)
+    if (trimmedTarget.includes('/')) {
+      return this.validateCIDR(trimmedTarget)
     }
 
     // 2. 尝试 IP 验证
-    if (validator.isIP(trimmedAsset)) {
-      return this.validateIP(trimmedAsset)
+    if (validator.isIP(trimmedTarget)) {
+      return this.validateIP(trimmedTarget)
     }
 
     // 3. 尝试域名验证
-    return this.validateDomain(trimmedAsset)
+    return this.validateDomain(trimmedTarget)
   }
 
   /**
-   * 批量验证资产列表
+   * 批量验证目标列表
    */
-  static validateAssetBatch(assets: string[]): Array<AssetValidationResult & { index: number; originalAsset: string }> {
-    return assets.map((asset, index) => ({
-      ...this.validateAsset(asset),
+  static validateTargetBatch(targets: string[]): Array<TargetValidationResult & { index: number; originalTarget: string }> {
+    return targets.map((target, index) => ({
+      ...this.validateTarget(target),
       index,
-      originalAsset: asset
+      originalTarget: target
     }))
   }
 }
