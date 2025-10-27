@@ -6,7 +6,10 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "mock:enable": "node scripts/toggle-mock.js enable",
+    "mock:disable": "node scripts/toggle-mock.js disable",
+    "mock:status": "node scripts/toggle-mock.js status"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

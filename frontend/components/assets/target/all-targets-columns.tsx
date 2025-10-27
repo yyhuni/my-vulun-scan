@@ -20,18 +20,7 @@ import {
 import { MoreHorizontal, Eye, Trash2, ChevronsUpDown, ChevronUp, ChevronDown, Copy, Check } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
-
-// 目标类型定义（临时 mock 数据结构）
-export interface Target {
-  id: number
-  name: string
-  type: string | null
-  organizations?: Array<{ id: number; name: string }>
-  domainCount?: number
-  endpointCount?: number
-  description: string | null
-  updatedAt: string
-}
+import type { Target } from "@/types/target.types"
 
 /**
  * 可复制单元格组件
@@ -254,10 +243,7 @@ export const createAllTargetsColumns = ({
       <DataTableColumnHeader column={column} title="类型" />
     ),
     cell: ({ row }) => {
-      const type = row.getValue("type") as string | null
-      if (!type) {
-        return <span className="text-sm text-muted-foreground">-</span>
-      }
+      const type = row.getValue("type") as string
       const typeMap: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
         domain: { label: "域名", variant: "default" },
         ip: { label: "IP", variant: "secondary" },
@@ -372,7 +358,7 @@ export const createAllTargetsColumns = ({
       <DataTableColumnHeader column={column} title="描述" />
     ),
     cell: ({ row }) => {
-      const description = row.getValue("description") as string | null
+      const description = row.getValue("description") as string | undefined
       if (!description) {
         return <span className="text-sm text-muted-foreground">-</span>
       }

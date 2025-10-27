@@ -8,6 +8,7 @@ import { Suspense } from "react"
 import NextTopLoader from "nextjs-toploader"
 import { QueryProvider } from "@/components/providers/query-provider"
 import { ThemeProvider } from "@/components/providers/theme-provider"
+import { MockProvider } from "@/components/providers/mock-provider"
 import { Noto_Sans_SC } from "next/font/google"
 
 // 导入公共布局组件
@@ -49,13 +50,15 @@ export default function RootLayout({
     // suppressHydrationWarning 避免主题切换时的 hydration 警告
     <html lang="zh-CN" suppressHydrationWarning>
       <body className={notoSans.className}>
-        {/* ThemeProvider 提供主题切换功能,跟随系统自动切换亮暗色 */}
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
+        {/* MockProvider 在开发环境中启用 Mock Service Worker */}
+        <MockProvider>
+          {/* ThemeProvider 提供主题切换功能,跟随系统自动切换亮暗色 */}
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
           {/* 顶部路由加载进度条 - 自动检测路由变化 */}
           <NextTopLoader
             color="#6b7280"
@@ -109,6 +112,7 @@ export default function RootLayout({
             </SidebarProvider>
           </QueryProvider>
         </ThemeProvider>
+        </MockProvider>
       </body>
     </html>
   )

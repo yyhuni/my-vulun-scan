@@ -1,0 +1,11 @@
+# Mock 目录
+
+所有 Mock 相关的文件都在这个目录下。
+
+如需启用 Mock，请创建 `.env.local` 文件并添加：
+```
+NEXT_PUBLIC_ENABLE_MOCK=true
+```
+
+详细说明请查看 `MOCK_SETUP.md`
+

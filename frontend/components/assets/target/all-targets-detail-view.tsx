@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { createAllTargetsColumns, type Target } from "@/components/assets/target/all-targets-columns"
+import { createAllTargetsColumns } from "@/components/assets/target/all-targets-columns"
 import { TargetsDataTable } from "@/components/assets/target/targets-data-table"
 import { AddTargetDialog } from "@/components/assets/target/add-target-dialog"
 import { LoadingState } from "@/components/loading-spinner"
@@ -17,49 +17,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { formatDate } from "@/lib/utils"
-import { toast } from "sonner"
 import { LoadingSpinner } from "@/components/loading-spinner"
-
-// Mock 数据
-const mockTargets: Target[] = [
-  {
-    id: 1,
-    name: "example.com",
-    type: "domain",
-    organizations: [
-      { id: 1, name: "组织 A" },
-      { id: 2, name: "组织 B" },
-    ],
-    domainCount: 15,
-    endpointCount: 120,
-    description: "主要业务域名",
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 2,
-    name: "192.168.1.0/24",
-    type: "cidr",
-    organizations: [
-      { id: 1, name: "组织 A" },
-    ],
-    domainCount: 0,
-    endpointCount: 50,
-    description: "内网 IP 段",
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 3,
-    name: "10.0.0.1",
-    type: "ip",
-    organizations: [
-      { id: 3, name: "组织 C" },
-    ],
-    domainCount: 0,
-    endpointCount: 8,
-    description: "服务器 IP",
-    updatedAt: new Date().toISOString(),
-  },
-]
+import { useTargets, useDeleteTarget, useBatchDeleteTargets } from "@/hooks/use-targets"
+import type { Target } from "@/types/target.types"
 
 /**
  * 所有目标详情视图组件
@@ -74,12 +34,14 @@ export function AllTargetsDetailView() {
   const [targetToDelete, setTargetToDelete] = useState<Target | null>(null)
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
   const [shouldPrefetchOrgs, setShouldPrefetchOrgs] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [isBulkDeleting, setIsBulkDeleting] = useState(false)
-  
-  // 模拟加载状态
-  const [isLoading] = useState(false)
-  const [targets] = useState(mockTargets)
+
+  // 使用 API hooks
+  const { data, isLoading, error } = useTargets(pagination.pageIndex + 1, pagination.pageSize)
+  const deleteTargetMutation = useDeleteTarget()
+  const batchDeleteMutation = useBatchDeleteTargets()
+
+  const targets = data?.results || []
+  const totalCount = data?.count || 0
 
   // 处理添加目标
   const handleAddTarget = useCallback(() => {
@@ -92,19 +54,18 @@ export function AllTargetsDetailView() {
     setDeleteDialogOpen(true)
   }, [])
 
-  // 确认删除目标（mock 实现）
+  // 确认删除目标
   const confirmDelete = async () => {
     if (!targetToDelete) return
 
-    setIsDeleting(true)
-    
-    // 模拟 API 调用
-    setTimeout(() => {
+    try {
+      await deleteTargetMutation.mutateAsync(targetToDelete.id)
       setDeleteDialogOpen(false)
       setTargetToDelete(null)
-      setIsDeleting(false)
-      toast.success(`已删除目标 "${targetToDelete.name}"`)
-    }, 1000)
+    } catch (error) {
+      // 错误已在 hook 中处理
+      console.error('删除失败:', error)
+    }
   }
 
   // 处理批量删除
@@ -113,19 +74,20 @@ export function AllTargetsDetailView() {
     setBulkDeleteDialogOpen(true)
   }, [selectedTargets])
 
-  // 确认批量删除（mock 实现）
+  // 确认批量删除
   const confirmBulkDelete = async () => {
     if (selectedTargets.length === 0) return
 
-    setIsBulkDeleting(true)
-    
-    // 模拟 API 调用
-    setTimeout(() => {
+    try {
+      await batchDeleteMutation.mutateAsync({
+        targetIds: selectedTargets.map((t) => t.id),
+      })
       setBulkDeleteDialogOpen(false)
       setSelectedTargets([])
-      setIsBulkDeleting(false)
-      toast.success(`已删除 ${selectedTargets.length} 个目标`)
-    }, 1000)
+    } catch (error) {
+      // 错误已在 hook 中处理
+      console.error('批量删除失败:', error)
+    }
   }
 
   // 创建表格列
@@ -138,6 +100,18 @@ export function AllTargetsDetailView() {
   // 加载中
   if (isLoading) {
     return <LoadingState message="加载目标数据中..." />
+  }
+
+  // 错误处理
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-destructive mb-2">加载失败</p>
+          <p className="text-sm text-muted-foreground">{error.message}</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -178,9 +152,9 @@ export function AllTargetsDetailView() {
             <AlertDialogAction
               onClick={confirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={isDeleting}
+              disabled={deleteTargetMutation.isPending}
             >
-              {isDeleting ? (
+              {deleteTargetMutation.isPending ? (
                 <>
                   <LoadingSpinner/>
                   删除中...
@@ -220,9 +194,9 @@ export function AllTargetsDetailView() {
             <AlertDialogAction
               onClick={confirmBulkDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={isBulkDeleting}
+              disabled={batchDeleteMutation.isPending}
             >
-              {isBulkDeleting ? (
+              {batchDeleteMutation.isPending ? (
                 <>
                   <LoadingSpinner/>
                   删除中...
