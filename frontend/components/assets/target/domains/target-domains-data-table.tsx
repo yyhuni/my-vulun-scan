@@ -211,8 +211,8 @@ export function TargetDomainsDataTable({
                     >
                       {column.id === "id" && "ID"}
                       {column.id === "name" && "Domain"}
-                      {column.id === "assetId" && "Asset ID"}
-                      {column.id === "asset" && "Asset"}
+                      {column.id === "assetId" && "Target ID"}
+                      {column.id === "asset" && "Target"}
                       {column.id === "createdAt" && "Created At"}
                       {column.id === "updatedAt" && "Updated At"}
                       {!["id", "name", "assetId", "asset", "createdAt", "updatedAt"].includes(column.id) && column.id}

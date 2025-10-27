@@ -24,39 +24,62 @@ import type {
 
 /**
  * 获取所有目标列表
+ * 支持两种调用方式：
+ * 1. useTargets(page, pageSize, organizationId) - 直接传参数
+ * 2. useTargets({ page, pageSize, organizationId }) - 传对象（已废弃，为了兼容性保留）
  */
-export function useTargets(params?: {
-  page?: number
-  pageSize?: number
+export function useTargets(
+  pageOrParams: number | { page?: number; pageSize?: number; organizationId?: number } = 1,
+  pageSize = 10,
   organizationId?: number
-}) {
-  const { page = 1, pageSize = 10, organizationId } = params || {}
-  
+) {
+  // 处理参数：支持对象参数或独立参数
+  let actualPage: number
+  let actualPageSize: number
+  let actualOrgId: number | undefined
+
+  if (typeof pageOrParams === 'object') {
+    // 对象参数方式（兼容旧代码）
+    actualPage = pageOrParams.page || 1
+    actualPageSize = pageOrParams.pageSize || 10
+    actualOrgId = pageOrParams.organizationId
+  } else {
+    // 独立参数方式
+    actualPage = pageOrParams
+    actualPageSize = pageSize
+    actualOrgId = organizationId
+  }
+
   return useQuery({
-    queryKey: ['targets', { page, pageSize, organizationId }],
-    queryFn: () => getTargets(page, pageSize),
+    queryKey: ['targets', { page: actualPage, pageSize: actualPageSize, organizationId: actualOrgId }],
+    queryFn: () => getTargets(actualPage, actualPageSize),
     select: (response) => {
       // 如果指定了 organizationId，过滤结果
-      if (organizationId) {
+      if (actualOrgId) {
         const filteredResults = response.results.filter(target => 
-          target.organizations?.some(org => org.id === organizationId)
+          target.organizations?.some(org => org.id === actualOrgId)
         )
         return {
+          ...response,
+          results: filteredResults,
+          count: filteredResults.length,
+          // 为兼容性添加额外字段
           targets: filteredResults,
           total: filteredResults.length,
-          page,
-          pageSize,
-          totalPages: Math.ceil(filteredResults.length / pageSize),
+          page: actualPage,
+          pageSize: actualPageSize,
+          totalPages: Math.ceil(filteredResults.length / actualPageSize),
         }
       }
       
-      // 否则返回所有结果，转换为标准格式
+      // 否则直接返回原始响应，并添加兼容字段
       return {
+        ...response,
         targets: response.results,
         total: response.count,
-        page,
-        pageSize,
-        totalPages: Math.ceil(response.count / pageSize),
+        page: actualPage,
+        pageSize: actualPageSize,
+        totalPages: Math.ceil(response.count / actualPageSize),
       }
     },
   })
