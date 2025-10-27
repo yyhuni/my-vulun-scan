@@ -38,54 +38,68 @@ export function ScanHistoryList() {
   const [scans, setScans] = useState<ScanRecord[]>([
     {
       id: 1,
-      name: "生产环境安全扫描",
-      type: "全面扫描",
-      targets: ["example.com", "api.example.com"],
+      domainName: "www.xinye.com",
+      summary: {
+        subdomains: 15,
+        endpoints: 234,
+        vulnerabilities: 5,
+      },
+      scanEngine: "Full Scan",
+      lastScan: "2025-01-10 14:30:00",
       status: "completed",
-      startTime: "2025-01-10 14:30:00",
-      endTime: "2025-01-10 15:45:00",
-      duration: "1小时15分",
-      findings: 23,
+      progress: 100,
     },
     {
       id: 2,
-      name: "开发环境快速检测",
-      type: "快速扫描",
-      targets: ["dev.example.com"],
+      domainName: "dev.example.com",
+      summary: {
+        subdomains: 8,
+        endpoints: 120,
+        vulnerabilities: 12,
+      },
+      scanEngine: "Quick Scan",
+      lastScan: "2025-01-13 10:20:00",
       status: "running",
-      startTime: "2025-01-13 10:20:00",
-      findings: 12,
+      progress: 65,
     },
     {
       id: 3,
-      name: "API接口漏洞扫描",
-      type: "漏洞扫描",
-      targets: ["192.168.1.100"],
+      domainName: "api.example.com",
+      summary: {
+        subdomains: 3,
+        endpoints: 89,
+        vulnerabilities: 0,
+      },
+      scanEngine: "Vulnerability Scan",
+      lastScan: "2025-01-12 08:15:00",
       status: "failed",
-      startTime: "2025-01-12 08:15:00",
-      endTime: "2025-01-12 08:20:00",
-      duration: "5分钟",
-      findings: 0,
+      progress: 45,
     },
     {
       id: 4,
-      name: "测试环境端口扫描",
-      type: "端口扫描",
-      targets: ["192.168.1.0/24"],
+      domainName: "test.example.com",
+      summary: {
+        subdomains: 0,
+        endpoints: 0,
+        vulnerabilities: 0,
+      },
+      scanEngine: "Port Scan",
+      lastScan: "2025-01-13 16:00:00",
       status: "pending",
-      startTime: "2025-01-13 16:00:00",
-      findings: 0,
+      progress: 0,
     },
     {
       id: 5,
-      name: "Web应用漏洞检测",
-      type: "漏洞扫描",
-      targets: ["webapp.example.com"],
+      domainName: "webapp.example.com",
+      summary: {
+        subdomains: 22,
+        endpoints: 456,
+        vulnerabilities: 15,
+      },
+      scanEngine: "Full Scan",
+      lastScan: "2025-01-11 09:00:00",
       status: "completed",
-      startTime: "2025-01-11 09:00:00",
-      endTime: "2025-01-11 10:30:00",
-      duration: "1小时30分",
-      findings: 15,
+      progress: 100,
     },
   ])
 
@@ -123,7 +137,7 @@ export function ScanHistoryList() {
     try {
       // TODO: 调用实际的删除 API
       setScans(prev => prev.filter(s => s.id !== scanToDelete.id))
-      toast.success(`已删除扫描记录: ${scanToDelete.name}`)
+      toast.success(`已删除扫描记录: ${scanToDelete.domainName}`)
     } catch (error) {
       toast.error("删除失败，请重试")
     } finally {
@@ -191,8 +205,8 @@ export function ScanHistoryList() {
         onAddNew={handleAddNew}
         onBulkDelete={handleBulkDelete}
         onSelectionChange={setSelectedScans}
-        searchPlaceholder="搜索扫描记录..."
-        searchColumn="name"
+        searchPlaceholder="搜索域名..."
+        searchColumn="domainName"
         addButtonText="新建扫描"
         pagination={pagination}
         setPagination={setPagination}
@@ -205,7 +219,7 @@ export function ScanHistoryList() {
           <AlertDialogHeader>
             <AlertDialogTitle>确认删除</AlertDialogTitle>
             <AlertDialogDescription>
-              此操作无法撤销。这将永久删除扫描记录 &quot;{scanToDelete?.name}&quot; 及其相关数据。
+              此操作无法撤销。这将永久删除扫描记录 &quot;{scanToDelete?.domainName}&quot; 及其相关数据。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -234,8 +248,8 @@ export function ScanHistoryList() {
             <ul className="text-sm space-y-1">
               {selectedScans.map((scan) => (
                 <li key={scan.id} className="flex items-center justify-between">
-                  <span className="font-medium">{scan.name}</span>
-                  <span className="text-muted-foreground text-xs">{scan.type}</span>
+                  <span className="font-medium">{scan.domainName}</span>
+                  <span className="text-muted-foreground text-xs">{scan.scanEngine}</span>
                 </li>
               ))}
             </ul>

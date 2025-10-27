@@ -189,14 +189,12 @@ export function ScanHistoryDataTable({
                 )
                 .map((column) => {
                   const columnNameMap: Record<string, string> = {
-                    id: "ID",
-                    name: "扫描名称",
-                    type: "类型",
-                    targets: "目标",
-                    status: "状态",
-                    startTime: "开始时间",
-                    duration: "持续时间",
-                    findings: "发现问题",
+                    domainName: "Domain Name",
+                    summary: "Summary",
+                    scanEngine: "Scan Engine Used",
+                    lastScan: "Last Scan",
+                    status: "Status",
+                    progress: "Progress",
                   }
                   
                   return (

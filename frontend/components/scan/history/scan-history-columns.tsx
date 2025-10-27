@@ -42,14 +42,16 @@ export type ScanStatus = "pending" | "running" | "completed" | "failed"
 // 扫描记录类型
 export interface ScanRecord {
   id: number
-  name: string
-  type: string
-  targets: string[]
+  domainName: string
+  summary: {
+    subdomains: number
+    endpoints: number
+    vulnerabilities: number
+  }
+  scanEngine: string
+  lastScan: string
   status: ScanStatus
-  startTime: string
-  endTime?: string
-  duration?: string
-  findings: number
+  progress: number // 0-100
 }
 
 /**
@@ -137,23 +139,23 @@ function StatusBadge({ status }: { status: ScanStatus }) {
   const config = {
     pending: {
       icon: IconClock,
-      label: "等待中",
+      label: "Pending",
       variant: "secondary" as const,
     },
     running: {
       icon: IconLoader,
-      label: "运行中",
+      label: "Running",
       variant: "default" as const,
       className: "animate-pulse" as const,
     },
     completed: {
       icon: IconCircleCheck,
-      label: "已完成",
+      label: "Successful",
       variant: "outline" as const,
     },
     failed: {
       icon: IconCircleX,
-      label: "失败",
+      label: "Failed",
       variant: "destructive" as const,
     },
   }
@@ -201,15 +203,14 @@ function ScanRowActions({
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={onView}>
           <Eye />
-          查看详情
+          View Results
         </DropdownMenuItem>
-        <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={onDelete}
           className="text-destructive focus:text-destructive"
         >
           <Trash2 />
-          删除
+          Delete Scan Results
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -282,82 +283,84 @@ export const createScanHistoryColumns = ({
     enableHiding: false,
   },
 
-  // ID 列
+  // Domain Name 列
   {
-    accessorKey: "id",
+    accessorKey: "domainName",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="ID" />
-    ),
-    cell: ({ row }) => (
-      <div className="text-sm text-muted-foreground">
-        {row.getValue("id")}
-      </div>
-    ),
-  },
-
-  // 扫描名称列
-  {
-    accessorKey: "name",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="扫描名称" />
+      <DataTableColumnHeader column={column} title="Domain Name" />
     ),
     cell: ({ row }) => {
-      const name = row.getValue("name") as string
-      return <CopyableCell value={name} maxWidth="300px" truncateLength={40} successMessage="已复制扫描名称" />
+      const domainName = row.getValue("domainName") as string
+      return <CopyableCell value={domainName} maxWidth="250px" truncateLength={35} successMessage="已复制域名" />
     },
   },
 
-  // 类型列
+  // Summary 列
   {
-    accessorKey: "type",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="类型" />
-    ),
+    accessorKey: "summary",
+    header: "Summary",
     cell: ({ row }) => {
-      const type = row.getValue("type") as string
-      const typeMap: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
-        "全面扫描": { label: "全面扫描", variant: "secondary" },
-        "快速扫描": { label: "快速扫描", variant: "default" },
-        "自定义扫描": { label: "自定义扫描", variant: "outline" },
-      }
-      const typeInfo = typeMap[type] || { label: type, variant: "secondary" as const }
+      const summary = row.getValue("summary") as { subdomains: number; endpoints: number; vulnerabilities: number }
       return (
-        <Badge variant={typeInfo.variant}>
-          {typeInfo.label}
-        </Badge>
-      )
-    },
-  },
-
-  // 目标列
-  {
-    accessorKey: "targets",
-    header: "目标",
-    cell: ({ row }) => {
-      const targets = row.getValue("targets") as string[]
-      return (
-        <div className="flex flex-wrap gap-1">
-          {targets.slice(0, 2).map((target, idx) => (
-            <Badge key={idx} variant="outline" className="text-xs font-mono">
-              {target}
+        <div className="flex flex-col gap-1 text-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground">子域名:</span>
+            <Badge variant="outline" className="font-mono">
+              {summary.subdomains}
             </Badge>
-          ))}
-          {targets.length > 2 && (
-            <Badge variant="outline" className="text-xs">
-              +{targets.length - 2}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground">Endpoints:</span>
+            <Badge variant="outline" className="font-mono">
+              {summary.endpoints}
             </Badge>
-          )}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground">漏洞:</span>
+            <Badge variant={summary.vulnerabilities > 0 ? "destructive" : "secondary"} className="font-mono">
+              {summary.vulnerabilities}
+            </Badge>
+          </div>
         </div>
       )
     },
     enableSorting: false,
   },
 
-  // 状态列
+  // Scan Engine Used 列
+  {
+    accessorKey: "scanEngine",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Scan Engine Used" />
+    ),
+    cell: ({ row }) => {
+      const scanEngine = row.getValue("scanEngine") as string
+      return (
+        <Badge variant="secondary">
+          {scanEngine}
+        </Badge>
+      )
+    },
+  },
+
+  // Last Scan 列
+  {
+    accessorKey: "lastScan",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Last Scan" />
+    ),
+    cell: ({ row }) => (
+      <div className="text-sm text-muted-foreground">
+        {formatDate(row.getValue("lastScan"))}
+      </div>
+    ),
+  },
+
+  // Status 列
   {
     accessorKey: "status",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="状态" />
+      <DataTableColumnHeader column={column} title="Status" />
     ),
     cell: ({ row }) => {
       const status = row.getValue("status") as ScanStatus
@@ -365,48 +368,37 @@ export const createScanHistoryColumns = ({
     },
   },
 
-  // 开始时间列
+  // Progress 列
   {
-    accessorKey: "startTime",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="开始时间" />
-    ),
-    cell: ({ row }) => (
-      <div className="text-sm text-muted-foreground">
-        {formatDate(row.getValue("startTime"))}
-      </div>
-    ),
-  },
-
-  // 持续时间列
-  {
-    accessorKey: "duration",
-    header: "持续时间",
+    accessorKey: "progress",
+    header: "Progress",
     cell: ({ row }) => {
-      const duration = row.getValue("duration") as string | undefined
+      const progress = row.getValue("progress") as number
+      const status = row.original.status
+      
+      // 如果状态是completed，显示100%
+      const displayProgress = status === "completed" ? 100 : progress
+      
       return (
-        <div className="text-sm text-muted-foreground">
-          {duration || "-"}
+        <div className="flex items-center gap-2 min-w-[120px]">
+          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+            <div 
+              className={`h-full transition-all ${
+                status === "completed" ? "bg-green-500" : 
+                status === "failed" ? "bg-red-500" : 
+                status === "running" ? "bg-blue-500" : 
+                "bg-gray-400"
+              }`}
+              style={{ width: `${displayProgress}%` }}
+            />
+          </div>
+          <span className="text-xs text-muted-foreground font-mono w-10">
+            {displayProgress}%
+          </span>
         </div>
       )
     },
     enableSorting: false,
-  },
-
-  // 发现问题列
-  {
-    accessorKey: "findings",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="发现问题" />
-    ),
-    cell: ({ row }) => {
-      const findings = row.getValue("findings") as number
-      return (
-        <Badge variant={findings > 0 ? "destructive" : "secondary"}>
-          {findings}
-        </Badge>
-      )
-    },
   },
 
   // 操作列
