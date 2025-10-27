@@ -2,6 +2,8 @@
  * Mock Fixtures - Targets
  */
 import type { Target, BatchDeleteTargetsResponse } from '../../types/target.types'
+import type { Domain } from '../../types/domain.types'
+import type { Endpoint } from '../../types/endpoint.types'
 
 // Mock 目标数据
 let mockTargets: Target[] = [
@@ -294,5 +296,152 @@ export function unlinkTargetOrganizations(targetId: number, organizationIds: num
   const removedCount = originalCount - target.organizations.length
 
   return { message: `成功取消 ${removedCount} 个组织的关联` }
+}
+
+/**
+ * Mock 域名数据（用于目标详情）
+ */
+const mockTargetDomains: Record<number, Domain[]> = {
+  1: [
+    {
+      id: 101,
+      name: 'www.example.com',
+      description: '主站域名',
+      assetId: 1,
+      createdAt: '2024-01-15T08:00:00Z',
+      updatedAt: '2024-10-20T15:30:00Z',
+    },
+    {
+      id: 102,
+      name: 'api.example.com',
+      description: 'API 域名',
+      assetId: 1,
+      createdAt: '2024-01-15T08:05:00Z',
+      updatedAt: '2024-10-20T14:20:00Z',
+    },
+    {
+      id: 103,
+      name: 'cdn.example.com',
+      description: 'CDN 域名',
+      assetId: 1,
+      createdAt: '2024-01-15T08:10:00Z',
+      updatedAt: '2024-10-19T16:45:00Z',
+    },
+    {
+      id: 104,
+      name: 'admin.example.com',
+      description: '管理后台域名',
+      assetId: 1,
+      createdAt: '2024-01-16T09:00:00Z',
+      updatedAt: '2024-10-18T12:30:00Z',
+    },
+    {
+      id: 105,
+      name: 'static.example.com',
+      description: '静态资源域名',
+      assetId: 1,
+      createdAt: '2024-01-16T09:05:00Z',
+      updatedAt: '2024-10-17T10:15:00Z',
+    },
+  ],
+}
+
+/**
+ * Mock 端点数据（用于目标详情）
+ */
+const mockTargetEndpoints: Record<number, Endpoint[]> = {
+  1: [
+    {
+      id: 201,
+      url: 'https://www.example.com/api/v1/users',
+      method: 'GET',
+      statusCode: 200,
+      title: '用户列表接口',
+      contentLength: 1024,
+      domainId: 101,
+      domain: 'www.example.com',
+      updatedAt: '2024-10-20T15:30:00Z',
+    },
+    {
+      id: 202,
+      url: 'https://www.example.com/api/v1/products',
+      method: 'GET',
+      statusCode: 200,
+      title: '产品列表接口',
+      contentLength: 2048,
+      domainId: 101,
+      domain: 'www.example.com',
+      updatedAt: '2024-10-19T14:20:00Z',
+    },
+    {
+      id: 203,
+      url: 'https://api.example.com/v2/auth/login',
+      method: 'POST',
+      statusCode: 200,
+      title: '登录接口',
+      contentLength: 512,
+      domainId: 102,
+      domain: 'api.example.com',
+      updatedAt: '2024-10-18T16:45:00Z',
+    },
+    {
+      id: 204,
+      url: 'https://api.example.com/v2/auth/logout',
+      method: 'POST',
+      statusCode: 200,
+      title: '登出接口',
+      contentLength: 256,
+      domainId: 102,
+      domain: 'api.example.com',
+      updatedAt: '2024-10-17T12:30:00Z',
+    },
+    {
+      id: 205,
+      url: 'https://api.example.com/v2/user/profile',
+      method: 'GET',
+      statusCode: 200,
+      title: '用户信息接口',
+      contentLength: 768,
+      domainId: 102,
+      domain: 'api.example.com',
+      updatedAt: '2024-10-16T10:15:00Z',
+    },
+  ],
+}
+
+/**
+ * 获取目标的域名列表
+ */
+export function getTargetDomains(targetId: number, page: number, pageSize: number) {
+  const domains = mockTargetDomains[targetId] || []
+  const start = (page - 1) * pageSize
+  const end = start + pageSize
+  const paginatedDomains = domains.slice(start, end)
+
+  return {
+    domains: paginatedDomains,
+    total: domains.length,
+    page,
+    pageSize,
+    totalPages: Math.ceil(domains.length / pageSize),
+  }
+}
+
+/**
+ * 获取目标的端点列表
+ */
+export function getTargetEndpoints(targetId: number, page: number, pageSize: number) {
+  const endpoints = mockTargetEndpoints[targetId] || []
+  const start = (page - 1) * pageSize
+  const end = start + pageSize
+  const paginatedEndpoints = endpoints.slice(start, end)
+
+  return {
+    endpoints: paginatedEndpoints,
+    total: endpoints.length,
+    page,
+    pageSize,
+    totalPages: Math.ceil(endpoints.length / pageSize),
+  }
 }
 

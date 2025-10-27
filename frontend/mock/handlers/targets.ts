@@ -12,6 +12,8 @@ import {
   getTargetOrganizations,
   linkTargetOrganizations,
   unlinkTargetOrganizations,
+  getTargetDomains,
+  getTargetEndpoints,
 } from '../fixtures/targets'
 
 const BASE_URL = '/api'
@@ -144,6 +146,28 @@ export const targetHandlers = [
     }
 
     return HttpResponse.json(result, { status: 200 })
+  }),
+
+  // 获取目标的域名列表
+  http.get(`${BASE_URL}/targets/:id/domains/`, ({ params, request }) => {
+    const id = Number(params.id)
+    const url = new URL(request.url)
+    const page = Number(url.searchParams.get('page')) || 1
+    const pageSize = Number(url.searchParams.get('pageSize')) || 10
+
+    const data = getTargetDomains(id, page, pageSize)
+    return HttpResponse.json(data, { status: 200 })
+  }),
+
+  // 获取目标的端点列表
+  http.get(`${BASE_URL}/targets/:id/endpoints/`, ({ params, request }) => {
+    const id = Number(params.id)
+    const url = new URL(request.url)
+    const page = Number(url.searchParams.get('page')) || 1
+    const pageSize = Number(url.searchParams.get('pageSize')) || 10
+
+    const data = getTargetEndpoints(id, page, pageSize)
+    return HttpResponse.json(data, { status: 200 })
   }),
 ]
 
