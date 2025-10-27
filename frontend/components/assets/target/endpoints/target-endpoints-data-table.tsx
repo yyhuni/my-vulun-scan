@@ -55,46 +55,45 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-// 导入域名类型定义
-import type { Domain } from "@/types/domain.types"
-import type { PaginationInfo } from "@/types/common.types"
+// 导入类型定义
+import type { Endpoint } from "@/types/endpoint.types"
 
 // 组件属性类型定义
-interface DomainsDataTableProps {
-  data: Domain[]                                  // 域名数据数组
-  columns: ColumnDef<Domain>[]                    // 列定义数组
-  onAddNew?: () => void                          // 添加新域名的回调函数
+interface TargetEndpointsDataTableProps {
+  data: Endpoint[]                                  // 端点数据数组
+  columns: ColumnDef<Endpoint>[]                    // 列定义数组
+  onAddNew?: () => void                          // 添加新端点的回调函数
   onBulkDelete?: () => void                      // 批量删除回调函数
-  onSelectionChange?: (selectedRows: Domain[]) => void  // 选中行变化回调
+  onSelectionChange?: (selectedRows: Endpoint[]) => void  // 选中行变化回调
   searchPlaceholder?: string                     // 搜索框占位符
   searchColumn?: string                          // 搜索的列名
   addButtonText?: string                         // 添加按钮文本
-  // 服务端分页支持
-  pagination?: { pageIndex: number; pageSize: number }
-  setPagination?: React.Dispatch<React.SetStateAction<{ pageIndex: number; pageSize: number }>>
-  paginationInfo?: PaginationInfo
-  onPaginationChange?: (pagination: { pageIndex: number; pageSize: number }) => void
+  // 服务器端分页支持
+  pagination?: { pageIndex: number; pageSize: number }  // 外部分页状态
+  onPaginationChange?: (pagination: { pageIndex: number; pageSize: number }) => void  // 分页变化回调
+  totalCount?: number                            // 总记录数
+  totalPages?: number                            // 总页数
 }
 
 /**
- * 域名数据表格组件
- * 专门用于显示和管理域名数据的表格
+ * 目标端点数据表格组件
+ * 专门用于显示和管理目标端点数据的表格
  * 包含搜索、分页、列显示控制等功能
  */
-export function DomainsDataTable({
-  data = [],
+export function TargetEndpointsDataTable({
+  data,
   columns,
   onAddNew,
   onBulkDelete,
   onSelectionChange,
-  searchPlaceholder = "Search domains...",
-  searchColumn = "name",
+  searchPlaceholder = "搜索端点...",
+  searchColumn = "url",
   addButtonText = "Add",
   pagination: externalPagination,
-  setPagination: setExternalPagination,
-  paginationInfo,
   onPaginationChange,
-}: DomainsDataTableProps) {
+  totalCount,
+  totalPages,
+}: TargetEndpointsDataTableProps) {
   // 表格状态管理
   // 选中行状态，key为行id，value为true或false
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({})
@@ -104,28 +103,34 @@ export function DomainsDataTable({
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   // 排序状态，key为列id，value为true或false
   const [sorting, setSorting] = React.useState<SortingState>([])
-  
-  // 使用外部分页状态或内部默认状态
+  // 内部分页状态（客户端分页）
   const [internalPagination, setInternalPagination] = React.useState<{ pageIndex: number, pageSize: number }>({
     pageIndex: 0,
     pageSize: 10,
   })
   
+  // 使用外部分页或内部分页
   const pagination = externalPagination || internalPagination
-  const setPagination = setExternalPagination || setInternalPagination
-
-  // 过滤有效数据，确保每个行都有有效的 id
-  const validData = React.useMemo(() => {
-    const filtered = (data || []).filter(item => item && typeof item.id !== 'undefined' && item.id !== null)
-    console.log('数据表格接收到的原始数据:', data)
-    console.log('过滤后的有效数据:', filtered)
-    console.log('有效数据数量:', filtered.length)
-    return filtered
-  }, [data])
+  
+  // 分页变化处理
+  const handlePaginationChange = React.useCallback((updaterOrValue: { pageIndex: number; pageSize: number } | ((prev: { pageIndex: number; pageSize: number }) => { pageIndex: number; pageSize: number })) => {
+    if (onPaginationChange) {
+      // 外部控制分页（服务器端分页）
+      if (typeof updaterOrValue === 'function') {
+        const newPagination = updaterOrValue(pagination)
+        onPaginationChange(newPagination)
+      } else {
+        onPaginationChange(updaterOrValue)
+      }
+    } else {
+      // 内部控制分页（客户端分页）
+      setInternalPagination(updaterOrValue)
+    }
+  }, [onPaginationChange, pagination])
 
   // 创建表格实例
   const table = useReactTable({
-    data: validData,
+    data,
     columns,
     state: {
       sorting,
@@ -134,29 +139,21 @@ export function DomainsDataTable({
       columnFilters,
       pagination,
     },
-    // 服务端分页配置
-    pageCount: paginationInfo?.totalPages ?? -1,
-    manualPagination: !!paginationInfo,  // 如果有paginationInfo，使用服务端分页
     getRowId: (row) => row.id.toString(),
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
-    onPaginationChange: (updater) => {
-      const newPagination = typeof updater === 'function' ? updater(pagination) : updater
-      setPagination(newPagination)
-      // 如果有外部分页回调，调用它
-      if (onPaginationChange) {
-        onPaginationChange(newPagination)
-      }
-    },
+    onPaginationChange: handlePaginationChange,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    getPaginationRowModel: externalPagination ? undefined : getPaginationRowModel(), // 服务器端分页不需要客户端分页
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
+    manualPagination: !!externalPagination, // 启用手动分页
+    pageCount: totalPages, // 服务器端总页数
   })
 
   // 监听选中行变化，通知父组件
@@ -210,17 +207,21 @@ export function DomainsDataTable({
                       onCheckedChange={(value) => column.toggleVisibility(!!value)}
                     >
                       {column.id === "id" && "ID"}
-                      {column.id === "name" && "Domain"}
-                      {column.id === "assetId" && "Asset ID"}
-                      {column.id === "asset" && "Asset"}
+                      {column.id === "url" && "URL"}
+                      {column.id === "endpoint" && "Endpoint"}
+                      {column.id === "method" && "Method"}
+                      {column.id === "statusCode" && "Status"}
+                      {column.id === "title" && "Title"}
+                      {column.id === "contentLength" && "Size"}
                       {column.id === "createdAt" && "Created At"}
                       {column.id === "updatedAt" && "Updated At"}
-                      {!["id", "name", "assetId", "asset", "createdAt", "updatedAt"].includes(column.id) && column.id}
+                      {!["id", "url", "endpoint", "method", "statusCode", "title", "contentLength", "createdAt", "updatedAt"].includes(column.id) && column.id}
                     </DropdownMenuCheckboxItem>
                   )
                 })}
             </DropdownMenuContent>
           </DropdownMenu>
+
           {/* 批量删除按钮 */}
           {onBulkDelete && (
             <Button 
@@ -235,11 +236,11 @@ export function DomainsDataTable({
               }
             >
               <IconTrash />
-              Delete
+              删除
             </Button>
           )}
 
-          {/* 添加新域名按钮 */}
+          {/* 添加新端点按钮 */}
           {onAddNew && (
             <Button onClick={onAddNew} size="sm">
               <IconPlus />
@@ -279,7 +280,6 @@ export function DomainsDataTable({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
-                  className="group"
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
@@ -309,7 +309,7 @@ export function DomainsDataTable({
         {/* 选中行信息 */}
         <div className="flex-1 text-sm text-muted-foreground">
           {table.getFilteredSelectedRowModel().rows.length} of{" "}
-          {paginationInfo ? paginationInfo.total : table.getFilteredRowModel().rows.length} row(s) selected
+          {externalPagination ? totalCount : table.getFilteredRowModel().rows.length} row(s) selected
         </div>
 
         {/* 分页控制器 */}
@@ -341,7 +341,7 @@ export function DomainsDataTable({
           {/* 页码信息 */}
           <div className="flex w-[100px] items-center justify-center text-sm font-medium">
             Page {table.getState().pagination.pageIndex + 1} of{" "}
-            {table.getPageCount()}
+            {externalPagination ? totalPages : table.getPageCount()}
           </div>
 
           {/* 分页按钮 */}
@@ -350,7 +350,7 @@ export function DomainsDataTable({
               variant="outline"
               className="hidden h-8 w-8 p-0 lg:flex"
               onClick={() => table.setPageIndex(0)}
-              disabled={!table.getCanPreviousPage()}
+              disabled={externalPagination ? pagination.pageIndex === 0 : !table.getCanPreviousPage()}
             >
               <span className="sr-only">Go to first page</span>
               <IconChevronsLeft />
@@ -359,7 +359,7 @@ export function DomainsDataTable({
               variant="outline"
               className="h-8 w-8 p-0"
               onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
+              disabled={externalPagination ? pagination.pageIndex === 0 : !table.getCanPreviousPage()}
             >
               <span className="sr-only">Go to previous page</span>
               <IconChevronLeft />
@@ -368,7 +368,7 @@ export function DomainsDataTable({
               variant="outline"
               className="h-8 w-8 p-0"
               onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
+              disabled={externalPagination ? pagination.pageIndex >= (totalPages || 1) - 1 : !table.getCanNextPage()}
             >
               <span className="sr-only">Go to next page</span>
               <IconChevronRight />
@@ -376,8 +376,8 @@ export function DomainsDataTable({
             <Button
               variant="outline"
               className="hidden h-8 w-8 p-0 lg:flex"
-              onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-              disabled={!table.getCanNextPage()}
+              onClick={() => table.setPageIndex((totalPages || table.getPageCount()) - 1)}
+              disabled={externalPagination ? pagination.pageIndex >= (totalPages || 1) - 1 : !table.getCanNextPage()}
             >
               <span className="sr-only">Go to last page</span>
               <IconChevronsRight />

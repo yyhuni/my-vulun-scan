@@ -231,9 +231,9 @@ function HttpStatusBadge({ statusCode }: { statusCode: number | null | undefined
 }
 
 /**
- * 创建端点表格列定义
+ * 创建目标端点表格列定义
  */
-export const createEndpointColumns = ({
+export const createTargetEndpointColumns = ({
   formatDate,
   navigate,
   handleDelete,

@@ -181,9 +181,9 @@ function DataTableColumnHeader({
 }
 
 /**
- * 创建域名表格列定义
+ * 创建目标域名表格列定义
  */
-export const createDomainColumns = ({
+export const createTargetDomainColumns = ({
   formatDate,
   navigate,
   handleDelete,

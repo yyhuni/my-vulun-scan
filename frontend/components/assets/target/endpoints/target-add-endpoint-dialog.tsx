@@ -37,7 +37,7 @@ import { EndpointValidator } from "@/lib/endpoint-validator"
 import { getDomain } from "tldts"
 
 // 组件属性类型定义
-interface AddEndpointDialogProps {
+interface TargetAddEndpointDialogProps {
   domainId?: string                            // 域名ID（可选，仅用于兼容性）
   currentDomainName?: string                   // 当前域名名称（用于校验端点）
   onAdd: (endpoints: Endpoint[]) => void      // 添加成功回调函数
@@ -48,7 +48,7 @@ interface AddEndpointDialogProps {
 
 
 /**
- * 添加端点对话框组件
+ * 添加目标端点对话框组件
  * 提供添加新端点的表单界面，支持批量添加
  * 
  * 功能特性：
@@ -59,13 +59,13 @@ interface AddEndpointDialogProps {
  * 5. 加载状态
  * 6. 用户友好的交互
  */
-export function AddEndpointDialog({ 
+export function TargetAddEndpointDialog({ 
   domainId,
   currentDomainName,
   onAdd, 
   open: externalOpen, 
   onOpenChange: externalOnOpenChange 
-}: AddEndpointDialogProps) {
+}: TargetAddEndpointDialogProps) {
   // 对话框开关状态 - 支持外部控制
   const [internalOpen, setInternalOpen] = useState(false)
   const open = externalOpen !== undefined ? externalOpen : internalOpen

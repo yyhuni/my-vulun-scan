@@ -4,8 +4,8 @@ import React, { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { useTargetEndpoints } from "@/hooks/use-targets"
 import { useDeleteEndpoint, useBatchDeleteEndpoints } from "@/hooks/use-endpoints"
-import { EndpointsDataTable } from "@/components/assets/organization/endpoints/endpoints-data-table"
-import { createEndpointColumns } from "@/components/assets/organization/endpoints/endpoints-columns"
+import { TargetEndpointsDataTable } from "@/components/assets/target/endpoints/target-endpoints-data-table"
+import { createTargetEndpointColumns } from "@/components/assets/target/endpoints/target-endpoints-columns"
 import { LoadingState, LoadingSpinner } from "@/components/loading-spinner"
 import {
   AlertDialog,
@@ -117,7 +117,7 @@ export function TargetEndpointsDetailView({
   // 创建列定义
   const endpointColumns = useMemo(
     () =>
-      createEndpointColumns({
+      createTargetEndpointColumns({
         formatDate,
         navigate,
         handleDelete: handleDeleteEndpoint,
@@ -153,7 +153,7 @@ export function TargetEndpointsDetailView({
 
   return (
     <>
-      <EndpointsDataTable
+      <TargetEndpointsDataTable
         data={data?.endpoints || []}
         columns={endpointColumns}
         onBulkDelete={handleBulkDelete}

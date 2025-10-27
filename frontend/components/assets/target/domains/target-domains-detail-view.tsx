@@ -4,8 +4,8 @@ import React, { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { useTargetDomains, useTarget } from "@/hooks/use-targets"
 import { useDeleteDomain, useBatchDeleteDomains } from "@/hooks/use-domains"
-import { DomainsDataTable } from "@/components/assets/organization/domains/domains-data-table"
-import { createDomainColumns } from "@/components/assets/organization/domains/domains-columns"
+import { TargetDomainsDataTable } from "@/components/assets/target/domains/target-domains-data-table"
+import { createTargetDomainColumns } from "@/components/assets/target/domains/target-domains-columns"
 import { LoadingState, LoadingSpinner } from "@/components/loading-spinner"
 import {
   AlertDialog,
@@ -120,7 +120,7 @@ export function TargetDomainsDetailView({
   // 创建列定义
   const domainColumns = useMemo(
     () =>
-      createDomainColumns({
+      createTargetDomainColumns({
         formatDate,
         navigate,
         handleDelete: handleDeleteDomain,
@@ -156,7 +156,7 @@ export function TargetDomainsDetailView({
 
   return (
     <>
-      <DomainsDataTable
+      <TargetDomainsDataTable
         data={data?.domains || []}
         columns={domainColumns}
         onBulkDelete={handleBulkDelete}

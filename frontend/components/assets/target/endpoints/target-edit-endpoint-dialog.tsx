@@ -31,7 +31,7 @@ import {
 import type { Endpoint } from "@/types/endpoint.types"
 
 // 组件属性类型定义
-interface EditEndpointDialogProps {
+interface TargetEditEndpointDialogProps {
   endpoint: Endpoint                           // 要编辑的端点数据
   onEdit: (endpoint: Endpoint) => void        // 编辑成功回调函数
   open?: boolean                               // 外部控制对话框开关状态
@@ -70,7 +70,7 @@ const getStatusCodeColor = (code: number) => {
 }
 
 /**
- * 编辑端点对话框组件
+ * 编辑目标端点对话框组件
  * 提供编辑现有端点的表单界面
  * 
  * 功能特性：
@@ -81,13 +81,13 @@ const getStatusCodeColor = (code: number) => {
  * 5. 加载状态
  * 6. 用户友好的交互
  */
-export function EditEndpointDialog({ 
+export function TargetEditEndpointDialog({ 
   endpoint,
   onEdit, 
   open: externalOpen, 
   onOpenChange: externalOnOpenChange,
   trigger
-}: EditEndpointDialogProps) {
+}: TargetEditEndpointDialogProps) {
   // 对话框开关状态 - 支持外部控制
   const [internalOpen, setInternalOpen] = useState(false)
   const open = externalOpen !== undefined ? externalOpen : internalOpen
