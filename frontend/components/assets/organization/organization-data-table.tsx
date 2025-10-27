@@ -76,7 +76,7 @@ export function OrganizationDataTable({
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [sorting, setSorting] = React.useState<SortingState>([
     {
-      id: "updatedAt",
+      id: "createdAt",
       desc: true, // 降序排列，最新的在前
     },
   ])
@@ -181,9 +181,9 @@ export function OrganizationDataTable({
                     >
                       {column.id === "name" && "Organization"}
                       {column.id === "description" && "Description"}
-                      {column.id === "createdAt" && "Created At"}
-                      {column.id === "updatedAt" && "Updated At"}
-                      {!["name", "description", "createdAt", "updatedAt"].includes(column.id) && column.id}
+                      {column.id === "targetCount" && "Total Targets"}
+                      {column.id === "createdAt" && "Added"}
+                      {!["name", "description", "targetCount", "createdAt"].includes(column.id) && column.id}
                     </DropdownMenuCheckboxItem>
                   )
                 })}

@@ -31,6 +31,7 @@ export default function TargetLayout({
   const getActiveTab = () => {
     if (pathname.includes("/domains")) return "domains"
     if (pathname.includes("/endpoints")) return "endpoints"
+    if (pathname.includes("/vulnerabilities")) return "vulnerabilities"
     return ""
   }
 
@@ -39,6 +40,7 @@ export default function TargetLayout({
   const tabPaths = {
     domains: `${basePath}/domains`,
     endpoints: `${basePath}/endpoints`,
+    vulnerabilities: `${basePath}/vulnerabilities`,
   }
 
   // 加载状态
@@ -118,10 +120,13 @@ export default function TargetLayout({
         <Tabs value={getActiveTab()} className="w-full">
           <TabsList>
             <TabsTrigger value="domains" asChild>
-              <Link href={tabPaths.domains}>域名</Link>
+              <Link href={tabPaths.domains}>Subdomains</Link>
             </TabsTrigger>
             <TabsTrigger value="endpoints" asChild>
-              <Link href={tabPaths.endpoints}>URL</Link>
+              <Link href={tabPaths.endpoints}>URLs</Link>
+            </TabsTrigger>
+            <TabsTrigger value="vulnerabilities" asChild>
+              <Link href={tabPaths.vulnerabilities}>Vulnerabilities</Link>
             </TabsTrigger>
           </TabsList>
         </Tabs>

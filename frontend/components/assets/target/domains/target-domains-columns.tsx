@@ -17,7 +17,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { MoreHorizontal, Eye, Trash2, ChevronsUpDown, ChevronUp, ChevronDown, Copy, Check } from "lucide-react"
+import { MoreHorizontal, Star, Trash2, ChevronsUpDown, ChevronUp, ChevronDown, Copy, Check, Image } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import type { Domain } from "@/types/domain.types"
 import { toast } from "sonner"
 
@@ -103,6 +104,7 @@ interface CreateColumnsProps {
   formatDate: (dateString: string) => string
   navigate: (path: string) => void
   handleDelete: (domain: Domain) => void
+  handleMarkImportant: (domain: Domain) => void
 }
 
 /**
@@ -110,11 +112,11 @@ interface CreateColumnsProps {
  */
 function DomainRowActions({
   domain,
-  onView,
+  onMarkImportant,
   onDelete,
 }: {
   domain: Domain
-  onView: () => void
+  onMarkImportant: () => void
   onDelete: () => void
 }) {
   return (
@@ -128,10 +130,10 @@ function DomainRowActions({
           <span className="sr-only">打开菜单</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={onView}>
-          <Eye />
-          查看详情
+      <DropdownMenuContent align="end" className="w-52">
+        <DropdownMenuItem onClick={onMarkImportant}>
+          <Star />
+          Mark Important Subdomain
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
@@ -139,7 +141,7 @@ function DomainRowActions({
           className="text-destructive focus:text-destructive"
         >
           <Trash2 />
-          删除
+          Delete Subdomain
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -187,6 +189,7 @@ export const createTargetDomainColumns = ({
   formatDate,
   navigate,
   handleDelete,
+  handleMarkImportant,
 }: CreateColumnsProps): ColumnDef<Domain>[] => [
   // 选择列
   {
@@ -212,29 +215,270 @@ export const createTargetDomainColumns = ({
     enableHiding: false,
   },
 
-  // 域名列
+  // 子域名列
   {
     accessorKey: "name",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="域名" />
+      <DataTableColumnHeader column={column} title="Subdomain" />
     ),
     cell: ({ row }) => {
       const name = row.getValue("name") as string
-      return <CopyableCell value={name} maxWidth="400px" truncateLength={50} successMessage="已复制域名" />
+      return <CopyableCell value={name} maxWidth="300px" truncateLength={40} successMessage="已复制子域名" />
     },
   },
 
-  // 更新时间列
+  // 状态列
   {
-    accessorKey: "updatedAt",
+    accessorKey: "status",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="更新时间" />
+      <DataTableColumnHeader column={column} title="Status" />
     ),
-    cell: ({ row }) => (
-      <div className="text-sm text-muted-foreground">
-        {formatDate(row.getValue("updatedAt"))}
-      </div>
+    cell: ({ row }) => {
+      const status = row.getValue("status") as string | undefined
+      if (!status) {
+        return <span className="text-sm text-muted-foreground">-</span>
+      }
+      
+      // 根据状态码选择颜色
+      const getStatusVariant = (code: string) => {
+        const statusCode = parseInt(code)
+        if (statusCode >= 200 && statusCode < 300) return "default" // 成功 - 蓝色
+        if (statusCode >= 300 && statusCode < 400) return "secondary" // 重定向 - 灰色
+        if (statusCode >= 400 && statusCode < 500) return "destructive" // 客户端错误 - 红色
+        if (statusCode >= 500) return "destructive" // 服务器错误 - 红色
+        return "outline"
+      }
+      
+      return (
+        <Badge variant={getStatusVariant(status)} className="font-mono">
+          {status}
+        </Badge>
+      )
+    },
+  },
+
+  // 标题列
+  {
+    accessorKey: "title",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Title" />
     ),
+    cell: ({ row }) => {
+      const title = row.getValue("title") as string | undefined
+      if (!title) {
+        return <span className="text-sm text-muted-foreground">-</span>
+      }
+      return <CopyableCell value={title} maxWidth="250px" truncateLength={35} successMessage="已复制标题" className="text-sm" />
+    },
+  },
+
+  // IP列
+  {
+    accessorKey: "ip",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="IP" />
+    ),
+    cell: ({ row }) => {
+      const ip = row.getValue("ip") as string | undefined
+      if (!ip) {
+        return <span className="text-sm text-muted-foreground">-</span>
+      }
+      
+      const [copied, setCopied] = React.useState(false)
+      
+      const handleCopy = async () => {
+        try {
+          await navigator.clipboard.writeText(ip)
+          setCopied(true)
+          toast.success('已复制IP')
+          setTimeout(() => setCopied(false), 2000)
+        } catch {
+          toast.error('复制失败')
+        }
+      }
+      
+      return (
+        <TooltipProvider delayDuration={300}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge 
+                variant="secondary" 
+                className="font-mono cursor-pointer hover:bg-secondary/80"
+                onClick={handleCopy}
+              >
+                {ip}
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              <p className="text-xs">{copied ? '已复制!' : '点击复制'}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )
+    },
+  },
+
+  // 端口列
+  {
+    accessorKey: "ports",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Ports" />
+    ),
+    cell: ({ row }) => {
+      const ports = row.getValue("ports") as number[] | undefined
+      if (!ports || ports.length === 0) {
+        return <span className="text-sm text-muted-foreground">-</span>
+      }
+      
+      // 端口到服务名称的映射
+      const getServiceName = (port: number): string => {
+        const serviceMap: Record<number, string> = {
+          20: 'ftp-data',
+          21: 'ftp',
+          22: 'ssh',
+          23: 'telnet',
+          25: 'smtp',
+          53: 'dns',
+          80: 'http',
+          110: 'pop3',
+          143: 'imap',
+          179: 'bgp',
+          443: 'https',
+          445: 'smb',
+          465: 'smtps',
+          587: 'smtp',
+          993: 'imaps',
+          995: 'pop3s',
+          1433: 'mssql',
+          3306: 'mysql',
+          3389: 'rdp',
+          5432: 'postgresql',
+          5900: 'vnc',
+          6379: 'redis',
+          8080: 'http-alt',
+          8443: 'https-alt',
+          27017: 'mongodb',
+        }
+        return serviceMap[port] || ''
+      }
+      
+      const displayPorts = ports.slice(0, 3)
+      const remainingCount = ports.length - 3
+      
+      return (
+        <div className="flex flex-wrap gap-1">
+          {displayPorts.map((port) => {
+            const service = getServiceName(port)
+            return (
+              <Badge 
+                key={port} 
+                variant="outline" 
+                className="font-mono text-xs"
+              >
+                {port}{service && `/${service}`}
+              </Badge>
+            )
+          })}
+          {remainingCount > 0 && (
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge 
+                    variant="secondary" 
+                    className="text-xs cursor-default"
+                  >
+                    +{remainingCount}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs">
+                  <div className="flex flex-wrap gap-1">
+                    {ports.slice(3).map((port) => {
+                      const service = getServiceName(port)
+                      return (
+                        <span key={port} className="text-xs font-mono">
+                          {port}{service && `/${service}`}
+                        </span>
+                      )
+                    })}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
+      )
+    },
+  },
+
+  // 内容长度列
+  {
+    accessorKey: "contentLength",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Content Length" />
+    ),
+    cell: ({ row }) => {
+      const contentLength = row.getValue("contentLength") as number | undefined
+      if (!contentLength) {
+        return <span className="text-sm text-muted-foreground">-</span>
+      }
+      return (
+        <div className="text-sm text-muted-foreground font-mono">
+          {contentLength.toLocaleString()}
+        </div>
+      )
+    },
+  },
+
+  // 截图列
+  {
+    accessorKey: "screenshot",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Screenshot" />
+    ),
+    cell: ({ row }) => {
+      const screenshot = row.getValue("screenshot") as string | undefined
+      if (!screenshot) {
+        return <span className="text-sm text-muted-foreground">-</span>
+      }
+      return (
+        <TooltipProvider delayDuration={300}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2"
+                onClick={() => window.open(screenshot, '_blank')}
+              >
+                <Image className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              <p className="text-xs">点击查看截图</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )
+    },
+  },
+
+  // 响应时间列
+  {
+    accessorKey: "responseTime",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Response Time" />
+    ),
+    cell: ({ row }) => {
+      const responseTime = row.getValue("responseTime") as number | undefined
+      if (!responseTime) {
+        return <span className="text-sm text-muted-foreground">-</span>
+      }
+      return (
+        <div className="text-sm text-muted-foreground">
+          {responseTime}ms
+        </div>
+      )
+    },
   },
 
   // 操作列
@@ -243,7 +487,7 @@ export const createTargetDomainColumns = ({
     cell: ({ row }) => (
       <DomainRowActions
         domain={row.original}
-        onView={() => navigate(`/assets/domain/${row.original.id}`)}
+        onMarkImportant={() => handleMarkImportant(row.original)}
         onDelete={() => handleDelete(row.original)}
       />
     ),

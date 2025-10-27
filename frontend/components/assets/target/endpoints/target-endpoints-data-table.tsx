@@ -26,7 +26,6 @@ import {
   IconChevronsRight,
   IconLayoutColumns,
   IconPlus,
-  IconTrash,
 } from "@tabler/icons-react"
 
 // 导入 UI 组件
@@ -58,7 +57,7 @@ import {
 // 导入类型定义
 import type { Endpoint } from "@/types/endpoint.types"
 
-// 组件属性类型定义
+  // 组件属性类型定义
 interface TargetEndpointsDataTableProps {
   data: Endpoint[]                                  // 端点数据数组
   columns: ColumnDef<Endpoint>[]                    // 列定义数组
@@ -221,24 +220,6 @@ export function TargetEndpointsDataTable({
                 })}
             </DropdownMenuContent>
           </DropdownMenu>
-
-          {/* 批量删除按钮 */}
-          {onBulkDelete && (
-            <Button 
-              onClick={onBulkDelete}
-              size="sm"
-              variant="outline"
-              disabled={table.getFilteredSelectedRowModel().rows.length === 0}
-              className={
-                table.getFilteredSelectedRowModel().rows.length === 0
-                  ? "text-muted-foreground"
-                  : "text-destructive hover:text-destructive hover:bg-destructive/10"
-              }
-            >
-              <IconTrash />
-              删除
-            </Button>
-          )}
 
           {/* 添加新端点按钮 */}
           {onAddNew && (

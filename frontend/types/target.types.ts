@@ -23,6 +23,7 @@ export interface Target {
   description?: string
   updatedAt: string
   createdAt: string
+  lastScanned?: string
 }
 
 /**

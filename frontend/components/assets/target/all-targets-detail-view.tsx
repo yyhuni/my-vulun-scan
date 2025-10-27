@@ -90,11 +90,35 @@ export function AllTargetsDetailView() {
     }
   }
 
+  // 处理发起扫描
+  const handleInitiateScan = useCallback((target: Target) => {
+    // TODO: 实现发起扫描功能
+    console.log('发起扫描:', target)
+    router.push(`/scan/new?targetId=${target.id}`)
+  }, [router])
+
+  // 处理定时扫描
+  const handleScheduleScan = useCallback((target: Target) => {
+    // TODO: 实现定时扫描功能
+    console.log('定时扫描:', target)
+    router.push(`/scan/scheduled?targetId=${target.id}`)
+  }, [router])
+
+  // 处理编辑目标
+  const handleEdit = useCallback((target: Target) => {
+    // TODO: 实现编辑功能
+    console.log('编辑目标:', target)
+    // 可以在这里打开编辑对话框或跳转到编辑页面
+  }, [])
+
   // 创建表格列
   const columns = createAllTargetsColumns({
     formatDate,
     navigate: (path: string) => router.push(path),
     handleDelete: handleDeleteTarget,
+    handleInitiateScan,
+    handleScheduleScan,
+    handleEdit,
   })
 
   // 加载中

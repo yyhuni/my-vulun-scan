@@ -17,7 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { MoreHorizontal, Eye, Trash2, ChevronsUpDown, ChevronUp, ChevronDown, Copy, Check } from "lucide-react"
+import { MoreHorizontal, Eye, Trash2, ChevronsUpDown, ChevronUp, ChevronDown, Copy, Check, Play, Calendar, Pencil } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import type { Target } from "@/types/target.types"
@@ -104,6 +104,9 @@ interface CreateColumnsProps {
   formatDate: (dateString: string) => string
   navigate: (path: string) => void
   handleDelete: (target: Target) => void
+  handleInitiateScan: (target: Target) => void
+  handleScheduleScan: (target: Target) => void
+  handleEdit: (target: Target) => void
 }
 
 /**
@@ -112,10 +115,16 @@ interface CreateColumnsProps {
 function TargetRowActions({
   target,
   onView,
+  onInitiateScan,
+  onScheduleScan,
+  onEdit,
   onDelete,
 }: {
   target: Target
   onView: () => void
+  onInitiateScan: () => void
+  onScheduleScan: () => void
+  onEdit: () => void
   onDelete: () => void
 }) {
   return (
@@ -129,18 +138,31 @@ function TargetRowActions({
           <span className="sr-only">打开菜单</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="end" className="w-48">
         <DropdownMenuItem onClick={onView}>
           <Eye />
-          查看详情
+          Target Summary
         </DropdownMenuItem>
         <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={onInitiateScan}>
+          <Play />
+          Initiate Scan
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={onScheduleScan}>
+          <Calendar />
+          Schedule Scan
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={onEdit}>
+          <Pencil />
+          Edit Target
+        </DropdownMenuItem>
         <DropdownMenuItem
           onClick={onDelete}
           className="text-destructive focus:text-destructive"
         >
           <Trash2 />
-          删除
+          Delete Target
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -188,6 +210,9 @@ export const createAllTargetsColumns = ({
   formatDate,
   navigate,
   handleDelete,
+  handleInitiateScan,
+  handleScheduleScan,
+  handleEdit,
 }: CreateColumnsProps): ColumnDef<Target>[] => [
   // 选择列
   {
@@ -217,7 +242,7 @@ export const createAllTargetsColumns = ({
   {
     accessorKey: "name",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="目标名称" />
+      <DataTableColumnHeader column={column} title="Target" />
     ),
     cell: ({ row }) => {
       const name = row.getValue("name") as string
@@ -236,33 +261,11 @@ export const createAllTargetsColumns = ({
     },
   },
 
-  // 类型列
-  {
-    accessorKey: "type",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="类型" />
-    ),
-    cell: ({ row }) => {
-      const type = row.getValue("type") as string
-      const typeMap: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
-        domain: { label: "域名", variant: "default" },
-        ip: { label: "IP", variant: "secondary" },
-        cidr: { label: "CIDR", variant: "outline" },
-      }
-      const typeInfo = typeMap[type] || { label: type, variant: "secondary" as const }
-      return (
-        <Badge variant={typeInfo.variant}>
-          {typeInfo.label}
-        </Badge>
-      )
-    },
-  },
-
   // 所属组织列
   {
     accessorKey: "organizations",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="所属组织" />
+      <DataTableColumnHeader column={column} title="Organization" />
     ),
     cell: ({ row }) => {
       const organizations = row.getValue("organizations") as Array<{ id: number; name: string }> | undefined
@@ -270,16 +273,16 @@ export const createAllTargetsColumns = ({
         return <span className="text-sm text-muted-foreground">-</span>
       }
       
-      const displayOrgs = organizations.slice(0, 3)
-      const remainingCount = organizations.length - 3
+      const displayOrgs = organizations.slice(0, 2)
+      const remainingCount = organizations.length - 2
       
       return (
-        <div className="flex flex-col gap-1 py-1">
+        <div className="flex flex-wrap gap-1">
           {displayOrgs.map((org) => (
             <Badge 
               key={org.id} 
               variant="secondary" 
-              className="justify-start truncate text-xs"
+              className="text-xs"
               title={org.name}
             >
               {org.name}
@@ -291,9 +294,9 @@ export const createAllTargetsColumns = ({
                 <TooltipTrigger asChild>
                   <Badge 
                     variant="outline" 
-                    className="justify-start text-xs cursor-default"
+                    className="text-xs cursor-default"
                   >
-                    ...
+                    +{remainingCount}
                   </Badge>
                 </TooltipTrigger>
                 <TooltipContent 
@@ -303,7 +306,7 @@ export const createAllTargetsColumns = ({
                   className="max-w-sm"
                 >
                   <div className="flex flex-col gap-1">
-                    {organizations.slice(3).map((org) => (
+                    {organizations.slice(2).map((org) => (
                       <div key={org.id} className="text-xs">
                         {org.name}
                       </div>
@@ -319,50 +322,53 @@ export const createAllTargetsColumns = ({
     enableSorting: false,
   },
 
-  // 域名数量列
-  {
-    accessorKey: "domainCount",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="域名数" />
-    ),
-    cell: ({ row }) => {
-      const count = row.getValue("domainCount") as number | undefined
-      return (
-        <div className="text-sm font-medium text-center">
-          {count ?? 0}
-        </div>
-      )
-    },
-  },
-
-  // 端点数量列
-  {
-    accessorKey: "endpointCount",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="URL 数" />
-    ),
-    cell: ({ row }) => {
-      const count = row.getValue("endpointCount") as number | undefined
-      return (
-        <div className="text-sm font-medium text-center">
-          {count ?? 0}
-        </div>
-      )
-    },
-  },
-
   // 描述列
   {
     accessorKey: "description",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="描述" />
+      <DataTableColumnHeader column={column} title="Description" />
     ),
     cell: ({ row }) => {
       const description = row.getValue("description") as string | undefined
       if (!description) {
         return <span className="text-sm text-muted-foreground">-</span>
       }
-      return <CopyableCell value={description} maxWidth="400px" truncateLength={50} successMessage="已复制描述" className="text-sm text-muted-foreground" />
+      return <CopyableCell value={description} maxWidth="300px" truncateLength={40} successMessage="已复制描述" className="text-sm text-muted-foreground" />
+    },
+  },
+
+  // 创建时间列
+  {
+    accessorKey: "createdAt",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Added On" />
+    ),
+    cell: ({ row }) => {
+      const createdAt = row.getValue("createdAt") as string
+      return (
+        <div className="text-sm text-muted-foreground">
+          {formatDate(createdAt)}
+        </div>
+      )
+    },
+  },
+
+  // 最后扫描时间列
+  {
+    accessorKey: "lastScanned",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Last Scanned" />
+    ),
+    cell: ({ row }) => {
+      const lastScanned = row.original.lastScanned
+      if (!lastScanned) {
+        return <span className="text-sm text-muted-foreground">-</span>
+      }
+      return (
+        <div className="text-sm text-muted-foreground">
+          {formatDate(lastScanned)}
+        </div>
+      )
     },
   },
 
@@ -373,6 +379,9 @@ export const createAllTargetsColumns = ({
       <TargetRowActions
         target={row.original}
         onView={() => navigate(`/assets/target/${row.original.id}/details`)}
+        onInitiateScan={() => handleInitiateScan(row.original)}
+        onScheduleScan={() => handleScheduleScan(row.original)}
+        onEdit={() => handleEdit(row.original)}
         onDelete={() => handleDelete(row.original)}
       />
     ),

@@ -27,6 +27,7 @@ import {
   IconLayoutColumns,
   IconPlus,
   IconTrash,
+  IconDownload,
 } from "@tabler/icons-react"
 
 // 导入 UI 组件
@@ -35,6 +36,9 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
@@ -69,6 +73,11 @@ interface TargetDomainsDataTableProps {
   searchPlaceholder?: string                     // 搜索框占位符
   searchColumn?: string                          // 搜索的列名
   addButtonText?: string                         // 添加按钮文本
+  // 下载回调函数
+  onDownloadAll?: () => void                     // 下载所有子域名
+  onDownloadInteresting?: () => void             // 下载有趣的子域名
+  onDownloadImportant?: () => void               // 下载重要的子域名
+  onDownloadSelected?: () => void                // 下载选中的子域名
   // 服务端分页支持
   pagination?: { pageIndex: number; pageSize: number }
   setPagination?: React.Dispatch<React.SetStateAction<{ pageIndex: number; pageSize: number }>>
@@ -90,6 +99,10 @@ export function TargetDomainsDataTable({
   searchPlaceholder = "Search domains...",
   searchColumn = "name",
   addButtonText = "Add",
+  onDownloadAll,
+  onDownloadInteresting,
+  onDownloadImportant,
+  onDownloadSelected,
   pagination: externalPagination,
   setPagination: setExternalPagination,
   paginationInfo,
@@ -210,17 +223,69 @@ export function TargetDomainsDataTable({
                       onCheckedChange={(value) => column.toggleVisibility(!!value)}
                     >
                       {column.id === "id" && "ID"}
-                      {column.id === "name" && "Domain"}
+                      {column.id === "name" && "Subdomain"}
+                      {column.id === "status" && "Status"}
+                      {column.id === "title" && "Title"}
+                      {column.id === "ip" && "IP"}
+                      {column.id === "ports" && "Ports"}
+                      {column.id === "contentLength" && "Content Length"}
+                      {column.id === "screenshot" && "Screenshot"}
+                      {column.id === "responseTime" && "Response Time"}
                       {column.id === "assetId" && "Target ID"}
                       {column.id === "asset" && "Target"}
                       {column.id === "createdAt" && "Created At"}
                       {column.id === "updatedAt" && "Updated At"}
-                      {!["id", "name", "assetId", "asset", "createdAt", "updatedAt"].includes(column.id) && column.id}
+                      {!["id", "name", "status", "title", "ip", "ports", "contentLength", "screenshot", "responseTime", "assetId", "asset", "createdAt", "updatedAt"].includes(column.id) && column.id}
                     </DropdownMenuCheckboxItem>
                   )
                 })}
             </DropdownMenuContent>
           </DropdownMenu>
+          
+          {/* 下载按钮 */}
+          {(onDownloadAll || onDownloadInteresting || onDownloadImportant || onDownloadSelected) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <IconDownload />
+                  Download
+                  <IconChevronDown />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuLabel>Download Options</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {onDownloadAll && (
+                  <DropdownMenuItem onClick={onDownloadAll}>
+                    <IconDownload className="h-4 w-4" />
+                    Download All Subdomains
+                  </DropdownMenuItem>
+                )}
+                {onDownloadSelected && (
+                  <DropdownMenuItem 
+                    onClick={onDownloadSelected}
+                    disabled={table.getFilteredSelectedRowModel().rows.length === 0}
+                  >
+                    <IconDownload className="h-4 w-4" />
+                    Download Selected Subdomains
+                  </DropdownMenuItem>
+                )}
+                {onDownloadInteresting && (
+                  <DropdownMenuItem onClick={onDownloadInteresting}>
+                    <IconDownload className="h-4 w-4" />
+                    Download Interesting Subdomains
+                  </DropdownMenuItem>
+                )}
+                {onDownloadImportant && (
+                  <DropdownMenuItem onClick={onDownloadImportant}>
+                    <IconDownload className="h-4 w-4" />
+                    Download Important Subdomains
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
           {/* 批量删除按钮 */}
           {onBulkDelete && (
             <Button 

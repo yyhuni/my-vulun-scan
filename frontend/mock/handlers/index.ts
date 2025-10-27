@@ -3,6 +3,7 @@
  */
 import { organizationHandlers } from './organizations'
 import { targetHandlers } from './targets'
+import { vulnerabilityHandlers } from './vulnerabilities'
 
 /**
  * 所有 API 的 mock handlers
@@ -10,5 +11,6 @@ import { targetHandlers } from './targets'
 export const handlers = [
   ...organizationHandlers,
   ...targetHandlers,
+  ...vulnerabilityHandlers,
 ]
 

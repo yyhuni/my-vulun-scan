@@ -104,6 +104,18 @@ export function OrganizationList() {
     setEditDialogOpen(true)
   }
 
+  // 处理发起扫描操作
+  const handleInitiateScan = (org: Organization) => {
+    // TODO: 实现发起扫描功能
+    console.log("Initiate scan for organization:", org.name)
+  }
+
+  // 处理计划扫描操作
+  const handleScheduleScan = (org: Organization) => {
+    // TODO: 实现计划扫描功能
+    console.log("Schedule scan for organization:", org.name)
+  }
+
   // 导航到详情页面（使用 Next.js 客户端路由）
   const router = useRouter()
   const navigate = (path: string) => {
@@ -112,7 +124,14 @@ export function OrganizationList() {
 
   // 创建列定义
   const columns = useMemo(() =>
-    createOrganizationColumns({ formatDate, navigate, handleEdit, handleDelete }),
+    createOrganizationColumns({ 
+      formatDate, 
+      navigate, 
+      handleEdit, 
+      handleDelete,
+      handleInitiateScan,
+      handleScheduleScan,
+    }),
     [formatDate, navigate, handleEdit, handleDelete]
   )
 

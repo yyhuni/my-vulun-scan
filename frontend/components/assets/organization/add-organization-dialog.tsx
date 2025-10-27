@@ -1,7 +1,7 @@
 "use client"
 
-import React, { useState } from "react"
-import { Plus, Building2 } from "lucide-react"
+import React, { useState, useRef, useMemo } from "react"
+import { Plus, Building2, Target } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -20,6 +20,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { LoadingSpinner } from "@/components/loading-spinner"
+import { TargetValidator } from "@/lib/target-validator"
 import {
   Form,
   FormControl,
@@ -32,6 +33,7 @@ import {
 
 // 导入 React Query Hook
 import { useCreateOrganization } from "@/hooks/use-organizations"
+import { useCreateTarget } from "@/hooks/use-targets"
 
 // 导入类型定义
 import type { Organization } from "@/types/organization.types"
@@ -42,6 +44,8 @@ const formSchema = z.object({
     .min(2, { message: "组织名称至少需要 2 个字符" })
     .max(50, { message: "组织名称不能超过 50 个字符" }),
   description: z.string().max(200, { message: "描述不能超过 200 个字符" }).optional(),
+  targets: z.string().optional(),
+  targetDescription: z.string().max(200, { message: "目标描述不能超过 200 个字符" }).optional(),
 })
 
 type FormValues = z.infer<typeof formSchema>
@@ -72,8 +76,13 @@ export function AddOrganizationDialog({
   const open = externalOpen !== undefined ? externalOpen : internalOpen
   const setOpen = externalOnOpenChange || setInternalOpen
 
-  // 使用 React Query 的创建组织 mutation
+  // 行号列和输入框的 ref（用于同步滚动）
+  const lineNumbersRef = useRef<HTMLDivElement | null>(null)
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+
+  // 使用 React Query 的创建组织和目标 mutation
   const createOrganization = useCreateOrganization()
+  const createTarget = useCreateTarget()
   
   // 初始化表单
   const form = useForm<FormValues>({
@@ -81,11 +90,55 @@ export function AddOrganizationDialog({
     defaultValues: {
       name: "",
       description: "",
+      targets: "",
+      targetDescription: "",
     },
   })
 
+  // 监听表单值变化
+  const targetsText = form.watch("targets") || ""
+  const targetDescriptionText = form.watch("targetDescription") || ""
+
+  // 实时验证目标
+  const targetValidation = useMemo(() => {
+    const lines = targetsText
+      .split("\n")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0)
+
+    if (lines.length === 0) {
+      return {
+        count: 0,
+        invalid: []
+      }
+    }
+
+    const results = TargetValidator.validateTargetBatch(lines)
+    const invalid = results
+      .filter((r) => !r.isValid)
+      .map((r) => ({ index: r.index, originalTarget: r.originalTarget, error: r.error || "目标格式无效", type: r.type }))
+    
+    return {
+      count: lines.length,
+      invalid
+    }
+  }, [targetsText])
+
+  // 同步输入框和行号列的滚动
+  const handleTextareaScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
+    if (lineNumbersRef.current) {
+      lineNumbersRef.current.scrollTop = e.currentTarget.scrollTop
+    }
+  }
+
   // 处理表单提交
   const onSubmit = (values: FormValues) => {
+    // 检查是否有无效目标
+    if (targetValidation.invalid.length > 0) {
+      return
+    }
+
+    // 先创建组织
     createOrganization.mutate(
       {
         name: values.name.trim(),
@@ -93,15 +146,54 @@ export function AddOrganizationDialog({
       },
       {
         onSuccess: (newOrganization) => {
-          // 重置表单
-          form.reset()
-          
-          // 关闭对话框
-          setOpen(false)
-          
-          // 调用外部回调（如果提供）
-          if (onAdd) {
-            onAdd(newOrganization)
+          // 如果有目标，则创建目标
+          if (values.targets && values.targets.trim()) {
+            const targetList = values.targets
+              .split("\n")
+              .map(line => line.trim())
+              .filter(line => line.length > 0)
+              .map(name => ({
+                name,
+                description: values.targetDescription?.trim() || undefined,
+              }))
+
+            if (targetList.length > 0) {
+              // 创建目标并关联到新组织
+              createTarget.mutate(
+                {
+                  targets: targetList,
+                  organizationId: newOrganization.id,
+                },
+                {
+                  onSuccess: () => {
+                    // 重置表单
+                    form.reset()
+                    
+                    // 关闭对话框
+                    setOpen(false)
+                    
+                    // 调用外部回调
+                    if (onAdd) {
+                      onAdd(newOrganization)
+                    }
+                  }
+                }
+              )
+            } else {
+              // 没有目标，直接完成
+              form.reset()
+              setOpen(false)
+              if (onAdd) {
+                onAdd(newOrganization)
+              }
+            }
+          } else {
+            // 没有目标，直接完成
+            form.reset()
+            setOpen(false)
+            if (onAdd) {
+              onAdd(newOrganization)
+            }
           }
         }
       }
@@ -110,7 +202,7 @@ export function AddOrganizationDialog({
 
   // 处理对话框关闭
   const handleOpenChange = (newOpen: boolean) => {
-    if (!createOrganization.isPending) {
+    if (!createOrganization.isPending && !createTarget.isPending) {
       setOpen(newOpen)
       if (!newOpen) {
         // 关闭时重置表单
@@ -118,6 +210,10 @@ export function AddOrganizationDialog({
       }
     }
   }
+
+  // 表单验证
+  const isFormValid = form.formState.isValid && targetValidation.invalid.length === 0
+  const isSubmitting = createOrganization.isPending || createTarget.isPending
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -132,14 +228,14 @@ export function AddOrganizationDialog({
       )}
       
       {/* 对话框内容 */}
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <Building2 />
             <span>添加新组织</span>
           </DialogTitle>
           <DialogDescription>
-            填写组织信息以添加到系统中。标有 * 的字段为必填项。
+            填写组织信息以添加到系统中。可以同时添加目标。标有 * 的字段为必填项。
           </DialogDescription>
         </DialogHeader>
         
@@ -159,7 +255,7 @@ export function AddOrganizationDialog({
                     <FormControl>
                       <Input
                         placeholder="请输入组织名称"
-                        disabled={createOrganization.isPending}
+                        disabled={isSubmitting}
                         maxLength={50}
                         {...field}
                       />
@@ -182,7 +278,7 @@ export function AddOrganizationDialog({
                     <FormControl>
                       <Textarea
                         placeholder="请输入组织描述（可选）"
-                        disabled={createOrganization.isPending}
+                        disabled={isSubmitting}
                         rows={3}
                         maxLength={200}
                         {...field}
@@ -190,6 +286,90 @@ export function AddOrganizationDialog({
                     </FormControl>
                     <FormDescription>
                       {(field.value || "").length}/200 字符
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* 目标输入框 - 支持多行，带行号 */}
+              <FormField
+                control={form.control}
+                name="targets"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center space-x-2">
+                      <Target className="h-4 w-4" />
+                      <span>添加目标（可选）</span>
+                    </FormLabel>
+                    <FormControl>
+                      <div className="relative border rounded-md overflow-hidden bg-background">
+                        <div className="flex h-[324px]">
+                          {/* 行号列 - 固定显示15行 */}
+                          <div className="flex-shrink-0 w-12 bg-muted/30 border-r select-none overflow-hidden">
+                            <div 
+                              ref={lineNumbersRef}
+                              className="py-3 px-2 text-right font-mono text-xs text-muted-foreground leading-[1.4] h-full overflow-y-auto scrollbar-hide"
+                            >
+                              {Array.from({ length: Math.max(field.value?.split('\n').length || 1, 15) }, (_, i) => (
+                                <div key={i + 1} className="h-[20px]">
+                                  {i + 1}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          {/* 输入框 - 固定高度显示15行 */}
+                          <Textarea
+                            {...field}
+                            ref={(e) => {
+                              field.ref(e)
+                              textareaRef.current = e
+                            }}
+                            onScroll={handleTextareaScroll}
+                            placeholder={`请输入目标，每行一个\n支持域名、IP、CIDR\n例如：\nexample.com\n192.168.1.1\n10.0.0.0/8`}
+                            disabled={isSubmitting}
+                            className="font-mono h-full overflow-y-auto resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 leading-[1.4] text-sm py-3"
+                            style={{ lineHeight: '20px' }}
+                          />
+                        </div>
+                      </div>
+                    </FormControl>
+                    <FormDescription>
+                      {targetValidation.count} 个目标
+                      {targetValidation.invalid.length > 0 && (
+                        <span className="text-destructive ml-2">
+                          | {targetValidation.invalid.length} 个无效
+                        </span>
+                      )}
+                    </FormDescription>
+                    {targetValidation.invalid.length > 0 && (
+                      <div className="text-xs text-destructive">
+                        例如 第 {targetValidation.invalid[0].index + 1} 行: &quot;{targetValidation.invalid[0].originalTarget}&quot; - {targetValidation.invalid[0].error}
+                      </div>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* 目标描述输入框 */}
+              <FormField
+                control={form.control}
+                name="targetDescription"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>目标描述</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        {...field}
+                        placeholder="请输入目标描述（可选，将应用于所有目标）"
+                        disabled={isSubmitting}
+                        rows={2}
+                        maxLength={200}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {targetDescriptionText.length}/200 字符
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -203,18 +383,18 @@ export function AddOrganizationDialog({
                 type="button" 
                 variant="outline" 
                 onClick={() => handleOpenChange(false)}
-                disabled={createOrganization.isPending}
+                disabled={isSubmitting}
               >
                 取消
               </Button>
               <Button 
                 type="submit" 
-                disabled={createOrganization.isPending || !form.formState.isValid}
+                disabled={isSubmitting || !isFormValid}
               >
-                {createOrganization.isPending ? (
+                {isSubmitting ? (
                   <>
                     <LoadingSpinner/>
-                    创建中...
+                    {createOrganization.isPending ? "创建组织中..." : "创建目标中..."}
                   </>
                 ) : (
                   <>

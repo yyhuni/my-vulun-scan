@@ -16,6 +16,15 @@ export interface Domain {
   createdAt: string  // 响应拦截器自动从 created_at 转换而来
   updatedAt: string  // 响应拦截器自动从 updated_at 转换而来
   organizations?: Organization[]  // 关联的组织列表（仅在 Preload 时返回）
+  // 新增字段
+  status?: string    // 状态
+  title?: string     // 页面标题
+  ip?: string        // IP地址
+  ports?: number[]   // 端口列表
+  contentLength?: number  // 内容长度
+  screenshot?: string     // 截图URL
+  responseTime?: number   // 响应时间（毫秒）
+  isImportant?: boolean   // 是否重要
 }
 
 // 获取域名列表请求参数

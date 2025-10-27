@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { useTargetEndpoints } from "@/hooks/use-targets"
-import { useDeleteEndpoint, useBatchDeleteEndpoints } from "@/hooks/use-endpoints"
+import { useDeleteEndpoint } from "@/hooks/use-endpoints"
 import { TargetEndpointsDataTable } from "@/components/assets/target/endpoints/target-endpoints-data-table"
 import { createTargetEndpointColumns } from "@/components/assets/target/endpoints/target-endpoints-columns"
 import { LoadingState, LoadingSpinner } from "@/components/loading-spinner"
@@ -31,7 +31,6 @@ export function TargetEndpointsDetailView({
   const [selectedEndpoints, setSelectedEndpoints] = useState<Endpoint[]>([])
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [endpointToDelete, setEndpointToDelete] = useState<Endpoint | null>(null)
-  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
 
   // 分页状态管理
   const [pagination, setPagination] = useState({
@@ -41,7 +40,6 @@ export function TargetEndpointsDetailView({
 
   // 删除相关 hooks
   const deleteEndpoint = useDeleteEndpoint()
-  const batchDeleteEndpoints = useBatchDeleteEndpoints()
 
   // 使用 React Query 获取目标端点数据
   const {
@@ -87,26 +85,6 @@ export function TargetEndpointsDetailView({
     setEndpointToDelete(null)
 
     deleteEndpoint.mutate(endpointToDelete.id)
-  }
-
-  // 处理批量删除
-  const handleBulkDelete = () => {
-    if (selectedEndpoints.length === 0) {
-      return
-    }
-    setBulkDeleteDialogOpen(true)
-  }
-
-  // 确认批量删除
-  const confirmBulkDelete = async () => {
-    if (selectedEndpoints.length === 0) return
-
-    const endpointIds = selectedEndpoints.map(endpoint => endpoint.id)
-
-    setBulkDeleteDialogOpen(false)
-    setSelectedEndpoints([])
-
-    batchDeleteEndpoints.mutate({ endpointIds })
   }
 
   // 处理分页变化
@@ -156,7 +134,6 @@ export function TargetEndpointsDetailView({
       <TargetEndpointsDataTable
         data={data?.endpoints || []}
         columns={endpointColumns}
-        onBulkDelete={handleBulkDelete}
         onSelectionChange={setSelectedEndpoints}
         searchPlaceholder="搜索端点..."
         searchColumn="url"
@@ -189,44 +166,6 @@ export function TargetEndpointsDetailView({
                 </>
               ) : (
                 "删除"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* 批量删除确认对话框 */}
-      <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认批量删除</AlertDialogTitle>
-            <AlertDialogDescription>
-              此操作无法撤销。这将永久删除以下 {selectedEndpoints.length} 个端点及其相关数据。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="mt-2 p-2 bg-muted rounded-md max-h-96 overflow-y-auto">
-            <ul className="text-sm space-y-1">
-              {selectedEndpoints.map((endpoint) => (
-                <li key={endpoint.id} className="flex items-center">
-                  <span className="font-medium font-mono text-xs break-all">{endpoint.url}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmBulkDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={batchDeleteEndpoints.isPending}
-            >
-              {batchDeleteEndpoints.isPending ? (
-                <>
-                  <LoadingSpinner/>
-                  删除中...
-                </>
-              ) : (
-                `删除 ${selectedEndpoints.length} 个端点`
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

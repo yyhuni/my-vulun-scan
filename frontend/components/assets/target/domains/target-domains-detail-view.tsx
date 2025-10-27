@@ -117,6 +117,53 @@ export function TargetDomainsDetailView({
     setPagination(newPagination)
   }
 
+  // 处理标记重要子域名
+  const handleMarkImportant = (domain: Domain) => {
+    // TODO: 实现标记重要子域名功能
+    console.log('标记重要子域名:', domain)
+    // 可以在这里调用 API 更新域名的 isImportant 状态
+  }
+
+  // 处理下载所有子域名
+  const handleDownloadAll = () => {
+    // TODO: 实现下载所有子域名功能
+    console.log('下载所有子域名')
+    // 可以生成包含所有子域名的文件并下载
+  }
+
+  // 处理下载有趣的子域名
+  const handleDownloadInteresting = () => {
+    // TODO: 实现下载有趣的子域名功能
+    console.log('下载有趣的子域名')
+    // 可以根据某些规则筛选有趣的子域名并下载
+  }
+
+  // 处理下载重要的子域名
+  const handleDownloadImportant = () => {
+    // TODO: 实现下载重要的子域名功能
+    console.log('下载重要的子域名')
+    // 可以筛选标记为重要的子域名并下载
+  }
+
+  // 处理下载选中的子域名
+  const handleDownloadSelected = () => {
+    // TODO: 实现下载选中的子域名功能
+    console.log('下载选中的子域名:', selectedDomains)
+    // 可以将选中的子域名生成文件并下载
+    if (selectedDomains.length === 0) {
+      return
+    }
+    // 示例：生成文本文件
+    // const content = selectedDomains.map(d => d.name).join('\n')
+    // const blob = new Blob([content], { type: 'text/plain' })
+    // const url = URL.createObjectURL(blob)
+    // const a = document.createElement('a')
+    // a.href = url
+    // a.download = `selected-subdomains-${Date.now()}.txt`
+    // a.click()
+    // URL.revokeObjectURL(url)
+  }
+
   // 创建列定义
   const domainColumns = useMemo(
     () =>
@@ -124,8 +171,9 @@ export function TargetDomainsDetailView({
         formatDate,
         navigate,
         handleDelete: handleDeleteDomain,
+        handleMarkImportant,
       }),
-    [formatDate, navigate, handleDeleteDomain]
+    [formatDate, navigate, handleDeleteDomain, handleMarkImportant]
   )
 
   // 错误状态
@@ -163,6 +211,10 @@ export function TargetDomainsDetailView({
         onSelectionChange={setSelectedDomains}
         searchPlaceholder="搜索域名..."
         searchColumn="name"
+        onDownloadAll={handleDownloadAll}
+        onDownloadSelected={handleDownloadSelected}
+        onDownloadInteresting={handleDownloadInteresting}
+        onDownloadImportant={handleDownloadImportant}
         pagination={pagination}
         setPagination={setPagination}
         paginationInfo={{

@@ -19,7 +19,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 // 导入图标组件
-import { MoreHorizontal, Eye, Edit, Trash2, ChevronsUpDown, ChevronUp, ChevronDown } from "lucide-react"
+import { MoreHorizontal, Play, Calendar, Edit, Trash2, ChevronsUpDown, ChevronUp, ChevronDown } from "lucide-react"
 // 导入 Next.js Link 组件
 import Link from "next/link"
 
@@ -28,24 +28,28 @@ import type { Organization } from "@/types/organization.types"
 
 // 列创建函数的参数类型
 interface CreateColumnsProps {
-  formatDate: (dateString: string) => string  // 日期格式化函数
-  navigate: (path: string) => void            // 导航函数
-  handleEdit: (org: Organization) => void     // 编辑处理函数
-  handleDelete: (org: Organization) => void   // 删除处理函数
+  formatDate: (dateString: string) => string      // 日期格式化函数
+  navigate: (path: string) => void                // 导航函数
+  handleEdit: (org: Organization) => void         // 编辑处理函数
+  handleDelete: (org: Organization) => void       // 删除处理函数
+  handleInitiateScan: (org: Organization) => void // 发起扫描处理函数
+  handleScheduleScan: (org: Organization) => void // 计划扫描处理函数
 }
 
 /**
  * 组织行操作组件
- * 提供查看、编辑、删除等操作
+ * 提供发起扫描、计划扫描、编辑、删除等操作
  */
 function OrganizationRowActions({ 
   organization, 
-  onView, 
+  onInitiateScan,
+  onScheduleScan,
   onEdit, 
   onDelete 
 }: {
   organization: Organization
-  onView: () => void
+  onInitiateScan: () => void
+  onScheduleScan: () => void
   onEdit: () => void
   onDelete: () => void
 }) {
@@ -61,21 +65,25 @@ function OrganizationRowActions({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={onView}>
-          <Eye />
-          查看详情
+        <DropdownMenuItem onClick={onInitiateScan}>
+          <Play />
+          Initiate Scan
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={onEdit}>
-          <Edit />
-          编辑
+        <DropdownMenuItem onClick={onScheduleScan}>
+          <Calendar />
+          Schedule Scan
         </DropdownMenuItem>
         <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={onEdit}>
+          <Edit />
+          Edit Organization
+        </DropdownMenuItem>
         <DropdownMenuItem 
           onClick={onDelete}
           className="text-destructive focus:text-destructive"
         >
           <Trash2 />
-          删除
+          Delete Organization
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -131,6 +139,8 @@ export const createOrganizationColumns = ({
   navigate,
   handleEdit,
   handleDelete,
+  handleInitiateScan,
+  handleScheduleScan,
 }: CreateColumnsProps): ColumnDef<Organization>[] => [
   // 选择列 - 支持单选和全选
   {
@@ -160,7 +170,7 @@ export const createOrganizationColumns = ({
   {
     accessorKey: "name",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="组织名称" />
+      <DataTableColumnHeader column={column} title="Organization" />
     ),
     cell: ({ row }) => {
       const organization = row.original
@@ -179,7 +189,7 @@ export const createOrganizationColumns = ({
   {
     accessorKey: "description",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="描述" />
+      <DataTableColumnHeader column={column} title="Description" />
     ),
     cell: ({ row }) => {
       const description = row.getValue("description") as string
@@ -214,26 +224,42 @@ export const createOrganizationColumns = ({
     },
   },
   
-  // 更新时间列
+  // Total Targets 列
   {
-    accessorKey: "updatedAt",
+    accessorKey: "targetCount",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="更新时间" />
+      <DataTableColumnHeader column={column} title="Total Targets" />
     ),
     cell: ({ row }) => {
-      const updatedAt = row.getValue("updatedAt") as string | undefined
-      // 检查是否为零值时间（Go 的 time.Time 零值）
-      const isZeroTime = updatedAt && (
-        updatedAt === "0001-01-01T00:00:00Z" ||
-        updatedAt.startsWith("0001-01-01")
+      const targetCount = row.original.targetCount || row.original.stats?.total_targets || 0
+      return (
+        <div className="text-sm">
+          <Badge variant="secondary" className="text-xs">
+            {targetCount}
+          </Badge>
+        </div>
+      )
+    },
+  },
+
+  // Added 列（创建时间）
+  {
+    accessorKey: "createdAt",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Added" />
+    ),
+    cell: ({ row }) => {
+      const createdAt = row.getValue("createdAt") as string | undefined
+      // 检查是否为零值时间
+      const isZeroTime = createdAt && (
+        createdAt === "0001-01-01T00:00:00Z" ||
+        createdAt.startsWith("0001-01-01")
       )
 
       return (
         <div className="text-sm text-muted-foreground">
-          {updatedAt && !isZeroTime ? formatDate(updatedAt) : (
-            <Badge variant="secondary" className="text-xs">
-              未更新
-            </Badge>
+          {createdAt && !isZeroTime ? formatDate(createdAt) : (
+            <span className="text-muted-foreground">-</span>
           )}
         </div>
       )
@@ -246,7 +272,8 @@ export const createOrganizationColumns = ({
     cell: ({ row }) => (
       <OrganizationRowActions
         organization={row.original}
-        onView={() => navigate(`/assets/organization/${row.original.id}`)}
+        onInitiateScan={() => handleInitiateScan(row.original)}
+        onScheduleScan={() => handleScheduleScan(row.original)}
         onEdit={() => handleEdit(row.original)}
         onDelete={() => handleDelete(row.original)}
       />
