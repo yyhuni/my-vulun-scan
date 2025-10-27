@@ -2,14 +2,11 @@
 
 import React, { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { Building2, Target as TargetIcon, Globe, LinkIcon, TrendingUp } from "lucide-react"
-import { TargetsDataTable } from "./targets/targets-data-table"
-import { createTargetColumns } from "./targets/targets-columns"
-import { AddTargetDialog } from "./targets/add-target-dialog"
+import { toast } from "sonner"
+import { TargetsDataTable } from "./targets-data-table"
+import { createTargetColumns } from "./targets-columns"
+import { AddTargetDialog } from "./add-target-dialog"
 import { LoadingState, LoadingSpinner } from "@/components/loading-spinner"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,13 +20,13 @@ import {
 import { useOrganization } from "@/hooks/use-organizations"
 import { useTargets } from "@/hooks/use-targets"
 import type { Target } from "@/types/target.types"
-import { toast } from "sonner"
 
 /**
- * 组织详情视图组件
- * 显示组织的统计信息和目标列表
+ * 组织目标详情视图组件（使用 React Query）
+ * 用于显示和管理组织下的目标列表
+ * 支持通过组织ID获取数据
  */
-export function OrganizationDetailView({ 
+export function OrganizationTargetsDetailView({ 
   organizationId 
 }: { 
   organizationId: string
@@ -81,7 +78,7 @@ export function OrganizationDetailView({
     })
   }
 
-  // 导航函数
+  // 导航函数（使用 Next.js 客户端路由）
   const router = useRouter()
   const navigate = (path: string) => {
     router.push(path)
@@ -102,7 +99,6 @@ export function OrganizationDetailView({
     
     // TODO: 实现删除逻辑
     toast.success("目标已移除")
-    refetch()
   }
 
   // 处理批量删除
@@ -124,7 +120,6 @@ export function OrganizationDetailView({
     
     // TODO: 实现批量删除逻辑
     toast.success(`成功移除 ${deletedIds.length} 个目标`)
-    refetch()
   }
 
   // 处理添加目标
@@ -135,12 +130,14 @@ export function OrganizationDetailView({
   // 处理添加成功
   const handleAddSuccess = () => {
     setIsAddDialogOpen(false)
+    // 刷新目标列表
     refetch()
   }
 
   // 处理分页变化
   const handlePaginationChange = (newPagination: { pageIndex: number; pageSize: number }) => {
     setPagination(newPagination)
+    // 清空选中状态
     setSelectedTargets([])
   }
 
@@ -164,7 +161,7 @@ export function OrganizationDetailView({
         </div>
         <h3 className="text-lg font-semibold mb-2">加载失败</h3>
         <p className="text-muted-foreground text-center mb-4">
-          {error.message || "加载数据时出现错误，请重试"}
+          {error.message || "加载目标数据时出现错误，请重试"}
         </p>
         <button 
           onClick={() => refetch()}
@@ -178,155 +175,38 @@ export function OrganizationDetailView({
 
   // 加载状态
   if (isLoading) {
-    return (
-      <div className="flex flex-col gap-4 px-4 lg:px-6">
-        {/* 页面头部骨架 */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Skeleton className="h-8 w-8 rounded-md" />
-            <Skeleton className="h-8 w-64" />
-          </div>
-          <Skeleton className="h-4 w-96" />
-        </div>
-
-        {/* 统计卡片骨架 */}
-        <div className="grid grid-cols-1 gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-8 w-16" />
-              </CardHeader>
-            </Card>
-          ))}
-        </div>
-
-        {/* 表格骨架 */}
-        <Skeleton className="h-96 w-full" />
-      </div>
-    )
+    return <LoadingState message="加载目标数据中..." />
   }
 
   if (!organization) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
-        <Building2 className="mx-auto text-muted-foreground mb-4 h-12 w-12" />
-        <h3 className="text-lg font-semibold mb-2">组织不存在</h3>
-        <p className="text-muted-foreground">未找到ID为 {organizationId} 的组织</p>
+        <p className="text-muted-foreground">组织不存在</p>
       </div>
     )
   }
 
-  // 计算统计数据
-  const stats = {
-    totalTargets: targetsData?.total || 0,
-    // 这里可以从后端获取更多统计信息，暂时使用占位数据
-    totalDomains: organization.stats?.total_domains || 0,
-    totalEndpoints: organization.stats?.total_endpoints || 0,
-  }
-
   return (
     <>
-      {/* 页面头部 */}
-      <div className="px-4 lg:px-6">
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-              <Building2 className="h-6 w-6" />
-              {organization.name}
-            </h2>
-            <p className="text-muted-foreground">
-              {organization.description || "暂无描述"}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* 统计卡片 */}
-      <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-3">
-        <Card className="@container/card">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardDescription>目标总数</CardDescription>
-              <TargetIcon className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <CardTitle className="text-3xl font-semibold tabular-nums">
-              {stats.totalTargets}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <TrendingUp className="h-4 w-4" />
-              <span>组织关联的目标数量</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="@container/card">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardDescription>域名总数</CardDescription>
-              <Globe className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <CardTitle className="text-3xl font-semibold tabular-nums">
-              {stats.totalDomains}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <TrendingUp className="h-4 w-4" />
-              <span>已发现的域名数量</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="@container/card">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardDescription>端点总数</CardDescription>
-              <LinkIcon className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <CardTitle className="text-3xl font-semibold tabular-nums">
-              {stats.totalEndpoints}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <TrendingUp className="h-4 w-4" />
-              <span>已识别的端点数量</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* 目标列表 */}
-      <div className="px-4 lg:px-6">
-        <div className="mb-4">
-          <h3 className="text-lg font-semibold">目标列表</h3>
-          <p className="text-sm text-muted-foreground">
-            管理组织关联的所有目标
-          </p>
-        </div>
-        <TargetsDataTable
-          data={targetsData?.targets || []}
-          columns={targetColumns}
-          onAddNew={handleAddTarget}
-          onBulkDelete={handleBulkDelete}
-          onSelectionChange={setSelectedTargets}
-          searchPlaceholder="搜索目标..."
-          searchColumn="name"
-          addButtonText="关联目标"
-          pagination={pagination}
-          setPagination={setPagination}
-          paginationInfo={targetsData ? {
-            total: targetsData.total,
-            page: targetsData.page,
-            pageSize: targetsData.pageSize,
-            totalPages: targetsData.totalPages,
-          } : undefined}
-          onPaginationChange={handlePaginationChange}
-        />
-      </div>
+      <TargetsDataTable
+        data={targetsData?.targets || []}
+        columns={targetColumns}
+        onAddNew={handleAddTarget}
+        onBulkDelete={handleBulkDelete}
+        onSelectionChange={setSelectedTargets}
+        searchPlaceholder="搜索目标..."
+        searchColumn="name"
+        addButtonText="关联目标"
+        pagination={pagination}
+        setPagination={setPagination}
+        paginationInfo={targetsData ? {
+          total: targetsData.total,
+          page: targetsData.page,
+          pageSize: targetsData.pageSize,
+          totalPages: targetsData.totalPages,
+        } : undefined}
+        onPaginationChange={handlePaginationChange}
+      />
       
       {/* 添加目标对话框 */}
       <AddTargetDialog
@@ -367,6 +247,7 @@ export function OrganizationDetailView({
               此操作将从组织中移除以下 {selectedTargets.length} 个目标。目标本身不会被删除，仍可正常使用。
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {/* 目标列表容器 - 固定最大高度并支持滚动 */}
           <div className="mt-2 p-2 bg-muted rounded-md max-h-96 overflow-y-auto">
             <ul className="text-sm space-y-1">
               {selectedTargets.map((target) => (
@@ -393,3 +274,4 @@ export function OrganizationDetailView({
     </>
   )
 }
+

@@ -102,7 +102,7 @@ export function getPaginatedOrganizations(page = 1, pageSize = 10) {
   const paginatedData = mockOrganizations.slice(startIndex, endIndex)
   
   return {
-    results: paginatedData,
+    organizations: paginatedData,
     total: mockOrganizations.length,
     page,
     pageSize,

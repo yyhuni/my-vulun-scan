@@ -18,6 +18,9 @@ export interface Organization {
   updatedAt: string      // 后端 updated_at 由 Django 自动转换为 camelCase
   assets?: Asset[]       // 关联的资产列表（仅在 Preload 时返回）
   stats?: OrganizationStats  // 组织统计数据（可选）
+  assetCount?: number    // 资产数量（用于列表展示）
+  domainCount?: number   // 域名数量（用于列表展示）
+  endpointCount?: number // 端点数量（用于列表展示）
 }
 
 // 组织列表响应类型（匹配后端GetOrganizationsResponse）

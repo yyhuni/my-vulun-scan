@@ -25,10 +25,40 @@ import type {
 /**
  * 获取所有目标列表
  */
-export function useTargets(page = 1, pageSize = 10) {
+export function useTargets(params?: {
+  page?: number
+  pageSize?: number
+  organizationId?: number
+}) {
+  const { page = 1, pageSize = 10, organizationId } = params || {}
+  
   return useQuery({
-    queryKey: ['targets', page, pageSize],
+    queryKey: ['targets', { page, pageSize, organizationId }],
     queryFn: () => getTargets(page, pageSize),
+    select: (response) => {
+      // 如果指定了 organizationId，过滤结果
+      if (organizationId) {
+        const filteredResults = response.results.filter(target => 
+          target.organizations?.some(org => org.id === organizationId)
+        )
+        return {
+          targets: filteredResults,
+          total: filteredResults.length,
+          page,
+          pageSize,
+          totalPages: Math.ceil(filteredResults.length / pageSize),
+        }
+      }
+      
+      // 否则返回所有结果，转换为标准格式
+      return {
+        targets: response.results,
+        total: response.count,
+        page,
+        pageSize,
+        totalPages: Math.ceil(response.count / pageSize),
+      }
+    },
   })
 }
 
