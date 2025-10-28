@@ -13,7 +13,7 @@ export default function TargetDetailPage() {
 
   useEffect(() => {
     // 重定向到子域名页面
-    router.replace(`/assets/target/${id}/subdomain/`)
+    router.replace(`/target/${id}/subdomain/`)
   }, [id, router])
 
   return null

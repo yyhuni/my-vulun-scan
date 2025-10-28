@@ -36,7 +36,7 @@ export default function TargetLayout({
   }
 
   // Tab 路径映射
-  const basePath = `/assets/target/${id}`
+  const basePath = `/target/${id}`
   const tabPaths = {
     subdomain: `${basePath}/subdomain/`,
     endpoints: `${basePath}/endpoints/`,

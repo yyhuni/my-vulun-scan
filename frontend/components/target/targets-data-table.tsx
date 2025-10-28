@@ -51,7 +51,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-import type { Target } from "@/components/assets/target/all-targets-columns"
+import type { Target } from "@/types/target.types"
 
 interface TargetsDataTableProps {
   data: Target[]

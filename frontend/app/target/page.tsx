@@ -1,4 +1,4 @@
-import { AllTargetsDetailView } from "@/components/assets/target/all-targets-detail-view"
+import { AllTargetsDetailView } from "@/components/target/all-targets-detail-view"
 import { Target } from "lucide-react"
 
 export default function AllTargetsPage() {

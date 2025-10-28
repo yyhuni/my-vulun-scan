@@ -1,5 +1,5 @@
 // 导入组织管理组件
-import { OrganizationList } from "@/components/assets/organization/organization-list"
+import { OrganizationList } from "@/components/organization/organization-list"
 // 导入图标
 import { Building2 } from "lucide-react"
 

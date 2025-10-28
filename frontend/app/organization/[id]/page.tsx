@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { OrganizationDetailView } from "@/components/assets/organization/organization-detail-view"
+import { OrganizationDetailView } from "@/components/organization/organization-detail-view"
 
 /**
  * 组织详情页面

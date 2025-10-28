@@ -78,59 +78,54 @@ const data = {
   navMain: [
     {
       title: "Dashboard", // 仪表板
-      url: "/dashboard",
+      url: "/dashboard/",
       icon: IconDashboard,
     },
     {
-      title: "资产管理", // 资产管理
-      url: "/assets",
-      icon: IconDatabase,
-      items: [
-        {
-          title: "目标管理", // 目标管理
-          url: "/assets/target",
-        },
-        {
-          title: "组织管理", // 组织管理
-          url: "/assets/organization",
-        },
-      ],
+      title: "组织管理", // 组织管理
+      url: "/organization/",
+      icon: IconUsers,
+    },
+    {
+      title: "目标管理", // 目标管理
+      url: "/target/",
+      icon: IconListDetails,
     },
     {
       title: "扫描管理", // 扫描管理
-      url: "/scan",
+      url: "/scan/",
       icon: IconRadar,
       items: [
         {
           title: "新建扫描", // 新建扫描
-          url: "/scan/new",
+          url: "/scan/new/",
         },
         {
           title: "扫描历史", // 扫描历史
-          url: "/scan/history",
-        },
-        {
-          title: "扫描策略", // 扫描策略
-          url: "/scan/strategy",
+          url: "/scan/history/",
         },
         {
           title: "定时扫描", // 定时扫描
-          url: "/scan/scheduled",
+          url: "/scan/scheduled/",
+        },
+        {
+          title: "扫描策略", // 扫描策略
+          url: "/scan/strategy/",
         },
       ],
     },
     {
       title: "工具管理", // 工具管理
-      url: "/tools",
+      url: "/tools/",
       icon: IconTool,
       items: [
         {
           title: "工具配置", // 工具配置
-          url: "/tools/config",
+          url: "/tools/config/",
         },
         {
           title: "命令管理", // 命令管理
-          url: "/tools/command",
+          url: "/tools/command/",
         },
       ],
     },
@@ -181,6 +176,8 @@ const data = {
  */
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname()
+  const normalize = (p: string) => (p !== "/" && p.endsWith("/") ? p.slice(0, -1) : p)
+  const current = normalize(pathname)
 
   return (
     // collapsible="offcanvas" 表示侧边栏可以折叠为画布外模式
@@ -216,7 +213,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarGroupContent>
             <SidebarMenu>
               {data.navMain.map((item) => {
-                const isActive = item.url === "/" ? pathname === "/" : pathname.startsWith(item.url)
+                const navUrl = normalize(item.url)
+                const isActive = navUrl === "/" ? current === "/" : current === navUrl || current.startsWith(navUrl + "/")
                 const hasSubItems = item.items && item.items.length > 0
 
                 if (!hasSubItems) {
@@ -254,7 +252,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                             <SidebarMenuSubItem key={subItem.title}>
                               <SidebarMenuSubButton
                                 asChild
-                                isActive={pathname === subItem.url}
+                                isActive={current === normalize(subItem.url)}
                               >
                                 <Link href={subItem.url}>
                                   <span>{subItem.title}</span>

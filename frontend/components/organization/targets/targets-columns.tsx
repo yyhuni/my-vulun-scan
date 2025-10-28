@@ -4,6 +4,7 @@ import React from "react"
 import { ColumnDef } from "@tanstack/react-table"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,10 +18,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { MoreHorizontal, Eye, Trash2, ChevronsUpDown, ChevronUp, ChevronDown, Copy, Check, Play, Calendar, Pencil } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { toast } from "sonner"
+import { MoreHorizontal, Eye, Trash2, ChevronsUpDown, ChevronUp, ChevronDown, Copy, Check } from "lucide-react"
 import type { Target } from "@/types/target.types"
+import { toast } from "sonner"
 
 /**
  * 可复制单元格组件
@@ -104,9 +104,6 @@ interface CreateColumnsProps {
   formatDate: (dateString: string) => string
   navigate: (path: string) => void
   handleDelete: (target: Target) => void
-  handleInitiateScan: (target: Target) => void
-  handleScheduleScan: (target: Target) => void
-  handleEdit: (target: Target) => void
 }
 
 /**
@@ -115,16 +112,10 @@ interface CreateColumnsProps {
 function TargetRowActions({
   target,
   onView,
-  onInitiateScan,
-  onScheduleScan,
-  onEdit,
   onDelete,
 }: {
   target: Target
   onView: () => void
-  onInitiateScan: () => void
-  onScheduleScan: () => void
-  onEdit: () => void
   onDelete: () => void
 }) {
   return (
@@ -138,31 +129,18 @@ function TargetRowActions({
           <span className="sr-only">打开菜单</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
+      <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={onView}>
           <Eye />
-          Target Summary
+          查看详情
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={onInitiateScan}>
-          <Play />
-          Initiate Scan
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={onScheduleScan}>
-          <Calendar />
-          Schedule Scan
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={onEdit}>
-          <Pencil />
-          Edit Target
-        </DropdownMenuItem>
         <DropdownMenuItem
           onClick={onDelete}
           className="text-destructive focus:text-destructive"
         >
           <Trash2 />
-          Delete Target
+          移除
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -204,15 +182,12 @@ function DataTableColumnHeader({
 }
 
 /**
- * 创建所有目标表格列定义
+ * 创建目标表格列定义
  */
-export const createAllTargetsColumns = ({
+export const createTargetColumns = ({
   formatDate,
   navigate,
   handleDelete,
-  handleInitiateScan,
-  handleScheduleScan,
-  handleEdit,
 }: CreateColumnsProps): ColumnDef<Target>[] => [
   // 选择列
   {
@@ -242,133 +217,133 @@ export const createAllTargetsColumns = ({
   {
     accessorKey: "name",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Target" />
+      <DataTableColumnHeader column={column} title="目标名称" />
     ),
     cell: ({ row }) => {
       const name = row.getValue("name") as string
       const targetId = row.original.id
+      const [copied, setCopied] = React.useState(false)
+      
+      const handleCopy = async (e: React.MouseEvent) => {
+        e.stopPropagation() // 防止触发跳转
+        try {
+          await navigator.clipboard.writeText(name)
+          setCopied(true)
+          toast.success("已复制目标名称")
+          setTimeout(() => setCopied(false), 2000)
+        } catch {
+          toast.error('复制失败')
+        }
+      }
+      
       return (
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => navigate(`/assets/target/${targetId}/details`)}
-            className="text-sm font-medium text-primary hover:underline cursor-pointer truncate max-w-[350px]"
+        <div className="group inline-flex items-center gap-1" style={{ maxWidth: "400px" }}>
+          <Button
+            variant="link"
+            className="p-0 h-auto font-medium text-primary hover:text-primary/80 text-sm truncate"
+            onClick={() => navigate(`/target/${targetId}/subdomain/`)}
             title={name}
           >
             {name}
-          </button>
+          </Button>
+          
+          <TooltipProvider delayDuration={500} skipDelayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={`h-6 w-6 flex-shrink-0 hover:bg-accent transition-opacity ${
+                    copied ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                  }`}
+                  onClick={handleCopy}
+                >
+                  {copied ? (
+                    <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p className="text-xs">{copied ? '已复制!' : '点击复制'}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       )
     },
   },
 
-  // 所属组织列
+  // 类型列
   {
-    accessorKey: "organizations",
+    accessorKey: "type",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Organization" />
+      <DataTableColumnHeader column={column} title="类型" />
     ),
     cell: ({ row }) => {
-      const organizations = row.getValue("organizations") as Array<{ id: number; name: string }> | undefined
-      if (!organizations || organizations.length === 0) {
+      const type = row.getValue("type") as string | null
+      if (!type) {
         return <span className="text-sm text-muted-foreground">-</span>
       }
-      
-      const displayOrgs = organizations.slice(0, 2)
-      const remainingCount = organizations.length - 2
-      
+      const typeMap: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
+        domain: { label: "域名", variant: "default" },
+        ip: { label: "IP", variant: "secondary" },
+        cidr: { label: "CIDR", variant: "outline" },
+      }
+      const typeInfo = typeMap[type] || { label: type, variant: "secondary" as const }
       return (
-        <div className="flex flex-wrap gap-1">
-          {displayOrgs.map((org) => (
-            <Badge 
-              key={org.id} 
-              variant="secondary" 
-              className="text-xs"
-              title={org.name}
-            >
-              {org.name}
-            </Badge>
-          ))}
-          {remainingCount > 0 && (
-            <TooltipProvider delayDuration={500} skipDelayDuration={0}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge 
-                    variant="outline" 
-                    className="text-xs cursor-default"
-                  >
-                    +{remainingCount}
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent 
-                  side="top" 
-                  align="start"
-                  sideOffset={5}
-                  className="max-w-sm"
-                >
-                  <div className="flex flex-col gap-1">
-                    {organizations.slice(2).map((org) => (
-                      <div key={org.id} className="text-xs">
-                        {org.name}
-                      </div>
-                    ))}
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
+        <Badge variant={typeInfo.variant}>
+          {typeInfo.label}
+        </Badge>
+      )
+    },
+  },
+
+  // 域名数量列
+  {
+    accessorKey: "domainCount",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="域名数" />
+    ),
+    cell: ({ row }) => {
+      const count = row.getValue("domainCount") as number | undefined
+      return (
+        <div className="text-sm font-medium text-center">
+          {count ?? 0}
         </div>
       )
     },
-    enableSorting: false,
+  },
+
+  // URL 数量列
+  {
+    accessorKey: "endpointCount",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="URL 数" />
+    ),
+    cell: ({ row }) => {
+      const count = row.getValue("endpointCount") as number | undefined
+      return (
+        <div className="text-sm font-medium text-center">
+          {count ?? 0}
+        </div>
+      )
+    },
   },
 
   // 描述列
   {
     accessorKey: "description",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Description" />
+      <DataTableColumnHeader column={column} title="描述" />
     ),
     cell: ({ row }) => {
-      const description = row.getValue("description") as string | undefined
+      const description = row.getValue("description") as string | null
       if (!description) {
         return <span className="text-sm text-muted-foreground">-</span>
       }
-      return <CopyableCell value={description} maxWidth="300px" truncateLength={40} successMessage="已复制描述" className="text-sm text-muted-foreground" />
-    },
-  },
-
-  // 创建时间列
-  {
-    accessorKey: "createdAt",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Added On" />
-    ),
-    cell: ({ row }) => {
-      const createdAt = row.getValue("createdAt") as string
-      return (
-        <div className="text-sm text-muted-foreground">
-          {formatDate(createdAt)}
-        </div>
-      )
-    },
-  },
-
-  // 最后扫描时间列
-  {
-    accessorKey: "lastScanned",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Last Scanned" />
-    ),
-    cell: ({ row }) => {
-      const lastScanned = row.original.lastScanned
-      if (!lastScanned) {
-        return <span className="text-sm text-muted-foreground">-</span>
-      }
-      return (
-        <div className="text-sm text-muted-foreground">
-          {formatDate(lastScanned)}
-        </div>
-      )
+      return <CopyableCell value={description} maxWidth="400px" truncateLength={50} successMessage="已复制描述" className="text-sm text-muted-foreground" />
     },
   },
 
@@ -378,10 +353,7 @@ export const createAllTargetsColumns = ({
     cell: ({ row }) => (
       <TargetRowActions
         target={row.original}
-        onView={() => navigate(`/assets/target/${row.original.id}/details`)}
-        onInitiateScan={() => handleInitiateScan(row.original)}
-        onScheduleScan={() => handleScheduleScan(row.original)}
-        onEdit={() => handleEdit(row.original)}
+        onView={() => navigate(`/target/${row.original.id}/subdomain/`)}
         onDelete={() => handleDelete(row.original)}
       />
     ),
@@ -389,3 +361,4 @@ export const createAllTargetsColumns = ({
     enableHiding: false,
   },
 ]
+

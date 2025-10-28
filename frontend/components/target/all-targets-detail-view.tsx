@@ -2,9 +2,9 @@
 
 import React, { useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { createAllTargetsColumns } from "@/components/assets/target/all-targets-columns"
-import { TargetsDataTable } from "@/components/assets/target/targets-data-table"
-import { AddTargetDialog } from "@/components/assets/target/add-target-dialog"
+import { createAllTargetsColumns } from "@/components/target/all-targets-columns"
+import { TargetsDataTable } from "@/components/target/targets-data-table"
+import { AddTargetDialog } from "@/components/target/add-target-dialog"
 import { LoadingState } from "@/components/loading-spinner"
 import {
   AlertDialog,
