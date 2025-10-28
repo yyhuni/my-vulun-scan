@@ -53,7 +53,7 @@ export function NavDocuments({
     // 侧边栏组，在图标模式下隐藏
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
       {/* 组标签 */}
-      <SidebarGroupLabel>Documents</SidebarGroupLabel> {/* 文档 */}
+      <SidebarGroupLabel>System</SidebarGroupLabel> {/* 文档 */}
       {/* 侧边栏菜单 */}
       <SidebarMenu>
         {/* 遍历文档项 */}
@@ -105,13 +105,6 @@ export function NavDocuments({
             </DropdownMenu>
           </SidebarMenuItem>
         ))}
-        {/* 更多选项按钮 */}
-        <SidebarMenuItem>
-          <SidebarMenuButton className="text-sidebar-foreground/70"> {/* 半透明文本 */}
-            <IconDots className="text-sidebar-foreground/70" />       {/* 三点图标 */}
-            <span>More</span>                                         {/* 更多 */}
-          </SidebarMenuButton>
-        </SidebarMenuItem>
       </SidebarMenu>
     </SidebarGroup>
   )

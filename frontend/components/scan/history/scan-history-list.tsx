@@ -3,7 +3,8 @@
 import React, { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { ScanHistoryDataTable } from "./scan-history-data-table"
-import { createScanHistoryColumns, type ScanRecord } from "./scan-history-columns"
+import { createScanHistoryColumns } from "./scan-history-columns"
+import type { ScanRecord } from "@/types/scan.types"
 import { LoadingState } from "@/components/loading-spinner"
 import {
   AlertDialog,
@@ -201,7 +202,7 @@ export function ScanHistoryList() {
     <>
       <ScanHistoryDataTable
         data={scans}
-        columns={scanColumns}
+        columns={scanColumns as any}
         onAddNew={handleAddNew}
         onBulkDelete={handleBulkDelete}
         onSelectionChange={setSelectedScans}

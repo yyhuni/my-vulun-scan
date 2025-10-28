@@ -5,6 +5,7 @@ import { ColumnDef } from "@tanstack/react-table"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import type { ScanRecord, ScanStatus } from "@/types/scan.types"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,24 +36,6 @@ import {
   IconLoader,
 } from "@tabler/icons-react"
 import { toast } from "sonner"
-
-// 扫描状态类型
-export type ScanStatus = "pending" | "running" | "completed" | "failed"
-
-// 扫描记录类型
-export interface ScanRecord {
-  id: number
-  domainName: string
-  summary: {
-    subdomains: number
-    endpoints: number
-    vulnerabilities: number
-  }
-  scanEngine: string
-  lastScan: string
-  status: ScanStatus
-  progress: number // 0-100
-}
 
 /**
  * 可复制单元格组件

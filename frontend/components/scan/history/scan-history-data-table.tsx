@@ -51,7 +51,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-import type { ScanRecord } from "./scan-history-columns"
+import type { ScanRecord } from "@/types/scan.types"
 import type { PaginationInfo } from "@/types/common.types"
 
 // 组件属性类型定义

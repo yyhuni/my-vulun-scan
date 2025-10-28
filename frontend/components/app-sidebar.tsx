@@ -132,38 +132,24 @@ const data = {
   ],
   // 次要导航菜单项
   navSecondary: [
-    {
-      title: "Settings", // 设置
-      url: "#",
-      icon: IconSettings,
-    },
+
     {
       title: "Get Help", // 获取帮助
       url: "#",
       icon: IconHelp,
     },
-    {
-      title: "Search", // 搜索
-      url: "#",
-      icon: IconSearch,
-    },
   ],
   // 文档相关菜单项
   documents: [
     {
-      name: "Data Library", // 数据库
+      name: "Disk Management", // 硬盘使用情况
       url: "#",
       icon: IconDatabase,
     },
     {
-      name: "Reports", // 报告
+      name: "Notification Settings", // Notification Settings
       url: "#",
-      icon: IconReport,
-    },
-    {
-      name: "Word Assistant", // Word 助手
-      url: "#",
-      icon: IconFileWord,
+      icon: IconSettings,
     },
   ],
 }
