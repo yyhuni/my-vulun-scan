@@ -16,8 +16,8 @@ import { ScanConfirmation } from "@/components/scan/new/scan-confirmation"
 
 // 步骤定义
 const STEPS = [
-  { id: 1, title: "扫描策略", icon: IconSettings, description: "配置扫描参数" },
-  { id: 2, title: "选择目标", icon: IconTarget, description: "选择扫描组织" },
+  { id: 1, title: "选择目标", icon: IconTarget, description: "选择扫描组织" },
+  { id: 2, title: "扫描策略", icon: IconSettings, description: "配置扫描参数" },
   { id: 3, title: "确认目标", icon: IconEye, description: "查看并确认" },
   { id: 4, title: "确认启动", icon: IconRocket, description: "准备就绪" },
 ]
@@ -81,16 +81,16 @@ export default function NewScanPage() {
       description,
     })
     // 提交成功后跳转到扫描历史页面
-    router.push("/scan/history")
+    router.push("/scan/history/")
   }
 
   // 检查当前步骤是否可以继续
   const canProceed = () => {
     switch (currentStep) {
       case 1:
-        return scanName.trim() !== "" && scanType !== "" // 扫描策略
-      case 2:
         return selectedOrganizations.length > 0 // 选择目标
+      case 2:
+        return scanName.trim() !== "" && scanType !== "" // 扫描策略
       case 3:
         return true // 确认目标，仅查看，可直接下一步
       case 4:
@@ -130,8 +130,8 @@ export default function NewScanPage() {
               <CardTitle className="text-xl">{currentStepData.title}</CardTitle>
               <CardDescription>{currentStepData.description}</CardDescription>
             </div>
-            {/* 右侧：搜索框（仅步骤2显示） */}
-            {currentStep === 2 && (
+            {/* 右侧：搜索框（仅步骤1显示） */}
+            {currentStep === 1 && (
               <div className="relative w-full max-w-sm">
                 <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                 <Input
@@ -143,8 +143,8 @@ export default function NewScanPage() {
               </div>
             )}
           </div>
-          {/* 已选择提示（仅步骤2且已选择时显示） */}
-          {currentStep === 2 && selectedOrganizations.length > 0 && (
+          {/* 已选择提示（仅步骤1且已选择时显示） */}
+          {currentStep === 1 && selectedOrganizations.length > 0 && (
             <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded-lg mt-4">
               <IconCheck className="size-4 text-primary flex-shrink-0" />
               <span className="text-sm">
@@ -158,18 +158,6 @@ export default function NewScanPage() {
           <div>
             {/* 步骤 1: 扫描策略 */}
             {currentStep === 1 && (
-              <ScanConfigForm
-                scanName={scanName}
-                scanType={scanType}
-                description={description}
-                onScanNameChange={setScanName}
-                onScanTypeChange={setScanType}
-                onDescriptionChange={setDescription}
-              />
-            )}
-
-            {/* 步骤 2: 选择目标 */}
-            {currentStep === 2 && (
               <OrganizationSelectionTable
                 organizations={organizations}
                 selectedOrganizations={selectedOrganizations}
@@ -180,6 +168,18 @@ export default function NewScanPage() {
                 onPaginationChange={setPagination}
                 totalCount={totalCount}
                 totalPages={totalPages}
+              />
+            )}
+
+            {/* 步骤 2: 选择目标 */}
+            {currentStep === 2 && (
+              <ScanConfigForm
+                scanName={scanName}
+                scanType={scanType}
+                description={description}
+                onScanNameChange={setScanName}
+                onScanTypeChange={setScanType}
+                onDescriptionChange={setDescription}
               />
             )}
 
