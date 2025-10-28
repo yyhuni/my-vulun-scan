@@ -182,9 +182,12 @@ export function EndpointsDataTable({
                       {column.id === "statusCode" && "Status"}
                       {column.id === "title" && "Title"}
                       {column.id === "contentLength" && "Size"}
+                      {column.id === "contentType" && "Content Type"}
+                      {column.id === "responseTime" && "Response time"}
+                      {column.id === "tags" && "Tags"}
                       {column.id === "createdAt" && "Created At"}
                       {column.id === "updatedAt" && "Updated At"}
-                      {!["id", "url", "endpoint", "method", "statusCode", "title", "contentLength", "createdAt", "updatedAt"].includes(column.id) && column.id}
+                      {!["id", "url", "endpoint", "method", "statusCode", "title", "contentLength", "contentType", "responseTime", "tags", "createdAt", "updatedAt"].includes(column.id) && column.id}
                     </DropdownMenuCheckboxItem>
                   )
                 })}

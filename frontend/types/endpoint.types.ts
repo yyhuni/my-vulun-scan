@@ -10,6 +10,9 @@ export interface Endpoint {
   statusCode: number | null       // 后端: status_code (指针类型，可能为 null)
   title: string
   contentLength: number | null    // 后端: content_length (指针类型，可能为 null)
+  contentType?: string | null     // 后端: content_type (可选)
+  responseTime?: number | null    // 后端: response_time (单位秒，可选)
+  tags?: string[] | null          // 后端: tags (可选，字符串数组)
   domainId: number                // 后端: domain_id
   subdomainId?: number            // 后端: subdomain_id
   domain?: string
@@ -41,6 +44,9 @@ export interface CreateEndpointRequest {
   statusCode?: number | null       // 可选
   title?: string                   // 可选
   contentLength?: number | null    // 可选
+  contentType?: string | null      // 可选
+  responseTime?: number | null     // 可选
+  tags?: string[] | null           // 可选
   domain?: string                  // 可选
   subdomain?: string               // 可选
 }
@@ -58,6 +64,9 @@ export interface UpdateEndpointRequest {
   statusCode?: number
   title?: string
   contentLength?: number
+  contentType?: string | null
+  responseTime?: number | null
+  tags?: string[] | null
   domain?: string
   subdomain?: string
 }

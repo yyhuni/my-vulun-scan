@@ -224,4 +224,87 @@ export const createEndpointColumns = ({
       return <CopyableCell value={url} maxWidth="800px" truncateLength={100} successMessage="已复制 URL" />
     },
   },
+  {
+    accessorKey: "statusCode",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Status" />
+    ),
+    cell: ({ row }) => {
+      const status = row.getValue("statusCode") as number | null | undefined
+      return <HttpStatusBadge statusCode={status} />
+    },
+  },
+  {
+    accessorKey: "title",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Page Title" />
+    ),
+    cell: ({ row }) => {
+      const title = row.getValue("title") as string | null | undefined
+      return <CopyableCell value={title || undefined} maxWidth="500px" truncateLength={80} successMessage="已复制标题" />
+    },
+  },
+  {
+    accessorKey: "tags",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Tags" />
+    ),
+    cell: ({ row }) => {
+      const tags = (row.getValue("tags") as string[] | null | undefined) || []
+      if (!tags.length) {
+        return <span className="text-muted-foreground text-sm">-</span>
+      }
+      return (
+        <div className="flex flex-wrap gap-1">
+          {tags.map((tag, idx) => (
+            <Badge
+              key={idx}
+              variant={/xss|sqli|idor|rce|ssrf|lfi|rfi|xxe|csrf|open.?redirect|interesting/i.test(tag) ? "destructive" : "secondary"}
+              className="text-xs"
+            >
+              {tag}
+            </Badge>
+          ))}
+        </div>
+      )
+    },
+    enableSorting: false,
+  },
+  {
+    accessorKey: "contentType",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Content Type" />
+    ),
+    cell: ({ row }) => {
+      const ct = row.getValue("contentType") as string | null | undefined
+      return ct ? <span className="text-sm">{ct}</span> : <span className="text-muted-foreground text-sm">-</span>
+    },
+  },
+  {
+    accessorKey: "contentLength",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Content Length" />
+    ),
+    cell: ({ row }) => {
+      const len = row.getValue("contentLength") as number | null | undefined
+      if (len === null || len === undefined) {
+        return <span className="text-muted-foreground text-sm">-</span>
+      }
+      return <span className="font-mono tabular-nums">{new Intl.NumberFormat().format(len)}</span>
+    },
+  },
+  {
+    accessorKey: "responseTime",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Response time" />
+    ),
+    cell: ({ row }) => {
+      const rt = row.getValue("responseTime") as number | null | undefined
+      if (rt === null || rt === undefined) {
+        return <span className="text-muted-foreground text-sm">-</span>
+      }
+      const formatted = `${rt.toFixed(4)}s`
+      return <span className="font-mono text-emerald-600 dark:text-emerald-400">{formatted}</span>
+    },
+  },
 ]
