@@ -43,9 +43,6 @@ class OrganizationPagination(BasePagination):
     data_key = 'organizations'
 
 
-class AssetPagination(BasePagination):
-    """资产专用分页器"""
-    data_key = 'assets'
 
 
 class DomainPagination(BasePagination):

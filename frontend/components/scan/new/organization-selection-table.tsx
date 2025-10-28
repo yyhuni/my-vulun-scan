@@ -131,7 +131,7 @@ export function OrganizationSelectionTable({
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <IconBuilding className="size-12 text-muted-foreground mb-3" />
         <p className="text-muted-foreground mb-4">暂无组织</p>
-        <Button variant="outline" onClick={() => router.push("/assets/organization")}>
+        <Button variant="outline" onClick={() => router.push("/organization")}>
           前往创建组织
         </Button>
       </div>

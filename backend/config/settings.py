@@ -48,7 +48,6 @@ INSTALLED_APPS = [
     'corsheaders',
     # 业务应用
     'apps.common',   # 通用工具
-    'apps.assets',   # 资产管理
 ]
 
 MIDDLEWARE = [
