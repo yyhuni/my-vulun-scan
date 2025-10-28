@@ -2,7 +2,7 @@
 
 import React from "react"
 import { useParams } from "next/navigation"
-import { TargetEndpointsDetailView } from "@/components/assets/target/endpoints/target-endpoints-detail-view"
+import { EndpointsDetailView } from "@/components/endpoints"
 
 /**
  * 目标端点页面
@@ -13,7 +13,7 @@ export default function TargetEndpointsPage() {
 
   return (
     <div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
-      <TargetEndpointsDetailView targetId={parseInt(id)} />
+      <EndpointsDetailView targetId={parseInt(id)} />
     </div>
   )
 }

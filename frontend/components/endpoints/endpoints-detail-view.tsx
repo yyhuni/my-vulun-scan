@@ -4,8 +4,8 @@ import React, { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { useTargetEndpoints } from "@/hooks/use-targets"
 import { useDeleteEndpoint } from "@/hooks/use-endpoints"
-import { TargetEndpointsDataTable } from "@/components/assets/target/endpoints/target-endpoints-data-table"
-import { createTargetEndpointColumns } from "@/components/assets/target/endpoints/target-endpoints-columns"
+import { EndpointsDataTable } from "./endpoints-data-table"
+import { createEndpointColumns } from "./endpoints-columns"
 import { LoadingState, LoadingSpinner } from "@/components/loading-spinner"
 import {
   AlertDialog,
@@ -23,7 +23,7 @@ import type { Endpoint } from "@/types/endpoint.types"
  * 目标端点详情视图组件
  * 用于显示和管理目标下的端点列表
  */
-export function TargetEndpointsDetailView({
+export function EndpointsDetailView({
   targetId
 }: {
   targetId: number
@@ -95,7 +95,7 @@ export function TargetEndpointsDetailView({
   // 创建列定义
   const endpointColumns = useMemo(
     () =>
-      createTargetEndpointColumns({
+      createEndpointColumns({
         formatDate,
         navigate,
         handleDelete: handleDeleteEndpoint,
@@ -131,7 +131,7 @@ export function TargetEndpointsDetailView({
 
   return (
     <>
-      <TargetEndpointsDataTable
+      <EndpointsDataTable
         data={data?.endpoints || []}
         columns={endpointColumns}
         onSelectionChange={setSelectedEndpoints}
@@ -174,4 +174,3 @@ export function TargetEndpointsDetailView({
     </>
   )
 }
-

@@ -2,7 +2,7 @@
 
 import React from "react"
 import { useParams } from "next/navigation"
-import { TargetVulnerabilitiesDetailView } from "@/components/assets/target/vulnerabilities/target-vulnerabilities-detail-view"
+import { VulnerabilitiesDetailView } from "@/components/vulnerabilities"
 
 /**
  * 目标漏洞页面
@@ -13,7 +13,7 @@ export default function TargetVulnerabilitiesPage() {
 
   return (
     <div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
-      <TargetVulnerabilitiesDetailView targetId={parseInt(id)} />
+      <VulnerabilitiesDetailView targetId={parseInt(id)} />
     </div>
   )
 }

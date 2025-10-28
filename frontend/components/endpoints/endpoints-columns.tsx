@@ -23,9 +23,6 @@ import { IconCircleCheckFilled, IconLoader, IconAlertTriangle, IconX } from "@ta
 import type { Endpoint } from "@/types/endpoint.types"
 import { toast } from "sonner"
 
-/**
- * 可复制单元格组件
- */
 function CopyableCell({ 
   value, 
   maxWidth = "500px", 
@@ -41,7 +38,6 @@ function CopyableCell({
 }) {
   const [copied, setCopied] = React.useState(false)
   
-  // 防御性编程：处理空值
   if (!value) {
     return <span className="text-muted-foreground text-sm">-</span>
   }
@@ -106,16 +102,12 @@ function CopyableCell({
   )
 }
 
-// 列创建函数的参数类型
 interface CreateColumnsProps {
   formatDate: (dateString: string) => string
   navigate: (path: string) => void
   handleDelete: (endpoint: Endpoint) => void
 }
 
-/**
- * 端点行操作组件
- */
 function EndpointRowActions({
   endpoint,
   onView,
@@ -154,9 +146,6 @@ function EndpointRowActions({
   )
 }
 
-/**
- * 数据表格列头组件
- */
 function DataTableColumnHeader({
   column,
   title,
@@ -188,12 +177,7 @@ function DataTableColumnHeader({
   )
 }
 
-/**
- * HTTP 状态码徽章组件
- * 使用 shadcn/ui 主题变量，自动适配暗黑模式
- */
 function HttpStatusBadge({ statusCode }: { statusCode: number | null | undefined }) {
-  // 处理空值情况
   if (statusCode === null || statusCode === undefined) {
     return (
       <Badge variant="outline" className="text-muted-foreground px-2 py-1 font-mono">
@@ -204,19 +188,14 @@ function HttpStatusBadge({ statusCode }: { statusCode: number | null | undefined
 
   const getStatusVariant = (code: number): "default" | "secondary" | "destructive" | "outline" => {
     if (code >= 200 && code < 300) {
-      // 2xx - 成功
       return "outline"
     } else if (code >= 300 && code < 400) {
-      // 3xx - 重定向
       return "secondary"
     } else if (code >= 400 && code < 500) {
-      // 4xx - 客户端错误
       return "default"
     } else if (code >= 500) {
-      // 5xx - 服务器错误
       return "destructive"
     } else {
-      // 其他
       return "secondary"
     }
   }
@@ -230,15 +209,11 @@ function HttpStatusBadge({ statusCode }: { statusCode: number | null | undefined
   )
 }
 
-/**
- * 创建目标端点表格列定义
- */
-export const createTargetEndpointColumns = ({
+export const createEndpointColumns = ({
   formatDate,
   navigate,
   handleDelete,
 }: CreateColumnsProps): ColumnDef<Endpoint>[] => [
-  // URL 列 - HTTP URL
   {
     accessorKey: "url",
     header: ({ column }) => (

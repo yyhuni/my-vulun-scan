@@ -1,9 +1,9 @@
 "use client"
 
 import React, { useState, useMemo } from "react"
-import { TargetVulnerabilitiesDataTable } from "@/components/assets/target/vulnerabilities/target-vulnerabilities-data-table"
-import { createTargetVulnerabilityColumns } from "@/components/assets/target/vulnerabilities/target-vulnerabilities-columns"
-import { VulnerabilityDetailDialog } from "@/components/assets/target/vulnerabilities/vulnerability-detail-dialog"
+import { VulnerabilitiesDataTable } from "./vulnerabilities-data-table"
+import { createVulnerabilityColumns } from "./vulnerabilities-columns"
+import { VulnerabilityDetailDialog } from "./vulnerability-detail-dialog"
 import { LoadingState } from "@/components/loading-spinner"
 import {
   AlertDialog,
@@ -18,11 +18,7 @@ import {
 import type { Vulnerability } from "@/types/vulnerability.types"
 import { mockVulnerabilities } from "@/mock/fixtures/vulnerabilities"
 
-/**
- * 目标漏洞详情视图组件
- * 用于显示和管理目标下的漏洞列表
- */
-export function TargetVulnerabilitiesDetailView({
+export function VulnerabilitiesDetailView({
   targetId
 }: {
   targetId: number
@@ -35,18 +31,15 @@ export function TargetVulnerabilitiesDetailView({
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [selectedVulnerability, setSelectedVulnerability] = useState<Vulnerability | null>(null)
 
-  // 分页状态
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 10,
   })
 
-  // 模拟数据 - 过滤出属于当前目标的漏洞
   const data = useMemo(() => {
     return mockVulnerabilities.filter(v => v.targetId === targetId)
   }, [targetId])
 
-  // 计算分页信息
   const paginationInfo = useMemo(() => {
     const total = data.length
     const totalPages = Math.ceil(total / pagination.pageSize)
@@ -63,7 +56,6 @@ export function TargetVulnerabilitiesDetailView({
     }
   }, [data, pagination])
 
-  // 辅助函数 - 格式化日期
   const formatDate = (dateString: string): string => {
     return new Date(dateString).toLocaleString("zh-CN", {
       year: "numeric",
@@ -76,31 +68,26 @@ export function TargetVulnerabilitiesDetailView({
     })
   }
 
-  // 导航函数
   const navigate = (path: string) => {
     console.log("导航到:", path)
   }
 
-  // 处理查看详情
   const handleViewDetail = (vulnerability: Vulnerability) => {
     setSelectedVulnerability(vulnerability)
     setDetailDialogOpen(true)
   }
 
-  // 处理删除漏洞
   const handleDeleteVulnerability = (vulnerability: Vulnerability) => {
     setVulnerabilityToDelete(vulnerability)
     setDeleteDialogOpen(true)
   }
 
-  // 确认删除漏洞
   const confirmDelete = async () => {
     if (!vulnerabilityToDelete) return
 
     setDeleteDialogOpen(false)
     setIsLoading(true)
 
-    // 模拟API调用
     setTimeout(() => {
       console.log("删除漏洞:", vulnerabilityToDelete.id)
       setVulnerabilityToDelete(null)
@@ -108,7 +95,6 @@ export function TargetVulnerabilitiesDetailView({
     }, 1000)
   }
 
-  // 处理批量删除
   const handleBulkDelete = () => {
     if (selectedVulnerabilities.length === 0) {
       return
@@ -116,7 +102,6 @@ export function TargetVulnerabilitiesDetailView({
     setBulkDeleteDialogOpen(true)
   }
 
-  // 确认批量删除
   const confirmBulkDelete = async () => {
     if (selectedVulnerabilities.length === 0) return
 
@@ -125,7 +110,6 @@ export function TargetVulnerabilitiesDetailView({
     setBulkDeleteDialogOpen(false)
     setIsLoading(true)
 
-    // 模拟API调用
     setTimeout(() => {
       console.log("批量删除漏洞:", deletedIds)
       setSelectedVulnerabilities([])
@@ -133,15 +117,13 @@ export function TargetVulnerabilitiesDetailView({
     }, 1000)
   }
 
-  // 处理分页变化
   const handlePaginationChange = (newPagination: { pageIndex: number; pageSize: number }) => {
     setPagination(newPagination)
   }
 
-  // 创建列定义
   const vulnerabilityColumns = useMemo(
     () =>
-      createTargetVulnerabilityColumns({
+      createVulnerabilityColumns({
         formatDate,
         navigate,
         handleDelete: handleDeleteVulnerability,
@@ -150,21 +132,19 @@ export function TargetVulnerabilitiesDetailView({
     []
   )
 
-  // 加载状态
   if (isLoading) {
     return <LoadingState message="加载漏洞数据中..." />
   }
 
   return (
     <>
-      {/* 漏洞详情对话框 */}
       <VulnerabilityDetailDialog
         vulnerability={selectedVulnerability}
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
       />
 
-      <TargetVulnerabilitiesDataTable
+      <VulnerabilitiesDataTable
         data={paginationInfo.data}
         columns={vulnerabilityColumns}
         onBulkDelete={handleBulkDelete}
@@ -182,7 +162,6 @@ export function TargetVulnerabilitiesDetailView({
         onPaginationChange={handlePaginationChange}
       />
 
-      {/* 删除确认对话框 */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -203,7 +182,6 @@ export function TargetVulnerabilitiesDetailView({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* 批量删除确认对话框 */}
       <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -235,4 +213,3 @@ export function TargetVulnerabilitiesDetailView({
     </>
   )
 }
-

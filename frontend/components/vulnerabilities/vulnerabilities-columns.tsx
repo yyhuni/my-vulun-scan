@@ -15,7 +15,6 @@ import {
 import { Badge } from "@/components/ui/badge"
 import type { Vulnerability, VulnerabilitySeverity, VulnerabilityStatus } from "@/types/vulnerability.types"
 
-// 严重程度映射
 const severityConfig: Record<VulnerabilitySeverity, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   critical: { label: "严重", variant: "destructive" },
   high: { label: "高危", variant: "destructive" },
@@ -24,7 +23,6 @@ const severityConfig: Record<VulnerabilitySeverity, { label: string; variant: "d
   info: { label: "信息", variant: "outline" },
 }
 
-// 状态映射
 const statusConfig: Record<VulnerabilityStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   open: { label: "开放", variant: "destructive" },
   in_progress: { label: "处理中", variant: "default" },
@@ -33,7 +31,6 @@ const statusConfig: Record<VulnerabilityStatus, { label: string; variant: "defau
   accepted: { label: "已接受", variant: "outline" },
 }
 
-// 列操作回调类型
 interface ColumnActions {
   formatDate: (date: string) => string
   navigate: (path: string) => void
@@ -41,17 +38,13 @@ interface ColumnActions {
   handleViewDetail: (vulnerability: Vulnerability) => void
 }
 
-/**
- * 创建目标漏洞表格列定义
- */
-export function createTargetVulnerabilityColumns({
+export function createVulnerabilityColumns({
   formatDate,
   navigate,
   handleDelete,
   handleViewDetail,
 }: ColumnActions): ColumnDef<Vulnerability>[] {
   return [
-    // 选择列
     {
       id: "select",
       header: ({ table }) => (
@@ -74,7 +67,6 @@ export function createTargetVulnerabilityColumns({
       enableSorting: false,
       enableHiding: false,
     },
-    // 状态（严重程度）
     {
       accessorKey: "severity",
       header: "Status",
@@ -88,7 +80,6 @@ export function createTargetVulnerabilityColumns({
         )
       },
     },
-    // 来源
     {
       accessorKey: "source",
       header: "Source",
@@ -101,7 +92,6 @@ export function createTargetVulnerabilityColumns({
         )
       },
     },
-    // 标题
     {
       accessorKey: "title",
       header: "Title",
@@ -124,7 +114,6 @@ export function createTargetVulnerabilityColumns({
         )
       },
     },
-    // 状态
     {
       accessorKey: "status",
       header: "Status",
@@ -138,7 +127,6 @@ export function createTargetVulnerabilityColumns({
         )
       },
     },
-    // 操作列
     {
       id: "actions",
       header: "",
@@ -190,4 +178,3 @@ export function createTargetVulnerabilityColumns({
     },
   ]
 }
-

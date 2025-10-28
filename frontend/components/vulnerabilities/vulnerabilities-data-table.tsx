@@ -53,7 +53,7 @@ import {
 import type { Vulnerability } from "@/types/vulnerability.types"
 import type { PaginationInfo } from "@/types/common.types"
 
-interface TargetVulnerabilitiesDataTableProps {
+interface VulnerabilitiesDataTableProps {
   data: Vulnerability[]
   columns: ColumnDef<Vulnerability>[]
   onBulkDelete?: () => void
@@ -66,10 +66,7 @@ interface TargetVulnerabilitiesDataTableProps {
   onPaginationChange?: (pagination: { pageIndex: number; pageSize: number }) => void
 }
 
-/**
- * 目标漏洞数据表格组件
- */
-export function TargetVulnerabilitiesDataTable({
+export function VulnerabilitiesDataTable({
   data = [],
   columns,
   onBulkDelete,
@@ -80,17 +77,14 @@ export function TargetVulnerabilitiesDataTable({
   setPagination,
   paginationInfo,
   onPaginationChange,
-}: TargetVulnerabilitiesDataTableProps) {
-  // 状态管理
+}: VulnerabilitiesDataTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = React.useState({})
 
-  // 使用服务端分页
   const useServerPagination = !!paginationInfo && !!pagination && !!setPagination
 
-  // 初始化表格
   const table = useReactTable({
     data,
     columns,
@@ -123,7 +117,6 @@ export function TargetVulnerabilitiesDataTable({
     }),
   })
 
-  // 监听选中行变化
   React.useEffect(() => {
     const selectedRows = table
       .getFilteredSelectedRowModel()
@@ -131,7 +124,6 @@ export function TargetVulnerabilitiesDataTable({
     onSelectionChange?.(selectedRows)
   }, [rowSelection, table, onSelectionChange])
 
-  // 处理分页大小变化
   const handlePageSizeChange = (value: string) => {
     const newPageSize = Number(value)
     if (useServerPagination) {
@@ -273,7 +265,7 @@ export function TargetVulnerabilitiesDataTable({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent side="top">
-                {[10, 20, 30, 40, 50].map((pageSize) => (
+                {[10, 20, 50, 100, 200, 500, 1000].map((pageSize) => (
                   <SelectItem key={pageSize} value={String(pageSize)}>
                     {pageSize}
                   </SelectItem>
@@ -332,4 +324,3 @@ export function TargetVulnerabilitiesDataTable({
     </div>
   )
 }
-

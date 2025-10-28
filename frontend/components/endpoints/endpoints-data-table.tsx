@@ -1,8 +1,6 @@
-"use client" // 标记为客户端组件
+"use client"
 
-// 导入 React 库和 Hooks
 import * as React from "react"
-// 导入表格相关组件和类型
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -17,7 +15,6 @@ import {
   useReactTable,
   VisibilityState,
 } from "@tanstack/react-table"
-// 导入图标组件
 import {
   IconChevronDown,
   IconChevronLeft,
@@ -27,8 +24,6 @@ import {
   IconLayoutColumns,
   IconPlus,
 } from "@tabler/icons-react"
-
-// 导入 UI 组件
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -53,33 +48,24 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-
-// 导入类型定义
 import type { Endpoint } from "@/types/endpoint.types"
 
-  // 组件属性类型定义
-interface TargetEndpointsDataTableProps {
-  data: Endpoint[]                                  // 端点数据数组
-  columns: ColumnDef<Endpoint>[]                    // 列定义数组
-  onAddNew?: () => void                          // 添加新端点的回调函数
-  onBulkDelete?: () => void                      // 批量删除回调函数
-  onSelectionChange?: (selectedRows: Endpoint[]) => void  // 选中行变化回调
-  searchPlaceholder?: string                     // 搜索框占位符
-  searchColumn?: string                          // 搜索的列名
-  addButtonText?: string                         // 添加按钮文本
-  // 服务器端分页支持
-  pagination?: { pageIndex: number; pageSize: number }  // 外部分页状态
-  onPaginationChange?: (pagination: { pageIndex: number; pageSize: number }) => void  // 分页变化回调
-  totalCount?: number                            // 总记录数
-  totalPages?: number                            // 总页数
+interface EndpointsDataTableProps {
+  data: Endpoint[]
+  columns: ColumnDef<Endpoint>[]
+  onAddNew?: () => void
+  onBulkDelete?: () => void
+  onSelectionChange?: (selectedRows: Endpoint[]) => void
+  searchPlaceholder?: string
+  searchColumn?: string
+  addButtonText?: string
+  pagination?: { pageIndex: number; pageSize: number }
+  onPaginationChange?: (pagination: { pageIndex: number; pageSize: number }) => void
+  totalCount?: number
+  totalPages?: number
 }
 
-/**
- * 目标端点数据表格组件
- * 专门用于显示和管理目标端点数据的表格
- * 包含搜索、分页、列显示控制等功能
- */
-export function TargetEndpointsDataTable({
+export function EndpointsDataTable({
   data,
   columns,
   onAddNew,
@@ -92,29 +78,20 @@ export function TargetEndpointsDataTable({
   onPaginationChange,
   totalCount,
   totalPages,
-}: TargetEndpointsDataTableProps) {
-  // 表格状态管理
-  // 选中行状态，key为行id，value为true或false
+}: EndpointsDataTableProps) {
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({})
-  // 列可见性状态，key为列id，value为true或false
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
-  // 列过滤状态，key为列id，value为过滤条件对象数组
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
-  // 排序状态，key为列id，value为true或false
   const [sorting, setSorting] = React.useState<SortingState>([])
-  // 内部分页状态（客户端分页）
   const [internalPagination, setInternalPagination] = React.useState<{ pageIndex: number, pageSize: number }>({
     pageIndex: 0,
     pageSize: 10,
   })
-  
-  // 使用外部分页或内部分页
+
   const pagination = externalPagination || internalPagination
-  
-  // 分页变化处理
+
   const handlePaginationChange = React.useCallback((updaterOrValue: { pageIndex: number; pageSize: number } | ((prev: { pageIndex: number; pageSize: number }) => { pageIndex: number; pageSize: number })) => {
     if (onPaginationChange) {
-      // 外部控制分页（服务器端分页）
       if (typeof updaterOrValue === 'function') {
         const newPagination = updaterOrValue(pagination)
         onPaginationChange(newPagination)
@@ -122,12 +99,10 @@ export function TargetEndpointsDataTable({
         onPaginationChange(updaterOrValue)
       }
     } else {
-      // 内部控制分页（客户端分页）
       setInternalPagination(updaterOrValue)
     }
   }, [onPaginationChange, pagination])
 
-  // 创建表格实例
   const table = useReactTable({
     data,
     columns,
@@ -147,15 +122,14 @@ export function TargetEndpointsDataTable({
     onPaginationChange: handlePaginationChange,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: externalPagination ? undefined : getPaginationRowModel(), // 服务器端分页不需要客户端分页
+    getPaginationRowModel: externalPagination ? undefined : getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
-    manualPagination: !!externalPagination, // 启用手动分页
-    pageCount: totalPages, // 服务器端总页数
+    manualPagination: !!externalPagination,
+    pageCount: totalPages,
   })
 
-  // 监听选中行变化，通知父组件
   React.useEffect(() => {
     if (onSelectionChange) {
       const selectedRows = table.getFilteredSelectedRowModel().rows.map(row => row.original)
@@ -165,9 +139,7 @@ export function TargetEndpointsDataTable({
 
   return (
     <div className="w-full space-y-4">
-      {/* 工具栏 */}
       <div className="flex items-center justify-between">
-        {/* 搜索框 */}
         <div className="flex items-center space-x-2">
           <Input
             placeholder={searchPlaceholder}
@@ -179,9 +151,7 @@ export function TargetEndpointsDataTable({
           />
         </div>
 
-        {/* 右侧操作按钮 */}
         <div className="flex items-center space-x-2">
-          {/* 列显示控制 */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
@@ -221,7 +191,6 @@ export function TargetEndpointsDataTable({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* 添加新端点按钮 */}
           {onAddNew && (
             <Button onClick={onAddNew} size="sm">
               <IconPlus />
@@ -231,10 +200,8 @@ export function TargetEndpointsDataTable({
         </div>
       </div>
 
-      {/* 表格容器 */}
       <div className="rounded-md border">
         <Table>
-          {/* 表头 */}
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
@@ -254,7 +221,6 @@ export function TargetEndpointsDataTable({
             ))}
           </TableHeader>
 
-          {/* 表体 */}
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
@@ -285,17 +251,14 @@ export function TargetEndpointsDataTable({
           </TableBody>
         </Table>
       </div>
-      {/* 分页控制 */}
+
       <div className="flex items-center justify-between px-2">
-        {/* 选中行信息 */}
         <div className="flex-1 text-sm text-muted-foreground">
           {table.getFilteredSelectedRowModel().rows.length} of{" "}
           {externalPagination ? totalCount : table.getFilteredRowModel().rows.length} row(s) selected
         </div>
 
-        {/* 分页控制器 */}
         <div className="flex items-center space-x-6 lg:space-x-8">
-          {/* 每页显示数量选择 */}
           <div className="flex items-center space-x-2">
             <Label htmlFor="rows-per-page" className="text-sm font-medium">
               Rows per page
@@ -310,7 +273,7 @@ export function TargetEndpointsDataTable({
                 <SelectValue placeholder={table.getState().pagination.pageSize} />
               </SelectTrigger>
               <SelectContent side="top">
-                {[10, 20, 30, 40, 50].map((pageSize) => (
+                {[10, 20, 50, 100, 200, 500, 1000].map((pageSize) => (
                   <SelectItem key={pageSize} value={`${pageSize}`}>
                     {pageSize}
                   </SelectItem>
@@ -319,13 +282,11 @@ export function TargetEndpointsDataTable({
             </Select>
           </div>
 
-          {/* 页码信息 */}
           <div className="flex w-[100px] items-center justify-center text-sm font-medium">
             Page {table.getState().pagination.pageIndex + 1} of{" "}
             {externalPagination ? totalPages : table.getPageCount()}
           </div>
 
-          {/* 分页按钮 */}
           <div className="flex items-center space-x-2">
             <Button
               variant="outline"
