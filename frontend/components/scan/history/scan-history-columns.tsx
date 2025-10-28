@@ -136,27 +136,32 @@ function CopyableCell({
  * 使用 shadcn Badge 的标准 variant
  */
 function StatusBadge({ status }: { status: ScanStatus }) {
-  const config = {
+  const config: Record<ScanStatus, {
+    icon: React.ComponentType<any>
+    label: string
+    variant: "secondary" | "default" | "outline" | "destructive"
+    className?: string
+  }> = {
     pending: {
       icon: IconClock,
       label: "Pending",
-      variant: "secondary" as const,
+      variant: "secondary",
     },
     running: {
       icon: IconLoader,
       label: "Running",
-      variant: "default" as const,
-      className: "animate-pulse" as const,
+      variant: "default",
+      className: "animate-pulse",
     },
     completed: {
       icon: IconCircleCheck,
       label: "Successful",
-      variant: "outline" as const,
+      variant: "outline",
     },
     failed: {
       icon: IconCircleX,
       label: "Failed",
-      variant: "destructive" as const,
+      variant: "destructive",
     },
   }
 
@@ -407,7 +412,7 @@ export const createScanHistoryColumns = ({
     cell: ({ row }) => (
       <ScanRowActions
         scan={row.original}
-        onView={() => navigate(`/scan/history/${row.original.id}`)}
+        onView={() => navigate(`/scan/history/${row.original.id}/`)}
         onDelete={() => handleDelete(row.original)}
       />
     ),
