@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/tooltip"
 import { MoreHorizontal, Star, Trash2, ChevronsUpDown, ChevronUp, ChevronDown, Copy, Check, Image } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import type { Domain } from "@/types/domain.types"
+import type { Subdomain } from "@/types/subdomain.types"
 import { toast } from "sonner"
 
 /**
@@ -103,19 +103,19 @@ function CopyableCell({
 interface CreateColumnsProps {
   formatDate: (dateString: string) => string
   navigate: (path: string) => void
-  handleDelete: (domain: Domain) => void
-  handleMarkImportant: (domain: Domain) => void
+  handleDelete: (subdomain: Subdomain) => void
+  handleMarkImportant: (subdomain: Subdomain) => void
 }
 
 /**
  * 域名行操作组件
  */
-function DomainRowActions({
-  domain,
+function SubdomainRowActions({
+  subdomain,
   onMarkImportant,
   onDelete,
 }: {
-  domain: Domain
+  subdomain: Subdomain
   onMarkImportant: () => void
   onDelete: () => void
 }) {
@@ -185,12 +185,12 @@ function DataTableColumnHeader({
 /**
  * 创建目标域名表格列定义
  */
-export const createTargetDomainColumns = ({
+export const createSubdomainColumns = ({
   formatDate,
   navigate,
   handleDelete,
   handleMarkImportant,
-}: CreateColumnsProps): ColumnDef<Domain>[] => [
+}: CreateColumnsProps): ColumnDef<Subdomain>[] => [
   // 选择列
   {
     id: "select",
@@ -485,8 +485,8 @@ export const createTargetDomainColumns = ({
   {
     id: "actions",
     cell: ({ row }) => (
-      <DomainRowActions
-        domain={row.original}
+      <SubdomainRowActions
+        subdomain={row.original}
         onMarkImportant={() => handleMarkImportant(row.original)}
         onDelete={() => handleDelete(row.original)}
       />

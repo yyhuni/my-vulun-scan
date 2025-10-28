@@ -241,7 +241,7 @@ export const createTargetColumns = ({
           <Button
             variant="link"
             className="p-0 h-auto font-medium text-primary hover:text-primary/80 text-sm truncate"
-            onClick={() => navigate(`/assets/target/${targetId}/domains/`)}
+            onClick={() => navigate(`/assets/target/${targetId}/subdomain/`)}
             title={name}
           >
             {name}
@@ -353,7 +353,7 @@ export const createTargetColumns = ({
     cell: ({ row }) => (
       <TargetRowActions
         target={row.original}
-        onView={() => navigate(`/assets/target/${row.original.id}/domains`)}
+        onView={() => navigate(`/assets/target/${row.original.id}/subdomain/`)}
         onDelete={() => handleDelete(row.original)}
       />
     ),

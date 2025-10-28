@@ -29,7 +29,7 @@ export default function TargetLayout({
 
   // 获取当前激活的 Tab
   const getActiveTab = () => {
-    if (pathname.includes("/domains")) return "domains"
+    if (pathname.includes("/subdomain")) return "subdomain"
     if (pathname.includes("/endpoints")) return "endpoints"
     if (pathname.includes("/vulnerabilities")) return "vulnerabilities"
     return ""
@@ -38,9 +38,9 @@ export default function TargetLayout({
   // Tab 路径映射
   const basePath = `/assets/target/${id}`
   const tabPaths = {
-    domains: `${basePath}/domains`,
-    endpoints: `${basePath}/endpoints`,
-    vulnerabilities: `${basePath}/vulnerabilities`,
+    subdomain: `${basePath}/subdomain/`,
+    endpoints: `${basePath}/endpoints/`,
+    vulnerabilities: `${basePath}/vulnerabilities/`,
   }
 
   // 加载状态
@@ -119,8 +119,8 @@ export default function TargetLayout({
       <div className="flex items-center justify-between px-4 lg:px-6">
         <Tabs value={getActiveTab()} className="w-full">
           <TabsList>
-            <TabsTrigger value="domains" asChild>
-              <Link href={tabPaths.domains}>Subdomains</Link>
+            <TabsTrigger value="subdomain" asChild>
+              <Link href={tabPaths.subdomain}>Subdomains</Link>
             </TabsTrigger>
             <TabsTrigger value="endpoints" asChild>
               <Link href={tabPaths.endpoints}>URLs</Link>

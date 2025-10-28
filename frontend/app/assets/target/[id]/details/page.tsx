@@ -12,8 +12,8 @@ export default function TargetDetailsPage() {
   const router = useRouter()
 
   useEffect(() => {
-    // 重定向到域名页面
-    router.replace(`/assets/target/${id}/domains`)
+    // 重定向到子域名页面
+    router.replace(`/assets/target/${id}/subdomain/`)
   }, [id, router])
 
   return null

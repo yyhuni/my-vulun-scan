@@ -59,17 +59,17 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-// 导入域名类型定义
-import type { Domain } from "@/types/domain.types"
+// 导入子域名类型定义
+import type { Subdomain } from "@/types/subdomain.types"
 import type { PaginationInfo } from "@/types/common.types"
 
 // 组件属性类型定义
-interface TargetDomainsDataTableProps {
-  data: Domain[]                                  // 域名数据数组
-  columns: ColumnDef<Domain>[]                    // 列定义数组
+interface SubdomainsDataTableProps {
+  data: Subdomain[]                                // 子域名数据数组
+  columns: ColumnDef<Subdomain>[]                  // 列定义数组
   onAddNew?: () => void                          // 添加新域名的回调函数
   onBulkDelete?: () => void                      // 批量删除回调函数
-  onSelectionChange?: (selectedRows: Domain[]) => void  // 选中行变化回调
+  onSelectionChange?: (selectedRows: Subdomain[]) => void  // 选中行变化回调
   searchPlaceholder?: string                     // 搜索框占位符
   searchColumn?: string                          // 搜索的列名
   addButtonText?: string                         // 添加按钮文本
@@ -90,7 +90,7 @@ interface TargetDomainsDataTableProps {
  * 专门用于显示和管理目标域名数据的表格
  * 包含搜索、分页、列显示控制等功能
  */
-export function TargetDomainsDataTable({
+export function SubdomainsDataTable({
   data = [],
   columns,
   onAddNew,
@@ -107,7 +107,7 @@ export function TargetDomainsDataTable({
   setPagination: setExternalPagination,
   paginationInfo,
   onPaginationChange,
-}: TargetDomainsDataTableProps) {
+}: SubdomainsDataTableProps) {
   // 表格状态管理
   // 选中行状态，key为行id，value为true或false
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({})
