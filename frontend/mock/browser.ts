@@ -23,24 +23,41 @@ export async function startMockWorker() {
   }
 
   try {
-    if ('serviceWorker' in navigator) {
-      const registrations = await navigator.serviceWorker.getRegistrations()
-      const hasMock = registrations.some((r) =>
-        [r.active?.scriptURL, r.installing?.scriptURL, r.waiting?.scriptURL]
-          .filter(Boolean)
-          .some((u) => (u as string).includes('mockServiceWorker.js'))
-      )
-      if (!navigator.serviceWorker.controller && hasMock) {
-        return
-      }
-    }
+    // 检查是否已经有 Service Worker 在控制页面
+    const hadController = navigator.serviceWorker?.controller !== null
+    
     await worker.start({
       onUnhandledRequest: 'bypass',
+      quiet: false, // 显示 MSW 启动消息
       serviceWorker: {
         url: '/mockServiceWorker.js',
+        options: {
+          // Service Worker 更新策略
+          scope: '/',
+        },
       },
     })
+    
     console.log('🎭 Mock Service Worker 已启动')
+    
+    // 如果之前没有 controller，等待 Service Worker 激活并控制页面
+    if (!hadController && 'serviceWorker' in navigator) {
+      console.log('⏳ 首次启动，等待 Service Worker 激活...')
+      
+      // 等待 Service Worker 就绪
+      await navigator.serviceWorker.ready
+      
+      // 检查是否已经控制页面
+      if (navigator.serviceWorker.controller) {
+        console.log('✅ Service Worker 已激活并控制页面')
+      } else {
+        // 强制刷新以激活 Service Worker
+        console.log('🔄 正在刷新页面以激活 Service Worker...')
+        window.location.reload()
+      }
+    } else {
+      console.log('✅ Service Worker 已经在控制页面')
+    }
   } catch (error) {
     console.error('❌ Mock Service Worker 启动失败:', error)
   }
