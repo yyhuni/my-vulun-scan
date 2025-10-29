@@ -21,9 +21,9 @@ import { RoutePrefetch } from "@/components/route-prefetch"
 
 // 定义页面的元数据信息,用于 SEO 优化
 export const metadata: Metadata = {
-  title: "v0 App", // 页面标题
-  description: "Created with v0", // 页面描述
-  generator: "v0.app", // 生成器标识
+  title: "XingRin - 星环", // 页面标题
+  description: "XingRin - 星环", // 页面描述
+  generator: "XingRin", // 生成器标识
 }
 
 // 全站字体：Noto Sans SC（简体中文），兼顾中英文显示，系统字体作为回退

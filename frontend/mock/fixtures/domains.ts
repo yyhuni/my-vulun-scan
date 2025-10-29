@@ -1,9 +1,9 @@
 /**
  * Mock 数据 - 域名
  */
-import type { Domain } from '@/types/domain.types'
+import type { Subdomain } from '@/types/subdomain.types'
 
-export const mockDomains: Domain[] = [
+export const mockDomains: Subdomain[] = [
   {
     id: 1,
     name: 'www.aliyun.com',
@@ -168,7 +168,7 @@ export const mockDomains: Domain[] = [
 /**
  * 根据ID获取域名
  */
-export function getDomainById(id: number): Domain | undefined {
+export function getDomainById(id: number): Subdomain | undefined {
   return mockDomains.find(domain => domain.id === id)
 }
 
@@ -192,9 +192,10 @@ export function getDomainsByAssetId(assetId: number, page = 1, pageSize = 10) {
 
 /**
  * 根据组织ID获取域名列表
+ * 注意：在 mock 数据中，我们假设 assetId 就是 organizationId
  */
 export function getDomainsByOrganizationId(organizationId: number, page = 1, pageSize = 10) {
-  const filtered = mockDomains.filter(domain => domain.organizationId === organizationId)
+  const filtered = mockDomains.filter(domain => domain.assetId === organizationId)
   const startIndex = (page - 1) * pageSize
   const endIndex = startIndex + pageSize
   const paginatedData = filtered.slice(startIndex, endIndex)

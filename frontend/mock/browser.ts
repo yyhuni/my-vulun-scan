@@ -23,8 +23,19 @@ export async function startMockWorker() {
   }
 
   try {
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations()
+      const hasMock = registrations.some((r) =>
+        [r.active?.scriptURL, r.installing?.scriptURL, r.waiting?.scriptURL]
+          .filter(Boolean)
+          .some((u) => (u as string).includes('mockServiceWorker.js'))
+      )
+      if (!navigator.serviceWorker.controller && hasMock) {
+        return
+      }
+    }
     await worker.start({
-      onUnhandledRequest: 'bypass', // 未匹配的请求直接放行
+      onUnhandledRequest: 'bypass',
       serviceWorker: {
         url: '/mockServiceWorker.js',
       },

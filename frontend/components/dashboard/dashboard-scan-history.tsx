@@ -9,7 +9,7 @@ import { LoadingState } from "@/components/loading-spinner"
 import type { ScanRecord } from "@/types/scan.types"
 
 export function DashboardScanHistory() {
-  const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 10 })
+  const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 5 })
   const { data, isLoading } = useRunningScans(pagination.pageIndex + 1, pagination.pageSize)
   const router = useRouter()
 
@@ -32,9 +32,8 @@ export function DashboardScanHistory() {
     <ScanHistoryDataTable
       data={data?.scans ?? []}
       columns={columns as any}
-      searchPlaceholder="搜索域名..."
-      searchColumn="domainName"
-      addButtonText="新建扫描"
+      hideToolbar
+      hidePagination
       pagination={pagination}
       setPagination={setPagination}
       paginationInfo={paginationInfo}

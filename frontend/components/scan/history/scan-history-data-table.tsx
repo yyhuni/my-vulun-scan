@@ -69,6 +69,8 @@ interface ScanHistoryDataTableProps {
   setPagination?: React.Dispatch<React.SetStateAction<{ pageIndex: number; pageSize: number }>>
   paginationInfo?: PaginationInfo
   onPaginationChange?: (pagination: { pageIndex: number; pageSize: number }) => void
+  hideToolbar?: boolean
+  hidePagination?: boolean
 }
 
 /**
@@ -89,6 +91,8 @@ export function ScanHistoryDataTable({
   setPagination: setExternalPagination,
   paginationInfo,
   onPaginationChange,
+  hideToolbar = false,
+  hidePagination = false,
 }: ScanHistoryDataTableProps) {
   // 表格状态管理
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({})
@@ -155,89 +159,85 @@ export function ScanHistoryDataTable({
 
   return (
     <div className="w-full space-y-4">
-      {/* 工具栏 */}
-      <div className="flex items-center justify-between">
-        {/* 搜索框 */}
-        <div className="flex items-center space-x-2">
-          <Input
-            placeholder={searchPlaceholder}
-            value={(table.getColumn(searchColumn)?.getFilterValue() as string) ?? ""}
-            onChange={(event) =>
-              table.getColumn(searchColumn)?.setFilterValue(event.target.value)
-            }
-            className="max-w-sm"
-          />
-        </div>
-
-        {/* 右侧操作按钮 */}
-        <div className="flex items-center space-x-2">
-          {/* 列显示控制 */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <IconLayoutColumns />
-                Columns
-                <IconChevronDown />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {table
-                .getAllColumns()
-                .filter(
-                  (column) =>
-                    typeof column.accessorFn !== "undefined" && column.getCanHide()
-                )
-                .map((column) => {
-                  const columnNameMap: Record<string, string> = {
-                    domainName: "Domain Name",
-                    summary: "Summary",
-                    scanEngine: "Scan Engine Used",
-                    lastScan: "Last Scan",
-                    status: "Status",
-                    progress: "Progress",
-                  }
-                  
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={column.id}
-                      className="capitalize"
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                    >
-                      {columnNameMap[column.id] || column.id}
-                    </DropdownMenuCheckboxItem>
-                  )
-                })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          
-          {/* 批量删除按钮 */}
-          {onBulkDelete && (
-            <Button 
-              onClick={onBulkDelete}
-              size="sm"
-              variant="outline"
-              disabled={table.getFilteredSelectedRowModel().rows.length === 0}
-              className={
-                table.getFilteredSelectedRowModel().rows.length === 0
-                  ? "text-muted-foreground"
-                  : "text-destructive hover:text-destructive hover:bg-destructive/10"
+      {!hideToolbar && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Input
+              placeholder={searchPlaceholder}
+              value={(table.getColumn(searchColumn)?.getFilterValue() as string) ?? ""}
+              onChange={(event) =>
+                table.getColumn(searchColumn)?.setFilterValue(event.target.value)
               }
-            >
-              <IconTrash />
-              Delete
-            </Button>
-          )}
+              className="max-w-sm"
+            />
+          </div>
 
-          {/* 添加新记录按钮 */}
-          {onAddNew && (
-            <Button onClick={onAddNew} size="sm">
-              <IconPlus />
-              {addButtonText}
-            </Button>
-          )}
+          <div className="flex items-center space-x-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <IconLayoutColumns />
+                  Columns
+                  <IconChevronDown />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {table
+                  .getAllColumns()
+                  .filter(
+                    (column) =>
+                      typeof column.accessorFn !== "undefined" && column.getCanHide()
+                  )
+                  .map((column) => {
+                    const columnNameMap: Record<string, string> = {
+                      domainName: "Domain Name",
+                      summary: "Summary",
+                      scanEngine: "Scan Engine Used",
+                      lastScan: "Last Scan",
+                      status: "Status",
+                      progress: "Progress",
+                    }
+
+                    return (
+                      <DropdownMenuCheckboxItem
+                        key={column.id}
+                        className="capitalize"
+                        checked={column.getIsVisible()}
+                        onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                      >
+                        {columnNameMap[column.id] || column.id}
+                      </DropdownMenuCheckboxItem>
+                    )
+                  })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {onBulkDelete && (
+              <Button 
+                onClick={onBulkDelete}
+                size="sm"
+                variant="outline"
+                disabled={table.getFilteredSelectedRowModel().rows.length === 0}
+                className={
+                  table.getFilteredSelectedRowModel().rows.length === 0
+                    ? "text-muted-foreground"
+                    : "text-destructive hover:text-destructive hover:bg-destructive/10"
+                }
+              >
+                <IconTrash />
+                Delete
+              </Button>
+            )}
+
+            {onAddNew && (
+              <Button onClick={onAddNew} size="sm">
+                <IconPlus />
+                {addButtonText}
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* 表格容器 */}
       <div className="rounded-md border">
@@ -295,87 +295,83 @@ export function ScanHistoryDataTable({
         </Table>
       </div>
       
-      {/* 分页控制 */}
-      <div className="flex items-center justify-between px-2">
-        {/* 选中行信息 */}
-        <div className="flex-1 text-sm text-muted-foreground">
-          {table.getFilteredSelectedRowModel().rows.length} of{" "}
-          {paginationInfo ? paginationInfo.total : table.getFilteredRowModel().rows.length} row(s) selected
-        </div>
-
-        {/* 分页控制器 */}
-        <div className="flex items-center space-x-6 lg:space-x-8">
-          {/* 每页显示数量选择 */}
-          <div className="flex items-center space-x-2">
-            <Label htmlFor="rows-per-page" className="text-sm font-medium">
-              Rows per page
-            </Label>
-            <Select
-              value={`${table.getState().pagination.pageSize}`}
-              onValueChange={(value) => {
-                table.setPageSize(Number(value))
-              }}
-            >
-              <SelectTrigger className="h-8 w-[70px]" id="rows-per-page">
-                <SelectValue placeholder={table.getState().pagination.pageSize} />
-              </SelectTrigger>
-              <SelectContent side="top">
-                {[10, 20, 50, 100, 200, 500, 1000].map((pageSize) => (
-                  <SelectItem key={pageSize} value={`${pageSize}`}>
-                    {pageSize}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      {!hidePagination && (
+        <div className="flex items-center justify-between px-2">
+          <div className="flex-1 text-sm text-muted-foreground">
+            {table.getFilteredSelectedRowModel().rows.length} of{" "}
+            {paginationInfo ? paginationInfo.total : table.getFilteredRowModel().rows.length} row(s) selected
           </div>
 
-          {/* 页码信息 */}
-          <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-            Page {table.getState().pagination.pageIndex + 1} of{" "}
-            {table.getPageCount()}
-          </div>
+          <div className="flex items-center space-x-6 lg:space-x-8">
+            <div className="flex items-center space-x-2">
+              <Label htmlFor="rows-per-page" className="text-sm font-medium">
+                Rows per page
+              </Label>
+              <Select
+                value={`${table.getState().pagination.pageSize}`}
+                onValueChange={(value) => {
+                  table.setPageSize(Number(value))
+                }}
+              >
+                <SelectTrigger className="h-8 w-[70px]" id="rows-per-page">
+                  <SelectValue placeholder={table.getState().pagination.pageSize} />
+                </SelectTrigger>
+                <SelectContent side="top">
+                  {[10, 20, 50, 100, 200, 500, 1000].map((pageSize) => (
+                    <SelectItem key={pageSize} value={`${pageSize}`}>
+                      {pageSize}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          {/* 分页按钮 */}
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              className="hidden h-8 w-8 p-0 lg:flex"
-              onClick={() => table.setPageIndex(0)}
-              disabled={!table.getCanPreviousPage()}
-            >
-              <span className="sr-only">Go to first page</span>
-              <IconChevronsLeft />
-            </Button>
-            <Button
-              variant="outline"
-              className="h-8 w-8 p-0"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-            >
-              <span className="sr-only">Go to previous page</span>
-              <IconChevronLeft />
-            </Button>
-            <Button
-              variant="outline"
-              className="h-8 w-8 p-0"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-            >
-              <span className="sr-only">Go to next page</span>
-              <IconChevronRight />
-            </Button>
-            <Button
-              variant="outline"
-              className="hidden h-8 w-8 p-0 lg:flex"
-              onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-              disabled={!table.getCanNextPage()}
-            >
-              <span className="sr-only">Go to last page</span>
-              <IconChevronsRight />
-            </Button>
+            <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+              Page {table.getState().pagination.pageIndex + 1} of{" "}
+              {table.getPageCount()}
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                className="hidden h-8 w-8 p-0 lg:flex"
+                onClick={() => table.setPageIndex(0)}
+                disabled={!table.getCanPreviousPage()}
+              >
+                <span className="sr-only">Go to first page</span>
+                <IconChevronsLeft />
+              </Button>
+              <Button
+                variant="outline"
+                className="h-8 w-8 p-0"
+                onClick={() => table.previousPage()}
+                disabled={!table.getCanPreviousPage()}
+              >
+                <span className="sr-only">Go to previous page</span>
+                <IconChevronLeft />
+              </Button>
+              <Button
+                variant="outline"
+                className="h-8 w-8 p-0"
+                onClick={() => table.nextPage()}
+                disabled={!table.getCanNextPage()}
+              >
+                <span className="sr-only">Go to next page</span>
+                <IconChevronRight />
+              </Button>
+              <Button
+                variant="outline"
+                className="hidden h-8 w-8 p-0 lg:flex"
+                onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+                disabled={!table.getCanNextPage()}
+              >
+                <span className="sr-only">Go to last page</span>
+                <IconChevronsRight />
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

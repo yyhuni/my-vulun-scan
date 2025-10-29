@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useMemo } from "react"
+import React, { useState, useMemo, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Trash2, Plus, Building2 } from "lucide-react"
 
@@ -80,7 +80,7 @@ export function OrganizationList() {
   const updateOrganization = useUpdateOrganization()
 
   // 辅助函数 - 格式化日期
-  const formatDate = (dateString: string): string => {
+  const formatDate = useCallback((dateString: string): string => {
     return new Date(dateString).toLocaleString("zh-CN", {
       year: "numeric",
       month: "numeric", 
@@ -90,37 +90,37 @@ export function OrganizationList() {
       second: "2-digit",
       hour12: false,
     })
-  }
+  }, [])
 
   // 处理删除操作
-  const handleDelete = (org: Organization) => {
+  const handleDelete = useCallback((org: Organization) => {
     setOrganizationToDelete(org)
     setDeleteDialogOpen(true)
-  }
+  }, [])
 
   // 处理编辑操作
-  const handleEdit = (org: Organization) => {
+  const handleEdit = useCallback((org: Organization) => {
     setOrganizationToEdit(org)
     setEditDialogOpen(true)
-  }
+  }, [])
 
   // 处理发起扫描操作
-  const handleInitiateScan = (org: Organization) => {
+  const handleInitiateScan = useCallback((org: Organization) => {
     // TODO: 实现发起扫描功能
     console.log("Initiate scan for organization:", org.name)
-  }
+  }, [])
 
   // 处理计划扫描操作
-  const handleScheduleScan = (org: Organization) => {
+  const handleScheduleScan = useCallback((org: Organization) => {
     // TODO: 实现计划扫描功能
     console.log("Schedule scan for organization:", org.name)
-  }
+  }, [])
 
   // 导航到详情页面（使用 Next.js 客户端路由）
   const router = useRouter()
-  const navigate = (path: string) => {
+  const navigate = useCallback((path: string) => {
     router.push(path)
-  }
+  }, [router])
 
   // 创建列定义
   const columns = useMemo(() =>
@@ -132,7 +132,7 @@ export function OrganizationList() {
       handleInitiateScan,
       handleScheduleScan,
     }),
-    [formatDate, navigate, handleEdit, handleDelete]
+    [formatDate, navigate, handleEdit, handleDelete, handleInitiateScan, handleScheduleScan]
   )
 
   // 确认删除组织

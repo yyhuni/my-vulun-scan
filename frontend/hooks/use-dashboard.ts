@@ -12,5 +12,6 @@ export function useSystemMetrics(range: '1h' | '24h' | '7d' = '24h') {
   return useQuery({
     queryKey: ['system', 'metrics', range],
     queryFn: () => getSystemMetrics({ range }),
+    refetchInterval: 2000,
   })
 }

@@ -70,9 +70,9 @@ interface NavItem {
 const data = {
   // 用户信息
   user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
+    name: "admin",
+    email: "admin@admin.com",
+    avatar: "",
   },
   // 主导航菜单项
   navMain: [

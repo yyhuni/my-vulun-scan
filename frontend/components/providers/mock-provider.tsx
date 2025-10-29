@@ -15,8 +15,7 @@ export function MockProvider({ children }: { children: React.ReactNode }) {
     // 检查是否需要启用 Mock
     // 可以通过环境变量 NEXT_PUBLIC_ENABLE_MOCK 控制
     const shouldEnableMock = 
-      process.env.NODE_ENV === 'development' && 
-      process.env.NEXT_PUBLIC_ENABLE_MOCK === 'true'
+      process.env.NODE_ENV === 'development'
 
     if (!shouldEnableMock) {
       setMockReady(true)

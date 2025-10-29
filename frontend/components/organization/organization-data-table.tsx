@@ -135,7 +135,7 @@ export function OrganizationDataTable({
       const selectedRows = table.getFilteredSelectedRowModel().rows.map(row => row.original)
       onSelectionChange(selectedRows)
     }
-  }, [rowSelection, onSelectionChange, table])
+  }, [rowSelection])
 
   return (
     <div className="w-full space-y-4">
