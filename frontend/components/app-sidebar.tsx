@@ -141,7 +141,7 @@ const data = {
   // 系统设置相关菜单项
   documents: [
     {
-      name: "硬盘管理", // 硬盘使用情况
+      name: "磁盘管理", // 硬盘使用情况
       url: "/disk/",
       icon: IconDatabase,
     },
