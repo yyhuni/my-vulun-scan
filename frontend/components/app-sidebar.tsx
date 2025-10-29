@@ -29,7 +29,7 @@ import { usePathname } from "next/navigation"
 import Link from "next/link"
 
 // 导入自定义导航组件
-import { NavDocuments } from "@/components/nav-documents"
+import { NavSystem } from "@/components/nav-system"
 import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
 // 导入侧边栏 UI 组件
@@ -77,7 +77,7 @@ const data = {
   // 主导航菜单项
   navMain: [
     {
-      title: "Dashboard", // 仪表板
+      title: "仪表盘", // 仪表板
       url: "/dashboard/",
       icon: IconDashboard,
     },
@@ -132,23 +132,22 @@ const data = {
   ],
   // 次要导航菜单项
   navSecondary: [
-
     {
       title: "Get Help", // 获取帮助
       url: "#",
       icon: IconHelp,
     },
   ],
-  // 文档相关菜单项
+  // 系统设置相关菜单项
   documents: [
     {
-      name: "Disk Management", // 硬盘使用情况
-      url: "#",
+      name: "硬盘管理", // 硬盘使用情况
+      url: "/disk/",
       icon: IconDatabase,
     },
     {
-      name: "Notification Settings", // Notification Settings
-      url: "#",
+      name: "通知设置", // 通知设置
+      url: "/settings/notifications/",
       icon: IconSettings,
     },
   ],
@@ -256,8 +255,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarGroupContent>
         </SidebarGroup>
         
-        {/* 文档导航菜单 */}
-        <NavDocuments items={data.documents} />
+        {/* 系统设置导航菜单 */}
+        <NavSystem items={data.documents} />
         {/* 次要导航菜单,使用 mt-auto 推到底部 */}
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>

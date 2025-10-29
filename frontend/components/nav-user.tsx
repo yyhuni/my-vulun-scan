@@ -74,7 +74,7 @@ export function NavUser({
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{user.name}</span>  {/* 用户名称 */}
                 <span className="text-muted-foreground truncate text-xs">  {/* 用户邮箱 */}
-                  {user.email}
+                  {/* {user.email} */}
                 </span>
               </div>
               {/* 三点菜单图标 */}
@@ -100,31 +100,18 @@ export function NavUser({
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{user.name}</span>  {/* 用户名称 */}
                   <span className="text-muted-foreground truncate text-xs">  {/* 用户邮箱 */}
-                    {user.email}
+                    {/* {user.email} */}
                   </span>
                 </div>
               </div>
             </DropdownMenuLabel>
             {/* 分隔线 */}
             <DropdownMenuSeparator />
-            {/* 用户操作组 */}
-            <DropdownMenuGroup>
-              {/* 账户设置 */}
-              <DropdownMenuItem>
-                <IconUserCircle />                                       {/* 用户圆圈图标 */}
-                Account                                                  {/* 账户 */}
-              </DropdownMenuItem>
-              {/* 账单设置 */}
-              <DropdownMenuItem>
-                <IconCreditCard />                                       {/* 信用卡图标 */}
-                Billing                                                  {/* 账单 */}
-              </DropdownMenuItem>
-              {/* 通知设置 */}
-              <DropdownMenuItem>
-                <IconNotification />                                     {/* 通知图标 */}
-                Notifications                                            {/* 通知 */}
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
+            {/* 更改密码 */}
+            <DropdownMenuItem>
+              <IconUserCircle />                                         {/* 用户圆圈图标 */}
+              Change Password                                            {/* 更改密码 */}
+            </DropdownMenuItem>
             {/* 分隔线 */}
             <DropdownMenuSeparator />
             {/* 登出选项 */}
