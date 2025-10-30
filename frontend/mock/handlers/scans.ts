@@ -8,10 +8,24 @@ function genScans(): ScanRecord[] {
   const statuses: ScanStatus[] = ['running', 'completed', 'failed', 'pending']
   for (let i = 1; i <= 25; i++) {
     const status = statuses[i % statuses.length]
+    const critical = (i * 2) % 5
+    const high = (i * 3) % 8
+    const medium = (i * 5) % 10
+    const low = (i * 7) % 15
     items.push({
       id: i,
       domainName: `demo${i}.example.com`,
-      summary: { subdomains: (i * 3) % 30, endpoints: (i * 17) % 500, vulnerabilities: (i * 5) % 20 },
+      summary: { 
+        subdomains: (i * 3) % 30, 
+        endpoints: (i * 17) % 500, 
+        vulnerabilities: {
+          total: critical + high + medium + low,
+          critical,
+          high,
+          medium,
+          low,
+        }
+      },
       scanEngine: i % 2 === 0 ? 'Full Scan' : 'Quick Scan',
       lastScan: new Date(Date.now() - i * 3600_000).toISOString(),
       status,

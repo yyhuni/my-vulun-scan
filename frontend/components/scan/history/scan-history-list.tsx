@@ -43,7 +43,13 @@ export function ScanHistoryList() {
       summary: {
         subdomains: 15,
         endpoints: 234,
-        vulnerabilities: 5,
+        vulnerabilities: {
+          total: 5,
+          critical: 1,
+          high: 2,
+          medium: 2,
+          low: 0,
+        },
       },
       scanEngine: "Full Scan",
       lastScan: "2025-01-10 14:30:00",
@@ -56,7 +62,13 @@ export function ScanHistoryList() {
       summary: {
         subdomains: 8,
         endpoints: 120,
-        vulnerabilities: 12,
+        vulnerabilities: {
+          total: 12,
+          critical: 0,
+          high: 3,
+          medium: 5,
+          low: 4,
+        },
       },
       scanEngine: "Quick Scan",
       lastScan: "2025-01-13 10:20:00",
@@ -69,7 +81,13 @@ export function ScanHistoryList() {
       summary: {
         subdomains: 3,
         endpoints: 89,
-        vulnerabilities: 0,
+        vulnerabilities: {
+          total: 0,
+          critical: 0,
+          high: 0,
+          medium: 0,
+          low: 0,
+        },
       },
       scanEngine: "Vulnerability Scan",
       lastScan: "2025-01-12 08:15:00",
@@ -82,7 +100,13 @@ export function ScanHistoryList() {
       summary: {
         subdomains: 0,
         endpoints: 0,
-        vulnerabilities: 0,
+        vulnerabilities: {
+          total: 0,
+          critical: 0,
+          high: 0,
+          medium: 0,
+          low: 0,
+        },
       },
       scanEngine: "Port Scan",
       lastScan: "2025-01-13 16:00:00",
@@ -95,7 +119,13 @@ export function ScanHistoryList() {
       summary: {
         subdomains: 22,
         endpoints: 456,
-        vulnerabilities: 15,
+        vulnerabilities: {
+          total: 15,
+          critical: 2,
+          high: 5,
+          medium: 6,
+          low: 2,
+        },
       },
       scanEngine: "Full Scan",
       lastScan: "2025-01-11 09:00:00",

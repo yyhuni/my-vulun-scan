@@ -288,27 +288,72 @@ export const createScanHistoryColumns = ({
     accessorKey: "summary",
     header: "Summary",
     cell: ({ row }) => {
-      const summary = row.getValue("summary") as { subdomains: number; endpoints: number; vulnerabilities: number }
+      const summary = row.getValue("summary") as { 
+        subdomains: number
+        endpoints: number
+        vulnerabilities: {
+          total: number
+          critical: number
+          high: number
+          medium: number
+          low: number
+        }
+      }
       return (
-        <div className="flex flex-col gap-1 text-sm">
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground">子域名:</span>
-            <Badge variant="outline" className="font-mono">
-              {summary.subdomains}
-            </Badge>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground">Endpoints:</span>
-            <Badge variant="outline" className="font-mono">
-              {summary.endpoints}
-            </Badge>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground">漏洞:</span>
-            <Badge variant={summary.vulnerabilities > 0 ? "destructive" : "secondary"} className="font-mono">
-              {summary.vulnerabilities}
-            </Badge>
-          </div>
+        <div className="flex items-center gap-1.5">
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge 
+                  variant="outline" 
+                  className="font-mono bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border-cyan-500/20 hover:bg-cyan-500/20 transition-colors cursor-default"
+                >
+                  {summary.subdomains}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p className="text-xs">Subdomains</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge 
+                  variant="outline" 
+                  className="font-mono bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20 hover:bg-amber-500/20 transition-colors cursor-default"
+                >
+                  {summary.endpoints}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p className="text-xs">Endpoints</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge 
+                  variant="outline" 
+                  className={`font-mono transition-colors cursor-default ${
+                    summary.vulnerabilities.total > 0 
+                      ? 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20 hover:bg-red-500/20' 
+                      : 'bg-gray-500/10 text-gray-700 dark:text-gray-400 border-gray-500/20 hover:bg-gray-500/20'
+                  }`}
+                >
+                  {summary.vulnerabilities.total}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p className="text-xs font-medium">
+                  {summary.vulnerabilities.critical} Critical, {summary.vulnerabilities.high} High, {summary.vulnerabilities.medium} Medium Vulnerabilities
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       )
     },

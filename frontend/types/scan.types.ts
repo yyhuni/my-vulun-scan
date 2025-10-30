@@ -6,7 +6,13 @@ export interface ScanRecord {
   summary: {
     subdomains: number
     endpoints: number
-    vulnerabilities: number
+    vulnerabilities: {
+      total: number
+      critical: number
+      high: number
+      medium: number
+      low: number
+    }
   }
   scanEngine: string
   lastScan: string
