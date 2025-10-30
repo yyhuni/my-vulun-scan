@@ -1,10 +1,10 @@
 from rest_framework import serializers
-from .models import Organization, Domain
+from .models import Organization, Target
 
 
-class DomainSerializer(serializers.ModelSerializer):
+class TargetSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Domain
+        model = Target
         fields = '__all__'
         read_only_fields = ['id', 'created_at']
 
