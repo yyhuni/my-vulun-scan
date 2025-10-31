@@ -186,10 +186,11 @@ class DirectoryScan(models.Model):
 class DiscoveredPath(models.Model):
     """目录扫描结果模型"""
     id = models.AutoField(primary_key=True)
-    length = models.IntegerField(default=0)
-    lines = models.IntegerField(default=0)
-    http_status = models.IntegerField(default=0)
-    words = models.IntegerField(default=0)
+    length = models.IntegerField(default=0, help_text='长度')
+    lines = models.IntegerField(default=0, help_text='行数')
+    words = models.IntegerField(default=0, help_text='单词数')
+
+    status_code = models.IntegerField(default=0, help_text='HTTP状态码')
     name = models.CharField(max_length=500, blank=True, default='', help_text='路径名称')
     url = models.CharField(max_length=5000, blank=True, default='', help_text='URL地址')
     content_type = models.CharField(max_length=100, blank=True, default='', help_text='内容类型')
