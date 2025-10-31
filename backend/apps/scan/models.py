@@ -116,7 +116,7 @@ class ScanTask(models.Model):
         on_delete=models.CASCADE,
         blank=True,
         null=True,
-        help_text="所属的扫描任务"
+        help_text='所属的扫描任务'
     )
 
     name = models.CharField(
@@ -126,11 +126,13 @@ class ScanTask(models.Model):
 
     description = models.TextField(
         blank=True,
+        default='',
         help_text='任务描述'
     )
 
     status = models.IntegerField(
         choices=CeleryTaskStatus.choices,
+        default=CeleryTaskStatus.INITIATED,
         db_index=True,
         help_text='任务状态'
     )
@@ -144,20 +146,21 @@ class ScanTask(models.Model):
         max_length=300,
         blank=True,
         default='',
-        help_text="任务失败时的错误信息（限制300字符）"
+        help_text='任务失败时的错误信息（限制300字符）'
     )
 
     error_traceback = models.TextField(
         blank=True,
         default='',
-        help_text="完整的错误堆栈信息（用于调试）"
+        help_text='完整的错误堆栈信息（用于调试）'
     )
 
     # Celery 任务ID（用于追踪异步任务）
     task_id = models.CharField(
         max_length=100,
         blank=True,
-        help_text="Celery 异步任务的唯一标识符"
+        default='',
+        help_text='Celery 异步任务的唯一标识符'
     )
 
     class Meta:
@@ -171,4 +174,3 @@ class ScanTask(models.Model):
 
     def __str__(self):
         return str(self.name or f'ScanTask #{self.id}')
-

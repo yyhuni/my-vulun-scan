@@ -57,11 +57,24 @@ class Command(models.Model):
         help_text='所属的扫描记录'
     )
     command_line = models.TextField(
-        help_text="执行的命令行，如: subfinder -d example.com -o output.txt"
+        help_text='执行的命令行，如: subfinder -d example.com -o output.txt'
     )
-    exit_code = models.IntegerField(blank=True, null=True, help_text="命令退出码")
-    output = models.TextField(blank=True, default='', help_text="命令的标准输出内容")
-    executed_at = models.DateTimeField(help_text="命令执行时间")
+
+    exit_code = models.IntegerField(
+        blank=True,
+        null=True,
+        help_text='命令退出码'
+    )
+
+    output = models.TextField(
+        blank=True,
+        default='',
+        help_text='命令的标准输出内容'
+    )
+
+    executed_at = models.DateTimeField(
+        help_text='命令执行时间'
+    )
 
     class Meta:
         db_table = 'command'
@@ -71,3 +84,6 @@ class Command(models.Model):
         indexes = [
             models.Index(fields=['-executed_at']),
         ]
+
+    def __str__(self):
+        return f'Command #{self.id} - {self.executed_at}'
