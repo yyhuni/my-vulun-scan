@@ -117,6 +117,35 @@ class Technology(models.Model):
 class IPAddress(models.Model):
     """IP地址模型"""
     id = models.AutoField(primary_key=True)
+
+    scan = models.ForeignKey(
+        'scan.Scan',
+        on_delete=models.CASCADE,
+        related_name='ip_addresses',
+        null=True,
+        blank=True,
+        help_text='所属的扫描任务'
+    )
+
+    target = models.ForeignKey(
+        'targets.Target',
+        on_delete=models.CASCADE,
+        related_name='ip_addresses',
+        null=True,
+        blank=True,
+        help_text='所属的扫描目标'
+    )
+
+
+    subdomain = models.ForeignKey(
+        'Subdomain',
+        on_delete=models.CASCADE,
+        related_name='ip_addresses',
+        null=True,
+        blank=True,
+        help_text='所属的子域名'
+    )
+
     ip = models.CharField(max_length=500, blank=True, default='', help_text='IP地址')
     protocol_version = models.CharField(max_length=500, blank=True, default='', help_text='协议版本（如IPv4, IPv6）')
     created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
@@ -172,6 +201,7 @@ class DirectoryScan(models.Model):
     ffuf_command = models.CharField(max_length=500, blank=True, default='', help_text='ffuf命令')
     start_scan_at = models.DateTimeField(null=True, help_text='开始扫描时间')
     created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
+
     class Meta:
         db_table = 'directory_scan'
         verbose_name = '目录扫描'
@@ -186,6 +216,32 @@ class DirectoryScan(models.Model):
 class DiscoveredPath(models.Model):
     """目录扫描结果模型"""
     id = models.AutoField(primary_key=True)
+    directory_scan = models.ForeignKey(
+        'DirectoryScan',
+        on_delete=models.CASCADE,
+        related_name='discovered_paths',
+        null=True,
+        blank=True,
+        help_text='所属的目录扫描'
+    )
+    website = models.ForeignKey(
+        'WebSite',
+        on_delete=models.CASCADE,
+        related_name='discovered_paths',
+        null=True,
+        blank=True,
+        help_text='所属的站点'
+    )
+    scan = models.ForeignKey(
+        'scan.Scan',
+        on_delete=models.CASCADE,
+        related_name='discovered_paths',
+        null=True,
+        blank=True,
+        help_text='所属的扫描任务'
+    )
+    
+
     length = models.IntegerField(default=0, help_text='长度')
     lines = models.IntegerField(default=0, help_text='行数')
     words = models.IntegerField(default=0, help_text='单词数')
