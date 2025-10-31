@@ -5,23 +5,9 @@ class Organization(models.Model):
     """组织模型"""
 
     id = models.AutoField(primary_key=True)
-
-    name = models.CharField(
-        max_length=300,
-        unique=True,
-        help_text='组织名称'
-    )
-
-    description = models.TextField(
-        blank=True,
-        default='',
-        help_text='组织描述'
-    )
-
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-        help_text='创建时间'
-    )
+    name = models.CharField(max_length=300, unique=True, blank=True, default='', help_text='组织名称')
+    description = models.TextField(blank=True, default='', help_text='组织描述')
+    created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
 
     targets = models.ManyToManyField(
         'Target',
@@ -55,12 +41,7 @@ class Target(models.Model):
 
     # ==================== 基本字段 ====================
     id = models.AutoField(primary_key=True)
-
-    name = models.CharField(
-        max_length=300,
-        unique=True,
-        help_text='目标标识（域名/IP/CIDR）'
-    )
+    name = models.CharField(max_length=300, unique=True, blank=True, default='', help_text='目标标识（域名/IP/CIDR）')
 
     target_type = models.CharField(
         max_length=20,
@@ -70,30 +51,14 @@ class Target(models.Model):
         help_text='目标类型'
     )
 
-    description = models.TextField(
-        blank=True,
-        default='',
-        help_text='目标描述'
-    )
+    description = models.TextField(blank=True, default='', help_text='目标描述')
 
     # ==================== 时间戳 ====================
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-        help_text='创建时间'
-    )
-
-    last_scanned_at = models.DateTimeField(
-        null=True,
-        blank=True,
-        help_text='最后扫描时间'
-    )
+    created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
+    last_scanned_at = models.DateTimeField(null=True, blank=True, help_text='最后扫描时间')
 
     # ==================== 配置字段 ====================
-    request_headers = models.JSONField(
-        null=True,
-        blank=True,
-        help_text='自定义请求头配置'
-    )
+    request_headers = models.JSONField(null=True, blank=True, help_text='自定义请求头配置')
 
     class Meta:
         db_table = 'target'
