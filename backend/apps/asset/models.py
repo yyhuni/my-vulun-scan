@@ -1,15 +1,210 @@
-"""
-Asset 应用的数据库模型定义
-
-此模块包含了资产管理相关的所有 Django 模型类：
-- Email: 邮箱模型
-- Employee: 员工模型
-- Dork: Google Dork 模型
-- S3Bucket: S3 存储桶模型
-"""
 
 from django.db import models
 
+
+class Subdomain(models.Model):
+    """子域名模型"""
+
+    id = models.AutoField(primary_key=True)
+    scan = models.ForeignKey(
+        'scan.Scan',
+        on_delete=models.CASCADE,
+        related_name='subdomains',
+        null=True,
+        blank=True,
+        help_text='所属的扫描任务'
+    )
+    target = models.ForeignKey(
+        'targets.Target',
+        on_delete=models.CASCADE,
+        related_name='subdomains',
+        null=True,
+        blank=True,
+        help_text='所属的扫描目标'
+    )
+    name = models.CharField(max_length=1000, help_text='子域名名称')
+    created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
+
+
+    cname = models.CharField(max_length=5000, blank=True, default='', help_text="CNAME记录（多个用逗号分隔），由httpx探测获取")
+    is_cdn = models.BooleanField(default=False, blank=True, null=True, help_text="是否使用CDN（由httpx的cdn探测标志判断）")
+    cdn_name = models.CharField(max_length=200, blank=True, default='', help_text="CDN提供商名称（如cloudflare, akamai等）")
+
+
+    class Meta:
+        db_table = 'subdomain'
+        verbose_name = '子域名'
+        verbose_name_plural = '子域名'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['-created_at']),
+        ]
+    def __str__(self):
+        return str(self.name or f'Subdomain {self.id}')
+
+    
+
+class WebSite(models.Model):
+    """站点模型"""
+    id = models.AutoField(primary_key=True)
+    scan = models.ForeignKey(
+        'scan.Scan',
+        on_delete=models.CASCADE,
+        related_name='websites',
+        null=True,
+        blank=True,
+        help_text='所属的扫描任务'
+    )
+    target = models.ForeignKey(
+        'targets.Target',
+        on_delete=models.CASCADE,
+        related_name='websites',
+        null=True,
+        blank=True,
+        help_text='所属的扫描目标'
+    )
+    subdomain = models.ForeignKey(
+        'Subdomain',
+        on_delete=models.CASCADE,
+        related_name='websites',
+        null=True,
+        blank=True,
+        help_text='所属的子域名'
+    )
+
+    url = models.CharField(max_length=1000, help_text='站点url')
+    screenshot_path = models.CharField(max_length=1000, blank=True,default='', help_text='截图路径')
+    created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
+
+    title = models.CharField(max_length=1000, blank=True, default='', help_text='页面标题')
+    status_code = models.IntegerField(default=0, help_text='HTTP状态码')
+    content_length = models.IntegerField(default=0, help_text='内容长度（字节）')
+    response_time = models.IntegerField(default=0, help_text='响应时间（毫秒）')
+    content_type = models.CharField(max_length=200, blank=True, default='', help_text='HTTP响应的Content-Type（如text/html, application/json等）')
+    webserver = models.CharField(max_length=200, blank=True, default='', help_text='Web服务器（如nginx, apache等）')
+    technologies = models.ManyToManyField(
+        'Technology',
+        related_name='websites',
+        blank=True,
+        help_text='所属的站点技术'
+    )
+
+    class Meta:
+        db_table = 'website'
+        verbose_name = '站点'
+        verbose_name_plural = '站点'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['-created_at']),
+        ]
+    def __str__(self):
+        return str(self.url or f'Website {self.id}')
+
+class Technology(models.Model):
+    """站点技术模型"""
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=500, blank=True, default='', help_text='技术名称')
+
+    class Meta:
+        db_table = 'technology'
+        verbose_name = '站点技术'
+        verbose_name_plural = '站点技术'
+
+    def __str__(self):
+        return str(self.name or f'Technology {self.id}')
+
+
+class IPAddress(models.Model):
+    """IP地址模型"""
+    id = models.AutoField(primary_key=True)
+    ip = models.CharField(max_length=500, blank=True, default='', help_text='IP地址')
+    protocol_version = models.CharField(max_length=500, blank=True, default='', help_text='协议版本（如IPv4, IPv6）')
+    created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
+    is_private = models.BooleanField(default=False, help_text='是否私有IP')
+    reverse_pointer = models.CharField(max_length=500, blank=True, default='', help_text='反向解析（如域名）')
+
+    class Meta:
+        db_table = 'ip_address'
+        verbose_name = 'IP地址'
+        verbose_name_plural = 'IP地址'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['-created_at']),
+        ]
+    def __str__(self):
+        return str(self.ip or f'IPAddress {self.id}')
+
+
+class Port(models.Model):
+    """端口模型"""
+    id = models.AutoField(primary_key=True)
+    ip = models.ForeignKey(
+        'IPAddress',
+        on_delete=models.CASCADE,
+        related_name='ports',
+        null=True,
+        blank=True,
+        help_text='所属的IP地址'
+    )
+    number = models.IntegerField(default=0, help_text='端口号')
+    description = models.CharField(max_length=500, blank=True, default='', help_text='端口描述（如http, https, ssh, ftp等）')
+    service_name = models.CharField(max_length=500, blank=True, default='', help_text='服务名称（如http, https, ssh, ftp等）')
+    is_uncommon = models.BooleanField(default=False, help_text='是否为不常见端口')
+    created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
+
+
+    class Meta:
+        db_table = 'port'
+        verbose_name = '端口'
+        verbose_name_plural = '端口'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['-created_at']),
+        ]
+
+    def __str__(self):
+        return str(self.number or f'Port {self.id}')
+
+
+class DirectoryScan(models.Model):
+    """目录扫描模型"""
+    id = models.AutoField(primary_key=True)
+    ffuf_command = models.CharField(max_length=500, blank=True, default='', help_text='ffuf命令')
+    start_scan_at = models.DateTimeField(null=True, help_text='开始扫描时间')
+    created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
+    class Meta:
+        db_table = 'directory_scan'
+        verbose_name = '目录扫描'
+        verbose_name_plural = '目录扫描'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['-created_at']),
+        ]
+    def __str__(self):
+        return str(self.ffuf_command or f'DirectoryScan {self.id}')
+
+class DiscoveredPath(models.Model):
+    """目录扫描结果模型"""
+    id = models.AutoField(primary_key=True)
+    length = models.IntegerField(default=0)
+    lines = models.IntegerField(default=0)
+    http_status = models.IntegerField(default=0)
+    words = models.IntegerField(default=0)
+    name = models.CharField(max_length=500, blank=True, default='', help_text='路径名称')
+    url = models.CharField(max_length=5000, blank=True, default='', help_text='URL地址')
+    content_type = models.CharField(max_length=100, blank=True, default='', help_text='内容类型')
+    created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
+
+    class Meta:
+        db_table = 'discovered_path'
+        verbose_name = '目录扫描结果'
+        verbose_name_plural = '目录扫描结果'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['-created_at']),
+        ]
+    def __str__(self):
+        return str(self.name or f'DiscoveredPath {self.id}')
 
 class Email(models.Model):
     """邮箱模型"""
