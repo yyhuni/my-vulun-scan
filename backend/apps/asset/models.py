@@ -19,14 +19,12 @@ class Email(models.Model):
     address = models.CharField(
         max_length=200,
         blank=True,
-        null=True,
         help_text='邮箱地址'
     )
 
     password = models.CharField(
         max_length=200,
         blank=True,
-        null=True,
         help_text='邮箱密码'
     )
 
@@ -47,14 +45,12 @@ class Employee(models.Model):
 
     name = models.CharField(
         max_length=1000,
-        null=True,
         blank=True,
         help_text='员工姓名'
     )
 
     designation = models.CharField(
         max_length=1000,
-        null=True,
         blank=True,
         help_text='职位'
     )
@@ -76,14 +72,12 @@ class Dork(models.Model):
 
     type = models.CharField(
         max_length=500,
-        null=True,
         blank=True,
         help_text='Dork 类型'
     )
 
     url = models.CharField(
         max_length=10000,
-        null=True,
         blank=True,
         help_text='URL 地址'
     )
@@ -107,35 +101,30 @@ class S3Bucket(models.Model):
 
     name = models.CharField(
         max_length=500,
-        null=True,
         blank=True,
         help_text='存储桶名称'
     )
 
     region = models.CharField(
         max_length=500,
-        null=True,
         blank=True,
         help_text='区域'
     )
 
     provider = models.CharField(
         max_length=100,
-        null=True,
         blank=True,
         help_text='云服务提供商'
     )
 
     owner_id = models.CharField(
         max_length=250,
-        null=True,
         blank=True,
         help_text='所有者 ID'
     )
 
     owner_display_name = models.CharField(
         max_length=250,
-        null=True,
         blank=True,
         help_text='所有者显示名称'
     )

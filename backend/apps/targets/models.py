@@ -33,11 +33,11 @@ class Organization(models.Model):
     class Meta:
         db_table = 'organization'
         verbose_name = '组织'
-        verbose_name_plural = verbose_name
+        verbose_name_plural = '组织'
         ordering = ['name']
     
     def __str__(self):
-        return self.name
+        return str(self.name or f'Organization {self.id}')
 
 
 class Target(models.Model):
@@ -97,7 +97,7 @@ class Target(models.Model):
     class Meta:
         db_table = 'target'
         verbose_name = '扫描目标'
-        verbose_name_plural = verbose_name
+        verbose_name_plural = '扫描目标'
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['target_type']),
@@ -105,5 +105,5 @@ class Target(models.Model):
         ]
     
     def __str__(self):
-        return self.name
+        return str(self.name or f'Target {self.id}')
 

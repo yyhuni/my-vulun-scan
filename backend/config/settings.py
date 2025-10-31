@@ -49,6 +49,9 @@ INSTALLED_APPS = [
     # 业务应用
     'apps.common',   # 通用工具
     'apps.targets',  # 扫描目标管理
+    'apps.scan',     # 扫描任务管理
+    'apps.engine',   # 扫描引擎管理
+    'apps.asset',    # 资产管理
 ]
 
 MIDDLEWARE = [
