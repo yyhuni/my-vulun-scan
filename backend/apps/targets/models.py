@@ -20,7 +20,10 @@ class Organization(models.Model):
         db_table = 'organization'
         verbose_name = '组织'
         verbose_name_plural = '组织'
-        ordering = ['name']
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['-created_at']),
+        ]
 
     def __str__(self):
         return str(self.name or f'Organization {self.id}')
