@@ -60,8 +60,7 @@ class Target(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
     last_scanned_at = models.DateTimeField(null=True, blank=True, help_text='最后扫描时间')
 
-    # ==================== 配置字段 ====================
-    request_headers = models.JSONField(null=True, blank=True, help_text='自定义请求头配置')
+
 
     class Meta:
         db_table = 'target'

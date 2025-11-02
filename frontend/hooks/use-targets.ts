@@ -10,6 +10,7 @@ import {
   updateTarget,
   deleteTarget,
   batchDeleteTargets,
+  batchCreateTargets,
   getTargetOrganizations,
   linkTargetOrganizations,
   unlinkTargetOrganizations,
@@ -19,6 +20,7 @@ import type {
   CreateTargetRequest,
   UpdateTargetRequest,
   BatchDeleteTargetsRequest,
+  BatchCreateTargetsRequest,
 } from '@/types/target.types'
 
 /**
@@ -165,6 +167,25 @@ export function useBatchDeleteTargets() {
     },
     onError: (error: Error) => {
       toast.error(`批量删除失败: ${error.message}`)
+    },
+  })
+}
+
+/**
+ * 批量创建目标
+ */
+export function useBatchCreateTargets() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (data: BatchCreateTargetsRequest) => batchCreateTargets(data),
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ['targets'] })
+      queryClient.invalidateQueries({ queryKey: ['organizations'] })
+      toast.success(response.message)
+    },
+    onError: (error: Error) => {
+      toast.error(`批量创建失败: ${error.message}`)
     },
   })
 }

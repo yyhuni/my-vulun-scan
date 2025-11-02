@@ -33,7 +33,7 @@ import {
 
 // 导入 React Query Hook
 import { useCreateOrganization } from "@/hooks/use-organizations"
-import { useCreateTarget } from "@/hooks/use-targets"
+import { useBatchCreateTargets } from "@/hooks/use-targets"
 
 // 导入类型定义
 import type { Organization } from "@/types/organization.types"
@@ -82,7 +82,7 @@ export function AddOrganizationDialog({
 
   // 使用 React Query 的创建组织和目标 mutation
   const createOrganization = useCreateOrganization()
-  const createTarget = useCreateTarget()
+  const batchCreateTargets = useBatchCreateTargets()
   
   // 初始化表单
   const form = useForm<FormValues>({
@@ -146,20 +146,25 @@ export function AddOrganizationDialog({
       },
       {
         onSuccess: (newOrganization) => {
-          // 如果有目标，则创建目标
+          // 如果有目标，则批量创建目标
           if (values.targets && values.targets.trim()) {
             const targetList = values.targets
               .split("\n")
               .map(line => line.trim())
               .filter(line => line.length > 0)
-              .map(name => ({
-                name,
-                description: values.targetDescription?.trim() || undefined,
-              }))
+              .map(name => {
+                // 使用 TargetValidator 推断目标类型
+                const validation = TargetValidator.validateTarget(name)
+                return {
+                  name,
+                  targetType: validation.type || 'domain',
+                  description: values.targetDescription?.trim() || undefined,
+                }
+              })
 
             if (targetList.length > 0) {
-              // 创建目标并关联到新组织
-              createTarget.mutate(
+              // 批量创建目标并关联到新组织
+              batchCreateTargets.mutate(
                 {
                   targets: targetList,
                   organizationId: newOrganization.id,
@@ -202,7 +207,7 @@ export function AddOrganizationDialog({
 
   // 处理对话框关闭
   const handleOpenChange = (newOpen: boolean) => {
-    if (!createOrganization.isPending && !createTarget.isPending) {
+    if (!createOrganization.isPending && !batchCreateTargets.isPending) {
       setOpen(newOpen)
       if (!newOpen) {
         // 关闭时重置表单
@@ -213,7 +218,7 @@ export function AddOrganizationDialog({
 
   // 表单验证
   const isFormValid = form.formState.isValid && targetValidation.invalid.length === 0
-  const isSubmitting = createOrganization.isPending || createTarget.isPending
+  const isSubmitting = createOrganization.isPending || batchCreateTargets.isPending
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -394,7 +399,7 @@ export function AddOrganizationDialog({
                 {isSubmitting ? (
                   <>
                     <LoadingSpinner/>
-                    {createOrganization.isPending ? "创建组织中..." : "创建目标中..."}
+                    {createOrganization.isPending ? "创建组织中..." : "批量创建目标中..."}
                   </>
                 ) : (
                   <>

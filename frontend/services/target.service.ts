@@ -9,6 +9,8 @@ import type {
   UpdateTargetRequest,
   BatchDeleteTargetsRequest,
   BatchDeleteTargetsResponse,
+  BatchCreateTargetsRequest,
+  BatchCreateTargetsResponse,
 } from '@/types/target.types'
 
 /**
@@ -57,6 +59,16 @@ export async function batchDeleteTargets(
   data: BatchDeleteTargetsRequest
 ): Promise<BatchDeleteTargetsResponse> {
   const response = await api.post<BatchDeleteTargetsResponse>('/targets/batch-delete/', data)
+  return response.data
+}
+
+/**
+ * 批量创建目标
+ */
+export async function batchCreateTargets(
+  data: BatchCreateTargetsRequest
+): Promise<BatchCreateTargetsResponse> {
+  const response = await api.post<BatchCreateTargetsResponse>('/targets/batch_create/', data)
   return response.data
 }
 

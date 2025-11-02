@@ -70,3 +70,30 @@ export interface BatchDeleteTargetsResponse {
   failedIds?: number[]
 }
 
+/**
+ * 批量创建目标的请求参数
+ */
+export interface BatchCreateTargetsRequest {
+  targets: Array<{
+    name: string
+    targetType?: TargetType
+    description?: string
+    requestHeaders?: Record<string, string>
+  }>
+  organizationId?: number  // 可选：关联到指定组织
+}
+
+/**
+ * 批量创建目标的响应
+ */
+export interface BatchCreateTargetsResponse {
+  createdCount: number
+  skippedCount: number
+  createdTargets: Target[]
+  skippedTargets: Array<{
+    name: string
+    reason: string
+  }>
+  message: string
+}
+
