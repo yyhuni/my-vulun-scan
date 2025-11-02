@@ -16,7 +16,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import type { Vulnerability } from "@/types/vulnerability.types"
-import { mockVulnerabilities } from "@/mock/fixtures/vulnerabilities"
 
 export function VulnerabilitiesDetailView({
   targetId
@@ -36,8 +35,9 @@ export function VulnerabilitiesDetailView({
     pageSize: 10,
   })
 
+  // TODO: 替换为真实的 API 调用
   const data = useMemo(() => {
-    return mockVulnerabilities.filter(v => v.targetId === targetId)
+    return [] as Vulnerability[]
   }, [targetId])
 
   const paginationInfo = useMemo(() => {

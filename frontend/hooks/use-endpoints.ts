@@ -21,8 +21,8 @@ export const endpointKeys = {
     [...endpointKeys.lists(), params] as const,
   details: () => [...endpointKeys.all, 'detail'] as const,
   detail: (id: number) => [...endpointKeys.details(), id] as const,
-  byDomain: (domainId: number, params: GetEndpointsRequest) => 
-    [...endpointKeys.all, 'domain', domainId, params] as const,
+  byTarget: (targetId: number, params: GetEndpointsRequest) => 
+    [...endpointKeys.all, 'target', targetId, params] as const,
   bySubdomain: (subdomainId: number, params: GetEndpointsRequest) => 
     [...endpointKeys.all, 'subdomain', subdomainId, params] as const,
 }
@@ -58,8 +58,8 @@ export function useEndpoints(params?: GetEndpointsRequest) {
   })
 }
 
-// 根据域名ID获取 Endpoint 列表（使用专用路由）
-export function useEndpointsByDomain(domainId: number, params?: Omit<GetEndpointsRequest, 'domainId'>) {
+// 根据目标ID获取 Endpoint 列表（使用专用路由）
+export function useEndpointsByTarget(targetId: number, params?: Omit<GetEndpointsRequest, 'targetId'>) {
   const defaultParams: GetEndpointsRequest = {
     page: 1,
     pageSize: 10,
@@ -67,13 +67,13 @@ export function useEndpointsByDomain(domainId: number, params?: Omit<GetEndpoint
   }
   
   return useQuery({
-    queryKey: endpointKeys.byDomain(domainId, defaultParams),
-    queryFn: () => EndpointService.getEndpointsByDomainId(domainId, defaultParams),
+    queryKey: endpointKeys.byTarget(targetId, defaultParams),
+    queryFn: () => EndpointService.getEndpointsByTargetId(targetId, defaultParams),
     select: (response) => {
       // RESTful 标准：直接返回数据
       return response as GetEndpointsResponse
     },
-    enabled: !!domainId,
+    enabled: !!targetId,
   })
 }
 

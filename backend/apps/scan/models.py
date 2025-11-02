@@ -19,7 +19,7 @@ class Scan(models.Model):
         help_text='使用的扫描引擎'
     )
 
-    started_at = models.DateTimeField(help_text='扫描开始时间')
+    started_at = models.DateTimeField(auto_now_add=True, help_text='扫描开始时间')
     stopped_at = models.DateTimeField(null=True, blank=True, help_text='扫描结束时间')
 
     status = models.IntegerField(
@@ -42,13 +42,6 @@ class Scan(models.Model):
         models.CharField(max_length=200),
         null=True,
         help_text='任务列表名称'
-    )
-
-    used_gf_patterns = ArrayField(
-        models.CharField(max_length=100),
-        blank=True,
-        default=list,
-        help_text='使用了的 GF 模式'
     )
 
     error_message = models.CharField(max_length=300, blank=True, default='', help_text='错误信息')

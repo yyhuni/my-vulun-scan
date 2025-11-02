@@ -93,10 +93,10 @@ export function useDeleteSubdomainFromOrganization() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (data: { organizationId: number; domainId: number }) => 
-      OrganizationService.unlinkDomainFromOrganization(data),
-    onMutate: ({ organizationId, domainId }) => {
-      toast.loading('正在移除子域名...', { id: `delete-${organizationId}-${domainId}` })
+    mutationFn: (data: { organizationId: number; targetId: number }) => 
+      OrganizationService.unlinkTargetFromOrganization(data),
+    onMutate: ({ organizationId, targetId }) => {
+      toast.loading('正在移除子域名...', { id: `delete-${organizationId}-${targetId}` })
     },
     onSuccess: (_response, { organizationId }) => {
       toast.dismiss(`delete-${organizationId}`)
@@ -104,8 +104,8 @@ export function useDeleteSubdomainFromOrganization() {
       queryClient.invalidateQueries({ queryKey: ['subdomains'] })
       queryClient.invalidateQueries({ queryKey: ['organizations'] })
     },
-    onError: (error: any, { organizationId, domainId }) => {
-      toast.dismiss(`delete-${organizationId}-${domainId}`)
+    onError: (error: any, { organizationId, targetId }) => {
+      toast.dismiss(`delete-${organizationId}-${targetId}`)
       console.error('移除子域名失败:', error)
       console.error('后端响应:', error?.response?.data || error)
       toast.error('移除子域名失败，请查看控制台日志')

@@ -39,14 +39,19 @@ export function useOrganizations(
     }],
     queryFn: () => OrganizationService.getOrganizations(params || {}),
     select: (response) => {
-      // RESTful 标准：直接返回数据，不需要检查 state
+      // 处理 DRF 分页响应格式
+      const page = params.page || 1
+      const pageSize = params.pageSize || 10
+      const total = response.count || 0
+      const totalPages = Math.ceil(total / pageSize)
+      
       return {
-        organizations: response.organizations || [],
+        organizations: response.results || [],
         pagination: {
-          total: response.total || 0,
-          page: response.page || 1,
-          pageSize: response.pageSize || 10,
-          totalPages: response.totalPages || 0,
+          total,
+          page,
+          pageSize,
+          totalPages,
         }
       }
     },
@@ -66,9 +71,9 @@ export function useOrganization(id: number) {
 }
 
 /**
- * 获取组织的域名列表 Hook
+ * 获取组织的目标列表 Hook
  */
-export function useOrganizationDomains(
+export function useOrganizationTargets(
   id: number,
   params?: {
     page?: number
@@ -81,8 +86,8 @@ export function useOrganizationDomains(
   }
 ) {
   return useQuery({
-    queryKey: [...organizationKeys.detail(id), 'domains', params],
-    queryFn: () => OrganizationService.getOrganizationDomains(id, params),
+    queryKey: [...organizationKeys.detail(id), 'targets', params],
+    queryFn: () => OrganizationService.getOrganizationTargets(id, params),
     enabled: options?.enabled !== undefined ? (options.enabled && !!id) : !!id,
   })
 }
@@ -226,8 +231,8 @@ export function useDeleteOrganization() {
     onSettled: () => {
       // 无论成功失败都刷新数据
       queryClient.invalidateQueries({ queryKey: ['organizations'] })
-      // 刷新域名查询，因为删除组织会解除域名的关联关系，需要更新域名的 organizations 字段
-      queryClient.invalidateQueries({ queryKey: ['domains'] })
+      // 刷新目标查询，因为删除组织会解除目标的关联关系，需要更新目标的 organizations 字段
+      queryClient.invalidateQueries({ queryKey: ['targets'] })
     },
   })
 }
@@ -302,43 +307,43 @@ export function useBatchDeleteOrganizations() {
     onSettled: () => {
       // 无论成功失败都刷新数据
       queryClient.invalidateQueries({ queryKey: ['organizations'] })
-      // 刷新域名查询，因为删除组织会解除域名的关联关系，需要更新域名的 organizations 字段
-      queryClient.invalidateQueries({ queryKey: ['domains'] })
+      // 刷新目标查询，因为删除组织会解除目标的关联关系，需要更新目标的 organizations 字段
+      queryClient.invalidateQueries({ queryKey: ['targets'] })
     },
   })
 }
 
 /**
- * 关联域名到组织的 Mutation Hook（单个）
+ * 关联目标到组织的 Mutation Hook（单个）
  */
-export function useLinkDomainToOrganization() {
+export function useLinkTargetToOrganization() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (data: { organizationId: number; domainId: number }) => 
-      OrganizationService.linkDomainToOrganization(data),
-    onMutate: ({ organizationId, domainId }) => {
-      toast.loading('正在关联域名...', { id: `link-${organizationId}-${domainId}` })
+    mutationFn: (data: { organizationId: number; targetId: number }) => 
+      OrganizationService.linkTargetToOrganization(data),
+    onMutate: ({ organizationId, targetId }) => {
+      toast.loading('正在关联目标...', { id: `link-${organizationId}-${targetId}` })
     },
-    onSuccess: (response, { organizationId, domainId }) => {
-      toast.dismiss(`link-${organizationId}-${domainId}`)
+    onSuccess: (response, { organizationId, targetId }) => {
+      toast.dismiss(`link-${organizationId}-${targetId}`)
       
-      console.log('关联域名成功')
+      console.log('关联目标成功')
       console.log('后端响应:', response)
       
-      toast.success('域名已成功关联')
+      toast.success('目标已成功关联')
       
-      // 刷新所有域名和组织相关查询
-      queryClient.invalidateQueries({ queryKey: ['domains'] })
+      // 刷新所有目标和组织相关查询
+      queryClient.invalidateQueries({ queryKey: ['targets'] })
       queryClient.invalidateQueries({ queryKey: ['organizations'] })
     },
-    onError: (error: any, { organizationId, domainId }) => {
-      toast.dismiss(`link-${organizationId}-${domainId}`)
+    onError: (error: any, { organizationId, targetId }) => {
+      toast.dismiss(`link-${organizationId}-${targetId}`)
       
-      console.error('关联域名失败:', error)
+      console.error('关联目标失败:', error)
       console.error('后端响应:', error?.response?.data || error)
       
-      toast.error('关联域名失败，请查看控制台日志')
+      toast.error('关联目标失败，请查看控制台日志')
     },
   })
 }

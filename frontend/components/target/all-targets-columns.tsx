@@ -355,18 +355,18 @@ export const createAllTargetsColumns = ({
 
   // 最后扫描时间列
   {
-    accessorKey: "lastScanned",
+    accessorKey: "lastScannedAt",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Last Scanned" />
     ),
     cell: ({ row }) => {
-      const lastScanned = row.original.lastScanned
-      if (!lastScanned) {
+      const lastScannedAt = row.original.lastScannedAt
+      if (!lastScannedAt) {
         return <span className="text-sm text-muted-foreground">-</span>
       }
       return (
         <div className="text-sm text-muted-foreground">
-          {formatDate(lastScanned)}
+          {formatDate(lastScannedAt)}
         </div>
       )
     },

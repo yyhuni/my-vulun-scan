@@ -13,17 +13,16 @@ export type TargetType = 'domain' | 'ip' | 'cidr'
 export interface Target {
   id: number
   name: string
-  type: TargetType
-  organizations: Array<{
+  targetType: TargetType  // 后端字段：target_type，自动转换为 targetType
+  description?: string
+  createdAt: string  // 后端字段：created_at，自动转换为 createdAt
+  lastScannedAt?: string  // 后端字段：last_scanned_at，自动转换为 lastScannedAt
+  requestHeaders?: Record<string, string>  // 后端字段：request_headers，自动转换为 requestHeaders
+  // 关联数据（通过 serializer 添加）
+  organizations?: Array<{
     id: number
     name: string
   }>
-  domainCount: number
-  endpointCount: number
-  description?: string
-  updatedAt: string
-  createdAt: string
-  lastScanned?: string
 }
 
 /**
@@ -41,9 +40,9 @@ export interface TargetsResponse {
  */
 export interface CreateTargetRequest {
   name: string
-  type: TargetType
-  organizationIds: number[]
+  targetType: TargetType  // 前端使用 targetType，拦截器会转换为 target_type
   description?: string
+  requestHeaders?: Record<string, string>
 }
 
 /**
@@ -51,9 +50,9 @@ export interface CreateTargetRequest {
  */
 export interface UpdateTargetRequest {
   name?: string
-  type?: TargetType
-  organizationIds?: number[]
+  targetType?: TargetType  // 前端使用 targetType，拦截器会转换为 target_type
   description?: string
+  requestHeaders?: Record<string, string>
 }
 
 /**

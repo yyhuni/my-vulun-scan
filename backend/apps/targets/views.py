@@ -1,6 +1,6 @@
 from rest_framework import viewsets
-from .models import Organization, Domain
-from .serializers import OrganizationSerializer, DomainSerializer
+from .models import Organization, Target
+from .serializers import OrganizationSerializer, TargetSerializer
 
 
 class OrganizationViewSet(viewsets.ModelViewSet):
@@ -9,7 +9,7 @@ class OrganizationViewSet(viewsets.ModelViewSet):
     serializer_class = OrganizationSerializer
 
 
-class DomainViewSet(viewsets.ModelViewSet):
-    """域名管理 - 增删改查"""
-    queryset = Domain.objects.all()
-    serializer_class = DomainSerializer
+class TargetViewSet(viewsets.ModelViewSet):
+    """目标管理 - 增删改查"""
+    queryset = Target.objects.all()
+    serializer_class = TargetSerializer

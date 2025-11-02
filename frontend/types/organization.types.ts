@@ -14,20 +14,36 @@ export interface Organization {
   name: string
   description: string
   createdAt: string      // 后端 created_at 由 Django 自动转换为 camelCase
-  updatedAt: string      // 后端 updated_at 由 Django 自动转换为 camelCase
-  stats?: OrganizationStats  // 组织统计数据（可选）
+  // 关联数据（通过 serializer 添加）
+  targets?: Array<{
+    id: number
+    name: string
+  }>
+  // 统计数据（可选，通过聚合查询获取）
+  stats?: OrganizationStats
   targetCount?: number   // 目标数量（用于列表展示）
   domainCount?: number   // 域名数量（用于列表展示）
   endpointCount?: number // 端点数量（用于列表展示）
 }
 
-// 组织列表响应类型（匹配后端GetOrganizationsResponse）
-export interface OrganizationsResponse<T> {
-  organizations: T[]    // 组织数据列表
-  total: number         // 总记录数
-  page: number          // 当前页码（从1开始）
-  pageSize: number      // 每页大小
-  totalPages: number    // 总页数
+// 组织列表响应类型（匹配 DRF 分页格式）
+export interface OrganizationsResponse<T = Organization> {
+  results: T[]          // 组织数据列表（DRF 标准字段）
+  count: number         // 总记录数（DRF 标准字段）
+  next: string | null   // 下一页链接（DRF 标准字段）
+  previous: string | null // 上一页链接（DRF 标准字段）
+  // 兼容旧代码的字段
+  organizations?: T[]
+  total?: number
+  page?: number
+  pageSize?: number
+  totalPages?: number
+  pagination?: {
+    total: number
+    page: number
+    pageSize: number
+    totalPages: number
+  }
 }
 
 

@@ -39,7 +39,7 @@ urlpatterns = [
     path('api/swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='swagger'),
     path('api/redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='redoc'),
     
-    # 业务 API
-    path('api/targets/', include('apps.targets.urls')),
+    # 业务 API（包含 organizations 和 targets）
+    path('api/', include('apps.targets.urls')),
 
 ]

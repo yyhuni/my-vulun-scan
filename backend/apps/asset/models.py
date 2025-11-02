@@ -48,6 +48,15 @@ class Subdomain(models.Model):
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['-created_at']),
+            models.Index(fields=['name']),
+            models.Index(fields=['target_id']),
+            models.Index(fields=['scan_id']),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['name', 'target_id'],
+                name='unique_subdomain_per_target'
+            )
         ]
 
     def __str__(self):

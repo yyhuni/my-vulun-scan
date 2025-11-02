@@ -35,17 +35,17 @@ export class OrganizationService {
   }
 
   /**
-   * 获取组织的域名列表
+   * 获取组织的目标列表
    * @param id - 组织ID
    * @param params - 查询参数
    * @returns Promise<any>
    */
-  static async getOrganizationDomains(id: string | number, params?: {
+  static async getOrganizationTargets(id: string | number, params?: {
     page?: number
     pageSize?: number
   }): Promise<any> {
     const response = await api.get<any>(
-      `/organizations/${id}/domains/`,
+      `/organizations/${id}/targets/`,
       { params }
     )
     return response.data
@@ -115,43 +115,43 @@ export class OrganizationService {
     return response.data
   }
 
-  // ========== 组织与域名关联操作 ==========
+  // ========== 组织与目标关联操作 ==========
 
   /**
-   * 关联域名到组织（单个）
+   * 关联目标到组织（单个）
    * @param data - 关联请求对象
    * @param data.organizationId - 组织ID
-   * @param data.domainId - 域名ID
+   * @param data.targetId - 目标ID
    * @returns Promise<{ message: string }>
    */
-  static async linkDomainToOrganization(data: {
+  static async linkTargetToOrganization(data: {
     organizationId: number
-    domainId: number
+    targetId: number
   }): Promise<{ message: string }> {
     const response = await api.post<{ message: string }>(
-      `/organizations/${data.organizationId}/domains/`,
+      `/organizations/${data.organizationId}/targets/`,
       {
-        domainId: data.domainId  // 拦截器会转换为 domain_id
+        targetId: data.targetId  // 拦截器会转换为 target_id
       }
     )
     return response.data
   }
 
   /**
-   * 从组织中移除域名
+   * 从组织中移除目标
    * @param data - 移除请求对象
    * @param data.organizationId - 组织ID
-   * @param data.domainId - 域名ID
+   * @param data.targetId - 目标ID
    * @returns Promise<{ message: string }>
    */
-  static async unlinkDomainFromOrganization(data: {
+  static async unlinkTargetFromOrganization(data: {
     organizationId: number
-    domainId: number
+    targetId: number
   }): Promise<{ message: string }> {
     const response = await api.post<{ message: string }>(
-      `/organizations/${data.organizationId}/domains/remove/`,
+      `/organizations/${data.organizationId}/targets/remove/`,
       {
-        domainId: data.domainId  // 拦截器会转换为 domain_id
+        targetId: data.targetId  // 拦截器会转换为 target_id
       }
     )
     return response.data

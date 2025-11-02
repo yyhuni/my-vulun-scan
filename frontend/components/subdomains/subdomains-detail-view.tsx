@@ -2,7 +2,9 @@
 
 import React, { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { useTargetDomains, useTarget } from "@/hooks/use-targets"
+// TODO: useTargetDomains 已被删除，因为后端没有 /targets/{id}/domains/ API
+// 需要重新设计此组件的数据获取逻辑
+import { useTarget } from "@/hooks/use-targets"
 import { useDeleteSubdomain, useBatchDeleteSubdomains } from "@/hooks/use-subdomains"
 import { SubdomainsDataTable } from "./subdomains-data-table"
 import { createSubdomainColumns } from "./subdomains-columns"
@@ -39,16 +41,21 @@ export function SubdomainsDetailView({
     pageSize: 10,
   })
 
+  // TODO: 临时禁用数据获取，等待后端 API 重新设计
   // 使用 React Query 获取目标域名数据
-  const {
-    data,
-    isLoading,
-    error,
-    refetch
-  } = useTargetDomains(targetId, {
-    page: pagination.pageIndex + 1, // 转换为 1-based
-    pageSize: pagination.pageSize,
-  })
+  const data = undefined
+  const isLoading = false
+  const error = null
+  const refetch = () => Promise.resolve()
+  // const {
+  //   data,
+  //   isLoading,
+  //   error,
+  //   refetch
+  // } = useTargetDomains(targetId, {
+  //   page: pagination.pageIndex + 1, // 转换为 1-based
+  //   pageSize: pagination.pageSize,
+  // })
 
   // 获取目标信息
   const { data: targetData } = useTarget(targetId)

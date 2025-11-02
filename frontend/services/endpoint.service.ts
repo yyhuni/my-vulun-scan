@@ -35,14 +35,14 @@ export class EndpointService {
   }
 
   /**
-   * 根据域名ID获取 Endpoint 列表（专用路由）
-   * @param domainId - 域名ID
+   * 根据目标ID获取 Endpoint 列表（专用路由）
+   * @param targetId - 目标ID
    * @param params - 其他查询参数
    * @returns Promise<GetEndpointsResponse>
    */
-  static async getEndpointsByDomainId(domainId: number, params: GetEndpointsRequest): Promise<GetEndpointsResponse> {
+  static async getEndpointsByTargetId(targetId: number, params: GetEndpointsRequest): Promise<GetEndpointsResponse> {
     // api-client.ts 会自动将 params 对象的驼峰转换为下划线
-    const response = await api.get<GetEndpointsResponse>(`/domains/${domainId}/endpoints/`, {
+    const response = await api.get<GetEndpointsResponse>(`/targets/${targetId}/endpoints/`, {
       params
     })
     return response.data

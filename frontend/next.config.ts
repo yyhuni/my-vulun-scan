@@ -6,11 +6,6 @@ const nextConfig: NextConfig = {
   skipTrailingSlashRedirect: true,
   
   async rewrites() {
-    // 如果启用了 Mock，不进行代理（让 MSW 拦截请求）
-    if (process.env.NEXT_PUBLIC_ENABLE_MOCK === 'true') {
-      return []
-    }
-    
     return [
       // 只匹配带斜杠的 API 路径
       {

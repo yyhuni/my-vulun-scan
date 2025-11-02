@@ -13,7 +13,6 @@ import {
   getTargetOrganizations,
   linkTargetOrganizations,
   unlinkTargetOrganizations,
-  getTargetDomains,
   getTargetEndpoints,
 } from '@/services/target.service'
 import type {
@@ -217,41 +216,6 @@ export function useUnlinkTargetOrganizations() {
     },
     onError: (error: Error) => {
       toast.error(`取消关联失败: ${error.message}`)
-    },
-  })
-}
-
-/**
- * 获取目标的域名列表
- */
-export function useTargetDomains(
-  targetId: number,
-  params?: {
-    page?: number
-    pageSize?: number
-  },
-  options?: {
-    enabled?: boolean
-  }
-) {
-  return useQuery({
-    queryKey: ['targets', 'detail', targetId, 'domains', {
-      page: params?.page,
-      pageSize: params?.pageSize,
-    }],
-    queryFn: () => getTargetDomains(targetId, params?.page || 1, params?.pageSize || 10),
-    enabled: options?.enabled !== undefined ? options.enabled : !!targetId,
-    select: (response: any) => {
-      // RESTful 标准：直接返回数据
-      return {
-        domains: response.domains || [],
-        pagination: {
-          total: response.total || 0,
-          page: response.page || 1,
-          pageSize: response.pageSize || 10,
-          totalPages: response.totalPages || 0,
-        }
-      }
     },
   })
 }

@@ -91,18 +91,6 @@ export async function unlinkTargetOrganizations(
 }
 
 /**
- * 获取目标的域名列表
- */
-export async function getTargetDomains(
-  id: number,
-  page = 1,
-  pageSize = 10
-): Promise<any> {
-  const response = await api.get(`/targets/${id}/domains/`, { params: { page, pageSize } })
-  return response.data
-}
-
-/**
  * 获取目标的端点列表
  */
 export async function getTargetEndpoints(
