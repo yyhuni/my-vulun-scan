@@ -4,19 +4,11 @@
 import type * as React from "react"
 // 导入 Tabler Icons 图标库中的各种图标
 import {
-  IconCamera, // 相机图标
-  IconChartBar, // 柱状图图标
   IconDashboard, // 仪表板图标
   IconDatabase, // 数据库图标
-  IconFileAi, // AI 文件图标
-  IconFileDescription, // 文件描述图标
-  IconFileWord, // Word 文件图标
-  IconFolder, // 文件夹图标
   IconHelp, // 帮助图标
   IconInnerShadowTop, // 内阴影图标
   IconListDetails, // 列表详情图标
-  IconReport, // 报告图标
-  IconSearch, // 搜索图标
   IconSettings, // 设置图标
   IconUsers, // 用户图标
   IconChevronRight, // 右箭头图标
@@ -54,17 +46,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-
-// 定义导航菜单项的类型
-interface NavItem {
-  title: string
-  url: string
-  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>
-  items?: {
-    title: string
-    url: string
-  }[]
-}
 
 // 定义侧边栏的数据结构
 const data = {

@@ -1,7 +1,6 @@
 "use client"
 
 import React from "react"
-import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { StrategyDataTable } from "@/components/scan/strategy/strategy-data-table"
 import { createStrategyColumns } from "@/components/scan/strategy/strategy-columns"
@@ -12,9 +11,7 @@ import type { ScanStrategy } from "@/types/strategy.types"
  * 管理扫描策略配置
  */
 export default function ScanStrategyPage() {
-  const router = useRouter()
   const [strategies, setStrategies] = React.useState<ScanStrategy[]>([])
-  const [selectedStrategies, setSelectedStrategies] = React.useState<ScanStrategy[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
 
   // 模拟数据加载
@@ -115,11 +112,11 @@ export default function ScanStrategyPage() {
   }
 
   // 删除策略
-  const handleDelete = (strategy: ScanStrategy) => {
+  const handleDelete = React.useCallback((strategy: ScanStrategy) => {
     toast.promise(
       new Promise((resolve) => {
         setTimeout(() => {
-          setStrategies(strategies.filter((s) => s.id !== strategy.id))
+          setStrategies(prev => prev.filter((s) => s.id !== strategy.id))
           resolve(true)
         }, 1000)
       }),
@@ -129,7 +126,7 @@ export default function ScanStrategyPage() {
         error: "策略删除失败",
       }
     )
-  }
+  }, [])
 
   // 处理批量删除
   const handleBulkDelete = (selectedIds: number[]) => {
@@ -163,7 +160,7 @@ export default function ScanStrategyPage() {
         handleEdit,
         handleDelete,
       }),
-    []
+    [handleDelete]
   )
 
   if (isLoading) {
@@ -201,7 +198,6 @@ export default function ScanStrategyPage() {
           columns={columns}
           onAddNew={handleAddNew}
           onBulkDelete={handleBulkDelete}
-          onSelectionChange={setSelectedStrategies}
           searchPlaceholder="搜索策略名称..."
           searchColumn="name"
           addButtonText="新建策略"

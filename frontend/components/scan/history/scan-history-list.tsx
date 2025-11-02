@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { ScanHistoryDataTable } from "./scan-history-data-table"
 import { createScanHistoryColumns } from "./scan-history-columns"
 import type { ScanRecord } from "@/types/scan.types"
+import type { ColumnDef } from "@tanstack/react-table"
 import { LoadingState } from "@/components/loading-spinner"
 import {
   AlertDialog,
@@ -27,7 +28,7 @@ export function ScanHistoryList() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [scanToDelete, setScanToDelete] = useState<ScanRecord | null>(null)
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading] = useState(false)
   
   // 分页状态
   const [pagination, setPagination] = useState({
@@ -169,7 +170,7 @@ export function ScanHistoryList() {
       // TODO: 调用实际的删除 API
       setScans(prev => prev.filter(s => s.id !== scanToDelete.id))
       toast.success(`已删除扫描记录: ${scanToDelete.domainName}`)
-    } catch (error) {
+    } catch {
       toast.error("删除失败，请重试")
     } finally {
       setScanToDelete(null)
@@ -197,7 +198,7 @@ export function ScanHistoryList() {
       setScans(prev => prev.filter(s => !deletedIds.includes(s.id)))
       toast.success(`已删除 ${selectedScans.length} 个扫描记录`)
       setSelectedScans([])
-    } catch (error) {
+    } catch {
       toast.error("批量删除失败，请重试")
     }
   }
@@ -220,7 +221,7 @@ export function ScanHistoryList() {
         navigate,
         handleDelete: handleDeleteScan,
       }),
-    []
+    [navigate]
   )
 
   // 加载状态
@@ -232,7 +233,7 @@ export function ScanHistoryList() {
     <>
       <ScanHistoryDataTable
         data={scans}
-        columns={scanColumns as any}
+        columns={scanColumns as ColumnDef<ScanRecord>[]}
         onAddNew={handleAddNew}
         onBulkDelete={handleBulkDelete}
         onSelectionChange={setSelectedScans}

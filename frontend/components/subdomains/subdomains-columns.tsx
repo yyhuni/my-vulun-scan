@@ -284,14 +284,10 @@ export const createSubdomainColumns = ({
         return <span className="text-sm text-muted-foreground">-</span>
       }
       
-      const [copied, setCopied] = React.useState(false)
-      
       const handleCopy = async () => {
         try {
           await navigator.clipboard.writeText(ip)
-          setCopied(true)
           toast.success('已复制IP')
-          setTimeout(() => setCopied(false), 2000)
         } catch {
           toast.error('复制失败')
         }
@@ -310,7 +306,7 @@ export const createSubdomainColumns = ({
               </Badge>
             </TooltipTrigger>
             <TooltipContent side="top">
-              <p className="text-xs">{copied ? '已复制!' : '点击复制'}</p>
+              <p className="text-xs">点击复制</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -450,7 +446,7 @@ export const createSubdomainColumns = ({
                 className="h-8 px-2"
                 onClick={() => window.open(screenshot, '_blank')}
               >
-                <Image className="h-4 w-4" />
+                <Image className="h-4 w-4" aria-label="查看截图" />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="top">

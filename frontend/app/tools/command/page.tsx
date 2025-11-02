@@ -1,8 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { IconPlus } from "@tabler/icons-react"
 import { CommandsDataTable } from "@/components/tools/commands/commands-data-table"
 import { commandColumns } from "@/components/tools/commands/commands-columns"
 import { useCommands, useBatchDeleteCommands } from "@/hooks/use-commands"
@@ -13,7 +11,7 @@ import { LoadingState } from "@/components/loading-spinner"
  * 展示和管理所有工具命令
  */
 export default function CommandManagementPage() {
-  const [pagination, setPagination] = useState({
+  const [pagination] = useState({
     pageIndex: 0,
     pageSize: 10,
   })

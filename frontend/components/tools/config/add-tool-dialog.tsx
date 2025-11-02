@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { Wrench, AlertTriangle } from "lucide-react"
+import { Wrench } from "lucide-react"
 import { IconPlus } from "@tabler/icons-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -21,7 +21,6 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { IconX } from "@tabler/icons-react"
 import {
@@ -178,7 +177,7 @@ export function AddToolDialog({
       versionCommand: values.versionCommand.trim(),
     }
 
-    const onSuccessCallback = (response: any) => {
+    const onSuccessCallback = (response: { tool?: Tool }) => {
       // 重置表单
       form.reset()
       

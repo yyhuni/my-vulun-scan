@@ -2,7 +2,6 @@
 
 import React from "react"
 import { ColumnDef } from "@tanstack/react-table"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -18,8 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { MoreHorizontal, Eye, Trash2, Network, ChevronsUpDown, ChevronUp, ChevronDown, Globe, Code, Copy, Check } from "lucide-react"
-import { IconCircleCheckFilled, IconLoader, IconAlertTriangle, IconX } from "@tabler/icons-react"
+import { MoreHorizontal, Eye, Trash2, ChevronsUpDown, ChevronUp, ChevronDown, Copy, Check } from "lucide-react"
 import type { Endpoint } from "@/types/endpoint.types"
 import { toast } from "sonner"
 
@@ -109,11 +107,9 @@ interface CreateColumnsProps {
 }
 
 function EndpointRowActions({
-  endpoint,
   onView,
   onDelete,
 }: {
-  endpoint: Endpoint
   onView: () => void
   onDelete: () => void
 }) {
@@ -209,11 +205,12 @@ function HttpStatusBadge({ statusCode }: { statusCode: number | null | undefined
   )
 }
 
-export const createEndpointColumns = ({
+export function createEndpointColumns({
   formatDate,
   navigate,
   handleDelete,
-}: CreateColumnsProps): ColumnDef<Endpoint>[] => [
+}: CreateColumnsProps): ColumnDef<Endpoint>[] {
+  return [
   {
     accessorKey: "url",
     header: ({ column }) => (
@@ -308,3 +305,4 @@ export const createEndpointColumns = ({
     },
   },
 ]
+}

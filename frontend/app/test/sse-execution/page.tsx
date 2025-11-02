@@ -13,7 +13,7 @@ import { IconPlayerPlay, IconPlayerStop, IconTrash, IconRefresh } from "@tabler/
 interface SSEEvent {
   id?: string
   type: string
-  data: any
+  data: Record<string, unknown>
   timestamp: string
 }
 
@@ -54,7 +54,7 @@ export default function SSEExecutionTestPage() {
       let parsedParams = {}
       try {
         parsedParams = JSON.parse(params)
-      } catch (e) {
+      } catch {
         addEvent({
           type: "error",
           data: { message: "参数格式错误，请使用有效的 JSON 格式" },
@@ -144,8 +144,9 @@ export default function SSEExecutionTestPage() {
       eventSource.addEventListener(eventType, (e: MessageEvent) => {
         try {
           const data = JSON.parse(e.data)
+          const messageEvent = e as MessageEvent & { lastEventId?: string }
           addEvent({
-            id: (e as any).lastEventId,
+            id: messageEvent.lastEventId,
             type: eventType,
             data: data,
             timestamp: new Date().toISOString()
@@ -426,11 +427,11 @@ export default function SSEExecutionTestPage() {
             <ScrollArea className="h-[600px] w-full rounded border p-4">
               {events.length === 0 ? (
                 <div className="text-center text-muted-foreground py-8">
-                  暂无事件，点击"启动执行"开始测试
+                  暂无事件，点击&quot;启动执行&quot;开始测试
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {events.map((event, index) => (
+                  {events.map((event: SSEEvent, index: number) => (
                     <div
                       key={index}
                       className="border rounded-lg p-3 space-y-2 bg-card"

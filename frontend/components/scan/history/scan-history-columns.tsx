@@ -120,7 +120,7 @@ function CopyableCell({
  */
 function StatusBadge({ status }: { status: ScanStatus }) {
   const config: Record<ScanStatus, {
-    icon: React.ComponentType<any>
+    icon: React.ComponentType<{ className?: string }>
     label: string
     variant: "secondary" | "default" | "outline" | "destructive"
     className?: string

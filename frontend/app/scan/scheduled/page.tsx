@@ -1,7 +1,6 @@
 "use client"
 
 import React from "react"
-import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { ScheduledScanDataTable } from "@/components/scan/scheduled/scheduled-scan-data-table"
 import { createScheduledScanColumns } from "@/components/scan/scheduled/scheduled-scan-columns"
@@ -12,9 +11,7 @@ import type { ScheduledScan } from "@/types/scheduled-scan.types"
  * 管理定时扫描任务配置
  */
 export default function ScheduledScanPage() {
-  const router = useRouter()
   const [scheduledScans, setScheduledScans] = React.useState<ScheduledScan[]>([])
-  const [selectedScans, setSelectedScans] = React.useState<ScheduledScan[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
 
   // 模拟数据加载
@@ -243,7 +240,6 @@ export default function ScheduledScanPage() {
           columns={columns}
           onAddNew={handleAddNew}
           onBulkDelete={handleBulkDelete}
-          onSelectionChange={setSelectedScans}
           searchPlaceholder="搜索任务名称..."
           searchColumn="name"
           addButtonText="新建定时扫描"

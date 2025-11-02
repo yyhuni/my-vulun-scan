@@ -2,9 +2,7 @@
 
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { IconRadar } from "@tabler/icons-react"
-import { useRouter } from "next/navigation"
 import { ScanHistoryList } from "@/components/scan/history/scan-history-list"
 
 // 模拟数据 - 用于统计卡片
@@ -67,7 +65,6 @@ const mockData = [
  * 显示所有扫描任务的历史记录
  */
 export default function ScanHistoryPage() {
-  const router = useRouter()
   const [scans] = useState(mockData)
 
   return (

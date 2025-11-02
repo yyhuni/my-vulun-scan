@@ -7,19 +7,20 @@ import { createScanHistoryColumns } from "@/components/scan/history/scan-history
 import { useRunningScans } from "@/hooks/use-scans"
 import { LoadingState } from "@/components/loading-spinner"
 import type { ScanRecord } from "@/types/scan.types"
+import type { ColumnDef } from "@tanstack/react-table"
 
 export function DashboardScanHistory() {
   const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 5 })
   const { data, isLoading } = useRunningScans(pagination.pageIndex + 1, pagination.pageSize)
   const router = useRouter()
 
-  const formatDate = (dateString: string) => new Date(dateString).toLocaleString("zh-CN", { hour12: false })
-  const navigate = (path: string) => router.push(path)
-  const handleDelete = () => {}
+  const formatDate = React.useCallback((dateString: string) => new Date(dateString).toLocaleString("zh-CN", { hour12: false }), [])
+  const navigate = React.useCallback((path: string) => router.push(path), [router])
+  const handleDelete = React.useCallback(() => {}, [])
 
   const columns = React.useMemo(
-    () => createScanHistoryColumns({ formatDate, navigate, handleDelete }) as any,
-    []
+    () => createScanHistoryColumns({ formatDate, navigate, handleDelete }) as ColumnDef<ScanRecord>[],
+    [formatDate, navigate, handleDelete]
   )
 
   if (isLoading) return <LoadingState message="加载扫描历史数据中..." />
@@ -31,7 +32,7 @@ export function DashboardScanHistory() {
   return (
     <ScanHistoryDataTable
       data={data?.scans ?? []}
-      columns={columns as any}
+      columns={columns}
       hideToolbar
       hidePagination
       pagination={pagination}

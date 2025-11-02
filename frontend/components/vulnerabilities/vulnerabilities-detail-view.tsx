@@ -129,7 +129,7 @@ export function VulnerabilitiesDetailView({
         handleDelete: handleDeleteVulnerability,
         handleViewDetail,
       }),
-    []
+    [handleViewDetail]
   )
 
   if (isLoading) {

@@ -6,8 +6,6 @@ import {
   ColumnFiltersState,
   flexRender,
   getCoreRowModel,
-  getFacetedRowModel,
-  getFacetedUniqueValues,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
@@ -51,7 +49,6 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-import type { Command } from "@/types/command.types"
 
 interface CommandsDataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -96,7 +93,7 @@ export function CommandsDataTable<TData, TValue>({
   // 处理批量删除
   const handleBulkDelete = () => {
     if (onBulkDelete && selectedRows.length > 0) {
-      const selectedIds = selectedRows.map((row) => (row.original as any).id)
+      const selectedIds = selectedRows.map((row) => (row.original as { id: number }).id)
       onBulkDelete(selectedIds)
     }
   }

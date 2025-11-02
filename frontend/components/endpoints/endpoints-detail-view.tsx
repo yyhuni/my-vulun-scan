@@ -28,7 +28,6 @@ export function EndpointsDetailView({
 }: {
   targetId: number
 }) {
-  const [selectedEndpoints, setSelectedEndpoints] = useState<Endpoint[]>([])
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [endpointToDelete, setEndpointToDelete] = useState<Endpoint | null>(null)
 
@@ -53,7 +52,7 @@ export function EndpointsDetailView({
   })
 
   // 辅助函数 - 格式化日期
-  const formatDate = (dateString: string): string => {
+  const formatDate = React.useCallback((dateString: string): string => {
     return new Date(dateString).toLocaleString("zh-CN", {
       year: "numeric",
       month: "numeric",
@@ -63,19 +62,19 @@ export function EndpointsDetailView({
       second: "2-digit",
       hour12: false,
     })
-  }
+  }, [])
 
   // 导航函数
   const router = useRouter()
-  const navigate = (path: string) => {
+  const navigate = React.useCallback((path: string) => {
     router.push(path)
-  }
+  }, [router])
 
   // 处理删除端点
-  const handleDeleteEndpoint = (endpoint: Endpoint) => {
+  const handleDeleteEndpoint = React.useCallback((endpoint: Endpoint) => {
     setEndpointToDelete(endpoint)
     setDeleteDialogOpen(true)
-  }
+  }, [])
 
   // 确认删除端点
   const confirmDelete = async () => {
@@ -134,9 +133,7 @@ export function EndpointsDetailView({
       <EndpointsDataTable
         data={data?.endpoints || []}
         columns={endpointColumns}
-        onSelectionChange={setSelectedEndpoints}
         searchPlaceholder="搜索端点..."
-        searchColumn="url"
         pagination={pagination}
         onPaginationChange={handlePaginationChange}
         totalCount={data?.pagination?.total || 0}

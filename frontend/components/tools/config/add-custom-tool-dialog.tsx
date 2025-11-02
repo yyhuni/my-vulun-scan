@@ -93,7 +93,7 @@ export function AddCustomToolDialog({
       categoryNames: formData.categoryNames.length > 0 ? formData.categoryNames : undefined,
     }
 
-    const onSuccessCallback = (response: any) => {
+    const onSuccessCallback = (response: { tool?: Tool }) => {
       // 重置表单
       setFormData({
         name: "",
