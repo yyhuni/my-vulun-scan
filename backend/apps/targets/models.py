@@ -54,8 +54,6 @@ class Target(models.Model):
         help_text='目标类型'
     )
 
-    description = models.TextField(blank=True, default='', help_text='目标描述')
-
     # ==================== 时间戳 ====================
     created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
     last_scanned_at = models.DateTimeField(null=True, blank=True, help_text='最后扫描时间')

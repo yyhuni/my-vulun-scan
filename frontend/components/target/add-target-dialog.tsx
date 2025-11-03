@@ -75,7 +75,6 @@ export function AddTargetDialog({
   // 表单数据状态
   const [formData, setFormData] = useState({
     targets: "",  // 目标列表，每行一个
-    description: "",
     organizationId: "",  // 选择的组织ID
   })
   
@@ -161,7 +160,6 @@ export function AddTargetDialog({
       .filter(line => line.length > 0)
       .map(name => ({
         name,
-        description: formData.description?.trim() || undefined,
       }))
 
     if (targetList.length === 0) {
@@ -179,7 +177,6 @@ export function AddTargetDialog({
           // 重置表单
           setFormData({
             targets: "",
-            description: "",
             organizationId: "",
           })
           setInvalidTargets([])
@@ -207,7 +204,6 @@ export function AddTargetDialog({
         // 关闭时重置表单
         setFormData({
           targets: "",
-          description: "",
           organizationId: "",
         })
         setInvalidTargets([])
@@ -479,23 +475,6 @@ example.com
                   </div>
                 )}
               </CommandDialog>
-            </div>
-            
-            {/* 目标描述输入框 */}
-            <div className="grid gap-2">
-              <Label htmlFor="description">目标描述</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => handleInputChange("description", e.target.value)}
-                placeholder="请输入目标描述（可选，将应用于所有目标）"
-                disabled={batchCreateTargets.isPending}
-                rows={2}
-                maxLength={200}
-              />
-              <div className="text-xs text-muted-foreground">
-                {formData.description.length}/200 字符
-              </div>
             </div>
           </div>
           

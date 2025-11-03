@@ -48,7 +48,6 @@ const formSchema = z.object({
       },
       { message: "请输入至少一个目标" }
     ),
-  description: z.string().max(200, { message: "描述不能超过 200 个字符" }).optional(),
 })
 
 type FormValues = z.infer<typeof formSchema>
@@ -96,13 +95,11 @@ export function LinkTargetDialog({
     resolver: zodResolver(formSchema),
     defaultValues: {
       targets: "",
-      description: "",
     },
   })
   
   // 监听表单值变化
   const targetsText = form.watch("targets")
-  const descriptionText = form.watch("description") || ""
 
   // 实时验证目标
   const targetValidation = useMemo(() => {
@@ -144,7 +141,6 @@ export function LinkTargetDialog({
       .filter(line => line.length > 0)
       .map(name => ({
         name,
-        description: values.description?.trim() || undefined,
       }))
 
     if (targetList.length === 0) {
@@ -294,30 +290,6 @@ export function LinkTargetDialog({
                 <span className="font-medium">{organizationName}</span>
               </div>
             </div>
-            
-            {/* 目标描述输入框 */}
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>目标描述</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        {...field}
-                        placeholder="请输入目标描述（可选，将应用于所有目标）"
-                        disabled={batchCreateTargets.isPending}
-                        rows={2}
-                        maxLength={200}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      {descriptionText.length}/200 字符
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </div>
           
           {/* 对话框底部按钮 */}

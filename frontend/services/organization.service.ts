@@ -138,20 +138,20 @@ export class OrganizationService {
   }
 
   /**
-   * 从组织中移除目标
+   * 从组织中移除目标（批量）
    * @param data - 移除请求对象
    * @param data.organizationId - 组织ID
-   * @param data.targetId - 目标ID
-   * @returns Promise<{ message: string }>
+   * @param data.targetIds - 目标ID数组
+   * @returns Promise<{ unlinkedCount: number; message: string }>
    */
-  static async unlinkTargetFromOrganization(data: {
+  static async unlinkTargetsFromOrganization(data: {
     organizationId: number
-    targetId: number
-  }): Promise<{ message: string }> {
-    const response = await api.post<{ message: string }>(
-      `/organizations/${data.organizationId}/targets/remove/`,
+    targetIds: number[]
+  }): Promise<{ unlinkedCount: number; message: string }> {
+    const response = await api.post<{ unlinkedCount: number; message: string }>(
+      `/organizations/${data.organizationId}/unlink_targets/`,
       {
-        targetId: data.targetId  // 拦截器会转换为 target_id
+        targetIds: data.targetIds  // 拦截器会转换为 target_ids
       }
     )
     return response.data

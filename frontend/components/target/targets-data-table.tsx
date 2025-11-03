@@ -172,34 +172,15 @@ export function TargetsDataTable({
                       {column.id === "id" && "ID"}
                       {column.id === "name" && "目标名称"}
                       {column.id === "type" && "类型"}
-                      {column.id === "description" && "描述"}
                       {column.id === "organizations" && "所属组织"}
                       {column.id === "domainCount" && "域名数"}
                       {column.id === "endpointCount" && "URL 数"}
-                      {!["id", "name", "type", "description", "organizations", "domainCount", "endpointCount"].includes(column.id) && column.id}
+                      {!["id", "name", "type", "organizations", "domainCount", "endpointCount"].includes(column.id) && column.id}
                     </DropdownMenuCheckboxItem>
                   )
                 })}
             </DropdownMenuContent>
           </DropdownMenu>
-          {/* 批量删除按钮 */}
-          {onBulkDelete && (
-            <Button 
-              onClick={onBulkDelete}
-              size="sm"
-              variant="outline"
-              disabled={table.getFilteredSelectedRowModel().rows.length === 0}
-              className={
-                table.getFilteredSelectedRowModel().rows.length === 0
-                  ? "text-muted-foreground"
-                  : "text-destructive hover:text-destructive hover:bg-destructive/10"
-              }
-            >
-              <IconTrash />
-              删除
-            </Button>
-          )}
-
           {/* 添加新目标按钮 */}
           {onAddNew && (
             <Button onClick={onAddNew} onMouseEnter={onAddHover} size="sm">

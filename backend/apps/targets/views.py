@@ -37,6 +37,58 @@ class OrganizationViewSet(viewsets.ModelViewSet):
             {'error': '必须提供分页参数 page 和 pageSize'},
             status=status.HTTP_400_BAD_REQUEST
         )
+    
+    @action(detail=True, methods=['post'])
+    def unlink_targets(self, request, pk=None):
+        """
+        解除组织与目标的关联
+        POST /api/organizations/{id}/unlink_targets/
+        
+        请求格式：
+        {
+            "target_ids": [1, 2, 3]
+        }
+        
+        返回：
+        {
+            "unlinked_count": 3,
+            "message": "成功解除 3 个目标的关联"
+        }
+        
+        注意：此操作只解除关联关系，不会删除目标本身
+        """
+        organization = self.get_object()
+        target_ids = request.data.get('target_ids', [])
+        
+        if not target_ids:
+            return Response(
+                {'error': '目标ID列表不能为空'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not isinstance(target_ids, list):
+            return Response(
+                {'error': 'target_ids 必须是数组'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 验证目标是否存在且属于该组织
+        existing_targets = organization.targets.filter(id__in=target_ids)
+        existing_count = existing_targets.count()
+        
+        if existing_count == 0:
+            return Response(
+                {'error': '未找到要解除关联的目标'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 解除关联
+        organization.targets.remove(*existing_targets)
+        
+        return Response({
+            'unlinked_count': existing_count,
+            'message': f'成功解除 {existing_count} 个目标的关联'
+        })
 
 
 class TargetViewSet(viewsets.ModelViewSet):
@@ -52,9 +104,9 @@ class TargetViewSet(viewsets.ModelViewSet):
         请求格式：
         {
             "targets": [
-                {"name": "example.com", "description": "示例域名"},
-                {"name": "192.168.1.1", "description": "示例IP"},
-                {"name": "192.168.1.0/24", "description": "示例CIDR"}
+                {"name": "example.com"},
+                {"name": "192.168.1.1"},
+                {"name": "192.168.1.0/24"}
             ],
             "organization_id": 1  // 可选，关联到指定组织
         }
@@ -115,8 +167,7 @@ class TargetViewSet(viewsets.ModelViewSet):
                 target, created = Target.objects.get_or_create(
                     name=normalized_name,
                     defaults={
-                        'type': target_type,
-                        'description': target_data.get('description', '')
+                        'type': target_type
                     }
                 )
                 

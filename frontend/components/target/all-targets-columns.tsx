@@ -342,25 +342,6 @@ export const createAllTargetsColumns = ({
     enableSorting: false,
   },
 
-  // 描述列
-  {
-    accessorKey: "description",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Description" />
-    ),
-    cell: ({ row }) => {
-      const description = row.getValue("description") as string | undefined
-      if (!description) {
-        return <span className="text-sm text-muted-foreground">-</span>
-      }
-      return (
-        <div className="text-sm text-muted-foreground truncate max-w-[300px]" title={description}>
-          {description}
-        </div>
-      )
-    },
-  },
-
   // 创建时间列
   {
     accessorKey: "createdAt",

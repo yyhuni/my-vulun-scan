@@ -45,7 +45,6 @@ const formSchema = z.object({
     .max(50, { message: "组织名称不能超过 50 个字符" }),
   description: z.string().max(200, { message: "描述不能超过 200 个字符" }).optional(),
   targets: z.string().optional(),
-  targetDescription: z.string().max(200, { message: "目标描述不能超过 200 个字符" }).optional(),
 })
 
 type FormValues = z.infer<typeof formSchema>
@@ -91,13 +90,11 @@ export function AddOrganizationDialog({
       name: "",
       description: "",
       targets: "",
-      targetDescription: "",
     },
   })
 
   // 监听表单值变化
   const targetsText = form.watch("targets") || ""
-  const targetDescriptionText = form.watch("targetDescription") || ""
 
   // 实时验证目标
   const targetValidation = useMemo(() => {
@@ -154,7 +151,6 @@ export function AddOrganizationDialog({
               .filter(line => line.length > 0)
               .map(name => ({
                 name,
-                description: values.targetDescription?.trim() || undefined,
               }))
 
             if (targetList.length > 0) {
@@ -162,7 +158,7 @@ export function AddOrganizationDialog({
               batchCreateTargets.mutate(
                 {
                   targets: targetList,
-                  organizationId: newOrganization.id,
+                  organization_id: newOrganization.id,
                 },
                 {
                   onSuccess: () => {
@@ -347,30 +343,6 @@ export function AddOrganizationDialog({
                         例如 第 {targetValidation.invalid[0].index + 1} 行: &quot;{targetValidation.invalid[0].originalTarget}&quot; - {targetValidation.invalid[0].error}
                       </div>
                     )}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* 目标描述输入框 */}
-              <FormField
-                control={form.control}
-                name="targetDescription"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>目标描述</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        {...field}
-                        placeholder="请输入目标描述（可选，将应用于所有目标）"
-                        disabled={isSubmitting}
-                        rows={2}
-                        maxLength={200}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      {targetDescriptionText.length}/200 字符
-                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

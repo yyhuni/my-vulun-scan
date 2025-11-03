@@ -313,37 +313,36 @@ export function useBatchDeleteOrganizations() {
   })
 }
 
+
+
 /**
- * 关联目标到组织的 Mutation Hook（单个）
+ * 解除组织与目标关联的 Mutation Hook（批量）
  */
-export function useLinkTargetToOrganization() {
+export function useUnlinkTargetsFromOrganization() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (data: { organizationId: number; targetId: number }) => 
-      OrganizationService.linkTargetToOrganization(data),
-    onMutate: ({ organizationId, targetId }) => {
-      toast.loading('正在关联目标...', { id: `link-${organizationId}-${targetId}` })
+    mutationFn: (data: { organizationId: number; targetIds: number[] }) => 
+      OrganizationService.unlinkTargetsFromOrganization(data),
+    onMutate: ({ organizationId, targetIds }) => {
+      toast.loading('正在解除关联...', { id: `unlink-${organizationId}` })
     },
-    onSuccess: (response, { organizationId, targetId }) => {
-      toast.dismiss(`link-${organizationId}-${targetId}`)
-      
-      console.log('关联目标成功')
-      console.log('后端响应:', response)
-      
-      toast.success('目标已成功关联')
+    onSuccess: (response, { organizationId }) => {
+      toast.dismiss(`unlink-${organizationId}`)
+      toast.success(response.message || '已成功解除关联')
       
       // 刷新所有目标和组织相关查询
       queryClient.invalidateQueries({ queryKey: ['targets'] })
       queryClient.invalidateQueries({ queryKey: ['organizations'] })
     },
-    onError: (error: any, { organizationId, targetId }) => {
-      toast.dismiss(`link-${organizationId}-${targetId}`)
+    onError: (error: any, { organizationId }) => {
+      toast.dismiss(`unlink-${organizationId}`)
       
-      console.error('关联目标失败:', error)
+      console.error('解除关联失败:', error)
       console.error('后端响应:', error?.response?.data || error)
       
-      toast.error('关联目标失败，请查看控制台日志')
+      const errorMessage = error?.response?.data?.error || '解除关联失败'
+      toast.error(errorMessage)
     },
   })
 }

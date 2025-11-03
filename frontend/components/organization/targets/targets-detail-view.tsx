@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { useOrganization } from "@/hooks/use-organizations"
+import { useOrganization, useUnlinkTargetsFromOrganization } from "@/hooks/use-organizations"
 import { useTargets } from "@/hooks/use-targets"
 import type { Target } from "@/types/target.types"
 
@@ -36,6 +36,9 @@ export function OrganizationTargetsDetailView({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [targetToDelete, setTargetToDelete] = useState<Target | null>(null)
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
+  
+  // 使用解除关联 mutation
+  const unlinkTargets = useUnlinkTargetsFromOrganization()
   
   // 分页状态
   const [pagination, setPagination] = useState({
@@ -84,24 +87,28 @@ export function OrganizationTargetsDetailView({
     router.push(path)
   }
 
-  // 处理删除目标
+  // 处理解除关联目标
   const handleDeleteTarget = (target: Target) => {
     setTargetToDelete(target)
     setDeleteDialogOpen(true)
   }
 
-  // 确认删除目标
+  // 确认解除关联目标
   const confirmDelete = async () => {
     if (!targetToDelete) return
 
     setDeleteDialogOpen(false)
+    const targetId = targetToDelete.id
     setTargetToDelete(null)
     
-    // TODO: 实现删除逻辑
-    toast.success("目标已移除")
+    // 调用解除关联 API
+    unlinkTargets.mutate({
+      organizationId: parseInt(organizationId),
+      targetIds: [targetId]
+    })
   }
 
-  // 处理批量删除
+  // 处理批量解除关联
   const handleBulkDelete = () => {
     if (selectedTargets.length === 0) {
       return
@@ -109,17 +116,20 @@ export function OrganizationTargetsDetailView({
     setBulkDeleteDialogOpen(true)
   }
 
-  // 确认批量删除
+  // 确认批量解除关联
   const confirmBulkDelete = async () => {
     if (selectedTargets.length === 0) return
 
-    const deletedIds = selectedTargets.map(target => target.id)
+    const targetIds = selectedTargets.map(target => target.id)
     
     setBulkDeleteDialogOpen(false)
     setSelectedTargets([])
     
-    // TODO: 实现批量删除逻辑
-    toast.success(`成功移除 ${deletedIds.length} 个目标`)
+    // 调用批量解除关联 API
+    unlinkTargets.mutate({
+      organizationId: parseInt(organizationId),
+      targetIds
+    })
   }
 
   // 处理添加目标
@@ -217,13 +227,13 @@ export function OrganizationTargetsDetailView({
         onOpenChange={setIsAddDialogOpen}
       />
 
-      {/* 删除确认对话框 */}
+      {/* 解除关联确认对话框 */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>确认移除目标</AlertDialogTitle>
+            <AlertDialogTitle>确认解除关联</AlertDialogTitle>
             <AlertDialogDescription>
-              确定要从此组织中移除目标 &quot;{targetToDelete?.name}&quot; 吗？此操作只会解除目标与组织的关联关系，目标本身不会被删除。
+              确定要解除目标 &quot;{targetToDelete?.name}&quot; 与此组织的关联吗？此操作只会解除关联关系，目标本身不会被删除。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -232,19 +242,19 @@ export function OrganizationTargetsDetailView({
               onClick={confirmDelete} 
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              确认移除
+              确认解除
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* 批量删除确认对话框 */}
+      {/* 批量解除关联确认对话框 */}
       <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>确认批量移除目标</AlertDialogTitle>
+            <AlertDialogTitle>确认批量解除关联</AlertDialogTitle>
             <AlertDialogDescription>
-              此操作将从组织中移除以下 {selectedTargets.length} 个目标。目标本身不会被删除，仍可正常使用。
+              此操作将解除以下 {selectedTargets.length} 个目标与此组织的关联。目标本身不会被删除，仍可正常使用。
             </AlertDialogDescription>
           </AlertDialogHeader>
           {/* 目标列表容器 - 固定最大高度并支持滚动 */}
@@ -266,7 +276,7 @@ export function OrganizationTargetsDetailView({
               onClick={confirmBulkDelete} 
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              确认移除 {selectedTargets.length} 个目标
+              确认解除 {selectedTargets.length} 个关联
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

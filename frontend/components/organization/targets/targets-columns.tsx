@@ -140,7 +140,7 @@ function TargetRowActions({
           className="text-destructive focus:text-destructive"
         >
           <Trash2 />
-          移除
+          解除关联
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -286,53 +286,6 @@ export const createTargetColumns = ({
           {typeInfo.label}
         </Badge>
       )
-    },
-  },
-
-  // 域名数量列
-  {
-    accessorKey: "domainCount",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="域名数" />
-    ),
-    cell: ({ row }) => {
-      const count = row.getValue("domainCount") as number | undefined
-      return (
-        <div className="text-sm font-medium text-center">
-          {count ?? 0}
-        </div>
-      )
-    },
-  },
-
-  // URL 数量列
-  {
-    accessorKey: "endpointCount",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="URL 数" />
-    ),
-    cell: ({ row }) => {
-      const count = row.getValue("endpointCount") as number | undefined
-      return (
-        <div className="text-sm font-medium text-center">
-          {count ?? 0}
-        </div>
-      )
-    },
-  },
-
-  // 描述列
-  {
-    accessorKey: "description",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="描述" />
-    ),
-    cell: ({ row }) => {
-      const description = row.getValue("description") as string | null
-      if (!description) {
-        return <span className="text-sm text-muted-foreground">-</span>
-      }
-      return <CopyableCell value={description} maxWidth="400px" truncateLength={50} successMessage="已复制描述" className="text-sm text-muted-foreground" />
     },
   },
 

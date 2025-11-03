@@ -9,7 +9,7 @@ class TargetSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Target
-        fields = ['id', 'name', 'type', 'description', 'created_at', 'last_scanned_at', 'organizations']
+        fields = ['id', 'name', 'type', 'created_at', 'last_scanned_at', 'organizations']
         read_only_fields = ['id', 'created_at', 'type', 'organizations']
     
     def get_organizations(self, obj):
@@ -70,7 +70,7 @@ class BatchCreateTargetSerializer(serializers.Serializer):
     # 目标列表
     targets = serializers.ListField(
         child=serializers.DictField(),
-        help_text='目标列表，每个目标包含 name, description 等字段（type 会自动检测）'
+        help_text='目标列表，每个目标包含 name 字段（type 会自动检测）'
     )
     
     # 可选：关联的组织ID
