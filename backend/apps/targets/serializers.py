@@ -5,10 +5,19 @@ from apps.common.validators import detect_target_type
 
 
 class TargetSerializer(serializers.ModelSerializer):
+    organizations = serializers.SerializerMethodField()
+    
     class Meta:
         model = Target
-        fields = '__all__'
-        read_only_fields = ['id', 'created_at', 'type']
+        fields = ['id', 'name', 'type', 'description', 'created_at', 'last_scanned_at', 'organizations']
+        read_only_fields = ['id', 'created_at', 'type', 'organizations']
+    
+    def get_organizations(self, obj):
+        """获取目标关联的组织列表"""
+        return [
+            {'id': org.id, 'name': org.name}
+            for org in obj.organizations.all()
+        ]
     
     def create(self, validated_data):
         """创建目标时自动规范化、检测目标类型"""

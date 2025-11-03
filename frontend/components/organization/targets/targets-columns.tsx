@@ -222,16 +222,42 @@ export const createTargetColumns = ({
     cell: ({ row }) => {
       const name = row.getValue("name") as string
       const targetId = row.original.id
+      const [copied, setCopied] = React.useState(false)
+      
+      const handleCopy = async (e: React.MouseEvent) => {
+        e.stopPropagation()
+        try {
+          await navigator.clipboard.writeText(name)
+          setCopied(true)
+          toast.success("已复制目标名称")
+          setTimeout(() => setCopied(false), 2000)
+        } catch {
+          toast.error('复制失败')
+        }
+      }
       
       return (
-        <div className="group inline-flex items-center gap-1" style={{ maxWidth: "400px" }}>
-          <Button
-            variant="link"
-            className="p-0 h-auto font-medium text-primary hover:text-primary/80 text-sm truncate"
+        <div className="group inline-flex items-center gap-1 max-w-[400px]">
+          <button
             onClick={() => navigate(`/target/${targetId}/subdomain/`)}
+            className="text-sm font-medium text-primary hover:underline cursor-pointer truncate"
             title={name}
           >
             {name}
+          </button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`h-6 w-6 flex-shrink-0 hover:bg-accent transition-opacity ${
+              copied ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+            }`}
+            onClick={handleCopy}
+          >
+            {copied ? (
+              <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+            ) : (
+              <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+            )}
           </Button>
         </div>
       )
