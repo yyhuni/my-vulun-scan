@@ -17,7 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { MoreHorizontal, Eye, Trash2, ChevronsUpDown, ChevronUp, ChevronDown, Copy, Check, Play, Calendar, Pencil } from "lucide-react"
+import { MoreHorizontal, Eye, Trash2, ChevronsUpDown, ChevronUp, ChevronDown, Copy, Check, Play, Calendar } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import type { Target } from "@/types/target.types"
@@ -106,7 +106,6 @@ interface CreateColumnsProps {
   handleDelete: (target: Target) => void
   handleInitiateScan: (target: Target) => void
   handleScheduleScan: (target: Target) => void
-  handleEdit: (target: Target) => void
 }
 
 /**
@@ -117,14 +116,12 @@ function TargetRowActions({
   onView,
   onInitiateScan,
   onScheduleScan,
-  onEdit,
   onDelete,
 }: {
   target: Target
   onView: () => void
   onInitiateScan: () => void
   onScheduleScan: () => void
-  onEdit: () => void
   onDelete: () => void
 }) {
   return (
@@ -153,10 +150,6 @@ function TargetRowActions({
           Schedule Scan
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={onEdit}>
-          <Pencil />
-          Edit Target
-        </DropdownMenuItem>
         <DropdownMenuItem
           onClick={onDelete}
           className="text-destructive focus:text-destructive"
@@ -212,7 +205,6 @@ export const createAllTargetsColumns = ({
   handleDelete,
   handleInitiateScan,
   handleScheduleScan,
-  handleEdit,
 }: CreateColumnsProps): ColumnDef<Target>[] => [
   // 选择列
   {
@@ -381,7 +373,6 @@ export const createAllTargetsColumns = ({
         onView={() => navigate(`/target/${row.original.id}/details`)}
         onInitiateScan={() => handleInitiateScan(row.original)}
         onScheduleScan={() => handleScheduleScan(row.original)}
-        onEdit={() => handleEdit(row.original)}
         onDelete={() => handleDelete(row.original)}
       />
     ),

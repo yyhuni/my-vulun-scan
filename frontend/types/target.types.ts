@@ -73,7 +73,7 @@ export interface BatchCreateTargetsRequest {
     name: string
     description?: string
   }>
-  organizationId?: number  // 可选：关联到指定组织
+  organization_id?: number  // 可选：关联到指定组织（后端字段名）
 }
 
 /**

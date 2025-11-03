@@ -104,13 +104,6 @@ export function AllTargetsDetailView() {
     router.push(`/scan/scheduled?targetId=${target.id}`)
   }, [router])
 
-  // 处理编辑目标
-  const handleEdit = useCallback((target: Target) => {
-    // TODO: 实现编辑功能
-    console.log('编辑目标:', target)
-    // 可以在这里打开编辑对话框或跳转到编辑页面
-  }, [])
-
   // 创建表格列
   const columns = createAllTargetsColumns({
     formatDate,
@@ -118,7 +111,6 @@ export function AllTargetsDetailView() {
     handleDelete: handleDeleteTarget,
     handleInitiateScan,
     handleScheduleScan,
-    handleEdit,
   })
 
   // 加载中

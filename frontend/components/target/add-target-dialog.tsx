@@ -39,6 +39,7 @@ import { TargetValidator } from "@/lib/target-validator"
 
 // 导入 React Query Hooks
 import { useOrganizations } from "@/hooks/use-organizations"
+import { useBatchCreateTargets } from "@/hooks/use-targets"
 import { toast } from "sonner"
 
 // 组件属性类型定义
@@ -70,7 +71,6 @@ export function AddTargetDialog({
   const open = externalOpen !== undefined ? externalOpen : internalOpen
   const setOpen = externalOnOpenChange || setInternalOpen
   const [orgPickerOpen, setOrgPickerOpen] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
   
   // 表单数据状态
   const [formData, setFormData] = useState({
@@ -87,6 +87,9 @@ export function AddTargetDialog({
   
   // 验证错误状态
   const [invalidTargets, setInvalidTargets] = useState<Array<{ index: number; originalTarget: string; error: string; type?: string }>>([])
+  
+  // 使用批量创建目标 mutation
+  const batchCreateTargets = useBatchCreateTargets()
   
   // 行号列和输入框的 ref（用于同步滚动）
   const lineNumbersRef = useRef<HTMLDivElement | null>(null)
@@ -134,7 +137,7 @@ export function AddTargetDialog({
     .map(line => line.trim())
     .filter(line => line.length > 0).length
 
-  // 处理表单提交（临时 mock 实现）
+  // 处理表单提交
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -151,33 +154,54 @@ export function AddTargetDialog({
       return
     }
 
-    setIsSubmitting(true)
+    // 解析目标列表（每行一个目标）
+    const targetList = formData.targets
+      .split("\n")
+      .map(line => line.trim())
+      .filter(line => line.length > 0)
+      .map(name => ({
+        name,
+        description: formData.description?.trim() || undefined,
+      }))
 
-    // 模拟 API 调用
-    setTimeout(() => {
-      setIsSubmitting(false)
-      toast.success(`成功添加 ${targetCount} 个目标`)
-      
-      // 重置表单
-      setFormData({
-        targets: "",
-        description: "",
-        organizationId: "",
-      })
-      
-      // 关闭对话框
-      setOpen(false)
-      
-      // 调用外部回调（如果提供）
-      if (onAdd) {
-        onAdd()
+    if (targetList.length === 0) {
+      return
+    }
+
+    // 调用批量创建 API
+    batchCreateTargets.mutate(
+      {
+        targets: targetList,
+        organization_id: parseInt(formData.organizationId),
+      },
+      {
+        onSuccess: (batchCreateResult) => {
+          // 重置表单
+          setFormData({
+            targets: "",
+            description: "",
+            organizationId: "",
+          })
+          setInvalidTargets([])
+          setOrgSearchQuery("")
+          setOrgPage(1)
+          setOrgPageSize(20)
+          
+          // 关闭对话框
+          setOpen(false)
+          
+          // 调用外部回调（如果提供）
+          if (onAdd) {
+            onAdd()
+          }
+        }
       }
-    }, 1000)
+    )
   }
 
   // 处理对话框关闭
   const handleOpenChange = (newOpen: boolean) => {
-    if (!isSubmitting) {
+    if (!batchCreateTargets.isPending) {
       setOpen(newOpen)
       if (!newOpen) {
         // 关闭时重置表单
@@ -297,7 +321,7 @@ export function AddTargetDialog({
 example.com
 192.168.1.1
 10.0.0.0/8`}
-                    disabled={isSubmitting}
+                    disabled={batchCreateTargets.isPending}
                     className="font-mono h-full overflow-y-auto resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 leading-[1.4] text-sm py-3"
                     style={{ lineHeight: '20px' }}
                   />
@@ -323,7 +347,7 @@ example.com
                 role="combobox"
                 className="w-full justify-between"
                 onClick={() => setOrgPickerOpen(true)}
-                disabled={isSubmitting || isLoadingOrganizations}
+                disabled={batchCreateTargets.isPending || isLoadingOrganizations}
               >
                 {isLoadingOrganizations ? (
                   <span className="flex items-center gap-2">
@@ -465,7 +489,7 @@ example.com
                 value={formData.description}
                 onChange={(e) => handleInputChange("description", e.target.value)}
                 placeholder="请输入目标描述（可选，将应用于所有目标）"
-                disabled={isSubmitting}
+                disabled={batchCreateTargets.isPending}
                 rows={2}
                 maxLength={200}
               />
@@ -481,15 +505,15 @@ example.com
               type="button" 
               variant="outline" 
               onClick={() => handleOpenChange(false)}
-              disabled={isSubmitting}
+              disabled={batchCreateTargets.isPending}
             >
               取消
             </Button>
             <Button 
               type="submit" 
-              disabled={isSubmitting || !isFormValid}
+              disabled={batchCreateTargets.isPending || !isFormValid}
             >
-              {isSubmitting ? (
+              {batchCreateTargets.isPending ? (
                 <>
                   <LoadingSpinner/>
                   创建中...
