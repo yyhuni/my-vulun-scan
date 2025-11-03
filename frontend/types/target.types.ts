@@ -13,11 +13,10 @@ export type TargetType = 'domain' | 'ip' | 'cidr'
 export interface Target {
   id: number
   name: string
-  targetType: TargetType  // 后端字段：target_type，自动转换为 targetType
+  type: TargetType  // 后端字段：type
   description?: string
   createdAt: string  // 后端字段：created_at，自动转换为 createdAt
   lastScannedAt?: string  // 后端字段：last_scanned_at，自动转换为 lastScannedAt
-  requestHeaders?: Record<string, string>  // 后端字段：request_headers，自动转换为 requestHeaders
   // 关联数据（通过 serializer 添加）
   organizations?: Array<{
     id: number
@@ -40,9 +39,7 @@ export interface TargetsResponse {
  */
 export interface CreateTargetRequest {
   name: string
-  targetType: TargetType  // 前端使用 targetType，拦截器会转换为 target_type
   description?: string
-  requestHeaders?: Record<string, string>
 }
 
 /**
@@ -50,9 +47,7 @@ export interface CreateTargetRequest {
  */
 export interface UpdateTargetRequest {
   name?: string
-  targetType?: TargetType  // 前端使用 targetType，拦截器会转换为 target_type
   description?: string
-  requestHeaders?: Record<string, string>
 }
 
 /**
@@ -76,9 +71,7 @@ export interface BatchDeleteTargetsResponse {
 export interface BatchCreateTargetsRequest {
   targets: Array<{
     name: string
-    targetType?: TargetType
     description?: string
-    requestHeaders?: Record<string, string>
   }>
   organizationId?: number  // 可选：关联到指定组织
 }
@@ -88,9 +81,9 @@ export interface BatchCreateTargetsRequest {
  */
 export interface BatchCreateTargetsResponse {
   createdCount: number
-  skippedCount: number
-  createdTargets: Target[]
-  skippedTargets: Array<{
+  reusedCount: number
+  failedCount: number
+  failedTargets: Array<{
     name: string
     reason: string
   }>

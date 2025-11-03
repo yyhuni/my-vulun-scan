@@ -12,6 +12,31 @@ class OrganizationViewSet(viewsets.ModelViewSet):
     """组织管理 - 增删改查"""
     queryset = Organization.objects.all()
     serializer_class = OrganizationSerializer
+    
+    @action(detail=True, methods=['get'])
+    def targets(self, request, pk=None):
+        """
+        获取组织的目标列表
+        GET /api/organizations/{id}/targets/?page=1&pageSize=10
+        """
+        organization = self.get_object()
+        
+        # 获取组织的目标
+        queryset = organization.targets.all()
+        
+        # 使用分页器
+        paginator = self.paginator
+        page = paginator.paginate_queryset(queryset, request, view=self)
+        
+        if page is not None:
+            serializer = TargetSerializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+        
+        # 如果没有分页参数，返回错误
+        return Response(
+            {'error': '必须提供分页参数 page 和 pageSize'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
 
 class TargetViewSet(viewsets.ModelViewSet):
@@ -34,7 +59,7 @@ class TargetViewSet(viewsets.ModelViewSet):
             "organization_id": 1  // 可选，关联到指定组织
         }
         
-        注意：target_type 会根据 name 自动检测（域名/IP/CIDR）
+        注意：type 会根据 name 自动检测（域名/IP/CIDR）
         
         返回：
         {
@@ -90,7 +115,7 @@ class TargetViewSet(viewsets.ModelViewSet):
                 target, created = Target.objects.get_or_create(
                     name=normalized_name,
                     defaults={
-                        'target_type': target_type,
+                        'type': target_type,
                         'description': target_data.get('description', '')
                     }
                 )

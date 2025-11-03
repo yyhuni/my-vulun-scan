@@ -231,7 +231,7 @@ export const createOrganizationColumns = ({
       <DataTableColumnHeader column={column} title="Total Targets" />
     ),
     cell: ({ row }) => {
-      const targetCount = row.original.targetCount || row.original.stats?.total_targets || 0
+      const targetCount = row.original.targetCount ?? 0
       return (
         <div className="text-sm">
           <Badge variant="secondary" className="text-xs">

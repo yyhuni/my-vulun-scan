@@ -152,18 +152,13 @@ export function AddOrganizationDialog({
               .split("\n")
               .map(line => line.trim())
               .filter(line => line.length > 0)
-              .map(name => {
-                // 使用 TargetValidator 推断目标类型
-                const validation = TargetValidator.validateTarget(name)
-                return {
-                  name,
-                  targetType: validation.type || 'domain',
-                  description: values.targetDescription?.trim() || undefined,
-                }
-              })
+              .map(name => ({
+                name,
+                description: values.targetDescription?.trim() || undefined,
+              }))
 
             if (targetList.length > 0) {
-              // 批量创建目标并关联到新组织
+              // 批量创建目标并关联到新组织（后端会自动检测目标类型）
               batchCreateTargets.mutate(
                 {
                   targets: targetList,

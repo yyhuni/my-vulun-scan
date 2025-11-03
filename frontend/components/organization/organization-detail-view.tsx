@@ -20,8 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { useOrganization } from "@/hooks/use-organizations"
-import { useTargets } from "@/hooks/use-targets"
+import { useOrganization, useOrganizationTargets } from "@/hooks/use-organizations"
 import type { Target } from "@/types/target.types"
 import { toast } from "sonner"
 
@@ -53,17 +52,19 @@ export function OrganizationDetailView({
     error: orgError,
   } = useOrganization(parseInt(organizationId))
 
-  // 使用 React Query 获取目标列表（过滤组织）
+  // 使用 React Query 获取组织的目标列表
   const {
     data: targetsData,
     isLoading: isLoadingTargets,
     error: targetsError,
     refetch
-  } = useTargets({
-    page: pagination.pageIndex + 1,
-    pageSize: pagination.pageSize,
-    organizationId: parseInt(organizationId),
-  })
+  } = useOrganizationTargets(
+    parseInt(organizationId),
+    {
+      page: pagination.pageIndex + 1,
+      pageSize: pagination.pageSize,
+    }
+  )
 
   const isLoading = isLoadingOrg || isLoadingTargets
   const error = orgError || targetsError
@@ -308,7 +309,7 @@ export function OrganizationDetailView({
           </p>
         </div>
         <TargetsDataTable
-          data={targetsData?.targets || []}
+          data={targetsData?.results || []}
           columns={targetColumns}
           onAddNew={handleAddTarget}
           onBulkDelete={handleBulkDelete}

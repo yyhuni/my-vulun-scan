@@ -46,7 +46,7 @@ class Target(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=300, unique=True, blank=True, default='', help_text='目标标识（域名/IP/CIDR）')
 
-    target_type = models.CharField(
+    type = models.CharField(
         max_length=20,
         choices=TargetType.choices,
         default=TargetType.DOMAIN,
@@ -68,7 +68,7 @@ class Target(models.Model):
         verbose_name_plural = '扫描目标'
         ordering = ['-created_at']
         indexes = [
-            models.Index(fields=['target_type']),
+            models.Index(fields=['type']),
             models.Index(fields=['-created_at']),
         ]
 

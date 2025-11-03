@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/form"
 
 // 导入 React Query Hooks
-import { useCreateTarget } from "@/hooks/use-targets"
+import { useBatchCreateTargets } from "@/hooks/use-targets"
 
 // 导入类型定义
 import type { BatchCreateResponse } from "@/types/api-response.types"
@@ -88,8 +88,8 @@ export function LinkTargetDialog({
   const lineNumbersRef = useRef<HTMLDivElement | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   
-  // 使用 React Query 的创建目标 mutation
-  const createTarget = useCreateTarget()
+  // 使用 React Query 的批量创建目标 mutation
+  const batchCreateTargets = useBatchCreateTargets()
   
   // 初始化表单
   const form = useForm<FormValues>({
@@ -152,10 +152,10 @@ export function LinkTargetDialog({
     }
 
     // 使用 React Query mutation
-    createTarget.mutate(
+    batchCreateTargets.mutate(
       {
         targets: targetList,
-        organizationId: organizationId,
+        organization_id: organizationId,
       },
       {
         onSuccess: (batchCreateResult) => {
@@ -177,7 +177,7 @@ export function LinkTargetDialog({
 
   // 处理对话框关闭
   const handleOpenChange = (newOpen: boolean) => {
-    if (!createTarget.isPending) {
+    if (!batchCreateTargets.isPending) {
       setOpen(newOpen)
       if (!newOpen) {
         // 关闭时重置表单
@@ -258,7 +258,7 @@ export function LinkTargetDialog({
                             }}
                             onScroll={handleTextareaScroll}
                             placeholder={`请输入目标，每行一个\n支持域名、IP、CIDR\n例如：\nexample.com\n192.168.1.1\n10.0.0.0/8`}
-                            disabled={createTarget.isPending}
+                            disabled={batchCreateTargets.isPending}
                             className="font-mono h-full overflow-y-auto resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 leading-[1.4] text-sm py-3"
                             style={{ lineHeight: '20px' }}
                           />
@@ -306,7 +306,7 @@ export function LinkTargetDialog({
                       <Textarea
                         {...field}
                         placeholder="请输入目标描述（可选，将应用于所有目标）"
-                        disabled={createTarget.isPending}
+                        disabled={batchCreateTargets.isPending}
                         rows={2}
                         maxLength={200}
                       />
@@ -326,15 +326,15 @@ export function LinkTargetDialog({
               type="button" 
               variant="outline" 
               onClick={() => handleOpenChange(false)}
-              disabled={createTarget.isPending}
+              disabled={batchCreateTargets.isPending}
             >
               取消
             </Button>
             <Button 
               type="submit" 
-              disabled={createTarget.isPending || !isFormValid}
+              disabled={batchCreateTargets.isPending || !isFormValid}
             >
-              {createTarget.isPending ? (
+              {batchCreateTargets.isPending ? (
                 <>
                   <LoadingSpinner/>
                   创建中...

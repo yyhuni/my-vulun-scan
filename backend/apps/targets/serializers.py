@@ -8,7 +8,7 @@ class TargetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Target
         fields = '__all__'
-        read_only_fields = ['id', 'created_at', 'target_type']
+        read_only_fields = ['id', 'created_at', 'type']
     
     def create(self, validated_data):
         """创建目标时自动规范化、检测目标类型"""
@@ -20,7 +20,7 @@ class TargetSerializer(serializers.ModelSerializer):
             target_type = detect_target_type(normalized_name)
             # 3. 写入
             validated_data['name'] = normalized_name
-            validated_data['target_type'] = target_type
+            validated_data['type'] = target_type
         except ValueError as e:
             raise serializers.ValidationError({'name': str(e)})
         return super().create(validated_data)
@@ -36,17 +36,23 @@ class TargetSerializer(serializers.ModelSerializer):
                 target_type = detect_target_type(normalized_name)
                 # 3. 写入
                 validated_data['name'] = normalized_name
-                validated_data['target_type'] = target_type
+                validated_data['type'] = target_type
             except ValueError as e:
                 raise serializers.ValidationError({'name': str(e)})
         return super().update(instance, validated_data)
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
+    target_count = serializers.SerializerMethodField()
+    
     class Meta:
         model = Organization
-        fields = '__all__'
-        read_only_fields = ['id', 'created_at']
+        fields = ['id', 'name', 'description', 'created_at', 'target_count']
+        read_only_fields = ['id', 'created_at', 'target_count']
+    
+    def get_target_count(self, obj):
+        """获取目标数量"""
+        return obj.targets.count()
 
 
 class BatchCreateTargetSerializer(serializers.Serializer):
@@ -55,7 +61,7 @@ class BatchCreateTargetSerializer(serializers.Serializer):
     # 目标列表
     targets = serializers.ListField(
         child=serializers.DictField(),
-        help_text='目标列表，每个目标包含 name, description 等字段（target_type 会自动检测）'
+        help_text='目标列表，每个目标包含 name, description 等字段（type 会自动检测）'
     )
     
     # 可选：关联的组织ID
