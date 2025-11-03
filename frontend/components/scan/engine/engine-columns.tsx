@@ -27,7 +27,44 @@ import {
   IconBolt,
   IconSettings,
 } from "@tabler/icons-react"
+import * as yaml from "js-yaml"
 import type { ScanEngine, EngineType } from "@/types/engine.types"
+
+/**
+ * 解析引擎的 YAML 配置并检测功能是否启用
+ */
+function parseEngineFeatures(engine: ScanEngine) {
+  // 如果引擎有 configuration 字段，解析 YAML
+  if (engine.configuration) {
+    try {
+      const config = yaml.load(engine.configuration) as any
+      return {
+        subdomain_discovery: !!config?.subdomain_discovery && Object.keys(config.subdomain_discovery).length > 0,
+        waf_detection: !!config?.waf_detection && Object.keys(config.waf_detection).length > 0,
+        screenshot: !!config?.screenshot && Object.keys(config.screenshot).length > 0,
+        osint: !!config?.osint && Object.keys(config.osint).length > 0,
+        port_scan: !!config?.port_scan && Object.keys(config.port_scan).length > 0,
+        directory_files_discovery: !!config?.dir_file_fuzz && Object.keys(config.dir_file_fuzz).length > 0,
+        fetch_urls: !!config?.fetch_url && Object.keys(config.fetch_url).length > 0,
+        vulnerability_scan: !!config?.vulnerability_scan && Object.keys(config.vulnerability_scan).length > 0,
+      }
+    } catch (error) {
+      console.error("Failed to parse YAML configuration:", error)
+    }
+  }
+  
+  // 回退到引擎对象的直接属性
+  return {
+    subdomain_discovery: engine.subdomain_discovery,
+    waf_detection: engine.waf_detection,
+    screenshot: engine.screenshot,
+    osint: engine.osint,
+    port_scan: engine.port_scan,
+    directory_files_discovery: engine.directory_files_discovery,
+    fetch_urls: engine.fetch_urls,
+    vulnerability_scan: engine.vulnerability_scan,
+  }
+}
 
 /**
  * 引擎类型徽章组件
@@ -211,7 +248,10 @@ export const createEngineColumns = ({
   {
     id: "subdomain_discovery",
     header: "Subdomain Discovery",
-    cell: ({ row }) => <FeatureStatus enabled={row.original.subdomain_discovery} />,
+    cell: ({ row }) => {
+      const features = parseEngineFeatures(row.original)
+      return <FeatureStatus enabled={features.subdomain_discovery} />
+    },
     enableSorting: false,
   },
 
@@ -219,7 +259,10 @@ export const createEngineColumns = ({
   {
     id: "waf_detection",
     header: "WAF Detection",
-    cell: ({ row }) => <FeatureStatus enabled={row.original.waf_detection} />,
+    cell: ({ row }) => {
+      const features = parseEngineFeatures(row.original)
+      return <FeatureStatus enabled={features.waf_detection} />
+    },
     enableSorting: false,
   },
 
@@ -227,7 +270,10 @@ export const createEngineColumns = ({
   {
     id: "screenshot",
     header: "Screenshot",
-    cell: ({ row }) => <FeatureStatus enabled={row.original.screenshot} />,
+    cell: ({ row }) => {
+      const features = parseEngineFeatures(row.original)
+      return <FeatureStatus enabled={features.screenshot} />
+    },
     enableSorting: false,
   },
 
@@ -235,7 +281,10 @@ export const createEngineColumns = ({
   {
     id: "osint",
     header: "OSINT",
-    cell: ({ row }) => <FeatureStatus enabled={row.original.osint} />,
+    cell: ({ row }) => {
+      const features = parseEngineFeatures(row.original)
+      return <FeatureStatus enabled={features.osint} />
+    },
     enableSorting: false,
   },
 
@@ -243,7 +292,10 @@ export const createEngineColumns = ({
   {
     id: "port_scan",
     header: "Port Scan",
-    cell: ({ row }) => <FeatureStatus enabled={row.original.port_scan} />,
+    cell: ({ row }) => {
+      const features = parseEngineFeatures(row.original)
+      return <FeatureStatus enabled={features.port_scan} />
+    },
     enableSorting: false,
   },
 
@@ -251,9 +303,10 @@ export const createEngineColumns = ({
   {
     id: "directory_files_discovery",
     header: "Directory & Files Discovery",
-    cell: ({ row }) => (
-      <FeatureStatus enabled={row.original.directory_files_discovery} />
-    ),
+    cell: ({ row }) => {
+      const features = parseEngineFeatures(row.original)
+      return <FeatureStatus enabled={features.directory_files_discovery} />
+    },
     enableSorting: false,
   },
 
@@ -261,7 +314,10 @@ export const createEngineColumns = ({
   {
     id: "fetch_urls",
     header: "Fetch URLs",
-    cell: ({ row }) => <FeatureStatus enabled={row.original.fetch_urls} />,
+    cell: ({ row }) => {
+      const features = parseEngineFeatures(row.original)
+      return <FeatureStatus enabled={features.fetch_urls} />
+    },
     enableSorting: false,
   },
 
@@ -269,9 +325,10 @@ export const createEngineColumns = ({
   {
     id: "vulnerability_scan",
     header: "Vulnerability Scan",
-    cell: ({ row }) => (
-      <FeatureStatus enabled={row.original.vulnerability_scan} />
-    ),
+    cell: ({ row }) => {
+      const features = parseEngineFeatures(row.original)
+      return <FeatureStatus enabled={features.vulnerability_scan} />
+    },
     enableSorting: false,
   },
 

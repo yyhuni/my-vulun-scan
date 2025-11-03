@@ -25,6 +25,23 @@ export default function ScanEnginePage() {
         name: "全面扫描引擎",
         type: "comprehensive",
         description: "使用所有可用工具进行全面的安全扫描，覆盖子域名、端口、目录、漏洞等所有方面",
+        configuration: `subdomain_discovery:
+  uses_tools: [subfinder, chaos]
+  threads: 30
+port_scan:
+  ports: [top-100]
+  threads: 30
+osint:
+  intensity: normal
+dir_file_fuzz:
+  threads: 30
+fetch_url:
+  uses_tools: [gospider, katana]
+vulnerability_scan:
+  run_nuclei: true
+waf_detection: {}
+screenshot:
+  threads: 40`,
         tools: ["subfinder", "nuclei", "naabu", "httpx"],
         tool_ids: [1, 2, 3, 4],
         is_enabled: true,
@@ -37,6 +54,12 @@ export default function ScanEnginePage() {
         name: "快速扫描引擎",
         type: "quick",
         description: "快速检测常见漏洞，适用于日常扫描",
+        configuration: `vulnerability_scan:
+  run_nuclei: true
+  intensity: normal
+port_scan:
+  ports: [top-20]
+  passive: true`,
         tools: ["nuclei", "httpx"],
         tool_ids: [2, 4],
         is_enabled: true,
@@ -49,6 +72,10 @@ export default function ScanEnginePage() {
         name: "子域名发现引擎",
         type: "custom",
         description: "专注于子域名枚举和发现",
+        configuration: `subdomain_discovery:
+  uses_tools: [subfinder, dnsx]
+  enable_http_crawl: true
+  threads: 30`,
         tools: ["subfinder", "dnsx"],
         tool_ids: [1, 5],
         is_enabled: true,
@@ -61,6 +88,14 @@ export default function ScanEnginePage() {
         name: "Web应用扫描引擎",
         type: "custom",
         description: "针对Web应用的全面扫描，包括目录扫描、漏洞检测等",
+        configuration: `dir_file_fuzz:
+  extensions: [php, html, js]
+  threads: 30
+vulnerability_scan:
+  run_nuclei: true
+  run_dalfox: true
+fetch_url:
+  uses_tools: [katana, gospider]`,
         tools: ["nuclei", "httpx", "katana"],
         tool_ids: [2, 4, 6],
         is_enabled: false,
@@ -73,6 +108,11 @@ export default function ScanEnginePage() {
         name: "端口服务识别引擎",
         type: "custom",
         description: "识别开放端口和运行的服务",
+        configuration: `port_scan:
+  ports: [top-1000]
+  rate_limit: 150
+  threads: 30
+  enable_nmap: true`,
         tools: ["naabu", "httpx"],
         tool_ids: [3, 4],
         is_enabled: true,
