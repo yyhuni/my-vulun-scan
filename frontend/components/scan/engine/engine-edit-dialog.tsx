@@ -18,7 +18,7 @@ import { toast } from "sonner"
 import { useTheme } from "next-themes"
 import type { ScanEngine } from "@/types/engine.types"
 
-interface EngineYamlDialogProps {
+interface EngineEditDialogProps {
   engine: ScanEngine | null
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -26,15 +26,15 @@ interface EngineYamlDialogProps {
 }
 
 /**
- * 引擎 YAML 配置编辑弹窗
+ * 引擎配置编辑弹窗
  * 使用 Monaco Editor 提供 VSCode 级别的编辑体验
  */
-export function EngineYamlDialog({
+export function EngineEditDialog({
   engine,
   open,
   onOpenChange,
   onSave,
-}: EngineYamlDialogProps) {
+}: EngineEditDialogProps) {
   const [yamlContent, setYamlContent] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)

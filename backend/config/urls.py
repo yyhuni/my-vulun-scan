@@ -44,5 +44,8 @@ urlpatterns = [
     
     # 扫描 API
     path('api/', include('apps.scan.urls')),
+    
+    # 引擎 API
+    path('api/engines/', include('apps.engine.urls')),
 
 ]

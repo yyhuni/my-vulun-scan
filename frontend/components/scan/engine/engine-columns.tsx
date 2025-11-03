@@ -32,6 +32,10 @@ import type { ScanEngine, EngineType } from "@/types/engine.types"
 
 /**
  * 解析引擎的 YAML 配置并检测功能是否启用
+ * 
+ * 判断逻辑：
+ * - 如果 YAML 中存在该配置项（即使是空对象 {}），则认为启用了该功能
+ * - 空对象表示使用默认配置启用该功能
  */
 function parseEngineFeatures(engine: ScanEngine) {
   // 如果引擎有 configuration 字段，解析 YAML
@@ -39,14 +43,15 @@ function parseEngineFeatures(engine: ScanEngine) {
     try {
       const config = yaml.load(engine.configuration) as any
       return {
-        subdomain_discovery: !!config?.subdomain_discovery && Object.keys(config.subdomain_discovery).length > 0,
-        waf_detection: !!config?.waf_detection && Object.keys(config.waf_detection).length > 0,
-        screenshot: !!config?.screenshot && Object.keys(config.screenshot).length > 0,
-        osint: !!config?.osint && Object.keys(config.osint).length > 0,
-        port_scan: !!config?.port_scan && Object.keys(config.port_scan).length > 0,
-        directory_files_discovery: !!config?.dir_file_fuzz && Object.keys(config.dir_file_fuzz).length > 0,
-        fetch_urls: !!config?.fetch_url && Object.keys(config.fetch_url).length > 0,
-        vulnerability_scan: !!config?.vulnerability_scan && Object.keys(config.vulnerability_scan).length > 0,
+        subdomain_discovery: !!config?.subdomain_discovery,
+        http_crawl: !!config?.http_crawl,
+        port_scan: !!config?.port_scan,
+        osint: !!config?.osint,
+        directory_files_discovery: !!config?.dir_file_fuzz,
+        fetch_urls: !!config?.fetch_url,
+        vulnerability_scan: !!config?.vulnerability_scan,
+        waf_detection: !!config?.waf_detection,
+        screenshot: !!config?.screenshot,
       }
     } catch (error) {
       console.error("Failed to parse YAML configuration:", error)
@@ -56,13 +61,14 @@ function parseEngineFeatures(engine: ScanEngine) {
   // 回退到引擎对象的直接属性
   return {
     subdomain_discovery: engine.subdomain_discovery,
-    waf_detection: engine.waf_detection,
-    screenshot: engine.screenshot,
-    osint: engine.osint,
+    http_crawl: false,
     port_scan: engine.port_scan,
+    osint: engine.osint,
     directory_files_discovery: engine.directory_files_discovery,
     fetch_urls: engine.fetch_urls,
     vulnerability_scan: engine.vulnerability_scan,
+    waf_detection: engine.waf_detection,
+    screenshot: engine.screenshot,
   }
 }
 
@@ -255,35 +261,13 @@ export const createEngineColumns = ({
     enableSorting: false,
   },
 
-  // WAF Detection
+  // HTTP Crawl
   {
-    id: "waf_detection",
-    header: "WAF Detection",
+    id: "http_crawl",
+    header: "HTTP Crawl",
     cell: ({ row }) => {
       const features = parseEngineFeatures(row.original)
-      return <FeatureStatus enabled={features.waf_detection} />
-    },
-    enableSorting: false,
-  },
-
-  // Screenshot
-  {
-    id: "screenshot",
-    header: "Screenshot",
-    cell: ({ row }) => {
-      const features = parseEngineFeatures(row.original)
-      return <FeatureStatus enabled={features.screenshot} />
-    },
-    enableSorting: false,
-  },
-
-  // OSINT
-  {
-    id: "osint",
-    header: "OSINT",
-    cell: ({ row }) => {
-      const features = parseEngineFeatures(row.original)
-      return <FeatureStatus enabled={features.osint} />
+      return <FeatureStatus enabled={features.http_crawl} />
     },
     enableSorting: false,
   },
@@ -295,6 +279,17 @@ export const createEngineColumns = ({
     cell: ({ row }) => {
       const features = parseEngineFeatures(row.original)
       return <FeatureStatus enabled={features.port_scan} />
+    },
+    enableSorting: false,
+  },
+
+  // OSINT
+  {
+    id: "osint",
+    header: "OSINT",
+    cell: ({ row }) => {
+      const features = parseEngineFeatures(row.original)
+      return <FeatureStatus enabled={features.osint} />
     },
     enableSorting: false,
   },
@@ -328,6 +323,28 @@ export const createEngineColumns = ({
     cell: ({ row }) => {
       const features = parseEngineFeatures(row.original)
       return <FeatureStatus enabled={features.vulnerability_scan} />
+    },
+    enableSorting: false,
+  },
+
+  // WAF Detection
+  {
+    id: "waf_detection",
+    header: "WAF Detection",
+    cell: ({ row }) => {
+      const features = parseEngineFeatures(row.original)
+      return <FeatureStatus enabled={features.waf_detection} />
+    },
+    enableSorting: false,
+  },
+
+  // Screenshot
+  {
+    id: "screenshot",
+    header: "Screenshot",
+    cell: ({ row }) => {
+      const features = parseEngineFeatures(row.original)
+      return <FeatureStatus enabled={features.screenshot} />
     },
     enableSorting: false,
   },

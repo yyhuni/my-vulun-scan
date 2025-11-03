@@ -3,7 +3,7 @@ from django.db import models
 
 class ScanEngine(models.Model):
     """扫描引擎模型"""
-
+    
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=200, unique=True, help_text='引擎名称')
     configuration = models.TextField(blank=True, default='', help_text='引擎配置，yaml 格式')
@@ -24,6 +24,7 @@ class ScanEngine(models.Model):
 
 class Command(models.Model):
     """命令执行记录模型"""
+        
     id = models.AutoField(primary_key=True)
     # 使用字符串引用避免循环导入
     scan = models.ForeignKey(
