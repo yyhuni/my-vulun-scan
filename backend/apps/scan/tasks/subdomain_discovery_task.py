@@ -5,7 +5,6 @@
 """
 
 import logging
-import os
 from pathlib import Path
 from typing import List
 
@@ -13,8 +12,8 @@ from celery import shared_task
 from django.db import transaction
 from validators import domain as validate_domain
 
-from backend.apps.asset.models import Subdomain
-from backend.service.subdomain_discovery import subdomain_discovery, get_scan_results
+from apps.asset.models import Subdomain
+from apps.scan.services.subdomain_discovery import subdomain_discovery, get_scan_results
 
 logger = logging.getLogger(__name__)
 

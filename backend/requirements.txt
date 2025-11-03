@@ -22,3 +22,4 @@ redis==5.0.3
 python-dateutil==2.9.0
 pytz==2024.1
 validators==0.22.0
+PyYAML==6.0.1
