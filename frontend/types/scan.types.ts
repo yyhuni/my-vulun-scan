@@ -33,3 +33,33 @@ export interface GetScansResponse {
   pageSize: number
   totalPages: number
 }
+
+/**
+ * 发起扫描请求参数
+ */
+export interface InitiateScanRequest {
+  organizationId?: number  // 组织ID（与targetId二选一）
+  targetId?: number        // 目标ID（与organizationId二选一）
+  engine: number           // 扫描引擎ID（必填）
+}
+
+/**
+ * 单个扫描任务信息
+ */
+export interface ScanTask {
+  id: number
+  target: number           // 目标ID
+  engine: number           // 引擎ID
+  status: ScanStatus
+  createdAt: string
+  updatedAt: string
+}
+
+/**
+ * 发起扫描响应
+ */
+export interface InitiateScanResponse {
+  message: string          // 成功消息
+  count: number            // 创建的扫描任务数量
+  scans: ScanTask[]        // 扫描任务列表
+}

@@ -41,5 +41,8 @@ urlpatterns = [
     
     # 业务 API（包含 organizations 和 targets）
     path('api/', include('apps.targets.urls')),
+    
+    # 扫描 API
+    path('api/', include('apps.scan.urls')),
 
 ]

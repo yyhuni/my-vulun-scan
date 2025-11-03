@@ -321,12 +321,10 @@ export function OrganizationList() {
       {/* 发起扫描对话框 */}
       <InitiateScanDialog
         organization={organizationToScan}
+        organizationId={organizationToScan?.id}
         open={initiateScanDialogOpen}
         onOpenChange={setInitiateScanDialogOpen}
-        onInitiate={(organizationId, strategyId) => {
-          // TODO: 实现扫描逻辑或显示成功提示
-          console.log(`Initiating scan for organization ${organizationId} with strategy ${strategyId}`)
-          setInitiateScanDialogOpen(false)
+        onSuccess={() => {
           setOrganizationToScan(null)
         }}
       />

@@ -197,13 +197,11 @@ export function AllTargetsDetailView() {
               } as Organization
             : null
         }
+        targetId={targetToScan?.id}
         targetName={targetToScan?.name}
         open={initiateScanDialogOpen}
         onOpenChange={setInitiateScanDialogOpen}
-        onInitiate={(organizationId, strategyId) => {
-          console.log(`发起扫描 - 目标: ${targetToScan?.name}, 组织: ${organizationId}, 策略: ${strategyId}`)
-          // TODO: 调用扫描 API
-          setInitiateScanDialogOpen(false)
+        onSuccess={() => {
           setTargetToScan(null)
         }}
       />

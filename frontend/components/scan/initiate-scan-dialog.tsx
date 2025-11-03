@@ -23,13 +23,19 @@ import { LoadingSpinner } from "@/components/loading-spinner"
 import type { Organization } from "@/types/organization.types"
 import type { ScanStrategy } from "@/types/strategy.types"
 
+// 导入扫描服务和Toast
+import { initiateScan } from "@/services/scan.service"
+import { toast } from "sonner"
+
 // 组件属性类型定义
 interface InitiateScanDialogProps {
-  organization: Organization | null  // 选中的组织（可选，用于显示信息）
-  targetName?: string                // 目标名称（可选，如果提供则显示为目标扫描）
-  open: boolean                      // 对话框开关状态
+  organization?: Organization | null  // 选中的组织（可选，用于显示信息）
+  organizationId?: number             // 组织ID（用于发起扫描）
+  targetId?: number                   // 目标ID（用于发起扫描，与organizationId二选一）
+  targetName?: string                 // 目标名称（可选，如果提供则显示为目标扫描）
+  open: boolean                       // 对话框开关状态
   onOpenChange: (open: boolean) => void  // 对话框开关回调
-  onInitiate?: (organizationId: number, strategyId: number) => void  // 发起扫描回调
+  onSuccess?: () => void              // 扫描发起成功的回调
 }
 
 /**
@@ -42,10 +48,12 @@ interface InitiateScanDialogProps {
  */
 export function InitiateScanDialog({
   organization,
+  organizationId,
+  targetId,
   targetName,
   open,
   onOpenChange,
-  onInitiate,
+  onSuccess,
 }: InitiateScanDialogProps) {
   const [selectedStrategyId, setSelectedStrategyId] = useState<string>("")
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -163,20 +171,35 @@ export function InitiateScanDialog({
 
   // 处理发起扫描
   const handleInitiate = async () => {
-    if (!organization || !selectedStrategyId) return
+    if (!selectedStrategyId) return
+    
+    // 验证必须有 organizationId 或 targetId
+    if (!organizationId && !targetId) {
+      toast.error("参数错误", {
+        description: "必须提供组织ID或目标ID",
+      })
+      return
+    }
 
     setIsSubmitting(true)
 
     try {
-      // TODO: 调用 API 发起扫描
-      // await initiateScan(organization.id, Number(selectedStrategyId))
-      
-      // 临时模拟延迟
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      // 调用 API 发起扫描
+      // 注意：这里使用策略ID作为引擎ID（假设策略对应引擎）
+      const response = await initiateScan({
+        organizationId,
+        targetId,
+        engine: Number(selectedStrategyId), // 策略ID作为引擎ID
+      })
 
-      // 调用回调
-      if (onInitiate) {
-        onInitiate(organization.id, Number(selectedStrategyId))
+      // 显示成功消息
+      toast.success("扫描已发起", {
+        description: response.message || `成功创建 ${response.count} 个扫描任务`,
+      })
+
+      // 调用成功回调
+      if (onSuccess) {
+        onSuccess()
       }
 
       // 关闭对话框
@@ -186,6 +209,9 @@ export function InitiateScanDialog({
       setSelectedStrategyId("")
     } catch (error) {
       console.error("Failed to initiate scan:", error)
+      toast.error("发起扫描失败", {
+        description: error instanceof Error ? error.message : "未知错误",
+      })
     } finally {
       setIsSubmitting(false)
     }
