@@ -100,6 +100,7 @@ class TargetViewSet(viewsets.ModelViewSet):
     def batch_create(self, request):
         """
         批量创建目标
+        POST /api/targets/batch_create/
         
         请求格式：
         {
