@@ -2,25 +2,27 @@
 
 import React from "react"
 import { toast } from "sonner"
-import { StrategyDataTable } from "@/components/scan/strategy/strategy-data-table"
-import { createStrategyColumns } from "@/components/scan/strategy/strategy-columns"
-import type { ScanStrategy } from "@/types/strategy.types"
+import { EngineDataTable, EngineYamlDialog } from "@/components/scan/engine"
+import { createEngineColumns } from "@/components/scan/engine/engine-columns"
+import type { ScanEngine } from "@/types/engine.types"
 
 /**
- * 扫描策略页面
- * 管理扫描策略配置
+ * 扫描引擎页面
+ * 管理扫描引擎配置
  */
-export default function ScanStrategyPage() {
-  const [strategies, setStrategies] = React.useState<ScanStrategy[]>([])
+export default function ScanEnginePage() {
+  const [engines, setEngines] = React.useState<ScanEngine[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
+  const [editingEngine, setEditingEngine] = React.useState<ScanEngine | null>(null)
+  const [isYamlDialogOpen, setIsYamlDialogOpen] = React.useState(false)
 
   // 模拟数据加载
   React.useEffect(() => {
-    // TODO: 替换为实际的 API 调用
-    const mockData: ScanStrategy[] = [
+    // TODO: 替换为实际的 API 调用（从 /api/engines/ 获取）
+    const mockData: ScanEngine[] = [
       {
         id: 1,
-        name: "全面安全扫描",
+        name: "全面扫描引擎",
         type: "comprehensive",
         description: "使用所有可用工具进行全面的安全扫描，覆盖子域名、端口、目录、漏洞等所有方面",
         tools: ["subfinder", "nuclei", "naabu", "httpx"],
@@ -32,7 +34,7 @@ export default function ScanStrategyPage() {
       },
       {
         id: 2,
-        name: "快速漏洞检测",
+        name: "快速扫描引擎",
         type: "quick",
         description: "快速检测常见漏洞，适用于日常扫描",
         tools: ["nuclei", "httpx"],
@@ -44,7 +46,7 @@ export default function ScanStrategyPage() {
       },
       {
         id: 3,
-        name: "子域名发现专项",
+        name: "子域名发现引擎",
         type: "custom",
         description: "专注于子域名枚举和发现",
         tools: ["subfinder", "dnsx"],
@@ -56,7 +58,7 @@ export default function ScanStrategyPage() {
       },
       {
         id: 4,
-        name: "Web应用扫描",
+        name: "Web应用扫描引擎",
         type: "custom",
         description: "针对Web应用的全面扫描，包括目录扫描、漏洞检测等",
         tools: ["nuclei", "httpx", "katana"],
@@ -68,7 +70,7 @@ export default function ScanStrategyPage() {
       },
       {
         id: 5,
-        name: "端口服务识别",
+        name: "端口服务识别引擎",
         type: "custom",
         description: "识别开放端口和运行的服务",
         tools: ["naabu", "httpx"],
@@ -81,7 +83,7 @@ export default function ScanStrategyPage() {
     ]
 
     setTimeout(() => {
-      setStrategies(mockData)
+      setEngines(mockData)
       setIsLoading(false)
     }, 500)
   }, [])
@@ -98,32 +100,36 @@ export default function ScanStrategyPage() {
     })
   }
 
-  // 查看策略详情
-  const handleView = (strategy: ScanStrategy) => {
-    toast.info(`查看策略: ${strategy.name}`)
-    // TODO: 导航到详情页
-    // router.push(`/scan/strategy/${strategy.id}`)
+  // 编辑引擎
+  const handleEdit = (engine: ScanEngine) => {
+    setEditingEngine(engine)
+    setIsYamlDialogOpen(true)
   }
 
-  // 编辑策略
-  const handleEdit = (strategy: ScanStrategy) => {
-    toast.info(`编辑策略: ${strategy.name}`)
-    // TODO: 打开编辑对话框或导航到编辑页面
+  // 保存 YAML 配置
+  const handleSaveYaml = async (engineId: number, yamlContent: string) => {
+    // TODO: 调用 API 保存 YAML 配置
+    // await updateEngineConfig(engineId, yamlContent)
+    console.log("Saving YAML for engine:", engineId)
+    console.log("YAML content:", yamlContent)
+    
+    // 模拟 API 调用
+    await new Promise(resolve => setTimeout(resolve, 1000))
   }
 
-  // 删除策略
-  const handleDelete = React.useCallback((strategy: ScanStrategy) => {
+  // 删除引擎
+  const handleDelete = React.useCallback((engine: ScanEngine) => {
     toast.promise(
       new Promise((resolve) => {
         setTimeout(() => {
-          setStrategies(prev => prev.filter((s) => s.id !== strategy.id))
+          setEngines(prev => prev.filter((e) => e.id !== engine.id))
           resolve(true)
         }, 1000)
       }),
       {
-        loading: `正在删除策略: ${strategy.name}...`,
-        success: "策略删除成功",
-        error: "策略删除失败",
+        loading: `正在删除引擎: ${engine.name}...`,
+        success: "引擎删除成功",
+        error: "引擎删除失败",
       }
     )
   }, [])
@@ -133,30 +139,29 @@ export default function ScanStrategyPage() {
     toast.promise(
       new Promise((resolve) => {
         setTimeout(() => {
-          setStrategies(strategies.filter((s) => !selectedIds.includes(s.id)))
+          setEngines(engines.filter((e) => !selectedIds.includes(e.id)))
           resolve(true)
         }, 1000)
       }),
       {
-        loading: `正在删除 ${selectedIds.length} 个策略...`,
-        success: `成功删除 ${selectedIds.length} 个策略`,
+        loading: `正在删除 ${selectedIds.length} 个引擎...`,
+        success: `成功删除 ${selectedIds.length} 个引擎`,
         error: "批量删除失败",
       }
     )
   }
 
-  // 添加新策略
+  // 添加新引擎
   const handleAddNew = () => {
-    toast.info("打开新建策略对话框")
+    toast.info("打开新建引擎对话框")
     // TODO: 打开新建对话框
   }
 
   // 创建列定义
   const columns = React.useMemo(
     () =>
-      createStrategyColumns({
+      createEngineColumns({
         formatDate,
-        handleView,
         handleEdit,
         handleDelete,
       }),
@@ -168,8 +173,8 @@ export default function ScanStrategyPage() {
       <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
         <div className="flex items-center justify-between px-4 lg:px-6">
           <div>
-            <h1 className="text-3xl font-bold">扫描策略</h1>
-            <p className="text-muted-foreground mt-1">配置和管理扫描策略</p>
+            <h1 className="text-3xl font-bold">扫描引擎</h1>
+            <p className="text-muted-foreground mt-1">配置和管理扫描引擎</p>
           </div>
         </div>
         <div className="px-4 lg:px-6">
@@ -186,23 +191,32 @@ export default function ScanStrategyPage() {
       {/* 页面标题 */}
       <div className="px-4 lg:px-6">
         <div>
-          <h1 className="text-3xl font-bold">扫描策略</h1>
-          <p className="text-muted-foreground mt-1">配置和管理扫描策略</p>
+          <h1 className="text-3xl font-bold">扫描引擎</h1>
+          <p className="text-muted-foreground mt-1">配置和管理扫描引擎</p>
         </div>
       </div>
 
       {/* 数据表格 */}
       <div className="px-4 lg:px-6">
-        <StrategyDataTable
-          data={strategies}
+        <EngineDataTable
+          data={engines}
           columns={columns}
           onAddNew={handleAddNew}
           onBulkDelete={handleBulkDelete}
-          searchPlaceholder="搜索策略名称..."
+          searchPlaceholder="搜索引擎名称..."
           searchColumn="name"
-          addButtonText="新建策略"
+          addButtonText="新建引擎"
         />
       </div>
+
+      {/* YAML 编辑弹窗 */}
+      <EngineYamlDialog
+        engine={editingEngine}
+        open={isYamlDialogOpen}
+        onOpenChange={setIsYamlDialogOpen}
+        onSave={handleSaveYaml}
+      />
     </div>
   )
 }
+

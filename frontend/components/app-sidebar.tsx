@@ -86,8 +86,8 @@ const data = {
           url: "/scan/scheduled/",
         },
         {
-          title: "扫描策略", // 扫描策略
-          url: "/scan/strategy/",
+          title: "扫描引擎", // 扫描引擎
+          url: "/scan/engine/",
         },
       ],
     },

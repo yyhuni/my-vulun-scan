@@ -21,7 +21,7 @@ import { LoadingSpinner } from "@/components/loading-spinner"
 
 // 导入类型定义
 import type { Organization } from "@/types/organization.types"
-import type { ScanStrategy } from "@/types/strategy.types"
+import type { ScanEngine } from "@/types/engine.types"
 
 // 导入扫描服务和Toast
 import { initiateScan } from "@/services/scan.service"
@@ -42,8 +42,8 @@ interface InitiateScanDialogProps {
  * 发起扫描对话框组件
  * 
  * 功能特性：
- * 1. 选择扫描策略
- * 2. 展示策略详细信息
+ * 1. 选择扫描引擎
+ * 2. 展示引擎详细信息
  * 3. 发起扫描操作
  */
 export function InitiateScanDialog({
@@ -55,15 +55,15 @@ export function InitiateScanDialog({
   onOpenChange,
   onSuccess,
 }: InitiateScanDialogProps) {
-  const [selectedStrategyId, setSelectedStrategyId] = useState<string>("")
+  const [selectedEngineId, setSelectedEngineId] = useState<string>("")
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [expandedStrategyId, setExpandedStrategyId] = useState<string | null>(null)
+  const [expandedEngineId, setExpandedEngineId] = useState<string | null>(null)
 
-  // TODO: 使用 React Query 获取策略列表
-  // const { data: strategies, isLoading } = useStrategies({ is_enabled: true })
+  // TODO: 使用 React Query 获取引擎列表
+  // const { data: engines, isLoading } = useEngines({ is_enabled: true })
   
   // 临时模拟数据（待实现 API 后删除）
-  const mockStrategies: ScanStrategy[] = [
+  const mockEngines: ScanEngine[] = [
     {
       id: 1,
       name: "Full Scan",
@@ -159,19 +159,19 @@ export function InitiateScanDialog({
     },
   ]
 
-  const strategies = mockStrategies
+  const engines = mockEngines
   const isLoading = false
 
   // 切换展开/收起
-  const toggleExpand = (strategyId: string) => {
-    setExpandedStrategyId(
-      expandedStrategyId === strategyId ? null : strategyId
+  const toggleExpand = (engineId: string) => {
+    setExpandedEngineId(
+      expandedEngineId === engineId ? null : engineId
     )
   }
 
   // 处理发起扫描
   const handleInitiate = async () => {
-    if (!selectedStrategyId) return
+    if (!selectedEngineId) return
     
     // 验证必须有 organizationId 或 targetId
     if (!organizationId && !targetId) {
@@ -185,13 +185,12 @@ export function InitiateScanDialog({
 
     try {
       // 调用 API 发起扫描
-      // 注意：这里使用策略ID作为引擎ID（假设策略对应引擎）
       const response = await initiateScan({
         organizationId,
         targetId,
-        engine: Number(selectedStrategyId), // 策略ID作为引擎ID
+        engine: Number(selectedEngineId),
       })
-
+      
       // 显示成功消息
       toast.success("扫描已发起", {
         description: response.message || `成功创建 ${response.count} 个扫描任务`,
@@ -206,7 +205,7 @@ export function InitiateScanDialog({
       onOpenChange(false)
       
       // 重置选择
-      setSelectedStrategyId("")
+      setSelectedEngineId("")
     } catch (error) {
       console.error("Failed to initiate scan:", error)
       toast.error("发起扫描失败", {
@@ -223,8 +222,8 @@ export function InitiateScanDialog({
       onOpenChange(newOpen)
       if (!newOpen) {
         // 关闭时重置所有状态
-        setSelectedStrategyId("")
-        setExpandedStrategyId(null)
+        setSelectedEngineId("")
+        setExpandedEngineId(null)
       }
     }
   }
@@ -239,67 +238,67 @@ export function InitiateScanDialog({
           </DialogTitle>
           <DialogDescription>
             {targetName ? (
-              <>为目标 <span className="font-semibold text-foreground">{targetName}</span> 选择扫描策略并开始安全扫描</>
+              <>为目标 <span className="font-semibold text-foreground">{targetName}</span> 选择扫描引擎并开始安全扫描</>
             ) : (
-              <>为组织 <span className="font-semibold text-foreground">{organization?.name}</span> 选择扫描策略并开始安全扫描</>
+              <>为组织 <span className="font-semibold text-foreground">{organization?.name}</span> 选择扫描引擎并开始安全扫描</>
             )}
           </DialogDescription>
         </DialogHeader>
 
         <div className="py-4">
-          {/* 策略列表容器 - 固定最大高度，预留滚动条空间 */}
+          {/* 引擎列表容器 - 固定最大高度，预留滚动条空间 */}
           <div className="max-h-[500px] overflow-y-auto" style={{ scrollbarGutter: 'stable' }}>
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
                 <LoadingSpinner />
                 <span className="ml-2 text-sm text-muted-foreground">
-                  加载策略中...
+                  加载引擎中...
                 </span>
               </div>
-            ) : strategies.length === 0 ? (
+            ) : engines.length === 0 ? (
               <div className="py-8 text-center text-sm text-muted-foreground">
-                暂无可用策略
+                暂无可用引擎
               </div>
             ) : (
               <RadioGroup
-                value={selectedStrategyId}
+                value={selectedEngineId}
                 onValueChange={(value) => {
-                  setSelectedStrategyId(value)
-                  // 选中时自动展开该策略详情
-                  setExpandedStrategyId(value)
+                  setSelectedEngineId(value)
+                  // 选中时自动展开该引擎详情
+                  setExpandedEngineId(value)
                 }}
                 disabled={isSubmitting}
                 className="space-y-2"
               >
-                {strategies.map((strategy) => (
+                {engines.map((engine) => (
                   <Collapsible
-                    key={strategy.id}
-                    open={expandedStrategyId === strategy.id.toString()}
-                    onOpenChange={() => toggleExpand(strategy.id.toString())}
+                    key={engine.id}
+                    open={expandedEngineId === engine.id.toString()}
+                    onOpenChange={() => toggleExpand(engine.id.toString())}
                   >
                     <div
                       className={`rounded-lg border transition-all ${
-                        selectedStrategyId === strategy.id.toString()
+                        selectedEngineId === engine.id.toString()
                           ? "border-primary bg-primary/5"
                           : "border-border hover:border-muted-foreground/50"
                       }`}
                     >
-                      {/* 策略主信息 */}
+                      {/* 引擎主信息 */}
                       <div className="flex items-center gap-3 p-4">
                         {/* Radio 按钮 */}
                         <RadioGroupItem
-                          value={strategy.id.toString()}
-                          id={`strategy-${strategy.id}`}
+                          value={engine.id.toString()}
+                          id={`engine-${engine.id}`}
                           className="mt-0.5"
                         />
                         
-                        {/* 策略名称和标签 */}
+                        {/* 引擎名称和标签 */}
                         <label
-                          htmlFor={`strategy-${strategy.id}`}
+                          htmlFor={`engine-${engine.id}`}
                           className="flex-1 cursor-pointer"
                         >
                           <div className="flex items-center gap-2">
-                            <span className="font-medium">{strategy.name}</span>
+                            <span className="font-medium">{engine.name}</span>
                             <Badge variant="secondary" className="text-xs">
                               Default Engine
                             </Badge>
@@ -313,7 +312,7 @@ export function InitiateScanDialog({
                             size="sm"
                             className="h-8 w-8 p-0"
                           >
-                            {expandedStrategyId === strategy.id.toString() ? (
+                            {expandedEngineId === engine.id.toString() ? (
                               <ChevronUp className="h-4 w-4" />
                             ) : (
                               <ChevronDown className="h-4 w-4" />
@@ -331,9 +330,9 @@ export function InitiateScanDialog({
                           </h4>
                           
                           {/* 能力列表 */}
-                          {strategy.capabilities && strategy.capabilities.length > 0 ? (
+                          {engine.capabilities && engine.capabilities.length > 0 ? (
                             <div className="space-y-2">
-                              {strategy.capabilities.map((capability, index) => (
+                              {engine.capabilities.map((capability, index) => (
                                 <div
                                   key={index}
                                   className="flex items-center gap-2 text-sm text-muted-foreground"
@@ -371,7 +370,7 @@ export function InitiateScanDialog({
           <Button
             type="button"
             onClick={handleInitiate}
-            disabled={!selectedStrategyId || isSubmitting}
+            disabled={!selectedEngineId || isSubmitting}
           >
             {isSubmitting ? (
               <>

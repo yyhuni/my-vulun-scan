@@ -78,15 +78,15 @@ class ScanViewSet(viewsets.ModelViewSet):
             # 为每个目标创建扫描任务
             created_scans = []
             for target in targets:
-                # 创建扫描任务记录
+                # 创建扫描任务记录（status 使用模型默认值 INITIATED）
                 scan = Scan.objects.create(  # type: ignore  # pylint: disable=no-member
                     target=target,
-                    engine=engine
+                    engine=engine,
                 )
                 
-                # 调用扫描任务（异步）
-                # 注意：这里传递的是 target.name (目标的实际值，如域名) 和 engine 对象
-                initiate_scan(target.name, engine)
+                # 异步调用扫描任务
+                # 任务会自动更新 task_ids 和 task_names
+                initiate_scan.delay(scan.id, engine.id)
                 
                 created_scans.append(scan)
             

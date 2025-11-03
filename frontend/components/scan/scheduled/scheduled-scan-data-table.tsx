@@ -184,7 +184,7 @@ export function ScheduledScanDataTable({
                 .map((column) => {
                   const columnNameMap: Record<string, string> = {
                     name: "任务名称",
-                    strategy_name: "扫描策略",
+                    engine_name: "扫描引擎",
                     frequency: "执行频率",
                     target_domains: "目标域名",
                     is_enabled: "状态",

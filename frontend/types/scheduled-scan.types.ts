@@ -18,8 +18,8 @@ export interface ScheduledScan {
   id: number
   name: string
   description?: string
-  strategy_id: number // 关联的扫描策略ID
-  strategy_name: string // 关联的扫描策略名称
+  engine_id: number // 关联的扫描引擎ID
+  engine_name: string // 关联的扫描引擎名称
   frequency: ScheduleFrequency // 执行频率
   cron_expression?: string // Cron 表达式（自定义频率时使用）
   target_domains: string[] // 目标域名列表
@@ -36,7 +36,7 @@ export interface ScheduledScan {
 export interface CreateScheduledScanRequest {
   name: string
   description?: string
-  strategy_id: number
+  engine_id: number
   frequency: ScheduleFrequency
   cron_expression?: string
   target_domains: string[]
@@ -47,7 +47,7 @@ export interface CreateScheduledScanRequest {
 export interface UpdateScheduledScanRequest {
   name?: string
   description?: string
-  strategy_id?: number
+  engine_id?: number
   frequency?: ScheduleFrequency
   cron_expression?: string
   target_domains?: string[]

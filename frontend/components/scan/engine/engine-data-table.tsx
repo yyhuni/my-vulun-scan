@@ -51,35 +51,35 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-import type { ScanStrategy } from "@/types/strategy.types"
+import type { ScanEngine } from "@/types/engine.types"
 
 // 组件属性类型定义
-interface StrategyDataTableProps {
-  data: ScanStrategy[]
-  columns: ColumnDef<ScanStrategy>[]
+interface EngineDataTableProps {
+  data: ScanEngine[]
+  columns: ColumnDef<ScanEngine>[]
   onAddNew?: () => void
   onBulkDelete?: (selectedIds: number[]) => void
-  onSelectionChange?: (selectedRows: ScanStrategy[]) => void
+  onSelectionChange?: (selectedRows: ScanEngine[]) => void
   searchPlaceholder?: string
   searchColumn?: string
   addButtonText?: string
 }
 
 /**
- * 扫描策略数据表格组件
- * 用于显示和管理扫描策略数据
+ * 扫描引擎数据表格组件
+ * 用于显示和管理扫描引擎数据
  * 包含搜索、分页、列显示控制等功能
  */
-export function StrategyDataTable({
+export function EngineDataTable({
   data = [],
   columns,
   onAddNew,
   onBulkDelete,
   onSelectionChange,
-  searchPlaceholder = "搜索策略名称...",
+  searchPlaceholder = "搜索引擎名称...",
   searchColumn = "name",
-  addButtonText = "新建策略",
-}: StrategyDataTableProps) {
+  addButtonText = "新建引擎",
+}: EngineDataTableProps) {
   // 表格状态管理
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({})
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
@@ -183,7 +183,7 @@ export function StrategyDataTable({
                 )
                 .map((column) => {
                   const columnNameMap: Record<string, string> = {
-                    name: "策略名称",
+                    name: "引擎名称",
                     type: "类型",
                     description: "描述",
                     tools: "关联工具",
@@ -378,3 +378,4 @@ export function StrategyDataTable({
     </div>
   )
 }
+

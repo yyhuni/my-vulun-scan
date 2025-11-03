@@ -313,17 +313,17 @@ export const createScheduledScanColumns = ({
     },
   },
 
-  // 扫描策略列
+  // 扫描引擎列
   {
-    accessorKey: "strategy_name",
+    accessorKey: "engine_name",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="扫描策略" />
+      <DataTableColumnHeader column={column} title="扫描引擎" />
     ),
     cell: ({ row }) => {
-      const strategyName = row.getValue("strategy_name") as string
+      const engineName = row.getValue("engine_name") as string
       return (
         <Badge variant="secondary">
-          {strategyName}
+          {engineName}
         </Badge>
       )
     },
