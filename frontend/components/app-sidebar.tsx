@@ -78,10 +78,6 @@ const data = {
       icon: IconRadar,
       items: [
         {
-          title: "新建扫描", // 新建扫描
-          url: "/scan/new/",
-        },
-        {
           title: "扫描历史", // 扫描历史
           url: "/scan/history/",
         },

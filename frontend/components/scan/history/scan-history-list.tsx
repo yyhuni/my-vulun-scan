@@ -203,10 +203,6 @@ export function ScanHistoryList() {
     }
   }
 
-  // 处理新建扫描
-  const handleAddNew = () => {
-    router.push("/scan/new")
-  }
 
   // 处理分页变化
   const handlePaginationChange = (newPagination: { pageIndex: number; pageSize: number }) => {
@@ -234,12 +230,10 @@ export function ScanHistoryList() {
       <ScanHistoryDataTable
         data={scans}
         columns={scanColumns as ColumnDef<ScanRecord>[]}
-        onAddNew={handleAddNew}
         onBulkDelete={handleBulkDelete}
         onSelectionChange={setSelectedScans}
         searchPlaceholder="搜索域名..."
         searchColumn="domainName"
-        addButtonText="新建扫描"
         pagination={pagination}
         setPagination={setPagination}
         onPaginationChange={handlePaginationChange}

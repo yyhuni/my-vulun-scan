@@ -23,6 +23,7 @@ export interface ScanStrategy {
   created_at: string
   updated_at: string
   usage_count?: number     // 使用次数
+  capabilities?: string[]  // 引擎能力列表
 }
 
 // 创建策略请求

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { createAllTargetsColumns } from "@/components/target/all-targets-columns"
 import { TargetsDataTable } from "@/components/target/targets-data-table"
 import { AddTargetDialog } from "@/components/target/add-target-dialog"
+import { InitiateScanDialog } from "@/components/scan/initiate-scan-dialog"
 import { LoadingState } from "@/components/loading-spinner"
 import {
   AlertDialog,
@@ -20,6 +21,7 @@ import { formatDate } from "@/lib/utils"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { useTargets, useDeleteTarget, useBatchDeleteTargets } from "@/hooks/use-targets"
 import type { Target } from "@/types/target.types"
+import type { Organization } from "@/types/organization.types"
 
 /**
  * 所有目标详情视图组件
@@ -34,6 +36,8 @@ export function AllTargetsDetailView() {
   const [targetToDelete, setTargetToDelete] = useState<Target | null>(null)
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
   const [shouldPrefetchOrgs, setShouldPrefetchOrgs] = useState(false)
+  const [initiateScanDialogOpen, setInitiateScanDialogOpen] = useState(false)
+  const [targetToScan, setTargetToScan] = useState<Target | null>(null)
 
   // 使用 API hooks
   const { data, isLoading, error } = useTargets(pagination.pageIndex + 1, pagination.pageSize)
@@ -92,10 +96,9 @@ export function AllTargetsDetailView() {
 
   // 处理发起扫描
   const handleInitiateScan = useCallback((target: Target) => {
-    // TODO: 实现发起扫描功能
-    console.log('发起扫描:', target)
-    router.push(`/scan/new?targetId=${target.id}`)
-  }, [router])
+    setTargetToScan(target)
+    setInitiateScanDialogOpen(true)
+  }, [])
 
   // 处理定时扫描
   const handleScheduleScan = useCallback((target: Target) => {
@@ -182,6 +185,28 @@ export function AllTargetsDetailView() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* 发起扫描对话框 */}
+      <InitiateScanDialog
+        organization={
+          targetToScan?.organizations && targetToScan.organizations.length > 0
+            ? {
+                id: targetToScan.organizations[0].id,
+                name: targetToScan.organizations[0].name,
+                targetCount: 1, // 当前目标
+              } as Organization
+            : null
+        }
+        targetName={targetToScan?.name}
+        open={initiateScanDialogOpen}
+        onOpenChange={setInitiateScanDialogOpen}
+        onInitiate={(organizationId, strategyId) => {
+          console.log(`发起扫描 - 目标: ${targetToScan?.name}, 组织: ${organizationId}, 策略: ${strategyId}`)
+          // TODO: 调用扫描 API
+          setInitiateScanDialogOpen(false)
+          setTargetToScan(null)
+        }}
+      />
 
       {/* 批量删除确认对话框 */}
       <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>

@@ -25,6 +25,7 @@ import { createOrganizationColumns } from "./organization-columns"
 // 导入业务组件
 import { AddOrganizationDialog } from "./add-organization-dialog"
 import { EditOrganizationDialog } from "./edit-organization-dialog"
+import { InitiateScanDialog } from "@/components/scan/initiate-scan-dialog"
 
 // 导入 React Query Hooks
 import {
@@ -52,8 +53,10 @@ export function OrganizationList() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [addDialogOpen, setAddDialogOpen] = useState(false)
+  const [initiateScanDialogOpen, setInitiateScanDialogOpen] = useState(false)
   const [organizationToDelete, setOrganizationToDelete] = useState<Organization | null>(null)
   const [organizationToEdit, setOrganizationToEdit] = useState<Organization | null>(null)
+  const [organizationToScan, setOrganizationToScan] = useState<Organization | null>(null)
   const [selectedOrganizations, setSelectedOrganizations] = useState<Organization[]>([])
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
   
@@ -106,8 +109,8 @@ export function OrganizationList() {
 
   // 处理发起扫描操作
   const handleInitiateScan = useCallback((org: Organization) => {
-    // TODO: 实现发起扫描功能
-    console.log("Initiate scan for organization:", org.name)
+    setOrganizationToScan(org)
+    setInitiateScanDialogOpen(true)
   }, [])
 
   // 处理计划扫描操作
@@ -313,6 +316,19 @@ export function OrganizationList() {
           // React Query 会自动刷新数据，不需要手动处理
           setAddDialogOpen(false)
         }} 
+      />
+
+      {/* 发起扫描对话框 */}
+      <InitiateScanDialog
+        organization={organizationToScan}
+        open={initiateScanDialogOpen}
+        onOpenChange={setInitiateScanDialogOpen}
+        onInitiate={(organizationId, strategyId) => {
+          // TODO: 实现扫描逻辑或显示成功提示
+          console.log(`Initiating scan for organization ${organizationId} with strategy ${strategyId}`)
+          setInitiateScanDialogOpen(false)
+          setOrganizationToScan(null)
+        }}
       />
     </div>
   )
