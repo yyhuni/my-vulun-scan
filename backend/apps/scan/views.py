@@ -79,8 +79,7 @@ class ScanViewSet(viewsets.ModelViewSet):
             scan_service = ScanService()
             created_scans = scan_service.create_scans_for_targets(
                 targets=targets,
-                engine=engine,
-                auto_start=True
+                engine=engine
             )
             
             # 序列化返回结果

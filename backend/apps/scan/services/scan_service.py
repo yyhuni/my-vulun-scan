@@ -5,7 +5,7 @@
 """
 
 import logging
-from typing import List, Optional
+from typing import List
 from django.db import transaction
 
 from apps.scan.models import Scan
@@ -23,19 +23,20 @@ class ScanService:
     def create_scan(
         self,
         target: Target,
-        engine: ScanEngine,
-        auto_start: bool = True
+        engine: ScanEngine
     ) -> Scan:
         """
-        创建单个扫描任务
+        创建单个扫描任务并自动启动
         
         Args:
             target: 目标对象
             engine: 扫描引擎对象
-            auto_start: 是否自动启动扫描（默认 True）
         
         Returns:
             创建的 Scan 对象
+        
+        Raises:
+            Exception: 创建或启动失败时抛出异常
         """
         # 创建扫描任务记录
         scan = Scan.objects.create(  # type: ignore
@@ -50,25 +51,32 @@ class ScanService:
             engine.name
         )
         
-        # 自动启动扫描
-        if auto_start:
-            self.start_scan(scan)
+        # 启动扫描任务（异步）
+        # 如果失败会抛出异常，事务会自动回滚
+        result = initiate_scan.delay(
+            scan_id=scan.id,
+            engine_id=scan.engine.id
+        )
+        
+        logger.info(
+            "扫描任务已提交 - Scan ID: %s, Task ID: %s",
+            scan.id,
+            result.id
+        )
         
         return scan
     
     def create_scans_for_targets(
         self,
         targets: List[Target],
-        engine: ScanEngine,
-        auto_start: bool = True
+        engine: ScanEngine
     ) -> List[Scan]:
         """
-        为多个目标批量创建扫描任务
+        为多个目标批量创建扫描任务并自动启动
         
         Args:
             targets: 目标列表
             engine: 扫描引擎对象
-            auto_start: 是否自动启动扫描（默认 True）
         
         Returns:
             创建的 Scan 对象列表
@@ -77,19 +85,17 @@ class ScanService:
         
         for target in targets:
             try:
-                scan = self.create_scan(
-                    target=target,
-                    engine=engine,
-                    auto_start=auto_start
-                )
+                scan = self.create_scan(target=target, engine=engine)
                 scans.append(scan)
             except Exception as e:
                 logger.error(
-                    "创建扫描任务失败 - Target: %s, 错误: %s",
+                    "创建扫描任务失败 - Target: %s, Engine: %s, 错误: %s",
                     target.name,
-                    e
+                    engine.name,
+                    e,
+                    exc_info=True
                 )
-                # 继续处理其他目标
+                # 继续处理其他目标，不中断批量操作
                 continue
         
         logger.info(
@@ -99,68 +105,6 @@ class ScanService:
         )
         
         return scans
-    
-    def start_scan(self, scan: Scan) -> bool:
-        """
-        启动扫描任务（异步）
-        
-        Args:
-            scan: Scan 对象
-        
-        Returns:
-            是否成功提交任务
-        """
-        try:
-            # 调用 Celery 异步任务
-            # 任务会自动更新 task_ids 和 task_names
-            result = initiate_scan.delay(
-                scan_id=scan.id,
-                engine_id=scan.engine.id
-            )
-            
-            logger.info(
-                "扫描任务已提交 - Scan ID: %s, Task ID: %s",
-                scan.id,
-                result.id
-            )
-            
-            return True
-            
-        except Exception as e:
-            logger.error(
-                "提交扫描任务失败 - Scan ID: %s, 错误: %s",
-                scan.id,
-                e
-            )
-            return False
-    
-    def cancel_scan(self, scan_id: int) -> bool:
-        """
-        取消扫描任务
-        
-        Args:
-            scan_id: 扫描任务 ID
-        
-        Returns:
-            是否成功取消
-        """
-        # TODO: 实现取消逻辑
-        # 1. 撤销 Celery 任务
-        # 2. 更新 Scan 状态为 ABORTED
-        pass
-    
-    def get_scan_progress(self, scan_id: int) -> Optional[dict]:
-        """
-        获取扫描进度
-        
-        Args:
-            scan_id: 扫描任务 ID
-        
-        Returns:
-            进度信息字典
-        """
-        # TODO: 实现进度查询逻辑
-        pass
 
 
 # 导出接口

@@ -32,21 +32,20 @@ SCAN_TOOLS = [
 ]
 
 # 默认配置
-DEFAULT_BASE_DIR = Path.home() / 'Desktop' / 'scan_results'
 DEFAULT_TIMEOUT = 300  # 5分钟
 
 
 # ==================== 核心功能 ====================
 
-def subdomain_discovery(target: str, base_dir: str = None, timeout: int = None) -> Optional[str]:
+def subdomain_discovery(target: str, base_dir: str, timeout: int = None) -> Optional[str]:
     """
     执行子域名发现扫描，并将结果合并到单个文件
     
     Args:
         target: 目标域名（必填）
-        base_dir: 扫描工作空间目录（可选，默认为 ~/Desktop/scan_results）
-                 - 如果提供，将在此目录下创建 subdomain_discovery/ 模块目录
-                 - 如果未提供，将在默认目录下创建带时间戳的独立目录
+        base_dir: 扫描工作空间目录（必填）
+                 - 由 initiate_scan 创建的工作空间目录
+                 - 将在此目录下创建 subdomain_discovery/ 模块目录
         timeout: 命令执行超时时间（秒，可选，默认300秒）
     
     Returns:
@@ -54,40 +53,33 @@ def subdomain_discovery(target: str, base_dir: str = None, timeout: int = None) 
         None（失败或无结果时）
     
     目录结构示例：
-        工作空间模式（base_dir 为工作空间）：
-        /scan_results/scan_123_20241104_103000/
-          └── subdomain_discovery/
-              ├── amass_*.txt
-              ├── subfinder_*.txt
-              └── merged_*.txt
-        
-        独立模式（base_dir 为 None）：
-        ~/Desktop/scan_results/
-          └── subdomain_discovery_20241104_103000123456/
+        {base_dir}/                           # 工作空间（由 initiate_scan 创建）
+          └── subdomain_discovery/            # 模块目录
               ├── amass_*.txt
               ├── subfinder_*.txt
               └── merged_*.txt
     
-    Examples:
-        >>> # 工作空间模式
-        >>> result_file = subdomain_discovery('example.com', base_dir='/scan_results/scan_123_20241104_103000')
-        >>> 
-        >>> # 独立模式
-        >>> result_file = subdomain_discovery('example.com')
+    Example:
+        >>> result_file = subdomain_discovery(
+        ...     'example.com', 
+        ...     base_dir='/scan_results/scan_123_20241104_103000'
+        ... )
     """
     # 参数验证
     if not target or not isinstance(target, str):
         logger.error("Invalid target provided: %s", target)
         return None
     
+    if not base_dir:
+        logger.error("base_dir is required (must be provided by initiate_scan)")
+        return None
+    
     # 生成唯一时间戳
     timestamp = _generate_timestamp()
     
-    # 创建扫描目录
-    # - 如果提供了 base_dir（工作空间），在其下创建 subdomain_discovery/ 模块目录
-    # - 如果未提供，创建带时间戳的独立目录
+    # 在工作空间下创建模块目录
     try:
-        scan_dir = _create_scan_directory(timestamp, base_dir)
+        scan_dir = _create_scan_directory(base_dir)
         logger.info("子域名扫描目录已创建: %s", scan_dir)
     except OSError as e:
         logger.error("创建扫描目录失败: %s", e)
@@ -125,44 +117,39 @@ def _generate_timestamp() -> str:
     return datetime.now().strftime('%Y%m%d_%H%M%S%f')
 
 
-def _create_scan_directory(timestamp: str, base_dir: str = None) -> Path:
+def _create_scan_directory(base_dir: str) -> Path:
     """
-    创建扫描目录
-    
-    两种模式：
-    1. 工作空间模式（base_dir 已存在）：
-       - 在工作空间下创建模块目录：{base_dir}/subdomain_discovery/
-       - 适用于多模块扫描（由 initiate_scan 创建工作空间）
-    
-    2. 独立模式（base_dir 为 None）：
-       - 创建带时间戳的独立目录：{DEFAULT_BASE_DIR}/subdomain_discovery_{timestamp}/
-       - 适用于单独运行此模块
+    在工作空间下创建模块目录
     
     Args:
-        timestamp: 时间戳字符串（独立模式使用）
-        base_dir: 工作空间目录路径（可选）
+        base_dir: 工作空间目录路径（由 initiate_scan 创建）
     
     Returns:
-        创建的扫描目录路径
+        创建的模块目录路径
     
     Raises:
-        OSError: 目录创建失败
+        OSError: 目录创建失败或工作空间不可写
+    
+    Example:
+        >>> scan_dir = _create_scan_directory('/scan_results/scan_123_20241104_103000')
+        >>> # 返回: /scan_results/scan_123_20241104_103000/subdomain_discovery/
     """
-    if base_dir:
-        # 工作空间模式：在工作空间下创建模块目录
-        base_path = Path(base_dir)
-        scan_dir = base_path / "subdomain_discovery"
-        logger.debug("使用工作空间模式: %s", base_path)
-    else:
-        # 独立模式：创建带时间戳的独立目录
-        base_path = DEFAULT_BASE_DIR
-        scan_dir = base_path / f"subdomain_discovery_{timestamp}"
-        logger.debug("使用独立模式: %s", base_path)
+    base_path = Path(base_dir)
+    
+    # 验证工作空间目录是否存在
+    if not base_path.exists():
+        error_msg = f"工作空间目录不存在: {base_path}"
+        logger.error(error_msg)
+        raise OSError(error_msg)
+    
+    # 在工作空间下创建模块目录
+    scan_dir = base_path / "subdomain_discovery"
+    logger.debug("创建模块目录: %s", scan_dir)
     
     # 创建目录
     try:
         scan_dir.mkdir(parents=True, exist_ok=True)
-        logger.debug("扫描目录已创建: %s", scan_dir)
+        logger.debug("模块目录已创建: %s", scan_dir)
     except OSError as e:
         logger.error("创建目录失败 %s: %s", scan_dir, e)
         raise
