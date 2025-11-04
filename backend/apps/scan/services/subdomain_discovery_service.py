@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Dict
 
-from apps.common.command_executor import ScanCommandExecutor
+from apps.scan.utils.command_executor import ScanCommandExecutor
 
 logger = logging.getLogger(__name__)
 
