@@ -72,7 +72,7 @@ def print_implementation_summary():
     
     print("\n  4. 重构任务代码:")
     print("     - subdomain_discovery_task.py: 移除清理逻辑")
-    print("     - initiate_scan.py: 移除状态更新逻辑")
+    print("     - initiate_scan_task.py: 移除状态更新逻辑")
     
     print("\n📝 架构优势:")
     print("  - 代码量减少: ~40% (从 200 行到 ~120 行)")

@@ -44,7 +44,7 @@ def subdomain_discovery(target: str, base_dir: str, timeout: int = None) -> Opti
     Args:
         target: 目标域名（必填）
         base_dir: 扫描工作空间目录（必填）
-                 - 由 initiate_scan 创建的工作空间目录
+                 - 由 initiate_scan_task 创建的工作空间目录
                  - 将在此目录下创建 subdomain_discovery/ 模块目录
         timeout: 命令执行超时时间（秒，可选，默认300秒）
     
@@ -53,7 +53,7 @@ def subdomain_discovery(target: str, base_dir: str, timeout: int = None) -> Opti
         None（失败或无结果时）
     
     目录结构示例：
-        {base_dir}/                           # 工作空间（由 initiate_scan 创建）
+        {base_dir}/                           # 工作空间（由 initiate_scan_task 创建）
           └── subdomain_discovery/            # 模块目录
               ├── amass_*.txt
               ├── subfinder_*.txt
@@ -71,7 +71,7 @@ def subdomain_discovery(target: str, base_dir: str, timeout: int = None) -> Opti
         return None
     
     if not base_dir:
-        logger.error("base_dir is required (must be provided by initiate_scan)")
+        logger.error("base_dir is required (must be provided by initiate_scan_task)")
         return None
     
     # 生成唯一时间戳
@@ -122,7 +122,7 @@ def _create_scan_directory(base_dir: str) -> Path:
     在工作空间下创建模块目录
     
     Args:
-        base_dir: 工作空间目录路径（由 initiate_scan 创建）
+        base_dir: 工作空间目录路径（由 initiate_scan_task 创建）
     
     Returns:
         创建的模块目录路径

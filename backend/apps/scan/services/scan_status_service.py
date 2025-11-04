@@ -267,11 +267,50 @@ class ScanStatusService:
                     scan_id, success_count
                 )
             
+            # 扫描完成后，触发工作空间清理（可选）
+            # 注意：是否清理取决于业务需求
+            # - 如果需要保留结果供后续查看/下载 → 不清理或延迟清理
+            # - 如果结果已保存到数据库 → 可以立即清理
+            self._trigger_workspace_cleanup(scan_id)
+            
             return True
                 
         except Exception as e:  # noqa: BLE001
             logger.exception("检查扫描完成状态失败 - Scan ID: %s, 错误: %s", scan_id, e)
             return False
+    
+    def _trigger_workspace_cleanup(self, scan_id: int) -> None:
+        """
+        触发工作空间清理（扫描完成后）
+        
+        策略：
+        - 当前只记录日志，不实际清理
+        - 原因：扫描结果可能需要供用户下载或后续分析
+        - 未来可以：
+          1. 提供手动清理 API
+          2. 定时任务清理过期工作空间
+          3. 根据配置决定是否自动清理
+        
+        Args:
+            scan_id: 扫描任务 ID
+        """
+        try:
+            scan = Scan.objects.get(id=scan_id)  # type: ignore  # pylint: disable=no-member
+            workspace_dir = scan.results_dir
+            
+            if workspace_dir:
+                logger.info(
+                    "扫描完成，工作空间保留供查看 - Scan ID: %s, Path: %s",
+                    scan_id,
+                    workspace_dir
+                )
+                # TODO: 未来可以在这里调用 CleanupService.cleanup_directory(workspace_dir)
+                # 或者将清理任务加入定时队列
+            
+        except Scan.DoesNotExist:  # type: ignore  # pylint: disable=no-member
+            logger.warning("Scan %s 不存在，无法清理工作空间", scan_id)
+        except Exception as e:  # noqa: BLE001
+            logger.error("触发工作空间清理失败 - Scan ID: %s, 错误: %s", scan_id, e)
     
     def update_scan_workflow_info(
         self,

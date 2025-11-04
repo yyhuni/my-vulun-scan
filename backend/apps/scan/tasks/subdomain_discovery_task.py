@@ -17,7 +17,7 @@ from apps.asset.repositories.subdomain_repository import SubdomainDTO
 logger = logging.getLogger(__name__)
 
 
-@shared_task(name='subdomain_discovery', queue='main_scan_queue')
+@shared_task(name='subdomain_discovery', queue='scans')
 def subdomain_discovery_task(target: str, scan_id: int = None, target_id: int = None, workspace_dir: str = None) -> dict:
     """
     子域名发现任务
@@ -27,7 +27,7 @@ def subdomain_discovery_task(target: str, scan_id: int = None, target_id: int = 
         scan_id: 扫描任务 ID（必填）
         target_id: 目标 ID（可选）
         workspace_dir: 扫描工作空间目录路径（必填）
-                      - 由 initiate_scan 创建并传递
+                      - 由 initiate_scan_task 创建并传递
                       - 将在此目录下创建 subdomain_discovery/ 模块目录
     
     Returns:
@@ -48,7 +48,7 @@ def subdomain_discovery_task(target: str, scan_id: int = None, target_id: int = 
     
     # 参数验证
     if not workspace_dir:
-        error_msg = "workspace_dir is required (must be provided by initiate_scan)"
+        error_msg = "workspace_dir is required (must be provided by initiate_scan_task)"
         logger.error(error_msg)
         raise ValueError(error_msg)
     

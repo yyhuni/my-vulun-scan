@@ -5,13 +5,16 @@
 """
 
 import logging
+import os
 from typing import List
+from datetime import datetime
+from pathlib import Path
 from django.db import transaction
 
 from apps.scan.models import Scan
 from apps.targets.models import Target
 from apps.engine.models import ScanEngine
-from apps.scan.tasks.initiate_scan import initiate_scan
+from apps.scan.tasks.initiate_scan_task import initiate_scan_task
 
 logger = logging.getLogger(__name__)
 
@@ -38,25 +41,28 @@ class ScanService:
         Raises:
             Exception: 创建或启动失败时抛出异常
         """
+        # 生成工作空间目录路径
+        # 职责：Service 层负责业务逻辑和数据准备
+        results_dir = self._generate_workspace_path()
+        
         # 创建扫描任务记录
         scan = Scan.objects.create(  # type: ignore
             target=target,
             engine=engine,
+            results_dir=results_dir,
         )
         
         logger.info(
-            "创建扫描任务 - Scan ID: %s, Target: %s, Engine: %s",
+            "创建扫描任务 - Scan ID: %s, Target: %s, Engine: %s, Workspace: %s",
             scan.id,
             target.name,
-            engine.name
+            engine.name,
+            results_dir
         )
         
         # 启动扫描任务（异步）
         # 如果失败会抛出异常，事务会自动回滚
-        result = initiate_scan.delay(
-            scan_id=scan.id,
-            engine_id=scan.engine.id
-        )
+        result = initiate_scan_task.delay(scan_id=scan.id)
         
         logger.info(
             "扫描任务已提交 - Scan ID: %s, Task ID: %s",
@@ -65,6 +71,25 @@ class ScanService:
         )
         
         return scan
+    
+    def _generate_workspace_path(self) -> str:
+        """
+        生成工作空间目录路径
+        
+        职责：
+        - 生成唯一的工作空间目录路径字符串
+        - 不创建实际目录（由 task 层负责）
+        
+        Returns:
+            工作空间目录路径字符串
+        
+        格式：{SCAN_RESULTS_DIR}/scan_{timestamp}/
+        示例：/data/scans/scan_20231104_152030/
+        """
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        base_dir = os.getenv('SCAN_RESULTS_DIR')
+        workspace_path = str(Path(base_dir) / f"scan_{timestamp}")
+        return workspace_path
     
     def create_scans_for_targets(
         self,

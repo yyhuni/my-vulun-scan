@@ -85,7 +85,7 @@ class StatusUpdateHandler:
         信号：task_success
         触发时机：任务成功完成
         
-        注意：results_dir 由 initiate_scan 创建并保存，子任务不再更新
+        注意：results_dir 由 initiate_scan_task 创建并保存，子任务不再更新
         """
         scan_id = kwargs.get('scan_id') if kwargs else None
         if not scan_id:
