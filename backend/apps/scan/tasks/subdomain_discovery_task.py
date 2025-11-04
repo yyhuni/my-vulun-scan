@@ -5,9 +5,8 @@
 """
 
 import logging
-import shutil
-from pathlib import Path
 from typing import List
+from pathlib import Path
 
 from celery import shared_task
 from validators import domain as validate_domain
@@ -20,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(name='subdomain_discovery', queue='main_scan_queue')
-def subdomain_discovery_task(target: str, scan_id: int = None, target_id: int = None, results_dir: str = None) -> dict:
+def subdomain_discovery_task(target: str, scan_id: int = None, target_id: int = None, workspace_dir: str = None) -> dict:
     """
     子域名发现任务
     
@@ -28,7 +27,9 @@ def subdomain_discovery_task(target: str, scan_id: int = None, target_id: int = 
         target: 目标域名
         scan_id: 扫描任务 ID（可选）
         target_id: 目标 ID（可选）
-        results_dir: 任务主目录路径（可选，用于在任务目录下创建子目录）
+        workspace_dir: 扫描工作空间目录路径（可选）
+                      - 如果提供，将在此目录下创建 subdomain_discovery/ 模块目录
+                      - 如果未提供，将创建独立的带时间戳目录
     
     Returns:
         {
@@ -37,28 +38,28 @@ def subdomain_discovery_task(target: str, scan_id: int = None, target_id: int = 
             'error': str
         }
     """
-    logger.info("Starting subdomain discovery task for target: %s", target)
+    logger.info("开始子域名发现任务 - 目标: %s, 工作空间: %s", target, workspace_dir or "独立模式")
     
     # ========== 执行子域名发现 ==========
-    # 在任务主目录下创建子目录
-    result_file = subdomain_discovery(target, base_dir=results_dir)
+    # 在工作空间下创建模块目录（或创建独立目录）
+    result_file = subdomain_discovery(target, base_dir=workspace_dir)
     
     if not result_file:
-        logger.error("Subdomain discovery failed for target: %s", target)
+        logger.error("子域名发现失败 - 目标: %s", target)
         return {
             'success': False,
             'total': 0,
-            'error': 'Subdomain discovery failed'
+            'error': '子域名发现失败'
         }
     
-    logger.info("Subdomain discovery completed. Result file: %s", result_file)
+    logger.info("子域名发现完成 - 结果文件: %s", result_file)
     
     # ========== 解析并保存子域名到数据库 ==========
     try:
         # 读取扫描结果
         subdomains = get_scan_results(result_file)
         total_count = len(subdomains)
-        logger.info("Found %d subdomains in result file", total_count)
+        logger.info("发现 %d 个子域名", total_count)
         
         # 验证域名并批量保存
         saved_count = _validate_and_save_subdomains(
@@ -68,26 +69,9 @@ def subdomain_discovery_task(target: str, scan_id: int = None, target_id: int = 
             target_id=target_id
         )
         
-        logger.info("Task completed: saved=%d subdomains", saved_count)
+        logger.info("任务完成 - 已保存 %d 个子域名", saved_count)
         
-        # 删除合并文件
-        try:
-            result_path = Path(result_file)
-            if result_path.exists():
-                result_path.unlink()
-                logger.debug("Deleted merged file: %s", result_file)
-        except OSError as e:
-            logger.warning("Failed to delete merged file %s: %s", result_file, e)
-        
-        # 任务完成后删除整个任务目录（包括所有子目录）
-        if results_dir:
-            try:
-                task_dir = Path(results_dir)
-                if task_dir.exists() and task_dir.is_dir():
-                    shutil.rmtree(task_dir)
-                    logger.info("Deleted task directory: %s", task_dir)
-            except OSError as e:
-                logger.warning("Failed to delete task directory %s: %s", results_dir, e)
+        # 注意：文件和目录清理由 CleanupHandler 通过 task_postrun 信号统一处理
         
         return {
             'success': True,
@@ -96,26 +80,9 @@ def subdomain_discovery_task(target: str, scan_id: int = None, target_id: int = 
         }
     
     except (OSError, ValueError, RuntimeError) as e:
-        logger.exception("Failed to save subdomains to database")
+        logger.exception("保存子域名到数据库失败")
         
-        # 即使失败也尝试删除合并文件
-        try:
-            result_path = Path(result_file)
-            if result_path.exists():
-                result_path.unlink()
-                logger.debug("Deleted merged file: %s", result_file)
-        except OSError as delete_error:
-            logger.warning("Failed to delete merged file %s: %s", result_file, delete_error)
-        
-        # 任务失败时也删除整个任务目录
-        if results_dir:
-            try:
-                task_dir = Path(results_dir)
-                if task_dir.exists() and task_dir.is_dir():
-                    shutil.rmtree(task_dir)
-                    logger.info("Deleted task directory after failure: %s", task_dir)
-            except OSError as delete_error:
-                logger.warning("Failed to delete task directory %s: %s", results_dir, delete_error)
+        # 注意：资源清理由 CleanupHandler 通过 task_postrun 信号统一处理
         
         return {
             'success': False,

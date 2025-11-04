@@ -1,7 +1,7 @@
 """
-工作流调度器模块
+工作流编排器模块
 
-负责根据配置匹配和调度工作流
+负责根据配置匹配和构建工作流
 """
 
 import logging
@@ -14,10 +14,20 @@ logger = logging.getLogger(__name__)
 
 
 class WorkflowOrchestrator:
-    """工作流调度器"""
+    """
+    工作流编排器
+    
+    职责：
+    - 根据配置匹配工作流模式
+    - 构建 Celery workflow 对象
+    - 返回工作流供调用者执行
+    
+    不负责：
+    - 执行工作流（由调用者控制）
+    """
     
     def __init__(self):
-        """初始化调度器"""
+        """初始化编排器"""
         self.registry = get_workflow_registry()
     
     def match_workflow(self, enabled_tasks: set, target: str, task_kwargs: dict, config: dict) -> Tuple[Optional[Any], list]:
@@ -46,27 +56,36 @@ class WorkflowOrchestrator:
         logger.warning("✗ 未匹配到预定义工作流，任务类型: %s", enabled_tasks)
         return None, []
     
-    def dispatch_workflow(self, scan: Scan, config: dict) -> bool:
+    def dispatch_workflow(self, scan: Scan, config: dict) -> Tuple[Optional[Any], list]:
         """
-        根据配置调度工作流
+        根据配置编排工作流（不执行）
+        
+        职责：
+        - 解析配置，匹配工作流模式
+        - 构建 Celery workflow 对象
+        - 返回工作流供调用者执行
+        
+        不负责：
+        - 执行工作流（由调用者决定执行时机和方式）
         
         Args:
             scan: Scan 对象
             config: 解析后的配置字典
         
         Returns:
-            是否成功调度工作流
+            (workflow, task_names): 工作流对象和任务名称列表
+            如果未匹配到工作流，返回 (None, [])
         """
         target_domain = scan.target.name
         scan_id = scan.id
         target_id = scan.target.id
-        results_dir = scan.results_dir
+        workspace_dir = scan.results_dir  # results_dir 字段存储的是工作空间目录路径
         
         # 准备任务参数
         task_kwargs = {
             'scan_id': scan_id,
             'target_id': target_id,
-            'results_dir': results_dir  # 传递任务主目录
+            'workspace_dir': workspace_dir  # 传递工作空间目录
         }
         
         # 检测配置中的任务类型（顶级键）
@@ -82,7 +101,7 @@ class WorkflowOrchestrator:
         
         if not workflow:
             logger.warning("没有匹配到任何工作流，任务类型: %s", enabled_tasks)
-            return False
+            return None, []
         
         logger.info("="*60)
         logger.info("扫描工作流构建完成")
@@ -90,44 +109,8 @@ class WorkflowOrchestrator:
         logger.info("任务列表: %s", ' -> '.join(task_names))
         logger.info("="*60)
         
-        # 执行工作流
-        result = workflow.apply_async(queue='main_scan_queue')
+        # 返回工作流，由调用者决定何时执行
+        logger.info("✓ 工作流已构建 - Scan ID: %s, 任务数: %d", scan.id, len(task_names))
         
-        # 更新 Scan 对象的任务信息
-        try:
-            self._update_scan_task_info(scan, result, task_names)
-            logger.info("✓ 工作流已启动，任务 ID: %s", scan.task_ids)
-            return True
-        except Exception as e:  # noqa: BLE001
-            logger.error("✗ 更新 Scan 对象失败: %s", e)
-            return False
-    
-    @staticmethod
-    def _update_scan_task_info(scan: Scan, result, task_names: list) -> None:
-        """
-        更新 Scan 对象的任务信息
-        
-        Args:
-            scan: Scan 对象
-            result: Celery 任务结果
-            task_names: 任务名称列表
-        """
-        if hasattr(result, 'children') and result.children:
-            # GroupResult: 获取所有子任务 ID
-            child_ids = []
-            for child in result.children:
-                if hasattr(child, 'id'):
-                    child_ids.append(child.id)
-                elif hasattr(child, 'children'):
-                    # 嵌套的 group
-                    child_ids.extend([c.id for c in child.children if hasattr(c, 'id')])
-            
-            scan.task_ids.extend(child_ids)
-            scan.task_names.extend(task_names)
-        elif hasattr(result, 'id'):
-            # 单个任务
-            scan.task_ids.append(result.id)
-            scan.task_names.extend(task_names)
-        
-        scan.save()
+        return workflow, task_names
 

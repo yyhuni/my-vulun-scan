@@ -5,7 +5,7 @@ from django.core.exceptions import ObjectDoesNotExist
 
 from .models import Scan
 from .serializers import ScanSerializer
-from .tasks.initiate_scan import initiate_scan
+from .services.scan_service import ScanService
 from apps.targets.models import Target, Organization
 from apps.engine.models import ScanEngine
 
@@ -75,20 +75,13 @@ class ScanViewSet(viewsets.ModelViewSet):
                 target = Target.objects.get(id=target_id)  # type: ignore  # pylint: disable=no-member
                 targets = [target]
             
-            # 为每个目标创建扫描任务
-            created_scans = []
-            for target in targets:
-                # 创建扫描任务记录（status 使用模型默认值 INITIATED）
-                scan = Scan.objects.create(  # type: ignore  # pylint: disable=no-member
-                    target=target,
-                    engine=engine,
-                )
-                
-                # 异步调用扫描任务
-                # 任务会自动更新 task_ids 和 task_names
-                initiate_scan.delay(scan.id, engine.id)
-                
-                created_scans.append(scan)
+            # 使用 Service 层批量创建扫描任务
+            scan_service = ScanService()
+            created_scans = scan_service.create_scans_for_targets(
+                targets=targets,
+                engine=engine,
+                auto_start=True
+            )
             
             # 序列化返回结果
             scan_serializer = ScanSerializer(created_scans, many=True)

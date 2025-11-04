@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.postgres.fields import ArrayField
 
-from ..common.definitions import CeleryTaskStatus
+from ..common.definitions import ScanTaskStatus
 from ..asset.models import Email, Employee, Dork, S3Bucket
 
 
@@ -23,8 +23,8 @@ class Scan(models.Model):
     stopped_at = models.DateTimeField(null=True, blank=True, help_text='扫描结束时间')
 
     status = models.IntegerField(
-        choices=CeleryTaskStatus.choices,
-        default=CeleryTaskStatus.INITIATED,
+        choices=ScanTaskStatus.choices,
+        default=ScanTaskStatus.INITIATED,
         db_index=True,
         help_text='任务状态'
     )
@@ -105,8 +105,8 @@ class ScanTask(models.Model):
     description = models.TextField(blank=True, default='', help_text='任务描述')
 
     status = models.IntegerField(
-        choices=CeleryTaskStatus.choices,
-        default=CeleryTaskStatus.INITIATED,
+        choices=ScanTaskStatus.choices,
+        default=ScanTaskStatus.INITIATED,
         db_index=True,
         help_text='任务状态'
     )

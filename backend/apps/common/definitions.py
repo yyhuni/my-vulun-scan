@@ -1,8 +1,8 @@
 from django.db import models
 
 
-class CeleryTaskStatus(models.IntegerChoices):
-    """Celery 任务状态枚举"""
+class ScanTaskStatus(models.IntegerChoices):
+    """扫描任务状态枚举"""
     ABORTED = -2, '中止'
     FAILED = -1, '失败'
     INITIATED = 0, '初始化'
