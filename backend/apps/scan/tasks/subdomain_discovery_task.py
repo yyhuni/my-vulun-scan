@@ -9,11 +9,11 @@ from pathlib import Path
 from typing import List
 
 from celery import shared_task
-from django.db import transaction
 from validators import domain as validate_domain
 
-from apps.asset.models import Subdomain
 from apps.scan.services.subdomain_discovery import subdomain_discovery, get_scan_results
+from apps.asset.repositories.django_subdomain_repository import DjangoSubdomainRepository
+from apps.asset.repositories.subdomain_repository import SubdomainDTO
 
 logger = logging.getLogger(__name__)
 
@@ -103,11 +103,11 @@ def subdomain_discovery_task(target: str, scan_id: int = None, target_id: int = 
 
 def _validate_and_save_subdomains(
     subdomains: List[str],
-    target: str,  # noqa: ARG001
+    _target: str,
     scan_id: int = None,
     target_id: int = None,
     batch_size: int = 1000
-) -> tuple:
+) -> int:
     """
     验证域名并批量保存到数据库
     
@@ -148,40 +148,27 @@ def _validate_and_save_subdomains(
         logger.warning("No valid subdomains to save")
         return 0
     
-    # 步骤 2: 批量保存到数据库
+    # 步骤 2: 通过仓储批量保存到数据库
+    repository = DjangoSubdomainRepository()
     saved_count = 0
-    
+
     try:
-        with transaction.atomic():
-            # 分批插入，避免一次性插入过多数据
-            for i in range(0, len(valid_subdomains), batch_size):
-                batch = valid_subdomains[i:i + batch_size]
-                
-                # 创建 Subdomain 对象列表
-                subdomain_objects = [
-                    Subdomain(
-                        name=subdomain,
-                        scan_id=scan_id,
-                        target_id=target_id
-                    )
-                    for subdomain in batch
-                ]
-                
-                # 批量创建
-                created = Subdomain.objects.bulk_create(  # type: ignore[attr-defined]
-                    subdomain_objects,
-                    ignore_conflicts=True  # 忽略重复的域名
-                )
-                
-                saved_count += len(created)
-                logger.debug("Batch %d: saved %d subdomains", i // batch_size + 1, len(created))
-        
+        # 分批转换 DTO 并保存
+        for i in range(0, len(valid_subdomains), batch_size):
+            batch = valid_subdomains[i:i + batch_size]
+            items = [
+                SubdomainDTO(name=sub, scan_id=scan_id, target_id=target_id)
+                for sub in batch
+            ]
+            created_count = repository.upsert_many(items)
+            saved_count += created_count
+            logger.debug("Batch %d: saved %d subdomains", i // batch_size + 1, created_count)
+
         logger.info("Successfully saved %d subdomains to database", saved_count)
-    
     except Exception as e:
-        logger.error("Failed to save subdomains to database: %s", e)
+        logger.error("Failed to save subdomains via repository: %s", e)
         raise
-    
+
     return saved_count
 
 
