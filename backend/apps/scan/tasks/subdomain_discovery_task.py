@@ -6,7 +6,6 @@
 
 import logging
 from typing import List
-from pathlib import Path
 
 from celery import shared_task
 from validators import domain as validate_domain
@@ -25,70 +24,70 @@ def subdomain_discovery_task(target: str, scan_id: int = None, target_id: int = 
     
     Args:
         target: 目标域名
-        scan_id: 扫描任务 ID（可选）
+        scan_id: 扫描任务 ID（必填）
         target_id: 目标 ID（可选）
-        workspace_dir: 扫描工作空间目录路径（可选）
-                      - 如果提供，将在此目录下创建 subdomain_discovery/ 模块目录
-                      - 如果未提供，将创建独立的带时间戳目录
+        workspace_dir: 扫描工作空间目录路径（必填）
+                      - 由 initiate_scan 创建并传递
+                      - 将在此目录下创建 subdomain_discovery/ 模块目录
     
     Returns:
         {
-            'success': bool,
-            'total': int,
-            'error': str
+            'total': int,  # 成功保存的子域名数量
+            'target': str,
+            'result_file': str
         }
+    
+    Raises:
+        RuntimeError: 扫描失败或保存失败时抛出
+        
+    信号触发：
+        - 成功：正常 return → task_success 信号
+        - 失败：抛出异常 → task_failure 信号
     """
-    logger.info("开始子域名发现任务 - 目标: %s, 工作空间: %s", target, workspace_dir or "独立模式")
+    logger.info("开始子域名发现任务 - 目标: %s, 工作空间: %s", target, workspace_dir)
+    
+    # 参数验证
+    if not workspace_dir:
+        error_msg = "workspace_dir is required (must be provided by initiate_scan)"
+        logger.error(error_msg)
+        raise ValueError(error_msg)
     
     # ========== 执行子域名发现 ==========
-    # 在工作空间下创建模块目录（或创建独立目录）
+    # 在工作空间下创建模块目录
     result_file = subdomain_discovery(target, base_dir=workspace_dir)
     
     if not result_file:
-        logger.error("子域名发现失败 - 目标: %s", target)
-        return {
-            'success': False,
-            'total': 0,
-            'error': '子域名发现失败'
-        }
+        error_msg = f"子域名发现失败 - 目标: {target}"
+        logger.error(error_msg)
+        raise RuntimeError(error_msg)  # ← 抛出异常，触发 task_failure
     
     logger.info("子域名发现完成 - 结果文件: %s", result_file)
     
     # ========== 解析并保存子域名到数据库 ==========
-    try:
-        # 读取扫描结果
-        subdomains = get_scan_results(result_file)
-        total_count = len(subdomains)
-        logger.info("发现 %d 个子域名", total_count)
-        
-        # 验证域名并批量保存
-        saved_count = _validate_and_save_subdomains(
-            subdomains, 
-            target,
-            scan_id=scan_id, 
-            target_id=target_id
-        )
-        
-        logger.info("任务完成 - 已保存 %d 个子域名", saved_count)
-        
-        # 注意：文件和目录清理由 CleanupHandler 通过 task_postrun 信号统一处理
-        
-        return {
-            'success': True,
-            'total': saved_count,
-            'error': None
-        }
+    # 读取扫描结果
+    subdomains = get_scan_results(result_file)
+    total_count = len(subdomains)
+    logger.info("发现 %d 个子域名", total_count)
     
-    except (OSError, ValueError, RuntimeError) as e:
-        logger.exception("保存子域名到数据库失败")
-        
-        # 注意：资源清理由 CleanupHandler 通过 task_postrun 信号统一处理
-        
-        return {
-            'success': False,
-            'total': 0,
-            'error': str(e)
-        }
+    # 验证域名并批量保存
+    # 如果保存失败，会抛出异常，触发 task_failure
+    saved_count = _validate_and_save_subdomains(
+        subdomains, 
+        target,
+        scan_id=scan_id, 
+        target_id=target_id
+    )
+    
+    logger.info("✓ 任务成功完成 - 已保存 %d 个子域名", saved_count)
+    
+    # 注意：文件和目录清理由 CleanupHandler 通过 task_postrun 信号统一处理
+    
+    # 只有执行到这里才会触发 task_success
+    return {
+        'total': saved_count,
+        'target': target,
+        'result_file': result_file
+    }
 
 
 def _validate_and_save_subdomains(
@@ -103,13 +102,16 @@ def _validate_and_save_subdomains(
     
     Args:
         subdomains: 子域名列表
-        target: 目标域名
+        _target: 目标域名（未使用，保留用于日志）
         scan_id: 扫描任务 ID
         target_id: 目标 ID
         batch_size: 批量插入的大小
     
     Returns:
         saved_count: 成功保存的子域名数量
+        
+    Raises:
+        RuntimeError: 保存失败时抛出
     """
     valid_subdomains = []
     
@@ -135,30 +137,26 @@ def _validate_and_save_subdomains(
     logger.info("Validated %d/%d subdomains", valid_count, len(subdomains))
     
     if not valid_subdomains:
-        logger.warning("No valid subdomains to save")
-        return 0
+        error_msg = "没有有效的子域名可保存"
+        logger.warning(error_msg)
+        raise RuntimeError(error_msg)
     
     # 步骤 2: 通过仓储批量保存到数据库
     repository = DjangoSubdomainRepository()
     saved_count = 0
 
-    try:
-        # 分批转换 DTO 并保存
-        for i in range(0, len(valid_subdomains), batch_size):
-            batch = valid_subdomains[i:i + batch_size]
-            items = [
-                SubdomainDTO(name=sub, scan_id=scan_id, target_id=target_id)
-                for sub in batch
-            ]
-            created_count = repository.upsert_many(items)
-            saved_count += created_count
-            logger.debug("Batch %d: saved %d subdomains", i // batch_size + 1, created_count)
+    # 分批转换 DTO 并保存（如果失败会抛出异常）
+    for i in range(0, len(valid_subdomains), batch_size):
+        batch = valid_subdomains[i:i + batch_size]
+        items = [
+            SubdomainDTO(name=sub, scan_id=scan_id, target_id=target_id)
+            for sub in batch
+        ]
+        created_count = repository.upsert_many(items)
+        saved_count += created_count
+        logger.debug("Batch %d: saved %d subdomains", i // batch_size + 1, created_count)
 
-        logger.info("Successfully saved %d subdomains to database", saved_count)
-    except Exception as e:
-        logger.error("Failed to save subdomains via repository: %s", e)
-        raise
-
+    logger.info("Successfully saved %d subdomains to database", saved_count)
     return saved_count
 
 

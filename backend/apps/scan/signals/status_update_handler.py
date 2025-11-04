@@ -170,13 +170,20 @@ class StatusUpdateHandler:
         **extra  # pylint: disable=unused-argument
     ):
         """
-        任务撤销/中止：更新 ScanTask 状态，并检查扫描完成情况
+        任务被强制中止/撤销：更新 ScanTask 状态，并检查扫描完成情况
         
         信号：task_revoked
-        触发时机：任务被撤销或中止
+        触发时机：
+        - 用户主动取消任务（celery.control.revoke）
+        - 任务超时被系统终止
+        - Worker进程被关闭
+        - 其他强制中止场景
         
-        注意：不立即更新 Scan 状态为 ABORTED，因为工作流中可能有多个任务。
-        由 check_scan_completion() 在所有任务完成后统一判断整体状态。
+        注意：
+        - 这不是任务正常完成，而是被强制终止
+        - ABORTED 状态表示任务未完整执行
+        - 不立即更新 Scan 状态，由 check_scan_completion() 统一判断
+        - 如果有任务被中止，整个扫描会被标记为 ABORTED
         """
         # 从 request 对象获取信息
         if not request:

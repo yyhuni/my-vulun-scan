@@ -239,20 +239,33 @@ class ScanStatusService:
                 logger.debug("Scan %s 还有任务在执行中", scan_id)
                 return False
             
-            # 检查是否有失败的任务
-            has_failed = any(
-                task.status in [ScanTaskStatus.FAILED, ScanTaskStatus.ABORTED]
-                for task in tasks
-            )
+            # 统计任务状态
+            failed_count = sum(1 for task in tasks if task.status == ScanTaskStatus.FAILED)
+            aborted_count = sum(1 for task in tasks if task.status == ScanTaskStatus.ABORTED)
+            success_count = sum(1 for task in tasks if task.status == ScanTaskStatus.SUCCESSFUL)
             
-            if has_failed:
-                # 有失败任务 → 整体失败
+            # 判断最终状态
+            if aborted_count > 0:
+                # 有任务被中止 → 整体标记为中止
+                self.update_status(scan_id, ScanTaskStatus.ABORTED)
+                logger.warning(
+                    "扫描被中止 - Scan ID: %s, 中止: %d, 失败: %d, 成功: %d",
+                    scan_id, aborted_count, failed_count, success_count
+                )
+            elif failed_count > 0:
+                # 有任务失败（但没有中止）→ 整体标记为失败
                 self.update_status(scan_id, ScanTaskStatus.FAILED)
-                logger.warning("扫描完成但有任务失败 - Scan ID: %s", scan_id)
+                logger.warning(
+                    "扫描失败 - Scan ID: %s, 失败: %d, 成功: %d",
+                    scan_id, failed_count, success_count
+                )
             else:
                 # 所有任务成功 → 整体成功
                 self.update_status(scan_id, ScanTaskStatus.SUCCESSFUL)
-                logger.info("扫描成功完成 - Scan ID: %s", scan_id)
+                logger.info(
+                    "扫描成功完成 - Scan ID: %s, 成功: %d",
+                    scan_id, success_count
+                )
             
             return True
                 
