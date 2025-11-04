@@ -30,27 +30,29 @@ class WorkflowOrchestrator:
         """初始化编排器"""
         self.registry = get_workflow_registry()
     
-    def match_workflow(self, enabled_tasks: set, target: str, task_kwargs: dict, config: dict) -> Tuple[Optional[Any], list]:
+    def match_workflow(self, task_kwargs: dict, config: dict) -> Tuple[Optional[Any], list]:
         """
-        根据启用的任务类型集合，匹配预定义的工作流
+        根据配置匹配预定义的工作流
         
         使用注册表模式，避免 if-else 链，提高扩展性
         
         Args:
-            enabled_tasks: 配置中出现的任务类型集合（如 {'subdomain_discovery', 'port_scan'}）
-            target: 目标域名
-            task_kwargs: 任务参数
+            task_kwargs: 任务参数（包含 target, scan_id, target_id, workspace_dir）
             config: 完整配置字典
         
         Returns:
             (workflow, task_names): 工作流对象和任务名称列表，如果未匹配则返回 (None, [])
         """
+        # 从 config 推导启用的任务类型
+        enabled_tasks = set(config.keys())
+        
         # 遍历注册表，找到匹配的工作流
         for _task_type, registry_entry in self.registry.items():
             matcher, builder, workflow_name = registry_entry
             if matcher(enabled_tasks):
                 logger.info("✓ 匹配到工作流: %s", workflow_name)
-                return builder(target, task_kwargs, config)
+                # 调用构建器，传递任务参数和配置
+                return builder(task_kwargs=task_kwargs, config=config)
         
         # 没有匹配到任何工作流
         logger.warning("✗ 未匹配到预定义工作流，任务类型: %s", enabled_tasks)
@@ -76,31 +78,24 @@ class WorkflowOrchestrator:
             (workflow, task_names): 工作流对象和任务名称列表
             如果未匹配到工作流，返回 (None, [])
         """
-        target_domain = scan.target.name
-        scan_id = scan.id
-        target_id = scan.target.id
-        workspace_dir = scan.results_dir  # results_dir 字段存储的是工作空间目录路径
-        
-        # 准备任务参数
+        # 准备任务参数（包含所有必要信息）
         task_kwargs = {
-            'scan_id': scan_id,
-            'target_id': target_id,
-            'workspace_dir': workspace_dir  # 传递工作空间目录
+            'target': scan.target.name,        # 目标域名
+            'scan_id': scan.id,
+            'target_id': scan.target.id,
+            'workspace_dir': scan.results_dir  # 工作空间目录路径
         }
         
-        # 检测配置中的任务类型（顶级键）
-        enabled_tasks = set(config.keys())
-        
         logger.info("="*60)
-        logger.info("目标域名: %s", target_domain)
-        logger.info("检测到的任务类型: %s", enabled_tasks)
+        logger.info("目标域名: %s", task_kwargs['target'])
+        logger.info("检测到的任务类型: %s", set(config.keys()))
         logger.info("="*60)
         
         # 根据任务组合匹配预定义工作流
-        workflow, task_names = self.match_workflow(enabled_tasks, target_domain, task_kwargs, config)
+        workflow, task_names = self.match_workflow(task_kwargs, config)
         
         if not workflow:
-            logger.warning("没有匹配到任何工作流，任务类型: %s", enabled_tasks)
+            logger.warning("没有匹配到任何工作流，任务类型: %s", set(config.keys()))
             return None, []
         
         logger.info("="*60)

@@ -10,7 +10,7 @@ from typing import List
 from celery import shared_task
 from validators import domain as validate_domain
 
-from apps.scan.services.subdomain_discovery import subdomain_discovery, get_scan_results
+from apps.scan.services.subdomain_discovery_service import SubdomainDiscoveryService
 from apps.asset.repositories.django_subdomain_repository import DjangoSubdomainRepository
 from apps.asset.repositories.subdomain_repository import SubdomainDTO
 
@@ -53,8 +53,9 @@ def subdomain_discovery_task(target: str, scan_id: int = None, target_id: int = 
         raise ValueError(error_msg)
     
     # ========== 执行子域名发现 ==========
-    # 在工作空间下创建模块目录
-    result_file = subdomain_discovery(target, base_dir=workspace_dir)
+    # 创建服务实例并执行扫描
+    service = SubdomainDiscoveryService()
+    result_file = service.discover(target, base_dir=workspace_dir)
     
     if not result_file:
         error_msg = f"子域名发现失败 - 目标: {target}"
@@ -65,7 +66,7 @@ def subdomain_discovery_task(target: str, scan_id: int = None, target_id: int = 
     
     # ========== 解析并保存子域名到数据库 ==========
     # 读取扫描结果
-    subdomains = get_scan_results(result_file)
+    subdomains = service.get_scan_results(result_file)
     total_count = len(subdomains)
     logger.info("发现 %d 个子域名", total_count)
     

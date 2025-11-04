@@ -10,14 +10,13 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def _build_subdomain_only_workflow(target: str, task_kwargs: dict, config: dict) -> Tuple[Any, list]:
+def _build_subdomain_only_workflow(task_kwargs: dict, config: dict) -> Tuple[Any, list]:  # noqa: ARG001
     """
     构建仅子域名发现工作流
     
     Args:
-        target: 目标域名
-        task_kwargs: 任务参数
-        config: 配置字典
+        task_kwargs: 任务参数（包含 target, scan_id, target_id, workspace_dir）
+        config: 配置字典（预留用于未来扩展，如传递工具特定配置）
     
     Returns:
         (workflow, task_names): 工作流对象和任务名称列表
@@ -26,11 +25,9 @@ def _build_subdomain_only_workflow(target: str, task_kwargs: dict, config: dict)
     
     logger.info("构建 Subdomain Only 工作流")
     
-    if 'subdomain_discovery' not in config:
-        logger.warning("subdomain_discovery 未在配置中")
-        return None, []
-    
-    workflow = subdomain_discovery_task.si(target=target, **task_kwargs)
+    # 构建工作流（使用 si 创建不可变签名）
+    # config 预留用于未来传递工具特定配置，如：subfinder 的 API keys
+    workflow = subdomain_discovery_task.si(**task_kwargs)
     task_names = ['subdomain_discovery']
     
     logger.info("✓ subdomain_discovery")
@@ -38,11 +35,17 @@ def _build_subdomain_only_workflow(target: str, task_kwargs: dict, config: dict)
     return workflow, task_names
 
 
-def get_workflow_registry() -> Dict[str, Tuple[Callable[[set], bool], Callable[[str, Dict, Dict], Tuple[Any, list]], str]]:
+def get_workflow_registry() -> Dict[str, Tuple[Callable[[set], bool], Callable[[Dict, Dict], Tuple[Any, list]], str]]:
     """
     获取工作流注册表
     
     注册表模式：任务类型 -> (匹配函数, 构建函数, 工作流名称)
+    
+    类型说明：
+    - 匹配函数: (enabled_tasks: set) -> bool
+    - 构建函数: (task_kwargs: dict, config: dict) -> (workflow, task_names)
+    - 工作流名称: str
+    
     好处：
     1. 扩展性强：添加新工作流只需在注册表中添加条目
     2. 解耦：匹配逻辑不需要知道具体构建器
