@@ -5,6 +5,7 @@
 """
 
 import logging
+import shutil
 from pathlib import Path
 from typing import List
 
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(name='subdomain_discovery', queue='main_scan_queue')
-def subdomain_discovery_task(target: str, scan_id: int = None, target_id: int = None) -> dict:
+def subdomain_discovery_task(target: str, scan_id: int = None, target_id: int = None, results_dir: str = None) -> dict:
     """
     子域名发现任务
     
@@ -27,6 +28,7 @@ def subdomain_discovery_task(target: str, scan_id: int = None, target_id: int = 
         target: 目标域名
         scan_id: 扫描任务 ID（可选）
         target_id: 目标 ID（可选）
+        results_dir: 任务主目录路径（可选，用于在任务目录下创建子目录）
     
     Returns:
         {
@@ -38,7 +40,8 @@ def subdomain_discovery_task(target: str, scan_id: int = None, target_id: int = 
     logger.info("Starting subdomain discovery task for target: %s", target)
     
     # ========== 执行子域名发现 ==========
-    result_file = subdomain_discovery(target)
+    # 在任务主目录下创建子目录
+    result_file = subdomain_discovery(target, base_dir=results_dir)
     
     if not result_file:
         logger.error("Subdomain discovery failed for target: %s", target)
@@ -72,9 +75,19 @@ def subdomain_discovery_task(target: str, scan_id: int = None, target_id: int = 
             result_path = Path(result_file)
             if result_path.exists():
                 result_path.unlink()
-                logger.info("Deleted merged file: %s", result_file)
+                logger.debug("Deleted merged file: %s", result_file)
         except OSError as e:
             logger.warning("Failed to delete merged file %s: %s", result_file, e)
+        
+        # 任务完成后删除整个任务目录（包括所有子目录）
+        if results_dir:
+            try:
+                task_dir = Path(results_dir)
+                if task_dir.exists() and task_dir.is_dir():
+                    shutil.rmtree(task_dir)
+                    logger.info("Deleted task directory: %s", task_dir)
+            except OSError as e:
+                logger.warning("Failed to delete task directory %s: %s", results_dir, e)
         
         return {
             'success': True,
@@ -90,9 +103,19 @@ def subdomain_discovery_task(target: str, scan_id: int = None, target_id: int = 
             result_path = Path(result_file)
             if result_path.exists():
                 result_path.unlink()
-                logger.info("Deleted merged file: %s", result_file)
+                logger.debug("Deleted merged file: %s", result_file)
         except OSError as delete_error:
             logger.warning("Failed to delete merged file %s: %s", result_file, delete_error)
+        
+        # 任务失败时也删除整个任务目录
+        if results_dir:
+            try:
+                task_dir = Path(results_dir)
+                if task_dir.exists() and task_dir.is_dir():
+                    shutil.rmtree(task_dir)
+                    logger.info("Deleted task directory after failure: %s", task_dir)
+            except OSError as delete_error:
+                logger.warning("Failed to delete task directory %s: %s", results_dir, delete_error)
         
         return {
             'success': False,

@@ -60,11 +60,13 @@ class WorkflowOrchestrator:
         target_domain = scan.target.name
         scan_id = scan.id
         target_id = scan.target.id
+        results_dir = scan.results_dir
         
         # 准备任务参数
         task_kwargs = {
             'scan_id': scan_id,
-            'target_id': target_id
+            'target_id': target_id,
+            'results_dir': results_dir  # 传递任务主目录
         }
         
         # 检测配置中的任务类型（顶级键）
