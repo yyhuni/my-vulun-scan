@@ -175,4 +175,34 @@ CORS_ALLOW_CREDENTIALS = True
 # ==================== CSRF 配置 ====================
 CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000').split(',')
 
+# ==================== Celery 配置 ====================
+# Celery broker 配置（使用 Redis）
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+
+# Celery 结果后端（可选）
+# CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
+# CELERY_RESULT_EXPIRES = 3600  # 结果过期时间：1小时
+
+# 任务序列化格式
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_ACCEPT_CONTENT = ['json']
+
+# 时区配置
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = True
+
+# 任务确认配置（确保任务不丢失）
+CELERY_TASK_ACKS_LATE = True  # 任务执行完成后才确认
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # 每个 worker 只预取 1 个任务
+
+# 超时配置
+CELERY_TASK_TIME_LIMIT = 3600  # 硬超时：1小时（强制终止）
+CELERY_TASK_SOFT_TIME_LIMIT = 3000  # 软超时：50分钟（抛出异常，允许清理）
+
+# 队列路由配置（在 celery.py 中定义）
+# 队列说明：
+# - orchestrator: 编排任务（轻量级、高并发）
+# - scans: 扫描任务（重量级、限制并发）
+
 

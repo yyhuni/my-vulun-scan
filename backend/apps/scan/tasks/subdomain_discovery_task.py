@@ -2,6 +2,11 @@
 子域名发现任务模块
 
 使用 Celery 异步执行子域名扫描并保存结果到数据库
+
+队列策略：
+- 使用 scans 队列（重量级、限制并发）
+- 特点：IO 密集型、中等耗时（1-10分钟）
+- Worker 配置建议：中等并发（-c 10）
 """
 
 import logging
@@ -17,7 +22,7 @@ from apps.asset.repositories.subdomain_repository import SubdomainDTO
 logger = logging.getLogger(__name__)
 
 
-@shared_task(name='subdomain_discovery', queue='scans')
+@shared_task(name='subdomain_discovery')
 def subdomain_discovery_task(target: str, scan_id: int = None, target_id: int = None, workspace_dir: str = None) -> dict:
     """
     子域名发现任务

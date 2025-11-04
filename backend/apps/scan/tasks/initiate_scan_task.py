@@ -2,6 +2,11 @@
 扫描任务初始化模块
 
 负责初始化扫描任务，根据 engine 配置调度工作流
+
+队列策略：
+- 使用 orchestrator 队列（轻量级、高并发）
+- 特点：CPU 密集型、执行快（<1秒）
+- Worker 配置建议：高并发（-c 50）
 """
 
 from celery import shared_task
@@ -14,7 +19,7 @@ import yaml
 logger = logging.getLogger(__name__)
 
 
-@shared_task(name='initiate_scan', queue='scans', bind=True)
+@shared_task(name='initiate_scan', bind=True)
 def initiate_scan_task(self, scan_id: int):
     """
     初始化扫描任务，根据 engine 配置动态编排和执行工作流
