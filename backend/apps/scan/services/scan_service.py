@@ -289,37 +289,60 @@ class ScanService:
         started_at: Optional[timezone.datetime] = None
     ) -> bool:
         """
-        初始化扫描（首个任务开始时调用）
+        初始化扫描（任务开始时调用）
         
         职责：
-        - 更新 Scan 状态（由调用方控制）
-        - 更新 started_at 时间（由调用方控制）
-        - 初始化或追加 task_ids 和 task_names
+        - 检查扫描状态
+        - 如果是首次（INITIATED）：启动扫描，设置状态和时间
+        - 如果非首次：追加任务到列表
         
         Args:
             scan_id: 扫描任务 ID
             task_name: 任务名称
             task_id: Celery 任务 ID
-            status: 要更新的状态
-            started_at: 扫描开始时间
+            status: 要更新的状态（仅首次启动时使用）
+            started_at: 扫描开始时间（仅首次启动时使用）
         
         Returns:
             是否初始化成功
         """
         try:
-            result = self.scan_repo.initialize_scan(
-                scan_id=scan_id,
-                status=status,
-                task_id=task_id,
-                task_name=task_name,
-                started_at=started_at
-            )
+            # 获取当前扫描状态
+            scan = self.scan_repo.get_by_id(scan_id, prefetch_relations=False)
+            if not scan:
+                logger.error("Scan 不存在 - Scan ID: %s", scan_id)
+                return False
             
-            if result:
-                scan = self.scan_repo.get_by_id(scan_id, prefetch_relations=False)
-                if scan:
+            # Service 层判断：根据状态决定操作
+            if scan.status == ScanTaskStatus.INITIATED:
+                # 首次启动：更新状态、时间、初始化任务列表
+                result = self.scan_repo.start_scan(
+                    scan_id=scan_id,
+                    status=status or ScanTaskStatus.RUNNING,
+                    task_id=task_id,
+                    task_name=task_name,
+                    started_at=started_at
+                )
+                
+                if result:
                     logger.info(
-                        "扫描初始化成功 - Scan ID: %s, 任务: %s, 状态: %s",
+                        "启动扫描 - Scan ID: %s, 任务: %s, 状态: %s → %s",
+                        scan_id,
+                        task_name,
+                        ScanTaskStatus.INITIATED.label,
+                        ScanTaskStatus(status or ScanTaskStatus.RUNNING).label
+                    )
+            else:
+                # 非首次：只追加任务
+                result = self.scan_repo.append_task(
+                    scan_id=scan_id,
+                    task_id=task_id,
+                    task_name=task_name
+                )
+                
+                if result:
+                    logger.info(
+                        "追加任务 - Scan ID: %s, 任务: %s, 当前状态: %s",
                         scan_id,
                         task_name,
                         ScanTaskStatus(scan.status).label

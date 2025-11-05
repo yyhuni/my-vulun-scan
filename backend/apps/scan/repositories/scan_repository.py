@@ -347,7 +347,7 @@ class ScanRepository:
     
     @staticmethod
     @transaction.atomic
-    def initialize_scan(
+    def start_scan(
         scan_id: int,
         status: ScanTaskStatus,
         task_id: str,
@@ -355,56 +355,89 @@ class ScanRepository:
         started_at: Optional[datetime] = None
     ) -> bool:
         """
-        初始化扫描（首个任务开始时）
+        启动扫描（首次初始化）
         
         职责：
-        - 首次初始化：更新状态、设置开始时间、初始化任务列表
-        - 追加任务：只更新任务列表，不改变状态
+        - 更新状态（INITIATED → RUNNING）
+        - 设置开始时间
+        - 初始化任务列表
+        
+        注意：此方法不做状态检查，由调用方（Service）确保只在 INITIATED 状态调用
         
         Args:
             scan_id: 扫描任务 ID
-            status: 新状态（仅首次初始化时使用）
+            status: 新状态
             task_id: Celery 任务 ID
             task_name: 任务名称
             started_at: 开始时间（默认为当前时间）
         
         Returns:
-            是否初始化成功
+            是否启动成功
         """
         scan = ScanRepository.get_by_id_for_update(scan_id)
         if not scan:
             return False
         
-        # 只在首次初始化时更新状态和时间
-        if scan.status == ScanTaskStatus.INITIATED:
-            # 更新状态
-            scan.status = status
-            scan.started_at = started_at or timezone.now()
-            
-            # 初始化任务列表
-            scan.task_ids = [task_id] if task_id else []
-            scan.task_names = [task_name]
-            
+        # 更新状态和时间
+        scan.status = status
+        scan.started_at = started_at or timezone.now()
+        
+        # 初始化任务列表
+        scan.task_ids = [task_id] if task_id else []
+        scan.task_names = [task_name]
+        
+        scan.save()
+        logger.debug(
+            "启动 Scan - ID: %s, 状态: %s, 任务: %s",
+            scan_id,
+            ScanTaskStatus(status).label,
+            task_name
+        )
+        return True
+    
+    @staticmethod
+    @transaction.atomic
+    def append_task(
+        scan_id: int,
+        task_id: str,
+        task_name: str
+    ) -> bool:
+        """
+        追加任务到扫描
+        
+        职责：
+        - 添加任务 ID 和名称到列表
+        - 不改变扫描状态
+        
+        Args:
+            scan_id: 扫描任务 ID
+            task_id: Celery 任务 ID
+            task_name: 任务名称
+        
+        Returns:
+            是否追加成功
+        """
+        scan = ScanRepository.get_by_id_for_update(scan_id)
+        if not scan:
+            return False
+        
+        # 避免重复添加
+        if task_id and task_id not in scan.task_ids:
+            scan.task_ids.append(task_id)
+            scan.task_names.append(task_name)
             scan.save()
             logger.debug(
-                "初始化 Scan - ID: %s, 状态: %s → %s, 任务: %s",
+                "追加任务 - Scan ID: %s, Task: %s, 当前状态: %s",
                 scan_id,
-                ScanTaskStatus.INITIATED.label,
-                ScanTaskStatus(status).label,
-                task_name
+                task_name,
+                ScanTaskStatus(scan.status).label
             )
         else:
-            # 追加任务（不更新状态）
-            if task_id and task_id not in scan.task_ids:
-                scan.task_ids.append(task_id)
-                scan.task_names.append(task_name)
-                scan.save()
-                logger.debug(
-                    "追加任务 - Scan ID: %s, Task: %s, 当前状态: %s",
-                    scan_id,
-                    task_name,
-                    ScanTaskStatus(scan.status).label
-                )
+            logger.debug(
+                "任务已存在，跳过追加 - Scan ID: %s, Task ID: %s",
+                scan_id,
+                task_id
+            )
         
         return True
 
