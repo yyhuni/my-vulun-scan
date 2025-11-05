@@ -294,14 +294,20 @@ class ScanService:
         职责：
         - 检查扫描状态
         - 如果是首次（INITIATED）：启动扫描，设置状态和时间
-        - 如果非首次：追加任务到列表
+        - 如果非首次（RUNNING）：只追加任务到列表
+        
+        说明：
+        - 此方法会被每个任务的 task_prerun 信号调用
+        - 第一个任务（initiate_scan_task）：INITIATED → RUNNING
+        - 后续任务（subfinder, httpx等）：只追加 task_ids/task_names
+        - status 和 started_at 参数只在首次启动时有效，非首次会被忽略
         
         Args:
             scan_id: 扫描任务 ID
             task_name: 任务名称
             task_id: Celery 任务 ID
-            status: 要更新的状态（仅首次启动时使用）
-            started_at: 扫描开始时间（仅首次启动时使用）
+            status: 要更新的状态（仅首次启动时使用，默认 RUNNING）
+            started_at: 扫描开始时间（仅首次启动时使用，默认当前时间）
         
         Returns:
             是否初始化成功
