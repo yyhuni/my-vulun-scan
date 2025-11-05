@@ -31,6 +31,72 @@ class ScanTaskService:
         self.scan_repo = scan_repository or ScanRepository()
         self.scan_task_repo = scan_task_repository or ScanTaskRepository()
     
+    def initialize_task(
+        self,
+        scan_id: int,
+        task_name: str,
+        task_id: str,
+        status: ScanTaskStatus = ScanTaskStatus.RUNNING
+    ) -> bool:
+        """
+        初始化 ScanTask 记录（任务开始时调用）
+        
+        职责：
+        - 创建新的 ScanTask 记录
+        - 设置初始状态（通常是 RUNNING）
+        
+        Args:
+            scan_id: 扫描任务 ID
+            task_name: 任务名称
+            task_id: Celery 任务 ID
+            status: 任务状态（默认 RUNNING）
+        
+        Returns:
+            是否初始化成功
+        """
+        try:
+            # 获取 Scan 对象
+            scan = self.scan_repo.get_by_id(scan_id)
+            if not scan:
+                logger.error("Scan 不存在 - Scan ID: %s", scan_id)
+                return False
+            
+            # 创建 ScanTask
+            _scan_task, created = self.scan_task_repo.update_or_create(
+                scan=scan,
+                task_id=task_id,
+                defaults={
+                    'name': task_name,
+                    'status': status,
+                    'error_message': '',
+                    'error_traceback': '',
+                }
+            )
+            
+            if created:
+                logger.info(
+                    "初始化 ScanTask - Scan ID: %s, Task: %s, 状态: %s",
+                    scan_id,
+                    task_name,
+                    ScanTaskStatus(status).label
+                )
+            else:
+                logger.warning(
+                    "ScanTask 已存在 - Scan ID: %s, Task ID: %s, 跳过重复创建",
+                    scan_id,
+                    task_id
+                )
+            return True
+                
+        except Exception as e:  # noqa: BLE001
+            logger.exception(
+                "初始化 ScanTask 失败 - Scan ID: %s, Task: %s, 错误: %s",
+                scan_id,
+                task_name,
+                e
+            )
+            return False
+    
     def update_task_status(
         self,
         scan_id: int,
@@ -41,7 +107,11 @@ class ScanTaskService:
         error_traceback: Optional[str] = None
     ) -> bool:
         """
-        更新或创建 ScanTask 状态
+        更新 ScanTask 状态（任务完成/失败时调用）
+        
+        职责：
+        - 更新已存在的 ScanTask 状态
+        - 记录错误信息（如果有）
         
         Args:
             scan_id: 扫描任务 ID
@@ -61,7 +131,7 @@ class ScanTaskService:
                 logger.error("Scan 不存在 - Scan ID: %s", scan_id)
                 return False
             
-            # 更新或创建 ScanTask
+            # 更新 ScanTask
             _scan_task, created = self.scan_task_repo.update_or_create(
                 scan=scan,
                 task_id=task_id,
@@ -73,10 +143,15 @@ class ScanTaskService:
                 }
             )
             
-            action = "创建" if created else "更新"
+            if created:
+                logger.warning(
+                    "ScanTask 不存在，已自动创建 - Scan ID: %s, Task: %s",
+                    scan_id,
+                    task_name
+                )
+            
             logger.info(
-                "%s ScanTask - Scan ID: %s, Task: %s, 状态: %s",
-                action,
+                "更新 ScanTask 状态 - Scan ID: %s, Task: %s, 状态: %s",
                 scan_id,
                 task_name,
                 ScanTaskStatus(status).label

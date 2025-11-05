@@ -7,7 +7,7 @@
 import logging
 import os
 import uuid
-from typing import List, Optional, TYPE_CHECKING
+from typing import Dict, List, Optional, TYPE_CHECKING
 from datetime import datetime
 from pathlib import Path
 
@@ -309,7 +309,7 @@ class ScanService:
         try:
             result = self.scan_repo.initialize_scan(
                 scan_id=scan_id,
-                status=status or ScanTaskStatus.RUNNING,
+                status=status,
                 task_id=task_id,
                 task_name=task_name,
                 started_at=started_at
@@ -331,77 +331,81 @@ class ScanService:
             logger.exception("初始化扫描任务失败 - Scan ID: %s, 错误: %s", scan_id, e)
             return False
     
-    def check_scan_completion(self, scan_id: int) -> bool:
+    def get_scan_completion_status(self, scan_id: int) -> tuple[bool, Dict[str, int], Optional[ScanTaskStatus]]:
         """
-        检查扫描是否完成并更新最终状态
+        获取扫描完成状态和建议的最终状态
         
         职责：
-        - 委托 ScanTaskService 检查所有子任务完成状态
-        - 根据子任务统计结果决定 Scan 的最终状态
-        - 触发扫描完成后的清理工作
-        
-        状态判断逻辑：
-        - 有任务被中止 → 整体标记为中止
-        - 有任务失败（但无中止）→ 整体标记为失败
-        - 所有任务成功 → 整体成功
-        - 还有任务在运行 → 保持运行状态
+        - 查询所有子任务的完成状态
+        - 提供状态统计信息
+        - **不做决策**，由调用方决定如何处理
         
         Args:
             scan_id: 扫描任务 ID
         
         Returns:
-            是否扫描已完成
+            (是否全部完成, 状态统计, 建议的最终状态)
+            - 是否全部完成: bool
+            - 状态统计: {'total': x, 'successful': x, 'failed': x, 'aborted': x, 'running': x}
+            - 建议的最终状态: SUCCESSFUL/FAILED/ABORTED/None (None 表示未完成)
         """
         try:
-            # 使用 ScanTaskService 检查任务完成状态
+            # 检查任务完成状态
             all_completed, stats = self.task_service.check_all_tasks_completed(scan_id)
             
             if not stats.get('total', 0):
                 logger.debug("Scan %s 没有子任务记录", scan_id)
-                return False
+                return False, stats, None
             
             if not all_completed:
                 logger.debug("Scan %s 还有 %d 个任务在执行中", scan_id, stats.get('running', 0))
-                return False
+                return False, stats, None
             
-            # 从统计信息中获取各状态数量
+            # 根据统计信息计算建议的最终状态
             aborted_count = stats.get('aborted', 0)
             failed_count = stats.get('failed', 0)
-            success_count = stats.get('successful', 0)
             
-            # 判断最终状态
             if aborted_count > 0:
-                # 有任务被中止 → 整体标记为中止
-                self.update_status(scan_id, ScanTaskStatus.ABORTED)
-                logger.warning(
-                    "扫描被中止 - Scan ID: %s, 中止: %d, 失败: %d, 成功: %d",
-                    scan_id, aborted_count, failed_count, success_count
-                )
+                suggested_status = ScanTaskStatus.ABORTED
             elif failed_count > 0:
-                # 有任务失败（但没有中止）→ 整体标记为失败
-                self.update_status(scan_id, ScanTaskStatus.FAILED)
-                logger.warning(
-                    "扫描失败 - Scan ID: %s, 失败: %d, 成功: %d",
-                    scan_id, failed_count, success_count
-                )
+                suggested_status = ScanTaskStatus.FAILED
             else:
-                # 所有任务成功 → 整体成功
-                self.update_status(scan_id, ScanTaskStatus.SUCCESSFUL)
-                logger.info(
-                    "扫描成功完成 - Scan ID: %s, 成功: %d",
-                    scan_id, success_count
-                )
+                suggested_status = ScanTaskStatus.SUCCESSFUL
             
-            # 扫描完成后，触发工作空间清理（可选）
-            # 注意：是否清理取决于业务需求
-            # - 如果需要保留结果供后续查看/下载 → 不清理或延迟清理
-            # - 如果结果已保存到数据库 → 可以立即清理
+            return True, stats, suggested_status
+                
+        except Exception as e:  # noqa: BLE001
+            logger.exception("获取扫描完成状态失败 - Scan ID: %s, 错误: %s", scan_id, e)
+            return False, {'total': 0}, None
+    
+    def complete_scan(self, scan_id: int, status: ScanTaskStatus) -> bool:
+        """
+        完成扫描（更新状态并触发清理）
+        
+        职责：
+        - 更新扫描状态
+        - 触发工作空间清理
+        
+        Args:
+            scan_id: 扫描任务 ID
+            status: 最终状态
+        
+        Returns:
+            是否完成成功
+        """
+        try:
+            # 更新状态
+            result = self.update_status(scan_id, status)
+            if not result:
+                return False
+            
+            # 触发清理
             self._trigger_workspace_cleanup(scan_id)
             
             return True
                 
         except Exception as e:  # noqa: BLE001
-            logger.exception("检查扫描完成状态失败 - Scan ID: %s, 错误: %s", scan_id, e)
+            logger.exception("完成扫描失败 - Scan ID: %s, 错误: %s", scan_id, e)
             return False
     
     def _trigger_workspace_cleanup(self, scan_id: int) -> None:

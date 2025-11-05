@@ -357,9 +357,13 @@ class ScanRepository:
         """
         初始化扫描（首个任务开始时）
         
+        职责：
+        - 首次初始化：更新状态、设置开始时间、初始化任务列表
+        - 追加任务：只更新任务列表，不改变状态
+        
         Args:
             scan_id: 扫描任务 ID
-            status: 新状态
+            status: 新状态（仅首次初始化时使用）
             task_id: Celery 任务 ID
             task_name: 任务名称
             started_at: 开始时间（默认为当前时间）
@@ -371,26 +375,36 @@ class ScanRepository:
         if not scan:
             return False
         
-        # 只在首次初始化时更新
+        # 只在首次初始化时更新状态和时间
         if scan.status == ScanTaskStatus.INITIATED:
+            # 更新状态
             scan.status = status
             scan.started_at = started_at or timezone.now()
+            
+            # 初始化任务列表
             scan.task_ids = [task_id] if task_id else []
             scan.task_names = [task_name]
+            
             scan.save()
             logger.debug(
-                "初始化 Scan - ID: %s, 状态: %s, 任务: %s",
+                "初始化 Scan - ID: %s, 状态: %s → %s, 任务: %s",
                 scan_id,
+                ScanTaskStatus.INITIATED.label,
                 ScanTaskStatus(status).label,
                 task_name
             )
         else:
-            # 追加任务
+            # 追加任务（不更新状态）
             if task_id and task_id not in scan.task_ids:
                 scan.task_ids.append(task_id)
                 scan.task_names.append(task_name)
                 scan.save()
-                logger.debug("追加任务 - Scan ID: %s, Task: %s", scan_id, task_name)
+                logger.debug(
+                    "追加任务 - Scan ID: %s, Task: %s, 当前状态: %s",
+                    scan_id,
+                    task_name,
+                    ScanTaskStatus(scan.status).label
+                )
         
         return True
 
