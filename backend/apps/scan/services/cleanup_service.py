@@ -149,7 +149,7 @@ class CleanupService:
         """
         try:
             # 获取 Scan 对象（不需要预加载关联对象）
-            scan = self.scan_repo.get_by_id(scan_id, prefetch_relations=False)
+            scan = self.scan_repo.get_by_id(scan_id)
             
             if not scan:
                 logger.warning("Scan %s 不存在，跳过清理", scan_id)

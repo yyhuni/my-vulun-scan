@@ -26,21 +26,34 @@ class ScanRepository:
     # ==================== 基础 CRUD 操作 ====================
     
     @staticmethod
-    def get_by_id(scan_id: int, prefetch_relations: bool = True) -> Optional[Scan]:
+    def get_by_id(
+        scan_id: int, 
+        prefetch_relations: bool = False,
+        for_update: bool = False
+    ) -> Optional[Scan]:
         """
         根据 ID 获取扫描任务
         
         Args:
             scan_id: 扫描任务 ID
             prefetch_relations: 是否预加载关联对象（engine, target）
+                              默认 False，只在需要展示关联信息时设为 True
+            for_update: 是否加锁（用于更新场景）
         
         Returns:
             Scan 对象或 None
         """
         try:
-            queryset = Scan.objects  # type: ignore  # pylint: disable=no-member
+            # 根据是否需要更新来决定是否加锁
+            if for_update:
+                queryset = Scan.objects.select_for_update()  # type: ignore  # pylint: disable=no-member
+            else:
+                queryset = Scan.objects  # type: ignore  # pylint: disable=no-member
+            
+            # 预加载关联对象（性能优化：默认不加载）
             if prefetch_relations:
                 queryset = queryset.select_related('engine', 'target')
+            
             return queryset.get(id=scan_id)
         except Scan.DoesNotExist:  # type: ignore  # pylint: disable=no-member
             logger.warning("Scan 不存在 - Scan ID: %s", scan_id)
@@ -53,6 +66,8 @@ class ScanRepository:
         
         用于需要更新的场景，避免并发冲突
         
+        注意：这是 get_by_id(for_update=True) 的便捷方法
+        
         Args:
             scan_id: 扫描任务 ID
             prefetch_relations: 是否预加载关联对象（engine, target）
@@ -61,14 +76,11 @@ class ScanRepository:
         Returns:
             Scan 对象或 None
         """
-        try:
-            queryset = Scan.objects.select_for_update()  # type: ignore  # pylint: disable=no-member
-            if prefetch_relations:
-                queryset = queryset.select_related('engine', 'target')
-            return queryset.get(id=scan_id)
-        except Scan.DoesNotExist:  # type: ignore  # pylint: disable=no-member
-            logger.warning("Scan 不存在 - Scan ID: %s", scan_id)
-            return None
+        return ScanRepository.get_by_id(
+            scan_id=scan_id,
+            prefetch_relations=prefetch_relations,
+            for_update=True
+        )
     
     @staticmethod
     def create(

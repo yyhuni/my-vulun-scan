@@ -72,7 +72,7 @@ class ScanService:
         Returns:
             Scan 对象（包含 engine 和 target）或 None
         """
-        return self.scan_repo.get_by_id(scan_id)  # prefetch_relations=True (默认)
+        return self.scan_repo.get_by_id(scan_id, prefetch_relations=True)
     
     def get_scan_workspace(self, scan_id: int) -> str | None:
         """
@@ -85,7 +85,7 @@ class ScanService:
             工作空间路径或 None
         """
         # 这里不需要预加载关联对象，只获取 results_dir 字段
-        scan = self.scan_repo.get_by_id(scan_id, prefetch_relations=False)
+        scan = self.scan_repo.get_by_id(scan_id)
         if scan:
             return scan.results_dir
         return None
@@ -307,15 +307,15 @@ class ScanService:
             是否初始化成功
         """
         try:
-            # 获取当前扫描状态
-            scan = self.scan_repo.get_by_id(scan_id, prefetch_relations=False)
+            # 获取当前扫描状态（不需要关联对象）
+            scan = self.scan_repo.get_by_id(scan_id)
             if not scan:
                 logger.error("Scan 不存在 - Scan ID: %s", scan_id)
                 return False
             
-            # Service 层判断：根据状态决定操作
+            # Service 层判断：根据状态决定调用哪个 Repository 方法
             if scan.status == ScanTaskStatus.INITIATED:
-                # 首次启动：更新状态、时间、初始化任务列表
+                # 首次启动：调用 start_scan (INITIATED → RUNNING)
                 result = self.scan_repo.start_scan(
                     scan_id=scan_id,
                     status=status or ScanTaskStatus.RUNNING,
@@ -326,14 +326,14 @@ class ScanService:
                 
                 if result:
                     logger.info(
-                        "启动扫描 - Scan ID: %s, 任务: %s, 状态: %s → %s",
+                        "初始化扫描（首次启动）- Scan ID: %s, 任务: %s, 状态: %s → %s",
                         scan_id,
                         task_name,
                         ScanTaskStatus.INITIATED.label,
                         ScanTaskStatus(status or ScanTaskStatus.RUNNING).label
                     )
             else:
-                # 非首次：只追加任务
+                # 非首次：调用 append_task（只追加任务列表）
                 result = self.scan_repo.append_task(
                     scan_id=scan_id,
                     task_id=task_id,
@@ -342,7 +342,7 @@ class ScanService:
                 
                 if result:
                     logger.info(
-                        "追加任务 - Scan ID: %s, 任务: %s, 当前状态: %s",
+                        "初始化扫描（追加任务）- Scan ID: %s, 任务: %s, 当前状态: %s",
                         scan_id,
                         task_name,
                         ScanTaskStatus(scan.status).label
@@ -447,7 +447,7 @@ class ScanService:
             scan_id: 扫描任务 ID
         """
         try:
-            scan = self.scan_repo.get_by_id(scan_id, prefetch_relations=False)
+            scan = self.scan_repo.get_by_id(scan_id)
             if not scan:
                 logger.warning("Scan %s 不存在，无法清理工作空间", scan_id)
                 return
