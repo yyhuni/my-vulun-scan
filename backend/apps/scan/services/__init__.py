@@ -5,15 +5,16 @@
 """
 
 from .subdomain_discovery_service import SubdomainDiscoveryService
-from .scan_status_service import ScanStatusService
+from .scan_task_service import ScanTaskService
 from .notification_service import NotificationService
 from .cleanup_service import CleanupService
 from .scan_service import ScanService
 
 __all__ = [
     'SubdomainDiscoveryService',
-    'ScanStatusService',
+    'ScanTaskService',
     'NotificationService',
     'CleanupService',
     'ScanService',
 ]
+

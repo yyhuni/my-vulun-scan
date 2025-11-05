@@ -7,7 +7,6 @@
 import logging
 
 from apps.scan.services import CleanupService
-from apps.scan.models import Scan
 
 logger = logging.getLogger(__name__)
 
@@ -61,22 +60,10 @@ class CleanupHandler:
             state
         )
         
-        # 获取工作空间目录
-        try:
-            scan = Scan.objects.get(id=scan_id)  # type: ignore  # pylint: disable=no-member
-            workspace_dir = scan.results_dir
-            
-            if not workspace_dir:
-                logger.warning("Scan %s 没有 results_dir，跳过清理", scan_id)
-                return
-            
-            # 清理任务的临时文件（保留最终结果）
-            # 注意：具体清理逻辑由各个任务的服务层实现
-            # 例如：subdomain_discovery 已经在内部清理了 amass/subfinder 的原始文件
-            logger.info("✓ 任务临时文件已在执行过程中清理（如有）- Task: %s", task_name)
-            
-        except Scan.DoesNotExist:  # type: ignore  # pylint: disable=no-member
-            logger.warning("Scan %s 不存在，跳过清理", scan_id)
-        except Exception as e:  # noqa: BLE001
-            logger.error("清理任务临时文件失败 - Scan ID: %s, 错误: %s", scan_id, e)
+        # 委托 CleanupService 处理清理逻辑
+        # CleanupService 会处理所有相关逻辑：
+        # - 获取 Scan 对象
+        # - 检查 results_dir
+        # - 执行清理操作
+        self.cleanup_service.cleanup_scan_task_temp_files(scan_id)
 

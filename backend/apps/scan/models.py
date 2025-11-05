@@ -19,7 +19,7 @@ class Scan(models.Model):
         help_text='使用的扫描引擎'
     )
 
-    started_at = models.DateTimeField(auto_now_add=True, help_text='扫描开始时间')
+    started_at = models.DateTimeField(null=True, blank=True, help_text='扫描实际开始时间（第一个任务开始执行时）')
     stopped_at = models.DateTimeField(null=True, blank=True, help_text='扫描结束时间')
 
     status = models.IntegerField(

@@ -9,11 +9,22 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
+from apps.scan.repositories import ScanRepository
+
 logger = logging.getLogger(__name__)
 
 
 class CleanupService:
     """资源清理服务"""
+    
+    def __init__(self, scan_repository: Optional[ScanRepository] = None):
+        """
+        初始化服务
+        
+        Args:
+            scan_repository: ScanRepository 实例（用于依赖注入）
+        """
+        self.scan_repo = scan_repository or ScanRepository()
     
     def cleanup_directory(self, directory_path: str) -> bool:
         """
@@ -120,4 +131,42 @@ class CleanupService:
         
         logger.info("开始清理扫描结果目录: %s", results_dir)
         return self.cleanup_directory(results_dir)
+    
+    def cleanup_scan_task_temp_files(self, scan_id: int) -> bool:
+        """
+        清理扫描任务的临时文件
+        
+        职责：
+        - 通过 scan_id 获取工作空间路径
+        - 执行清理操作（当前策略：只记录日志，不实际清理）
+        - 具体清理由各个任务服务在执行过程中完成
+        
+        Args:
+            scan_id: 扫描任务 ID
+        
+        Returns:
+            是否处理成功
+        """
+        try:
+            # 获取 Scan 对象（不需要预加载关联对象）
+            scan = self.scan_repo.get_by_id(scan_id, prefetch_relations=False)
+            
+            if not scan:
+                logger.warning("Scan %s 不存在，跳过清理", scan_id)
+                return False
+            
+            workspace_dir = scan.results_dir
+            
+            if not workspace_dir:
+                logger.warning("Scan %s 没有 results_dir，跳过清理", scan_id)
+                return False
+            
+            # 当前策略：任务级临时文件已在执行过程中清理
+            # 例如：subdomain_discovery 已经在内部清理了 amass/subfinder 的原始文件
+            logger.info("✓ Scan %s 的临时文件已在任务执行过程中清理", scan_id)
+            return True
+            
+        except Exception as e:  # noqa: BLE001
+            logger.error("清理 Scan %s 临时文件失败 - 错误: %s", scan_id, e)
+            return False
 

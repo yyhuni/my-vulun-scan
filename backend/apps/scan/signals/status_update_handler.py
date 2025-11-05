@@ -6,17 +6,27 @@
 
 import logging
 
-from apps.scan.services import ScanStatusService
+from django.utils import timezone
+
+from apps.scan.services import ScanService, ScanTaskService
 from apps.common.definitions import ScanTaskStatus
 
 logger = logging.getLogger(__name__)
 
 
 class StatusUpdateHandler:
-    """状态更新处理器"""
+    """
+    状态更新处理器
+    
+    职责：
+    - 监听 Celery 任务信号
+    - 更新 Scan 状态（通过 ScanService）
+    - 更新 ScanTask 状态（通过 ScanTaskService）
+    """
     
     def __init__(self):
-        self.status_service = ScanStatusService()
+        self.task_service = ScanTaskService()
+        self.scan_service = ScanService(task_service=self.task_service)
     
     def on_task_prerun(
         self, 
@@ -31,12 +41,17 @@ class StatusUpdateHandler:
         任务开始前：初始化 Scan 信息和更新状态
         
         职责：
-        - 更新 Scan 状态为 RUNNING（仅第一次）
+        - 由信号处理器控制状态更新为 RUNNING（仅第一次）
+        - 由信号处理器控制 started_at 时间设置（仅第一次）
         - 初始化或追加 task_ids 和 task_names
         - 创建 ScanTask 记录
         
         信号：task_prerun
         触发时机：任务开始执行前
+        
+        架构说明：
+        - Service 层提供灵活的接口（接受 status 和 started_at 参数）
+        - Signal 层控制具体的数据（传入具体的状态和时间值）
         """
         scan_id = kwargs.get('scan_id') if kwargs else None
         if not scan_id:
@@ -51,15 +66,17 @@ class StatusUpdateHandler:
             scan_id
         )
         
-        # 初始化扫描任务（更新状态、追加任务ID等）
-        self.status_service.initialize_scan_task(
+        # 初始化扫描（由信号处理器控制状态和时间）
+        self.scan_service.initialize_scan(
             scan_id=scan_id,
             task_name=task_name,
-            task_id=task_id or ''
+            task_id=task_id or '',
+            status=ScanTaskStatus.RUNNING,  # 由信号处理器控制状态
+            started_at=timezone.now()  # 由信号处理器控制开始时间
         )
         
         # 创建 ScanTask 记录
-        self.status_service.update_task_status(
+        self.task_service.update_task_status(
             scan_id=scan_id,
             task_name=task_name,
             task_id=task_id or '',
@@ -101,7 +118,7 @@ class StatusUpdateHandler:
         )
         
         # 更新 ScanTask 状态
-        self.status_service.update_task_status(
+        self.task_service.update_task_status(
             scan_id=scan_id,
             task_name=task_name,
             task_id=task_id or '',
@@ -109,7 +126,7 @@ class StatusUpdateHandler:
         )
         
         # 检查扫描是否完成
-        self.status_service.check_scan_completion(scan_id)
+        self.scan_service.check_scan_completion(scan_id)
     
     def on_task_failure(
         self, 
@@ -148,7 +165,7 @@ class StatusUpdateHandler:
         )
         
         # 只更新 ScanTask 状态（不更新 Scan 状态）
-        self.status_service.update_task_status(
+        self.task_service.update_task_status(
             scan_id=scan_id,
             task_name=task_name,
             task_id=task_id or '',
@@ -158,7 +175,7 @@ class StatusUpdateHandler:
         )
         
         # 检查扫描是否完成（所有任务都结束后才更新 Scan 最终状态）
-        self.status_service.check_scan_completion(scan_id)
+        self.scan_service.check_scan_completion(scan_id)
     
     def on_task_revoked(
         self, 
@@ -209,7 +226,7 @@ class StatusUpdateHandler:
         )
         
         # 只更新 ScanTask 状态（不更新 Scan 状态）
-        self.status_service.update_task_status(
+        self.task_service.update_task_status(
             scan_id=scan_id,
             task_name=task_name,
             task_id=task_id or '',
@@ -218,5 +235,5 @@ class StatusUpdateHandler:
         )
         
         # 检查扫描是否完成（所有任务都结束后才更新 Scan 最终状态）
-        self.status_service.check_scan_completion(scan_id)
+        self.scan_service.check_scan_completion(scan_id)
 

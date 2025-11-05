@@ -10,7 +10,7 @@
 """
 
 from celery import shared_task
-from apps.scan.models import Scan
+from apps.scan.services import ScanService
 from apps.scan.orchestrators import WorkflowOrchestrator
 from pathlib import Path
 import logging
@@ -65,8 +65,17 @@ def initiate_scan_task(self, scan_id: int):
         }
     """
     try:
-        # 获取 Scan 对象（包含关联的 Engine 和预生成的 results_dir）
-        scan = Scan.objects.select_related('engine', 'target').get(id=scan_id)  # type: ignore  # pylint: disable=no-member
+        # 通过 Service 层获取 Scan 对象
+        # 注意：get_scan() 内部使用 get_by_id(prefetch_relations=True)
+        # 会自动预加载 engine 和 target，避免 N+1 查询
+        scan_service = ScanService()
+        scan = scan_service.get_scan(scan_id)
+        
+        if not scan:
+            logger.error("Scan with ID %s does not exist", scan_id)
+            raise ValueError(f"Scan with ID {scan_id} does not exist")
+        
+        # 访问关联对象（已预加载，无额外查询）
         engine = scan.engine
         
         # 从数据库读取工作空间路径（由 Service 层生成）
@@ -131,8 +140,8 @@ def initiate_scan_task(self, scan_id: int):
             'task_names': task_names
         }
         
-    except Scan.DoesNotExist:  # type: ignore  # pylint: disable=no-member
-        logger.error("Scan with ID %s does not exist", scan_id)
+    except ValueError as e:
+        logger.error("Scan error: %s", e)
         raise
     except Exception as e:  # noqa: BLE001
         logger.exception("Failed to initiate scan: %s", e)
