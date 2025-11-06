@@ -48,13 +48,21 @@ class ScanTaskService:
         Args:
             scan_id: 扫描任务 ID
             task_name: 任务名称
-            task_id: Celery 任务 ID
+            task_id: Celery 任务 ID（不能为空）
             status: 任务状态（默认 RUNNING）
         
         Returns:
             是否初始化成功
         """
         try:
+            # 验证 task_id（业务规则：不能为空）
+            if not task_id or not task_id.strip():
+                logger.error(
+                    "task_id 为空或无效 - Scan ID: %s, Task: %s, task_id: '%s'",
+                    scan_id, task_name, task_id
+                )
+                return False
+            
             # 获取 Scan 对象
             scan = self.scan_repo.get_by_id(scan_id)
             if not scan:
@@ -75,9 +83,10 @@ class ScanTaskService:
             
             if created:
                 logger.info(
-                    "初始化 ScanTask - Scan ID: %s, Task: %s, 状态: %s",
+                    "初始化 ScanTask - Scan ID: %s, Task: %s, Task ID: %s, 状态: %s",
                     scan_id,
                     task_name,
+                    task_id,
                     ScanTaskStatus(status).label
                 )
             else:
@@ -116,7 +125,7 @@ class ScanTaskService:
         Args:
             scan_id: 扫描任务 ID
             task_name: 任务名称
-            task_id: Celery 任务 ID
+            task_id: Celery 任务 ID（不能为空）
             status: 任务状态
             error_message: 错误消息（可选）
             error_traceback: 错误堆栈（可选）
@@ -125,6 +134,14 @@ class ScanTaskService:
             是否更新成功
         """
         try:
+            # 验证 task_id（业务规则：不能为空）
+            if not task_id or not task_id.strip():
+                logger.error(
+                    "task_id 为空或无效 - Scan ID: %s, Task: %s, task_id: '%s'",
+                    scan_id, task_name, task_id
+                )
+                return False
+            
             # 获取 Scan 对象
             scan = self.scan_repo.get_by_id(scan_id)
             if not scan:

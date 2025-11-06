@@ -431,13 +431,21 @@ class ScanService:
         
         Args:
             scan_id: 扫描 ID
-            task_id: Celery 任务 ID
+            task_id: Celery 任务 ID（不能为空）
             task_name: 任务名称
         
         Returns:
             是否追加成功
         """
         try:
+            # 验证 task_id（业务规则：不能为空）
+            if not task_id or not task_id.strip():
+                logger.error(
+                    "task_id 为空或无效 - Scan ID: %s, Task: %s, task_id: '%s'",
+                    scan_id, task_name, task_id
+                )
+                return False
+            
             result = self.scan_repo.append_task(
                 scan_id=scan_id,
                 task_id=task_id,
@@ -446,9 +454,10 @@ class ScanService:
             
             if result:
                 logger.info(
-                    "追加任务到 Scan - Scan ID: %s, Task: %s",
+                    "追加任务到 Scan - Scan ID: %s, Task: %s, Task ID: %s",
                     scan_id,
-                    task_name
+                    task_name,
+                    task_id
                 )
             
             return result

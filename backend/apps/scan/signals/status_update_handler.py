@@ -86,37 +86,42 @@ class StatusUpdateHandler:
                 logger.warning("task 对象没有 name 属性或 name 为空，使用默认值 'unknown'")
                 task_name = 'unknown'
         
-        # 验证 task_id（Celery 框架保证一定存在，如果为空说明出现严重问题）
-        if not task_id:
-            logger.error(
-                "严重错误：task_id 为空！这不应该发生 - Task: %s, Scan ID: %s",
-                task_name, scan_id
-            )
-            # 不追加空 task_id，避免污染数据
-            # 但仍然创建 ScanTask 记录（便于追踪）
-            task_id = f'unknown_{task_name}'
-        
+        # 记录任务开始（task_id 验证由 Service 层负责）
         logger.info(
             "任务开始执行 - Task: %s, Task ID: %s, Scan ID: %s",
             task_name,
-            task_id,
+            task_id or 'N/A',
             scan_id
         )
         
         # 统一追加所有任务信息到 Scan（包括编排任务和工作任务）
-        self.scan_service.append_task_to_scan(
+        # Service 层会验证 task_id，如果无效会返回 False
+        append_result = self.scan_service.append_task_to_scan(
             scan_id=scan_id,
-            task_id=task_id,
+            task_id=task_id or '',
             task_name=task_name
         )
         
+        if not append_result:
+            logger.warning(
+                "追加任务信息失败（可能 task_id 无效）- Task: %s, Scan ID: %s",
+                task_name, scan_id
+            )
+        
         # 所有任务都创建 ScanTask 记录
-        self.task_service.initialize_task(
+        # Service 层会验证 task_id，如果无效会返回 False
+        init_result = self.task_service.initialize_task(
             scan_id=scan_id,
             task_name=task_name,
-            task_id=task_id,
+            task_id=task_id or '',
             status=ScanTaskStatus.RUNNING
         )
+        
+        if not init_result:
+            logger.warning(
+                "创建 ScanTask 记录失败（可能 task_id 无效）- Task: %s, Scan ID: %s",
+                task_name, scan_id
+            )
     
     def on_task_success(
         self, 
@@ -157,26 +162,18 @@ class StatusUpdateHandler:
                 logger.warning("sender 对象没有 name 属性或 name 为空，使用默认值 'unknown'")
                 task_name = 'unknown'
         
-        # 验证 task_id
-        if not task_id:
-            logger.error(
-                "严重错误：task_id 为空！- Task: %s, Scan ID: %s",
-                task_name, scan_id
-            )
-            task_id = f'unknown_{task_name}'
-        
         logger.info(
             "任务执行成功 - Task: %s, Task ID: %s, Scan ID: %s",
             task_name,
-            task_id,
+            task_id or 'N/A',
             scan_id
         )
         
-        # 更新 ScanTask 状态
+        # 更新 ScanTask 状态（Service 层会验证 task_id）
         self.task_service.update_task_status(
             scan_id=scan_id,
             task_name=task_name,
-            task_id=task_id,
+            task_id=task_id or '',
             status=ScanTaskStatus.SUCCESSFUL
         )
         
@@ -228,14 +225,6 @@ class StatusUpdateHandler:
                 logger.warning("sender 对象没有 name 属性或 name 为空，使用默认值 'unknown'")
                 task_name = 'unknown'
         
-        # 验证 task_id
-        if not task_id:
-            logger.error(
-                "严重错误：task_id 为空！- Task: %s, Scan ID: %s",
-                task_name, scan_id
-            )
-            task_id = f'unknown_{task_name}'
-        
         # 安全获取错误信息
         error_message = str(exception) if exception else 'Unknown error'
         error_traceback = str(einfo) if einfo else ''
@@ -243,16 +232,16 @@ class StatusUpdateHandler:
         logger.error(
             "任务执行失败 - Task: %s, Task ID: %s, Scan ID: %s, 错误: %s",
             task_name,
-            task_id,
+            task_id or 'N/A',
             scan_id,
             error_message
         )
         
-        # 1. 更新 ScanTask 状态
+        # 1. 更新 ScanTask 状态（Service 层会验证 task_id）
         self.task_service.update_task_status(
             scan_id=scan_id,
             task_name=task_name,
-            task_id=task_id,
+            task_id=task_id or '',
             status=ScanTaskStatus.FAILED,
             error_message=error_message,
             error_traceback=error_traceback
@@ -307,14 +296,6 @@ class StatusUpdateHandler:
             logger.warning("request 对象没有 task 属性或 task 为空，使用默认值 'unknown'")
             task_name = 'unknown'
         
-        # 验证 task_id
-        if not task_id:
-            logger.error(
-                "严重错误：task_id 为空！- Task: %s",
-                task_name
-            )
-            task_id = f'unknown_{task_name}'
-        
         scan_id = kwargs.get('scan_id') if kwargs else None
         if not scan_id:
             logger.debug("任务没有 scan_id 参数，跳过状态更新")
@@ -324,16 +305,16 @@ class StatusUpdateHandler:
         logger.warning(
             "任务被中止 - Task: %s, Task ID: %s, Scan ID: %s, 原因: %s",
             task_name,
-            task_id,
+            task_id or 'N/A',
             scan_id,
             reason
         )
         
-        # 1. 更新 ScanTask 状态
+        # 1. 更新 ScanTask 状态（Service 层会验证 task_id）
         self.task_service.update_task_status(
             scan_id=scan_id,
             task_name=task_name,
-            task_id=task_id,
+            task_id=task_id or '',
             status=ScanTaskStatus.ABORTED,
             error_message=f"任务被中止: {reason}"
         )
