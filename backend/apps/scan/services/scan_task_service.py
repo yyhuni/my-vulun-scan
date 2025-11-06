@@ -55,11 +55,18 @@ class ScanTaskService:
             是否初始化成功
         """
         try:
-            # 验证 task_id（业务规则：不能为空）
+            # 验证参数（业务规则）
             if not task_id or not task_id.strip():
                 logger.error(
                     "task_id 为空或无效 - Scan ID: %s, Task: %s, task_id: '%s'",
                     scan_id, task_name, task_id
+                )
+                return False
+            
+            if not task_name or not task_name.strip():
+                logger.error(
+                    "task_name 为空或无效 - Scan ID: %s, task_id: %s",
+                    scan_id, task_id
                 )
                 return False
             
@@ -134,11 +141,18 @@ class ScanTaskService:
             是否更新成功
         """
         try:
-            # 验证 task_id（业务规则：不能为空）
+            # 验证参数（业务规则）
             if not task_id or not task_id.strip():
                 logger.error(
                     "task_id 为空或无效 - Scan ID: %s, Task: %s, task_id: '%s'",
                     scan_id, task_name, task_id
+                )
+                return False
+            
+            if not task_name or not task_name.strip():
+                logger.error(
+                    "task_name 为空或无效 - Scan ID: %s, task_id: %s",
+                    scan_id, task_id
                 )
                 return False
             

@@ -75,16 +75,22 @@ class StatusUpdateHandler:
         if not scan_id:
             logger.debug("任务没有 scan_id 参数，跳过状态更新")
             return
-        
-        # 安全获取 task_name
+            
+        # 安全获取 task_name（Fail Fast：如果为空则直接跳过）
         if not task:
-            logger.warning("task_prerun 信号中 task 参数为 None，使用默认值 'unknown'")
-            task_name = 'unknown'
-        else:
-            task_name = getattr(task, 'name', None)
-            if not task_name:
-                logger.warning("task 对象没有 name 属性或 name 为空，使用默认值 'unknown'")
-                task_name = 'unknown'
+            logger.error(
+                "严重错误：task 参数为 None！跳过状态更新 - Scan ID: %s",
+                scan_id
+            )
+            return  # 不使用 fallback，避免污染数据
+        
+        task_name = getattr(task, 'name', None)
+        if not task_name:
+            logger.error(
+                "严重错误：task.name 为空！跳过状态更新 - Scan ID: %s",
+                scan_id
+            )
+            return  # 不使用 fallback，避免污染数据
         
         # 记录任务开始（task_id 验证由 Service 层负责）
         logger.info(
@@ -152,15 +158,21 @@ class StatusUpdateHandler:
             logger.debug("任务没有 scan_id 参数，跳过状态更新")
             return
         
-        # 安全获取 task_name
+        # 安全获取 task_name（Fail Fast：如果为空则直接跳过）
         if not sender:
-            logger.warning("task_success 信号中 sender 参数为 None，使用默认值 'unknown'")
-            task_name = 'unknown'
-        else:
-            task_name = getattr(sender, 'name', None)
-            if not task_name:
-                logger.warning("sender 对象没有 name 属性或 name 为空，使用默认值 'unknown'")
-                task_name = 'unknown'
+            logger.error(
+                "严重错误：sender 参数为 None！跳过状态更新 - Scan ID: %s",
+                scan_id
+            )
+            return  # 不使用 fallback，避免污染数据
+        
+        task_name = getattr(sender, 'name', None)
+        if not task_name:
+            logger.error(
+                "严重错误：sender.name 为空！跳过状态更新 - Scan ID: %s",
+                scan_id
+            )
+            return  # 不使用 fallback，避免污染数据
         
         logger.info(
             "任务执行成功 - Task: %s, Task ID: %s, Scan ID: %s",
@@ -215,15 +227,21 @@ class StatusUpdateHandler:
             logger.debug("任务没有 scan_id 参数，跳过状态更新")
             return
         
-        # 安全获取 task_name
+        # 安全获取 task_name（Fail Fast：如果为空则直接跳过）
         if not sender:
-            logger.warning("task_failure 信号中 sender 参数为 None，使用默认值 'unknown'")
-            task_name = 'unknown'
-        else:
-            task_name = getattr(sender, 'name', None)
-            if not task_name:
-                logger.warning("sender 对象没有 name 属性或 name 为空，使用默认值 'unknown'")
-                task_name = 'unknown'
+            logger.error(
+                "严重错误：sender 参数为 None！跳过状态更新 - Scan ID: %s",
+                scan_id
+            )
+            return  # 不使用 fallback，避免污染数据
+        
+        task_name = getattr(sender, 'name', None)
+        if not task_name:
+            logger.error(
+                "严重错误：sender.name 为空！跳过状态更新 - Scan ID: %s",
+                scan_id
+            )
+            return  # 不使用 fallback，避免污染数据
         
         # 安全获取错误信息
         error_message = str(exception) if exception else 'Unknown error'
@@ -290,11 +308,13 @@ class StatusUpdateHandler:
             logger.warning("request.kwargs 不是字典类型，使用空字典")
             kwargs = {}
         
-        # 安全获取 task_name
+        # 安全获取 task_name（Fail Fast：如果为空则直接跳过）
         task_name = getattr(request, 'task', None)
         if not task_name:
-            logger.warning("request 对象没有 task 属性或 task 为空，使用默认值 'unknown'")
-            task_name = 'unknown'
+            logger.error(
+                "严重错误：request.task 为空！跳过状态更新"
+            )
+            return  # 不使用 fallback，避免污染数据
         
         scan_id = kwargs.get('scan_id') if kwargs else None
         if not scan_id:
