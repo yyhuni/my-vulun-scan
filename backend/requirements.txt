@@ -17,6 +17,7 @@ python-dotenv==1.0.1
 # 异步任务
 celery==5.4.0
 redis==5.0.3
+flower==2.0.1  # Celery 监控工具
 
 # 工具库
 python-dateutil==2.9.0
