@@ -4,6 +4,8 @@
 负责 ScanTask 模型的 CRUD 操作
 """
 
+from __future__ import annotations
+
 import logging
 from typing import List, Dict
 

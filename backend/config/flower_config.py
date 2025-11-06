@@ -12,8 +12,12 @@ broker_api = 'redis://localhost:6379/0'
 # 持久化任务历史
 persistent = True
 
-# SQLite 数据库文件路径
-db = 'flower.db'
+# SQLite 数据库文件路径（使用绝对路径）
+import os
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+db = str(BASE_DIR / 'var' / 'db' / 'flower.db')
 
 # 最大保存任务数
 max_tasks = 10000

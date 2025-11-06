@@ -20,6 +20,13 @@ db.sqlite3-journal
 /media
 /staticfiles
 
+# 运行时文件（Celery、Flower、PID）
+/var/*
+!/var/.gitkeep
+celerybeat-schedule*
+flower.db
+pids/
+
 # 环境变量（敏感信息）
 .env
 

@@ -4,6 +4,8 @@
 负责 Scan 模型的所有业务逻辑
 """
 
+from __future__ import annotations
+
 import logging
 import uuid
 from typing import Dict, List, TYPE_CHECKING

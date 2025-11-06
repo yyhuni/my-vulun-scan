@@ -4,6 +4,8 @@ Scan 模型数据访问层
 负责 Scan 模型的所有数据库操作
 """
 
+from __future__ import annotations
+
 import logging
 from typing import List
 from datetime import datetime

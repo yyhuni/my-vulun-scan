@@ -24,7 +24,7 @@ class ScanViewSet(viewsets.ModelViewSet):
         请求参数:
         - organization_id: 组织ID (int, 可选)
         - target_id: 目标ID (int, 可选)
-        - engine: 扫描引擎ID (int, 必填)
+        - engine_id: 扫描引擎ID (int, 必填)
         
         注意: organization_id 和 target_id 二选一
         
@@ -34,12 +34,12 @@ class ScanViewSet(viewsets.ModelViewSet):
         # 获取请求数据
         organization_id = request.data.get('organization_id')
         target_id = request.data.get('target_id')
-        engine_id = request.data.get('engine')
+        engine_id = request.data.get('engine_id')
         
         # 参数验证
         if not engine_id:
             return Response(
-                {'error': '缺少必填参数: engine'},
+                {'error': '缺少必填参数: engine_id'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
