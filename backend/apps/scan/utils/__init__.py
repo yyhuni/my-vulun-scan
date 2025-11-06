@@ -10,9 +10,17 @@ from .command_executor import (
     default_executor,
 )
 
+from .directory_cleanup import (
+    remove_directory,
+)
+
 __all__ = [
+    # 命令执行
     'ScanCommandExecutor',
     'execute_command',
     'default_executor',
+    
+    # 目录清理
+    'remove_directory',
 ]
 

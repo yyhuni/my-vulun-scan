@@ -21,6 +21,7 @@ from apps.targets.models import Target
 from apps.engine.models import ScanEngine
 from apps.scan.tasks.initiate_scan_task import initiate_scan_task
 from apps.common.definitions import ScanTaskStatus
+from apps.scan.utils import remove_directory
 
 if TYPE_CHECKING:
     from apps.scan.services.scan_task_service import ScanTaskService
@@ -74,22 +75,6 @@ class ScanService:
             Scan 对象（包含 engine 和 target）或 None
         """
         return self.scan_repo.get_by_id(scan_id, prefetch_relations)
-    
-    def get_scan_workspace(self, scan_id: int) -> str | None:
-        """
-        获取扫描工作空间路径
-        
-        Args:
-            scan_id: 扫描任务 ID
-        
-        Returns:
-            工作空间路径或 None
-        """
-        # 这里不需要预加载关联对象，只获取 results_dir 字段
-        scan = self.scan_repo.get_by_id(scan_id)
-        if scan:
-            return scan.results_dir
-        return None
     
     def _generate_workspace_path(self) -> str:
         """
@@ -658,13 +643,7 @@ class ScanService:
         """
         触发工作空间清理（扫描完成后）
         
-        策略：
-        - 当前只记录日志，不实际清理
-        - 原因：扫描结果可能需要供用户下载或后续分析
-        - 未来可以：
-          1. 提供手动清理 API
-          2. 定时任务清理过期工作空间
-          3. 根据配置决定是否自动清理
+        清理策略：删除工作空间目录释放磁盘空间
         
         Args:
             scan_id: 扫描任务 ID
@@ -676,18 +655,17 @@ class ScanService:
                 return
             
             workspace_dir = scan.results_dir
-            
             if workspace_dir:
-                logger.info(
-                    "扫描完成，工作空间保留供查看 - Scan ID: %s, Path: %s",
-                    scan_id,
-                    workspace_dir
-                )
-                # TODO: 未来可以在这里调用 CleanupService.cleanup_directory(workspace_dir)
-                # 或者将清理任务加入定时队列
+                logger.info("开始清理工作空间 - Scan ID: %s, Path: %s", scan_id, workspace_dir)
+                
+                # 调用工具清理目录
+                if remove_directory(workspace_dir):
+                    logger.info("✓ 工作空间清理完成 - Scan ID: %s", scan_id)
+                else:
+                    logger.warning("工作空间清理失败 - Scan ID: %s, Path: %s", scan_id, workspace_dir)
             
         except Exception as e:  # noqa: BLE001
-            logger.error("触发工作空间清理失败 - Scan ID: %s, 错误: %s", scan_id, e)
+            logger.exception("触发工作空间清理失败 - Scan ID: %s, 错误: %s", scan_id, e)
 
 
 # 导出接口

@@ -198,22 +198,6 @@ class ScanTaskService:
             )
             return False
     
-    def get_tasks_by_scan(self, scan_id: int) -> List:
-        """
-        获取指定扫描的所有子任务
-        
-        Args:
-            scan_id: 扫描任务 ID
-        
-        Returns:
-            ScanTask 对象列表
-        """
-        try:
-            return self.scan_task_repo.get_list_by_scan(scan_id)
-        except Exception as e:  # noqa: BLE001
-            logger.exception("获取 ScanTask 列表失败 - Scan ID: %s, 错误: %s", scan_id, e)
-            return []
-    
     def check_all_tasks_completed(self, scan_id: int) -> tuple[bool, Dict[str, int]]:
         """
         检查扫描的所有子任务是否完成，并返回统计信息

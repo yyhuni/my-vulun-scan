@@ -7,7 +7,6 @@
 import logging
 from celery.signals import (
     task_prerun, 
-    task_postrun, 
     task_success, 
     task_failure, 
     task_revoked
@@ -15,7 +14,6 @@ from celery.signals import (
 
 from .status_update_handler import StatusUpdateHandler
 from .notification_handler import NotificationHandler
-from .cleanup_handler import CleanupHandler
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +22,6 @@ logger = logging.getLogger(__name__)
 _handlers_registered = False
 _status_handler = None
 _notification_handler = None
-_cleanup_handler = None
 
 
 def register_all_signals():
@@ -38,7 +35,7 @@ def register_all_signals():
     - 使用模块级单例存储处理器实例
     - 多次调用 ready() 时自动跳过
     """
-    global _handlers_registered, _status_handler, _notification_handler, _cleanup_handler
+    global _handlers_registered, _status_handler, _notification_handler
     
     # 检查是否已注册
     if _handlers_registered:
@@ -50,7 +47,6 @@ def register_all_signals():
     # 创建单例处理器
     _status_handler = StatusUpdateHandler()
     _notification_handler = NotificationHandler()
-    _cleanup_handler = CleanupHandler()
     
     # 注册状态更新处理器
     task_prerun.connect(_status_handler.on_task_prerun, weak=False)
@@ -65,10 +61,6 @@ def register_all_signals():
     task_failure.connect(_notification_handler.on_task_failure, weak=False)
     task_revoked.connect(_notification_handler.on_task_revoked, weak=False)
     logger.info("✓ NotificationHandler 已注册")
-    
-    # 注册清理处理器
-    task_postrun.connect(_cleanup_handler.on_task_postrun, weak=False)
-    logger.info("✓ CleanupHandler 已注册")
     
     # 标记为已注册
     _handlers_registered = True
