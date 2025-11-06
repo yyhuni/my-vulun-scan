@@ -18,8 +18,8 @@ class ScanTaskService:
     
     def __init__(
         self,
-        scan_repository: Optional[ScanRepository] = None,
-        scan_task_repository: Optional[ScanTaskRepository] = None
+        scan_repository: ScanRepository | None = None,
+        scan_task_repository: ScanTaskRepository | None = None
     ):
         """
         初始化服务
@@ -119,8 +119,8 @@ class ScanTaskService:
         task_name: str,
         task_id: str,
         status: ScanTaskStatus,
-        error_message: Optional[str] = None,
-        error_traceback: Optional[str] = None
+        error_message: str | None = None,
+        error_traceback: str | None = None
     ) -> bool:
         """
         更新 ScanTask 状态（任务完成/失败时调用）
@@ -261,7 +261,7 @@ class ScanTaskService:
     def get_task_stats(
         self, 
         scan_id: int, 
-        exclude_tasks: Optional[List[str]] = None
+        exclude_tasks: List[str] | None = None
     ) -> Dict[str, int]:
         """
         获取 ScanTask 的状态统计

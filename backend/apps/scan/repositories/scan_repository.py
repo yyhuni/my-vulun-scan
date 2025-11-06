@@ -5,7 +5,7 @@ Scan 模型数据访问层
 """
 
 import logging
-from typing import Optional, List
+from typing import List
 from datetime import datetime
 
 from django.db import transaction
@@ -30,7 +30,7 @@ class ScanRepository:
         scan_id: int, 
         prefetch_relations: bool = False,
         for_update: bool = False
-    ) -> Optional[Scan]:
+    ) -> Scan | None:
         """
         根据 ID 获取扫描任务
         
@@ -60,7 +60,7 @@ class ScanRepository:
             return None
     
     @staticmethod
-    def get_by_id_for_update(scan_id: int, prefetch_relations: bool = False) -> Optional[Scan]:
+    def get_by_id_for_update(scan_id: int, prefetch_relations: bool = False) -> Scan | None:
         """
         根据 ID 获取扫描任务（加锁）
         
@@ -220,7 +220,7 @@ class ScanRepository:
     def update_status(
         scan_id: int,
         status: ScanTaskStatus,
-        error_message: Optional[str] = None
+        error_message: str | None = None
     ) -> bool:
         """
         更新扫描任务状态
@@ -260,7 +260,7 @@ class ScanRepository:
     
     @staticmethod
     @transaction.atomic
-    def update_started_at(scan_id: int, started_at: Optional[datetime] = None) -> bool:
+    def update_started_at(scan_id: int, started_at: datetime | None = None) -> bool:
         """
         更新扫描开始时间
         
@@ -282,7 +282,7 @@ class ScanRepository:
     
     @staticmethod
     @transaction.atomic
-    def update_stopped_at(scan_id: int, stopped_at: Optional[datetime] = None) -> bool:
+    def update_stopped_at(scan_id: int, stopped_at: datetime | None = None) -> bool:
         """
         更新扫描结束时间
         
@@ -364,7 +364,7 @@ class ScanRepository:
         status: ScanTaskStatus,
         task_id: str,
         task_name: str,
-        started_at: Optional[datetime] = None
+        started_at: datetime | None = None
     ) -> bool:
         """
         启动扫描（首次初始化）
@@ -408,18 +408,18 @@ class ScanRepository:
         return True
     
     @staticmethod
-    @transaction.atomic
     def append_task(
         scan_id: int,
         task_id: str,
         task_name: str
     ) -> bool:
         """
-        追加任务到扫描
+        追加任务到扫描（使用原子更新避免死锁）
         
         职责：
         - 添加任务 ID 和名称到列表
         - 不改变扫描状态
+        - 使用 PostgreSQL 原子操作避免并发死锁
         
         Args:
             scan_id: 扫描任务 ID
@@ -428,30 +428,60 @@ class ScanRepository:
         
         Returns:
             是否追加成功
-        """
-        scan = ScanRepository.get_by_id_for_update(scan_id)
-        if not scan:
-            return False
         
-        # 避免重复添加
-        if task_id and task_id not in scan.task_ids:
-            scan.task_ids.append(task_id)
-            scan.task_names.append(task_name)
-            scan.save()
-            logger.debug(
-                "追加任务 - Scan ID: %s, Task: %s, 当前状态: %s",
+        Note:
+            使用 PostgreSQL 的 array_append 函数实现原子更新
+            避免了 select_for_update 的锁竞争问题
+            高并发场景下性能更好，不会产生死锁
+        """
+        from django.db import connection
+        
+        try:
+            if not task_id:
+                logger.debug(
+                    "task_id 为空，跳过追加 - Scan ID: %s, Task: %s",
+                    scan_id,
+                    task_name
+                )
+                return False
+            
+            # 使用原生 SQL 实现原子更新
+            # PostgreSQL 的 array_append 是原子操作，不需要加锁
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    UPDATE scan
+                    SET task_ids = array_append(task_ids, %s),
+                        task_names = array_append(task_names, %s)
+                    WHERE id = %s
+                    """,
+                    [task_id, task_name, scan_id]
+                )
+                updated_count = cursor.rowcount
+            
+            if updated_count > 0:
+                logger.debug(
+                    "追加任务成功（原子更新）- Scan ID: %s, Task: %s, Task ID: %s",
+                    scan_id,
+                    task_name,
+                    task_id
+                )
+                return True
+            else:
+                logger.warning(
+                    "追加任务失败，Scan 不存在 - Scan ID: %s",
+                    scan_id
+                )
+                return False
+                
+        except Exception as e:  # noqa: BLE001
+            logger.error(
+                "追加任务失败 - Scan ID: %s, Task: %s, 错误: %s",
                 scan_id,
                 task_name,
-                ScanTaskStatus(scan.status).label
+                e
             )
-        else:
-            logger.debug(
-                "任务已存在，跳过追加 - Scan ID: %s, Task ID: %s",
-                scan_id,
-                task_id
-            )
-        
-        return True
+            return False
 
 
 # 导出接口

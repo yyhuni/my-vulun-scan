@@ -38,8 +38,9 @@ class SubdomainDiscoveryService:
     ]
     
     # 默认配置
-    DEFAULT_TIMEOUT: int = 300  # 5分钟
+    DEFAULT_TIMEOUT: int = 3600  # 60分钟
     MODULE_DIR_NAME: str = "subdomain_discovery"
+    FILE_BUFFER_SIZE: int = 1024 * 1024  # 1MB 缓冲区（优化大文件读写性能）
     
     # ==================== 初始化 ====================
     
@@ -119,7 +120,7 @@ class SubdomainDiscoveryService:
     
     def get_scan_results(self, merged_file: str) -> List[str]:
         """
-        从合并文件中读取子域名列表
+        从合并文件中读取子域名列表（优化缓冲区）
         
         Args:
             merged_file: 合并文件路径
@@ -130,9 +131,12 @@ class SubdomainDiscoveryService:
         Raises:
             OSError: 文件读取失败
             UnicodeDecodeError: 文件编码错误
+        
+        Note:
+            使用 1MB 缓冲区优化大文件读取性能
         """
         try:
-            with open(merged_file, 'r', encoding='utf-8') as f:
+            with open(merged_file, 'r', encoding='utf-8', buffering=self.FILE_BUFFER_SIZE) as f:
                 results = [line.strip() for line in f if line.strip()]
                 logger.info("从结果文件读取 %d 个子域名", len(results))
                 return results
@@ -245,10 +249,8 @@ class SubdomainDiscoveryService:
             output_file = scan_dir / f"{tool_name}_{timestamp}.txt"
             
             try:
-                command = command_template.format(
-                    target=target,
-                    output_file=str(output_file)
-                )
+                # 使用 f-string 构建命令（替代 .format()）
+                command = command_template.replace('{target}', target).replace('{output_file}', str(output_file))
                 
                 logger.info("[%d/%d] 执行扫描工具: %s", idx, total_tools, tool_name)
                 self.executor.execute_scan_tool(tool_name, command)
@@ -343,11 +345,12 @@ class SubdomainDiscoveryService:
         
         try:
             # 步骤 1: 合并所有文件到临时文件（保留重复）
+            # 使用缓冲区优化大文件读写性能
             total_lines = 0
-            with open(temp_file, 'w', encoding='utf-8') as out:
+            with open(temp_file, 'w', encoding='utf-8', buffering=self.FILE_BUFFER_SIZE) as out:
                 for result_file in result_files:
                     try:
-                        with open(result_file, 'r', encoding='utf-8') as f:
+                        with open(result_file, 'r', encoding='utf-8', buffering=self.FILE_BUFFER_SIZE) as f:
                             for line in f:
                                 line = line.strip()
                                 if line and not line.startswith('#'):  # 跳过空行和注释
@@ -381,9 +384,6 @@ class SubdomainDiscoveryService:
                 raise RuntimeError("合并文件为空，未找到有效子域名")
             
             logger.info("成功合并 %d 个唯一子域名到: %s", unique_count, merged_file.name)
-            
-            # 步骤 5: 删除原始工具生成的文件
-            self._cleanup_result_files(result_files)
             
             return merged_file
         
@@ -434,40 +434,24 @@ class SubdomainDiscoveryService:
     
     def _count_lines(self, file_path: Path) -> int:
         """
-        快速统计文件行数
+        快速统计文件行数（使用生成器 + 缓冲区优化）
         
         Args:
             file_path: 文件路径
         
         Returns:
             文件行数
+        
+        Note:
+            使用生成器逐行处理，避免一次性加载整个文件到内存
         """
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, 'r', encoding='utf-8', buffering=self.FILE_BUFFER_SIZE) as f:
                 return sum(1 for _ in f)
         except (OSError, UnicodeDecodeError) as e:
             logger.error("Failed to count lines in %s: %s", file_path, e)
             return 0
     
-    def _cleanup_result_files(self, result_files: List[Path]) -> None:
-        """
-        删除原始工具生成的结果文件
-        
-        Args:
-            result_files: 要删除的文件路径列表
-        """
-        deleted_count = 0
-        for result_file in result_files:
-            try:
-                if result_file.exists():
-                    result_file.unlink()
-                    deleted_count += 1
-                    logger.debug("Deleted result file: %s", result_file)
-            except OSError as e:
-                logger.warning("Failed to delete result file %s: %s", result_file, e)
-        
-        logger.info("Cleaned up %d/%d result files", deleted_count, len(result_files))
-
 
 # ==================== 导出接口 ====================
 

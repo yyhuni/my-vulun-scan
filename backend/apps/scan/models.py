@@ -116,7 +116,13 @@ class ScanTask(models.Model):
     error_traceback = models.TextField(blank=True, default='', help_text='完整的错误堆栈信息（用于调试）')
 
     # Celery 任务ID（用于追踪异步任务）
-    task_id = models.CharField(max_length=100, blank=True, default='', help_text='Celery 异步任务的唯一标识符')
+    task_id = models.CharField(
+        max_length=100,
+        blank=True,
+        default='',
+        db_index=True,  # 添加索引，用于 update_or_create 查询优化
+        help_text='Celery 异步任务的唯一标识符'
+    )
 
     class Meta:
         db_table = 'scan_task'
@@ -125,6 +131,8 @@ class ScanTask(models.Model):
         ordering = ['-updated_at']
         indexes = [
             models.Index(fields=['-updated_at']),
+            models.Index(fields=['scan', 'task_id']),  # 组合索引：优化 update_or_create 查询
+            models.Index(fields=['scan', 'status']),   # 组合索引：优化状态查询
         ]
 
     def __str__(self):

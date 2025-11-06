@@ -71,26 +71,29 @@ class StatusUpdateHandler:
         信号：task_prerun
         触发时机：任务开始执行前
         """
+        # 安全获取 scan_id，使用默认值确保任务能被追踪
         scan_id = kwargs.get('scan_id') if kwargs else None
         if not scan_id:
-            logger.debug("任务没有 scan_id 参数，跳过状态更新")
-            return
+            logger.warning("任务没有 scan_id 参数，但仍会尝试记录任务信息")
+            scan_id = -1  # 使用特殊值标记无 scan_id 的任务
             
-        # 安全获取 task_name（Fail Fast：如果为空则直接跳过）
+        # 安全获取 task_name，使用默认值确保任务能被追踪
         if not task:
+            task_name = f"unknown_task_{task_id or 'no_id'}"
             logger.error(
-                "严重错误：task 参数为 None！跳过状态更新 - Scan ID: %s",
+                "task 参数为 None，使用默认名称: %s - Scan ID: %s",
+                task_name,
                 scan_id
             )
-            return  # 不使用 fallback，避免污染数据
-        
-        task_name = getattr(task, 'name', None)
-        if not task_name:
-            logger.error(
-                "严重错误：task.name 为空！跳过状态更新 - Scan ID: %s",
-                scan_id
-            )
-            return  # 不使用 fallback，避免污染数据
+        else:
+            task_name = getattr(task, 'name', None)
+            if not task_name:
+                task_name = f"unknown_task_{task_id or 'no_id'}"
+                logger.error(
+                    "task.name 为空，使用默认名称: %s - Scan ID: %s",
+                    task_name,
+                    scan_id
+                )
         
         # 记录任务开始（task_id 验证由 Service 层负责）
         logger.info(
@@ -153,26 +156,29 @@ class StatusUpdateHandler:
         - 只有 finalize_scan 负责更新 Scan 的最终状态
         - 工作任务完成只更新 ScanTask，不影响 Scan
         """
+        # 安全获取 scan_id，使用默认值确保任务能被追踪
         scan_id = kwargs.get('scan_id') if kwargs else None
         if not scan_id:
-            logger.debug("任务没有 scan_id 参数，跳过状态更新")
-            return
+            logger.warning("任务没有 scan_id 参数，使用默认值")
+            scan_id = -1  # 使用特殊值标记无 scan_id 的任务
         
-        # 安全获取 task_name（Fail Fast：如果为空则直接跳过）
+        # 安全获取 task_name，使用默认值确保任务能被追踪
         if not sender:
+            task_name = f"unknown_task_{task_id or 'no_id'}"
             logger.error(
-                "严重错误：sender 参数为 None！跳过状态更新 - Scan ID: %s",
+                "sender 参数为 None，使用默认名称: %s - Scan ID: %s",
+                task_name,
                 scan_id
             )
-            return  # 不使用 fallback，避免污染数据
-        
-        task_name = getattr(sender, 'name', None)
-        if not task_name:
-            logger.error(
-                "严重错误：sender.name 为空！跳过状态更新 - Scan ID: %s",
-                scan_id
-            )
-            return  # 不使用 fallback，避免污染数据
+        else:
+            task_name = getattr(sender, 'name', None)
+            if not task_name:
+                task_name = f"unknown_task_{task_id or 'no_id'}"
+                logger.error(
+                    "sender.name 为空，使用默认名称: %s - Scan ID: %s",
+                    task_name,
+                    scan_id
+                )
         
         logger.info(
             "任务执行成功 - Task: %s, Task ID: %s, Scan ID: %s",
@@ -222,26 +228,29 @@ class StatusUpdateHandler:
         - 因为 chain 会中断，finalize_scan 不会执行
         - 需要在这里立即更新，确保 Scan 状态正确
         """
+        # 安全获取 scan_id，使用默认值确保任务能被追踪
         scan_id = kwargs.get('scan_id') if kwargs else None
         if not scan_id:
-            logger.debug("任务没有 scan_id 参数，跳过状态更新")
-            return
+            logger.warning("任务没有 scan_id 参数，使用默认值")
+            scan_id = -1  # 使用特殊值标记无 scan_id 的任务
         
-        # 安全获取 task_name（Fail Fast：如果为空则直接跳过）
+        # 安全获取 task_name，使用默认值确保任务能被追踪
         if not sender:
+            task_name = f"unknown_task_{task_id or 'no_id'}"
             logger.error(
-                "严重错误：sender 参数为 None！跳过状态更新 - Scan ID: %s",
+                "sender 参数为 None，使用默认名称: %s - Scan ID: %s",
+                task_name,
                 scan_id
             )
-            return  
-        
-        task_name = getattr(sender, 'name', None)
-        if not task_name:
-            logger.error(
-                "严重错误：sender.name 为空！跳过状态更新 - Scan ID: %s",
-                scan_id
-            )
-            return  
+        else:
+            task_name = getattr(sender, 'name', None)
+            if not task_name:
+                task_name = f"unknown_task_{task_id or 'no_id'}"
+                logger.error(
+                    "sender.name 为空，使用默认名称: %s - Scan ID: %s",
+                    task_name,
+                    scan_id
+                )
         
         # 安全获取错误信息
         error_message = str(exception) if exception else 'Unknown error'
@@ -301,32 +310,39 @@ class StatusUpdateHandler:
         - 因为 chain 会中断，finalize_scan 不会执行
         - 需要在这里立即更新，确保 Scan 状态正确
         """
-        # 从 request 对象获取信息
+        # 从 request 对象获取信息，使用默认值确保任务能被追踪
         if not request:
-            logger.warning("任务撤销信号没有 request 对象，无法处理")
-            return
-        
-        # 安全获取 task_id
-        task_id = getattr(request, 'id', None)
-        
-        # 安全获取 kwargs
-        kwargs = getattr(request, 'kwargs', {})
-        if not isinstance(kwargs, dict):
-            logger.warning("request.kwargs 不是字典类型，使用空字典")
-            kwargs = {}
-        
-        # 安全获取 task_name（Fail Fast：如果为空则直接跳过）
-        task_name = getattr(request, 'task', None)
-        if not task_name:
-            logger.error(
-                "严重错误：request.task 为空！跳过状态更新"
-            )
-            return  # 不使用 fallback，避免污染数据
-        
-        scan_id = kwargs.get('scan_id') if kwargs else None
-        if not scan_id:
-            logger.debug("任务没有 scan_id 参数，跳过状态更新")
-            return
+            logger.error("任务撤销信号没有 request 对象，使用默认值")
+            task_id = 'unknown_revoked_task'
+            task_name = 'unknown_revoked_task'
+            scan_id = -1
+        else:
+            # 安全获取 task_id
+            task_id = getattr(request, 'id', None)
+            if not task_id:
+                task_id = 'unknown_revoked_task'
+                logger.warning("request.id 为空，使用默认值: %s", task_id)
+            
+            # 安全获取 kwargs
+            kwargs = getattr(request, 'kwargs', {})
+            if not isinstance(kwargs, dict):
+                logger.warning("request.kwargs 不是字典类型，使用空字典")
+                kwargs = {}
+            
+            # 安全获取 task_name，使用默认值确保任务能被追踪
+            task_name = getattr(request, 'task', None)
+            if not task_name:
+                task_name = f"unknown_revoked_{task_id}"
+                logger.error(
+                    "request.task 为空，使用默认名称: %s",
+                    task_name
+                )
+            
+            # 安全获取 scan_id，使用默认值确保任务能被追踪
+            scan_id = kwargs.get('scan_id') if kwargs else None
+            if not scan_id:
+                logger.warning("任务没有 scan_id 参数，使用默认值")
+                scan_id = -1
         
         reason = f"Terminated={terminated}, Signal={signum}, Expired={expired}"
         logger.warning(
@@ -352,50 +368,4 @@ class StatusUpdateHandler:
         logger.warning("任务中止，处理 Scan 撤销状态 - Scan ID: %s", scan_id)
         self.scan_service.abort_scan_on_revoked(scan_id)
     
-    def _handle_scan_completion(self, scan_id: int) -> None:
-        """
-        处理扫描完成逻辑
-        
-        职责：
-        - 从 Service 获取完成状态和统计信息
-        - 决定是否需要更新 Scan 状态
-        - 决定更新成什么状态
-        - 调用 Service 执行更新
-        
-        这是 Handler 层的控制逻辑，Service 层只提供数据和执行操作
-        """
-        # 获取完成状态（Service 层只提供数据，不做决策）
-        is_completed, stats, suggested_status = self.scan_service.get_scan_completion_status(scan_id)
-        
-        if not is_completed:
-            # 还有任务在运行，不更新状态
-            return
-        
-        if not suggested_status:
-            logger.warning("无法确定 Scan 的最终状态 - Scan ID: %s", scan_id)
-            return
-        
-        # Handler 层决定：根据统计信息更新状态
-        aborted_count = stats.get('aborted', 0)
-        failed_count = stats.get('failed', 0)
-        success_count = stats.get('successful', 0)
-        
-        if suggested_status == ScanTaskStatus.ABORTED:
-            logger.warning(
-                "扫描被中止 - Scan ID: %s, 中止: %d, 失败: %d, 成功: %d",
-                scan_id, aborted_count, failed_count, success_count
-            )
-        elif suggested_status == ScanTaskStatus.FAILED:
-            logger.warning(
-                "扫描失败 - Scan ID: %s, 失败: %d, 成功: %d",
-                scan_id, failed_count, success_count
-            )
-        else:
-            logger.info(
-                "扫描成功完成 - Scan ID: %s, 成功: %d",
-                scan_id, success_count
-            )
-        
-        # 调用 Service 执行完成操作
-        self.scan_service.complete_scan(scan_id, suggested_status)
 

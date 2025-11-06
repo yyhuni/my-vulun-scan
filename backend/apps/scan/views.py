@@ -12,7 +12,8 @@ from apps.engine.models import ScanEngine
 
 class ScanViewSet(viewsets.ModelViewSet):
     """扫描任务视图集"""
-    queryset = Scan.objects.all()  # type: ignore  # pylint: disable=no-member
+    # 优化：使用 select_related 预加载关联对象，避免 N+1 查询
+    queryset = Scan.objects.select_related('target', 'engine').all()  # type: ignore  # pylint: disable=no-member
     serializer_class = ScanSerializer
     
     @action(detail=False, methods=['post'])
@@ -61,7 +62,7 @@ class ScanViewSet(viewsets.ModelViewSet):
             # 根据参数获取目标列表
             targets = []
             if organization_id:
-                # 根据组织ID获取所有目标
+                # 根据组织ID获取所有目标（优化：不需要 select_related，因为只使用 target 本身）
                 organization = Organization.objects.get(id=organization_id)  # type: ignore  # pylint: disable=no-member
                 targets = list(organization.targets.all())
                 

@@ -39,10 +39,17 @@ class ScanService:
     - 生命周期管理
     """
     
+    # 终态集合：这些状态一旦设置，不应该被覆盖
+    FINAL_STATUSES = {
+        ScanTaskStatus.SUCCESSFUL,
+        ScanTaskStatus.FAILED,
+        ScanTaskStatus.ABORTED
+    }
+    
     def __init__(
         self, 
         scan_repository: ScanRepository | None = None,
-        task_service: Optional['ScanTaskService'] = None
+        task_service: 'ScanTaskService' | None = None
     ):
         """
         初始化服务
@@ -232,7 +239,7 @@ class ScanService:
         self, 
         scan_id: int, 
         status: ScanTaskStatus, 
-        message: Optional[str] = None
+        message: str | None = None
     ) -> bool:
         """
         更新 Scan 状态
@@ -319,7 +326,7 @@ class ScanService:
             logger.exception("启动扫描执行失败 - Scan ID: %s, 错误: %s", scan_id, e)
             return False
     
-    def get_scan_completion_status(self, scan_id: int) -> tuple[bool, Dict[str, int], Optional[ScanTaskStatus]]:
+    def get_scan_completion_status(self, scan_id: int) -> tuple[bool, Dict[str, int], ScanTaskStatus | None]:
         """
         获取扫描完成状态和建议的最终状态
         
@@ -426,14 +433,17 @@ class ScanService:
                 logger.error("Scan 不存在 - Scan ID: %s", scan_id)
                 return False
             
-            # 状态保护：FAILED 优先级高于 ABORTED
-            # 场景：任务失败 → Scan=FAILED → 级联撤销其他任务 → 不应该变成 ABORTED
-            if scan.status == ScanTaskStatus.FAILED:
+            # 状态保护：保护所有终态不被覆盖
+            # 终态优先级：SUCCESSFUL = FAILED = ABORTED
+            # 场景1：任务失败 → Scan=FAILED → 级联撤销其他任务 → 不应该变成 ABORTED
+            # 场景2：finalize_scan → Scan=SUCCESSFUL → 延迟的 revoked 信号 → 不应该变成 ABORTED
+            if scan.status in self.FINAL_STATUSES:
                 logger.info(
-                    "Scan 已处于 FAILED 状态，跳过 ABORTED 更新（级联撤销保护） - Scan ID: %s",
+                    "Scan 已处于终态 %s，跳过 ABORTED 更新（终态保护） - Scan ID: %s",
+                    ScanTaskStatus(scan.status).label,
                     scan_id
                 )
-                # 虽然不更新状态，但仍然触发清理
+                # 虽然不更新状态，但仍然触发清理（如果还未清理）
                 self._trigger_workspace_cleanup(scan_id)
                 return True
             
@@ -455,7 +465,7 @@ class ScanService:
     def fail_scan_with_cascade(
         self, 
         scan_id: int,
-        failed_task_id: Optional[str] = None
+        failed_task_id: str | None = None
     ) -> bool:
         """
         标记扫描为失败并撤销所有可撤销的任务

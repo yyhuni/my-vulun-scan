@@ -21,8 +21,8 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         """
         organization = self.get_object()
         
-        # 获取组织的目标
-        queryset = organization.targets.all()
+        # 获取组织的目标（优化：使用 prefetch_related 预加载 organizations，避免 N+1 查询）
+        queryset = organization.targets.prefetch_related('organizations').all()
         
         # 使用分页器
         paginator = self.paginator
@@ -93,7 +93,8 @@ class OrganizationViewSet(viewsets.ModelViewSet):
 
 class TargetViewSet(viewsets.ModelViewSet):
     """目标管理 - 增删改查"""
-    queryset = Target.objects.all()
+    # 优化：使用 prefetch_related 预加载 organizations，避免 N+1 查询
+    queryset = Target.objects.prefetch_related('organizations').all()
     serializer_class = TargetSerializer
     
     @action(detail=False, methods=['post'])
