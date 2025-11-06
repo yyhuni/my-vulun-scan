@@ -101,12 +101,9 @@ def initiate_scan_task(self, scan_id: int):
         # 工作任务（如 subdomain_discovery）则通过信号隐式处理
         
         # 通过 Service 层启动扫描执行
-        # Service 层负责：状态验证、状态转换(INITIATED → RUNNING)、时间戳生成、任务信息初始化
-        result = scan_service.start_scan_execution(
-            scan_id=scan_id,
-            task_name='initiate_scan',
-            task_id=self.request.id
-        )
+        # Service 层负责：状态验证、状态转换(INITIATED → RUNNING)、时间戳生成
+        # 任务信息（task_ids, task_names）由信号处理器统一追加
+        result = scan_service.start_scan_execution(scan_id=scan_id)
         
         if not result:
             error_msg = "启动扫描执行失败（可能状态异常或数据库错误）"

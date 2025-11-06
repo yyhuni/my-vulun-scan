@@ -1,7 +1,19 @@
 """
-状态更新处理器
+任务信号处理器
 
-负责监听任务信号并更新 Scan 和 ScanTask 的状态
+负责监听 Celery 任务信号并处理任务生命周期事件
+
+主要职责：
+1. 状态管理：更新 Scan 和 ScanTask 的状态
+2. 记录创建：为每个任务创建 ScanTask 记录
+3. 任务追踪：追加 task_ids 和 task_names 到 Scan（仅工作任务）
+4. 错误处理：记录任务失败的错误信息和堆栈
+
+信号监听：
+- task_prerun: 任务开始前（创建记录、追加任务信息）
+- task_success: 任务成功完成（更新 ScanTask 状态）
+- task_failure: 任务执行失败（更新 Scan 和 ScanTask 状态）
+- task_revoked: 任务被中止/撤销（更新 Scan 和 ScanTask 状态）
 """
 
 import logging
@@ -27,7 +39,9 @@ class StatusUpdateHandler:
     - 任务失败/中止时立即更新 Scan 状态（因为 chain 会中断，finalize 不会执行）
     """
     
-    # 编排任务和收尾任务（完成时不触发 Scan 更新）
+    # 编排任务和收尾任务
+    # 这些任务成功完成时不触发 Scan 状态更新（由 finalize_scan 统一更新）
+    # 但失败/中止时仍然会立即更新 Scan 状态
     ORCHESTRATOR_TASKS = {'initiate_scan', 'finalize_scan'}
     
     def __init__(self):
@@ -83,14 +97,12 @@ class StatusUpdateHandler:
             scan_id
         )
         
-        # 编排任务跳过（它们在任务内部显式控制）
-        # 工作任务通过 Service 追加任务信息到 Scan
-        if task_name not in self.ORCHESTRATOR_TASKS:
-            self.scan_service.append_task_to_scan(
-                scan_id=scan_id,
-                task_id=task_id or '',
-                task_name=task_name
-            )
+        # 统一追加所有任务信息到 Scan（包括编排任务和工作任务）
+        self.scan_service.append_task_to_scan(
+            scan_id=scan_id,
+            task_id=task_id or '',
+            task_name=task_name
+        )
         
         # 所有任务都创建 ScanTask 记录
         self.task_service.initialize_task(

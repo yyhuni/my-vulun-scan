@@ -282,9 +282,7 @@ class ScanService:
     
     def start_scan_execution(
         self,
-        scan_id: int,
-        task_name: str,
-        task_id: str
+        scan_id: int
     ) -> bool:
         """
         启动扫描执行（由 initiate_scan_task 调用）
@@ -293,7 +291,10 @@ class ScanService:
         - 验证扫描状态必须是 INITIATED
         - 更新状态为 RUNNING
         - 设置开始时间
-        - 初始化任务列表
+        
+        注意：
+        - 任务信息（task_ids, task_names）由信号处理器统一追加
+        - 不再需要传递 task_id 和 task_name
         
         前置条件：
         - Scan 状态必须是 INITIATED（由 Service 层创建时设置）
@@ -301,8 +302,6 @@ class ScanService:
         
         Args:
             scan_id: 扫描任务 ID
-            task_name: 任务名称（通常是 'initiate_scan'）
-            task_id: Celery 任务 ID
         
         Returns:
             是否启动成功
@@ -324,25 +323,19 @@ class ScanService:
                 return False
             
             # 启动扫描：INITIATED → RUNNING
-            # Service 层决定状态转换和时间戳
-            result = self.scan_repo.start_scan(
-                scan_id=scan_id,
-                status=ScanTaskStatus.RUNNING,
-                task_id=task_id,
-                task_name=task_name,
-                started_at=timezone.now()
+            # Service 层只负责状态转换，任务信息由信号处理器追加
+            scan.status = ScanTaskStatus.RUNNING
+            scan.started_at = timezone.now()
+            scan.save()
+            
+            logger.info(
+                "启动扫描执行 - Scan ID: %s, 状态: %s → %s",
+                scan_id,
+                ScanTaskStatus.INITIATED.label,
+                ScanTaskStatus.RUNNING.label
             )
             
-            if result:
-                logger.info(
-                    "启动扫描执行 - Scan ID: %s, 任务: %s, 状态: %s → %s",
-                    scan_id,
-                    task_name,
-                    ScanTaskStatus.INITIATED.label,
-                    ScanTaskStatus.RUNNING.label
-                )
-            
-            return result
+            return True
                 
         except Exception as e:  # noqa: BLE001
             logger.exception("启动扫描执行失败 - Scan ID: %s, 错误: %s", scan_id, e)
