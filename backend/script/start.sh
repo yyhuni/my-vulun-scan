@@ -60,6 +60,33 @@ else
     exit 1
 fi
 
+# 检查端口占用情况
+echo ""
+echo -e "${BLUE}检查端口占用情况...${NC}"
+port_check_failed=false
+
+if lsof -ti:8888 > /dev/null 2>&1; then
+    echo -e "${RED}❌ 端口 8888 (Django) 已被占用${NC}"
+    echo -e "${YELLOW}   占用进程 PID: $(lsof -ti:8888)${NC}"
+    port_check_failed=true
+fi
+
+if lsof -ti:5555 > /dev/null 2>&1; then
+    echo -e "${RED}❌ 端口 5555 (Flower) 已被占用${NC}"
+    echo -e "${YELLOW}   占用进程 PID: $(lsof -ti:5555)${NC}"
+    port_check_failed=true
+fi
+
+if [ "$port_check_failed" = true ]; then
+    echo ""
+    echo -e "${YELLOW}请先运行停止脚本清理端口占用:${NC}"
+    echo -e "  ${BLUE}bash script/stop.sh${NC}"
+    echo ""
+    exit 1
+fi
+
+echo -e "${GREEN}✅ 所有端口可用${NC}"
+
 echo ""
 echo -e "${BLUE}正在启动各项服务...${NC}"
 echo ""

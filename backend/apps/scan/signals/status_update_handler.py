@@ -76,6 +76,11 @@ class StatusUpdateHandler:
         信号：task_prerun
         触发时机：任务开始执行前
         """
+        logger.debug(
+            "收到 task_prerun 信号 - task_id: %s, task: %s, kwargs: %s",
+            task_id, task, kwargs
+        )
+
         if not task:
             task_name = f"unknown_task_{task_id or 'no_id'}"
             logger.error("task 参数为 None，使用默认名称: %s", task_name)
@@ -158,6 +163,11 @@ class StatusUpdateHandler:
         - 只有 finalize_scan 负责更新 Scan 的最终状态
         - 工作任务完成只更新 ScanTask，不影响 Scan
         """
+        logger.debug(
+            "收到 task_success 信号 - task_id: %s, sender: %s, result: %s, args: %s, kwargs: %s",
+            task_id, sender, result, args, kwargs
+        )
+        
         # 安全获取 task_name
         if not sender:
             task_name = f"unknown_task_{task_id or 'no_id'}"
@@ -172,6 +182,16 @@ class StatusUpdateHandler:
         if task_name in self.MAINTENANCE_TASKS:
             logger.debug("维护任务成功，跳过追踪 - Task: %s", task_name)
             return
+        
+        # 从 sender.request 获取任务上下文（task_success 信号不保证有 task_id 和 kwargs）
+        if not task_id and sender:
+            task_id = getattr(sender.request, 'id', None)
+            logger.debug("从 sender.request 获取 task_id: %s", task_id)
+        
+        # 从 sender.request 获取 kwargs
+        if not kwargs and sender:
+            kwargs = getattr(sender.request, 'kwargs', None)
+            logger.debug("从 sender.request 获取 kwargs: %s", kwargs)
         
         # 安全获取 scan_id（统一从 kwargs 中获取）
         scan_id = kwargs.get('scan_id') if kwargs else None
@@ -227,6 +247,11 @@ class StatusUpdateHandler:
         - 因为 chain 会中断，finalize_scan 不会执行
         - 需要在这里立即更新，确保 Scan 状态正确
         """
+        logger.debug(
+            "收到 task_failure 信号 - task_id: %s, sender: %s, exception: %s, args: %s, kwargs: %s, einfo: %s",
+            task_id, sender, exception, args, kwargs, einfo
+        )
+        
         # 安全获取 task_name
         if not sender:
             task_name = f"unknown_task_{task_id or 'no_id'}"
@@ -241,6 +266,16 @@ class StatusUpdateHandler:
         if task_name in self.MAINTENANCE_TASKS:
             logger.debug("维护任务失败，跳过追踪 - Task: %s", task_name)
             return
+        
+        # 从 sender.request 获取任务上下文（task_failure 信号不保证有 task_id 和 kwargs）
+        if not task_id and sender:
+            task_id = getattr(sender.request, 'id', None)
+            logger.debug("从 sender.request 获取 task_id: %s", task_id)
+        
+        # 从 sender.request 获取 kwargs
+        if not kwargs and sender:
+            kwargs = getattr(sender.request, 'kwargs', None)
+            logger.debug("从 sender.request 获取 kwargs: %s", kwargs)
         
         # 安全获取 scan_id（统一从 kwargs 中获取）
         scan_id = kwargs.get('scan_id') if kwargs else None
@@ -306,6 +341,11 @@ class StatusUpdateHandler:
         - 因为 chain 会中断，finalize_scan 不会执行
         - 需要在这里立即更新，确保 Scan 状态正确
         """
+        logger.debug(
+            "收到 task_revoked 信号 - sender: %s, request: %s, terminated: %s, signum: %s, expired: %s",
+            sender, request, terminated, signum, expired
+        )
+        
         # 从 request 对象获取信息，使用默认值确保任务能被追踪
         if not request:
             logger.error("任务撤销信号没有 request 对象，使用默认值")

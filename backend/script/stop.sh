@@ -27,8 +27,8 @@ echo -e "${BLUE}  XingRin 后端服务停止脚本${NC}"
 echo -e "${BLUE}================================${NC}"
 echo ""
 
-# 停止服务的函数
-stop_service() {
+# 按 PID 文件停止服务
+stop_service_by_pid() {
     local service_name=$1
     local pid_file=$2
     
@@ -36,40 +36,93 @@ stop_service() {
         local pid=$(cat "$pid_file")
         if ps -p "$pid" > /dev/null 2>&1; then
             echo -e "${YELLOW}正在停止 $service_name (PID: $pid)...${NC}"
-            kill "$pid"
-            sleep 2
+            kill "$pid" 2>/dev/null
+            sleep 1
             
             # 检查是否成功停止
             if ps -p "$pid" > /dev/null 2>&1; then
                 echo -e "${RED}   ⚠️  进程未响应，强制停止...${NC}"
-                kill -9 "$pid"
+                kill -9 "$pid" 2>/dev/null
                 sleep 1
             fi
             
             if ! ps -p "$pid" > /dev/null 2>&1; then
                 echo -e "${GREEN}   ✅ $service_name 已停止${NC}"
-                rm -f "$pid_file"
-            else
-                echo -e "${RED}   ❌ $service_name 停止失败${NC}"
             fi
-        else
-            echo -e "${YELLOW}$service_name 未运行 (PID 文件存在但进程不存在)${NC}"
-            rm -f "$pid_file"
         fi
-    else
-        echo -e "${YELLOW}$service_name 未运行 (无 PID 文件)${NC}"
+        rm -f "$pid_file"
     fi
 }
 
-# 停止各项服务
-stop_service "Django" "$PID_DIR/django.pid"
-stop_service "Celery Worker - orchestrator" "$PID_DIR/celery_orchestrator.pid"
-stop_service "Celery Worker - scans" "$PID_DIR/celery_scans.pid"
-stop_service "Celery Beat" "$PID_DIR/celery_beat.pid"
-stop_service "Flower" "$PID_DIR/flower.pid"
+# 按进程名强制停止（清理残留进程）
+kill_by_process_name() {
+    local process_pattern=$1
+    local service_name=$2
+    
+    local pids=$(pgrep -f "$process_pattern" 2>/dev/null)
+    if [ -n "$pids" ]; then
+        echo -e "${YELLOW}发现残留的 $service_name 进程，正在清理...${NC}"
+        echo "$pids" | while read pid; do
+            if ps -p "$pid" > /dev/null 2>&1; then
+                echo -e "${YELLOW}   停止进程 PID: $pid${NC}"
+                kill "$pid" 2>/dev/null
+                sleep 0.5
+                if ps -p "$pid" > /dev/null 2>&1; then
+                    kill -9 "$pid" 2>/dev/null
+                fi
+            fi
+        done
+        echo -e "${GREEN}   ✅ 残留进程已清理${NC}"
+    fi
+}
+
+# 按端口号停止（清理端口占用）
+kill_by_port() {
+    local port=$1
+    local service_name=$2
+    
+    local pid=$(lsof -ti:$port 2>/dev/null)
+    if [ -n "$pid" ]; then
+        echo -e "${YELLOW}端口 $port 被占用 ($service_name)，正在清理...${NC}"
+        echo "$pid" | while read p; do
+            echo -e "${YELLOW}   停止占用端口的进程 PID: $p${NC}"
+            kill "$p" 2>/dev/null
+            sleep 0.5
+            if ps -p "$p" > /dev/null 2>&1; then
+                kill -9 "$p" 2>/dev/null
+            fi
+        done
+        echo -e "${GREEN}   ✅ 端口 $port 已释放${NC}"
+    fi
+}
+
+# 1. 先按 PID 文件停止
+echo -e "${BLUE}[阶段 1/2] 停止已知服务...${NC}"
+stop_service_by_pid "Django" "$PID_DIR/django.pid"
+stop_service_by_pid "Celery Worker - orchestrator" "$PID_DIR/celery_orchestrator.pid"
+stop_service_by_pid "Celery Worker - scans" "$PID_DIR/celery_scans.pid"
+stop_service_by_pid "Celery Beat" "$PID_DIR/celery_beat.pid"
+stop_service_by_pid "Flower" "$PID_DIR/flower.pid"
+
+echo ""
+echo -e "${BLUE}[阶段 2/2] 清理残留进程和端口占用...${NC}"
+
+# 2. 按端口清理（确保端口释放）
+kill_by_port 8888 "Django"
+kill_by_port 5555 "Flower"
+
+# 3. 按进程名清理残留进程
+kill_by_process_name "manage.py runserver" "Django"
+kill_by_process_name "celery.*worker.*orchestrator" "Celery Worker - orchestrator"
+kill_by_process_name "celery.*worker.*scans" "Celery Worker - scans"
+kill_by_process_name "celery.*beat" "Celery Beat"
+kill_by_process_name "celery.*flower" "Flower"
+
+# 清理所有 PID 文件
+rm -f "$PID_DIR"/*.pid 2>/dev/null
 
 echo ""
 echo -e "${BLUE}================================${NC}"
-echo -e "${GREEN}✅ 所有服务已停止${NC}"
+echo -e "${GREEN}✅ 所有服务已停止，端口已释放${NC}"
 echo -e "${BLUE}================================${NC}"
 echo ""
