@@ -98,7 +98,7 @@ class ScanCommandExecutor:
             raise
 
 
-# 创建默认实例（使用默认 5 分钟超时）
+# 创建默认实例（）
 default_executor = ScanCommandExecutor()
 
 

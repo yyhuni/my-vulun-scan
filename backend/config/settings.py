@@ -240,3 +240,26 @@ SCAN_RESULTS_DIR = os.getenv('SCAN_RESULTS_DIR')
 SCAN_RESULTS_RETENTION_DAYS = int(os.getenv('SCAN_RETENTION_DAYS', '7'))
 
 
+# ==================== 日志配置 ====================
+# 日志配置说明：
+# 1. 开发环境（DEBUG=True）：
+#    - 默认 DEBUG 级别，输出详细调试信息
+#    - 控制台彩色输出，便于调试
+#    - 可选文件输出（配置 LOG_DIR）
+#
+# 2. 生产环境（DEBUG=False）：
+#    - 默认 INFO 级别，只输出关键信息
+#    - 同时输出到控制台和文件（配置 LOG_DIR）
+#    - 文件自动轮转，避免日志文件过大
+#
+# 3. 环境变量控制：
+#    - LOG_LEVEL: 全局日志级别（DEBUG/INFO/WARNING/ERROR/CRITICAL）
+#    - LOG_DIR: 日志文件目录（留空则不输出文件）
+#    - SCAN_LOG_LEVEL: 扫描模块日志级别（可选，单独控制）
+#    - CELERY_LOG_LEVEL: Celery 日志级别（可选，单独控制）
+
+from config.logging_config import get_logging_config
+
+LOGGING = get_logging_config(debug=DEBUG, base_dir=BASE_DIR)
+
+

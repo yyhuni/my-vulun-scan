@@ -24,3 +24,4 @@ python-dateutil==2.9.0
 pytz==2024.1
 validators==0.22.0
 PyYAML==6.0.1
+colorlog==6.8.2  # 彩色日志输出
