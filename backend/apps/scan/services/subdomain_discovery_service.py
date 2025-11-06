@@ -9,7 +9,7 @@ import os
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, List, Dict
+from typing import List, Dict
 
 from apps.scan.utils.command_executor import ScanCommandExecutor
 
@@ -43,7 +43,7 @@ class SubdomainDiscoveryService:
     
     # ==================== 初始化 ====================
     
-    def __init__(self, timeout: Optional[int] = None):
+    def __init__(self, timeout: int = None):
         """
         初始化子域名发现服务
         
@@ -56,7 +56,7 @@ class SubdomainDiscoveryService:
     
     # ==================== 公共方法 ====================
     
-    def discover(self, target: str, base_dir: str) -> Optional[str]:
+    def discover(self, target: str, base_dir: str) -> str:
         """
         执行子域名发现扫描，并将结果合并到单个文件
         
@@ -67,8 +67,12 @@ class SubdomainDiscoveryService:
                      - 将在此目录下创建 subdomain_discovery/ 模块目录
         
         Returns:
-            合并后的文件路径（成功时）
-            None（失败或无结果时）
+            合并后的文件路径（绝对路径字符串）
+        
+        Raises:
+            ValueError: 参数验证失败
+            OSError: 文件系统操作失败
+            RuntimeError: 扫描或合并失败
         
         目录结构示例：
             {base_dir}/                           # 工作空间（由 initiate_scan_task 创建）
@@ -86,40 +90,32 @@ class SubdomainDiscoveryService:
         """
         # 参数验证
         if not target or not isinstance(target, str):
-            logger.error("Invalid target provided: %s", target)
-            return None
+            raise ValueError(f"Invalid target provided: {target}")
         
         if not base_dir:
-            logger.error("base_dir is required (must be provided by initiate_scan_task)")
-            return None
+            raise ValueError("base_dir is required (must be provided by initiate_scan_task)")
         
         # 生成唯一时间戳
         timestamp = self._generate_timestamp()
         
-        # 在工作空间下创建模块目录
-        try:
-            scan_dir = self._create_scan_directory(base_dir)
-            logger.info("子域名扫描目录已创建: %s", scan_dir)
-        except OSError as e:
-            logger.error("创建扫描目录失败: %s", e)
-            return None
+        # 在工作空间下创建模块目录（让异常向上传播）
+        scan_dir = self._create_scan_directory(base_dir)
+        logger.info("子域名扫描目录已创建: %s", scan_dir)
         
         # 执行扫描
         result_files = self._execute_scan_tools(target, scan_dir, timestamp)
         
         if not result_files:
-            logger.warning("No scan results collected for target: %s", target)
-            return None
+            raise RuntimeError(f"所有扫描工具均未产生结果 - 目标: {target}")
         
         # 合并结果
         merged_file = self._merge_results(scan_dir, result_files, timestamp)
         
-        if merged_file and merged_file.exists():
-            logger.info("Scan completed successfully. Results: %s", merged_file)
-            return str(merged_file)
-        else:
-            logger.warning("Merged file is empty or does not exist")
-            return None
+        if not merged_file or not merged_file.exists():
+            raise RuntimeError(f"结果合并失败或文件不存在 - 目标: {target}")
+        
+        logger.info("扫描完成 - 结果: %s", merged_file)
+        return str(merged_file)
     
     def get_scan_results(self, merged_file: str) -> List[str]:
         """
@@ -129,14 +125,20 @@ class SubdomainDiscoveryService:
             merged_file: 合并文件路径
         
         Returns:
-            子域名列表
+            子域名列表（可能为空，但不会因文件读取失败返回空列表）
+        
+        Raises:
+            OSError: 文件读取失败
+            UnicodeDecodeError: 文件编码错误
         """
         try:
             with open(merged_file, 'r', encoding='utf-8') as f:
-                return [line.strip() for line in f if line.strip()]
+                results = [line.strip() for line in f if line.strip()]
+                logger.info("从结果文件读取 %d 个子域名", len(results))
+                return results
         except (OSError, UnicodeDecodeError) as e:
-            logger.error("Failed to read merged file %s: %s", merged_file, e)
-            return []
+            logger.error("读取结果文件失败 %s: %s", merged_file, e)
+            raise
     
     def count_subdomains(self, merged_file: str) -> int:
         """
@@ -224,12 +226,16 @@ class SubdomainDiscoveryService:
             timestamp: 时间戳字符串
         
         Returns:
-            成功生成的结果文件路径列表
+            成功生成的结果文件路径列表（可能为空列表）
+        
+        Note:
+            单个工具失败不会中断整个流程，会继续执行其他工具
         """
         result_files = []
         total_tools = len(self.SCAN_TOOLS)
+        errors = []
         
-        logger.info("Starting scan with %d tools for target: %s", total_tools, target)
+        logger.info("开始执行 %d 个扫描工具 - 目标: %s", total_tools, target)
         
         for idx, tool_config in enumerate(self.SCAN_TOOLS, 1):
             tool_name = tool_config['name']
@@ -244,21 +250,63 @@ class SubdomainDiscoveryService:
                     output_file=str(output_file)
                 )
                 
-                logger.info("[%d/%d] Executing %s", idx, total_tools, tool_name)
+                logger.info("[%d/%d] 执行扫描工具: %s", idx, total_tools, tool_name)
                 self.executor.execute_scan_tool(tool_name, command)
                 
                 # 检查输出文件是否生成且非空
                 if output_file.exists() and output_file.stat().st_size > 0:
                     result_files.append(output_file)
-                    logger.info("[%d/%d] %s completed, output: %s", idx, total_tools, tool_name, output_file)
+                    file_size = output_file.stat().st_size
+                    logger.info(
+                        "[%d/%d] %s 完成 - 文件: %s (大小: %d 字节)",
+                        idx, total_tools, tool_name, output_file.name, file_size
+                    )
                 else:
-                    logger.warning("[%d/%d] %s completed but no results", idx, total_tools, tool_name)
+                    error_msg = f"{tool_name}: 未生成结果或文件为空"
+                    logger.warning("[%d/%d] %s", idx, total_tools, error_msg)
+                    errors.append(error_msg)
             
-            except subprocess.CalledProcessError:
-                logger.warning("[%d/%d] %s failed, continuing with next tool", idx, total_tools, tool_name)
+            except subprocess.CalledProcessError as e:
+                error_msg = f"{tool_name} 失败 (退出码 {e.returncode})"
+                logger.warning("[%d/%d] %s, 继续执行下一个工具", idx, total_tools, error_msg)
+                errors.append(error_msg)
+                continue
+            
+            except subprocess.TimeoutExpired:
+                error_msg = f"{tool_name} 超时 ({self.timeout}秒)"
+                logger.warning("[%d/%d] %s, 继续执行下一个工具", idx, total_tools, error_msg)
+                errors.append(error_msg)
+                continue
+            
+            except (OSError, IOError) as e:
+                error_msg = f"{tool_name} 文件系统错误: {type(e).__name__}: {e}"
+                logger.error("[%d/%d] %s, 继续执行下一个工具", idx, total_tools, error_msg)
+                errors.append(error_msg)
+                continue
+            
+            except Exception as e:
+                error_msg = f"{tool_name} 未预期错误: {type(e).__name__}: {e}"
+                logger.error("[%d/%d] %s, 继续执行下一个工具", idx, total_tools, error_msg)
+                errors.append(error_msg)
                 continue
         
-        logger.info("Scan completed: %d/%d tools produced results", len(result_files), total_tools)
+        # 汇总结果
+        success_count = len(result_files)
+        failure_count = len(errors)
+        
+        if success_count > 0:
+            logger.info(
+                "扫描完成 - 成功: %d/%d, 失败: %d/%d",
+                success_count, total_tools, failure_count, total_tools
+            )
+            if errors:
+                logger.warning("失败工具详情: %s", "; ".join(errors))
+        else:
+            logger.warning(
+                "扫描完成但无结果 - 所有 %d 个工具均失败: %s",
+                total_tools, "; ".join(errors)
+            )
+        
         return result_files
     
     def _merge_results(
@@ -266,7 +314,7 @@ class SubdomainDiscoveryService:
         scan_dir: Path, 
         result_files: List[Path], 
         timestamp: str
-    ) -> Optional[Path]:
+    ) -> Path:
         """
         流式合并所有扫描结果到单个文件，并去重排序
         
@@ -278,16 +326,20 @@ class SubdomainDiscoveryService:
             timestamp: 时间戳字符串
         
         Returns:
-            合并后的文件路径，如果无结果则返回 None
+            合并后的文件路径
+        
+        Raises:
+            ValueError: 没有文件需要合并
+            OSError: 文件操作失败
+            subprocess.SubprocessError: 排序去重命令执行失败
         """
         if not result_files:
-            logger.warning("No result files to merge")
-            return None
+            raise ValueError("没有结果文件可合并")
         
         merged_file = scan_dir / f"merged_{timestamp}.txt"
         temp_file = scan_dir / f"merged_{timestamp}.tmp"
         
-        logger.info("Merging %d result files (streaming mode)", len(result_files))
+        logger.info("开始合并 %d 个结果文件（流式处理）", len(result_files))
         
         try:
             # 步骤 1: 合并所有文件到临时文件（保留重复）
@@ -309,11 +361,10 @@ class SubdomainDiscoveryService:
                         continue
             
             if total_lines == 0:
-                logger.warning("No subdomains found in result files")
                 temp_file.unlink(missing_ok=True)
-                return None
+                raise RuntimeError("结果文件中未找到任何子域名")
             
-            logger.info("Total lines before deduplication: %d", total_lines)
+            logger.info("去重前总行数: %d", total_lines)
             
             # 步骤 2: 使用系统命令去重和排序（内存高效）
             self._sort_and_deduplicate(temp_file, merged_file)
@@ -321,24 +372,38 @@ class SubdomainDiscoveryService:
             # 步骤 3: 清理临时文件
             temp_file.unlink(missing_ok=True)
             
-            # 步骤 4: 统计最终结果
-            if merged_file.exists():
-                unique_count = self._count_lines(merged_file)
-                logger.info("Merged %d unique subdomains to: %s", unique_count, merged_file)
-                
-                # 步骤 5: 删除原始工具生成的文件
-                self._cleanup_result_files(result_files)
-                
-                return merged_file
-            else:
-                logger.error("Merged file was not created")
-                return None
+            # 步骤 4: 验证并统计最终结果
+            if not merged_file.exists():
+                raise RuntimeError("合并文件未被创建")
+            
+            unique_count = self._count_lines(merged_file)
+            if unique_count == 0:
+                raise RuntimeError("合并文件为空，未找到有效子域名")
+            
+            logger.info("成功合并 %d 个唯一子域名到: %s", unique_count, merged_file.name)
+            
+            # 步骤 5: 删除原始工具生成的文件
+            self._cleanup_result_files(result_files)
+            
+            return merged_file
         
-        except (OSError, subprocess.SubprocessError) as e:
-            logger.error("Failed to merge results: %s", e)
-            # 清理临时文件
+        except (OSError, IOError) as e:
+            # 文件操作失败
+            logger.error("文件操作失败: %s", e)
             temp_file.unlink(missing_ok=True)
-            return None
+            raise
+        
+        except subprocess.SubprocessError as e:
+            # 排序去重命令失败
+            logger.error("排序去重失败: %s", e)
+            temp_file.unlink(missing_ok=True)
+            raise
+        
+        except Exception as e:
+            # 其他未预期错误
+            logger.error("合并结果时发生未预期错误: %s", e)
+            temp_file.unlink(missing_ok=True)
+            raise
     
     def _sort_and_deduplicate(self, input_file: Path, output_file: Path) -> None:
         """

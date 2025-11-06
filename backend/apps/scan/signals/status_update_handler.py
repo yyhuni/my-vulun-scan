@@ -233,7 +233,7 @@ class StatusUpdateHandler:
                 "严重错误：sender 参数为 None！跳过状态更新 - Scan ID: %s",
                 scan_id
             )
-            return  # 不使用 fallback，避免污染数据
+            return  
         
         task_name = getattr(sender, 'name', None)
         if not task_name:
@@ -241,7 +241,7 @@ class StatusUpdateHandler:
                 "严重错误：sender.name 为空！跳过状态更新 - Scan ID: %s",
                 scan_id
             )
-            return  # 不使用 fallback，避免污染数据
+            return  
         
         # 安全获取错误信息
         error_message = str(exception) if exception else 'Unknown error'
