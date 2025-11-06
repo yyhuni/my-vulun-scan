@@ -36,7 +36,7 @@ class ScanTaskService:
         scan_id: int,
         task_name: str,
         task_id: str,
-        status: ScanTaskStatus = ScanTaskStatus.RUNNING
+        status: ScanTaskStatus
     ) -> bool:
         """
         初始化 ScanTask 记录（任务开始时调用）
