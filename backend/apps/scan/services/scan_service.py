@@ -90,12 +90,22 @@ class ScanService:
         格式：{SCAN_RESULTS_DIR}/scan_{timestamp}_{unique_id}/
         示例：/data/scans/scan_20231104_152030_a1b2c3d4/
         
+        Raises:
+            ValueError: 如果环境变量 SCAN_RESULTS_DIR 未设置或为空
+        
         Note:
             使用 UUID 后缀确保路径唯一性，避免高并发场景下的路径冲突
         """
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         unique_id = uuid.uuid4().hex[:8]  # 添加 8 位唯一标识
+        
+        # 验证环境变量是否设置
         base_dir = os.getenv('SCAN_RESULTS_DIR')
+        if not base_dir:
+            error_msg = "环境变量 SCAN_RESULTS_DIR 未设置，无法创建扫描工作空间"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+        
         workspace_path = str(Path(base_dir) / f"scan_{timestamp}_{unique_id}")
         return workspace_path
     
