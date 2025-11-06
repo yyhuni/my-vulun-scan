@@ -5,7 +5,7 @@
 """
 
 import logging
-from typing import Optional, List, Dict
+from typing import List, Dict
 
 from apps.scan.repositories import ScanRepository, ScanTaskRepository
 from apps.common.definitions import ScanTaskStatus
@@ -223,7 +223,7 @@ class ScanTaskService:
     
     def get_running_tasks(self, scan_id: int) -> List[Dict[str, str]]:
         """
-        获取指定 Scan 下所有可撤销的任务（RUNNING + PENDING）
+        获取指定 Scan 下所有可撤销的任务（RUNNING + INITIATED）
         
         Args:
             scan_id: 扫描 ID
@@ -239,7 +239,7 @@ class ScanTaskService:
                 {
                     'task_id': 'yyy', 
                     'task_name': 'port_scan',
-                    'status': 'PENDING'
+                    'status': 'INITIATED'
                 },
                 ...
             ]
@@ -247,7 +247,7 @@ class ScanTaskService:
         Note:
             用于任务失败时撤销其他可撤销的任务
             - RUNNING: 正在执行，需要强制终止
-            - PENDING: 等待执行，需要取消调度
+            - INITIATED: 待执行（初始化），需要取消调度
         """
         try:
             return self.scan_task_repo.get_running_tasks(scan_id)
@@ -279,7 +279,7 @@ class ScanTaskService:
                 'successful': int,    # 成功
                 'failed': int,        # 失败
                 'aborted': int,       # 中止
-                'pending': int        # 待执行
+                'initiated': int      # 待执行（初始化）
             }
         
         示例：
@@ -289,7 +289,7 @@ class ScanTaskService:
             ...     exclude_tasks=['initiate_scan', 'finalize_scan']
             ... )
             >>> print(stats)
-            {'total': 3, 'successful': 2, 'failed': 1, 'aborted': 0, 'running': 0, 'pending': 0}
+            {'total': 3, 'successful': 2, 'failed': 1, 'aborted': 0, 'running': 0, 'initiated': 0}
         """
         try:
             from django.db.models import Count, Q
@@ -308,7 +308,7 @@ class ScanTaskService:
                 successful=Count('id', filter=Q(status=ScanTaskStatus.SUCCESSFUL)),
                 failed=Count('id', filter=Q(status=ScanTaskStatus.FAILED)),
                 aborted=Count('id', filter=Q(status=ScanTaskStatus.ABORTED)),
-                pending=Count('id', filter=Q(status=ScanTaskStatus.PENDING))
+                initiated=Count('id', filter=Q(status=ScanTaskStatus.INITIATED))
             )
             
             # 转换为标准格式（确保所有值都是 int，不是 None）
@@ -318,7 +318,7 @@ class ScanTaskService:
                 'successful': stats['successful'] or 0,
                 'failed': stats['failed'] or 0,
                 'aborted': stats['aborted'] or 0,
-                'pending': stats['pending'] or 0
+                'initiated': stats['initiated'] or 0
             }
             
         except Exception as e:  # noqa: BLE001
@@ -329,7 +329,7 @@ class ScanTaskService:
                 'successful': 0,
                 'failed': 0,
                 'aborted': 0,
-                'pending': 0
+                'initiated': 0
             }
 
 

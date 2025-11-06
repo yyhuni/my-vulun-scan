@@ -40,7 +40,8 @@ class Scan(models.Model):
 
     task_names = ArrayField(
         models.CharField(max_length=200),
-        null=True,
+        blank=True,
+        default=list,
         help_text='任务列表名称'
     )
 

@@ -286,7 +286,7 @@ class ScanTaskRepository:
     @staticmethod
     def get_running_tasks(scan_id: int) -> List[Dict[str, str]]:
         """
-        获取指定 Scan 下所有可撤销的任务信息（RUNNING + PENDING）
+        获取指定 Scan 下所有可撤销的任务信息（RUNNING + INITIATED）
         
         Args:
             scan_id: 扫描 ID
@@ -302,23 +302,23 @@ class ScanTaskRepository:
                 {
                     'task_id': 'yyy', 
                     'task_name': 'port_scan',
-                    'status': 'PENDING'
+                    'status': 'INITIATED'
                 },
                 ...
             ]
             
         Note:
-            - 返回 RUNNING 和 PENDING 状态的任务
+            - 返回 RUNNING 和 INITIATED 状态的任务
             - RUNNING: 正在执行，需要终止（terminate=True）
-            - PENDING: 等待执行，需要取消（terminate=False）
+            - INITIATED: 待执行（初始化），需要取消（terminate=False）
             - 过滤掉 task_id 为空的任务
         """
         try:
             tasks = ScanTask.objects.filter(  # type: ignore  # pylint: disable=no-member
                 scan_id=scan_id,
                 status__in=[
-                    ScanTaskStatus.RUNNING,   # 正在执行
-                    ScanTaskStatus.PENDING    # 等待执行
+                    ScanTaskStatus.RUNNING,    # 正在执行
+                    ScanTaskStatus.INITIATED   # 待执行（初始化）
                 ]
             ).exclude(
                 task_id__isnull=True
@@ -337,11 +337,11 @@ class ScanTaskRepository:
             ]
             
             running_count = sum(1 for t in result if t['status'] == ScanTaskStatus.RUNNING)
-            pending_count = sum(1 for t in result if t['status'] == ScanTaskStatus.PENDING)
+            initiated_count = sum(1 for t in result if t['status'] == ScanTaskStatus.INITIATED)
             
             logger.debug(
-                "查询到 %d 个可撤销任务 - Scan ID: %s (RUNNING: %d, PENDING: %d)",
-                len(result), scan_id, running_count, pending_count
+                "查询到 %d 个可撤销任务 - Scan ID: %s (RUNNING: %d, INITIATED: %d)",
+                len(result), scan_id, running_count, initiated_count
             )
             
             return result

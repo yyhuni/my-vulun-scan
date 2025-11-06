@@ -152,6 +152,7 @@ class ScanService:
                     results_dir=results_dir,
                     status=ScanTaskStatus.INITIATED,  # 显式设置初始状态
                     task_ids=[],  # 显式初始化为空列表
+                    task_names=[],  # 显式初始化为空列表
                 )
                 scans_to_create.append(scan)
             except Exception as e:
@@ -462,7 +463,7 @@ class ScanService:
         
         职责：
         - 更新 Scan 状态为 FAILED
-        - 查询并撤销同一 Scan 下所有可撤销的任务（RUNNING + PENDING）
+        - 查询并撤销同一 Scan 下所有可撤销的任务（RUNNING + INITIATED）
         
         Args:
             scan_id: 扫描任务 ID
@@ -476,7 +477,7 @@ class ScanService:
             
             撤销策略：
             - RUNNING 任务: 强制终止（terminate=True）
-            - PENDING 任务: 取消调度（terminate=False）
+            - INITIATED 任务: 取消调度（terminate=False）
             - SUCCESSFUL/FAILED/ABORTED: 不处理（保持原状态）
         """
         try:
@@ -508,13 +509,13 @@ class ScanService:
                 logger.info("过滤后没有需要撤销的任务 - Scan ID: %s", scan_id)
                 return True
             
-            # 3. 撤销所有可撤销的任务（RUNNING + PENDING）
+            # 3. 撤销所有可撤销的任务（RUNNING + INITIATED）
             running_count = sum(1 for t in tasks_to_revoke if t.get('status') == ScanTaskStatus.RUNNING)
-            pending_count = sum(1 for t in tasks_to_revoke if t.get('status') == ScanTaskStatus.PENDING)
+            initiated_count = sum(1 for t in tasks_to_revoke if t.get('status') == ScanTaskStatus.INITIATED)
             
             logger.warning(
-                "检测到任务失败，开始撤销 %d 个任务 - Scan ID: %s (RUNNING: %d, PENDING: %d)",
-                len(tasks_to_revoke), scan_id, running_count, pending_count
+                "检测到任务失败，开始撤销 %d 个任务 - Scan ID: %s (RUNNING: %d, INITIATED: %d)",
+                len(tasks_to_revoke), scan_id, running_count, initiated_count
             )
             
             revoked_count = self._revoke_tasks(tasks_to_revoke, scan_id)
@@ -539,7 +540,7 @@ class ScanService:
         scan_id: int
     ) -> int:
         """
-        撤销任务列表（区分 RUNNING 和 PENDING）
+        撤销任务列表（区分 RUNNING 和 INITIATED）
         
         Args:
             tasks: 任务列表 [{'task_id': 'xxx', 'task_name': 'yyy', 'status': 'RUNNING'}, ...]
@@ -550,7 +551,7 @@ class ScanService:
         
         Note:
             - RUNNING 任务: terminate=True（强制终止正在执行的任务）
-            - PENDING 任务: terminate=False（只取消调度，不发送终止信号）
+            - INITIATED 任务: terminate=False（只取消调度，不发送终止信号）
         """
         app = current_app._get_current_object()
         revoked_count = 0
@@ -563,7 +564,7 @@ class ScanService:
             try:
                 # 根据状态决定是否需要终止
                 # RUNNING: 需要强制终止（terminate=True）
-                # PENDING: 只需取消调度（terminate=False）
+                # INITIATED: 只需取消调度（terminate=False）
                 should_terminate = (task_status == ScanTaskStatus.RUNNING)
                 
                 app.control.revoke(

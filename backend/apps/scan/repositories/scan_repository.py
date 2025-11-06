@@ -106,7 +106,8 @@ class ScanRepository:
             engine=engine,
             results_dir=results_dir,
             status=status,
-            task_ids=[]
+            task_ids=[],
+            task_names=[]
         )
         scan.save()
         logger.debug("创建 Scan - ID: %s, Target: %s", scan.id, target.name)
