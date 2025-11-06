@@ -68,7 +68,8 @@ def initiate_scan_task(self, scan_id: int):
         from apps.scan.services import ScanService
         
         # 通过 Service 层获取 Scan 对象
-        scan = ScanService().get_scan(scan_id, prefetch_relations=True)
+        scan_service = ScanService()
+        scan = scan_service.get_scan(scan_id, prefetch_relations=True)
         
         if not scan:
             logger.error("Scan with ID %s does not exist", scan_id)
@@ -98,25 +99,21 @@ def initiate_scan_task(self, scan_id: int):
         # 显式更新 Scan 状态和任务信息（编排任务职责）
         # 注意：这是编排任务，应该显式控制 Scan 状态
         # 工作任务（如 subdomain_discovery）则通过信号隐式处理
-        from apps.common.definitions import ScanTaskStatus
-        from django.utils import timezone as tz
-        from apps.scan.repositories import ScanRepository
         
-        # 更新 Scan 状态为 RUNNING 并追加任务信息
-        if scan.status == ScanTaskStatus.INITIATED:
-            # 首次启动：更新状态并设置开始时间
-            scan_repo = ScanRepository()
-            scan_repo.start_scan(
-                scan_id=scan_id,
-                status=ScanTaskStatus.RUNNING,
-                task_id=self.request.id,
-                task_name='initiate_scan',
-                started_at=tz.now()
-            )
-            logger.info("✓ Scan 状态已更新为 RUNNING - Scan ID: %s", scan_id)
-        else:
-            # 已经是 RUNNING 状态（理论上不应该发生）
-            logger.warning("Scan 已经是 RUNNING 状态，跳过更新 - Scan ID: %s", scan_id)
+        # 通过 Service 层启动扫描执行
+        # Service 层负责：状态验证、状态转换(INITIATED → RUNNING)、时间戳生成、任务信息初始化
+        result = scan_service.start_scan_execution(
+            scan_id=scan_id,
+            task_name='initiate_scan',
+            task_id=self.request.id
+        )
+        
+        if not result:
+            error_msg = "启动扫描执行失败（可能状态异常或数据库错误）"
+            logger.error("%s - Scan ID: %s", error_msg, scan_id)
+            raise RuntimeError(error_msg)
+        
+        logger.info("✓ Scan 状态已更新为 RUNNING - Scan ID: %s", scan_id)
         
         # 解析 engine 配置
         config = _parse_engine_config(engine.configuration)

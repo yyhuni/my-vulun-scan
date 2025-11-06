@@ -391,20 +391,20 @@ class ScanRepository:
             return False
         
         # 更新状态和时间
-            scan.status = status
-            scan.started_at = started_at or timezone.now()
+        scan.status = status
+        scan.started_at = started_at or timezone.now()
         
         # 初始化任务列表
-            scan.task_ids = [task_id] if task_id else []
-            scan.task_names = [task_name]
+        scan.task_ids = [task_id] if task_id else []
+        scan.task_names = [task_name]
         
-            scan.save()
-            logger.debug(
+        scan.save()
+        logger.debug(
             "启动 Scan - ID: %s, 状态: %s, 任务: %s",
-                scan_id,
-                ScanTaskStatus(status).label,
-                task_name
-            )
+            scan_id,
+            ScanTaskStatus(status).label,
+            task_name
+        )
         return True
     
     @staticmethod
@@ -434,10 +434,10 @@ class ScanRepository:
             return False
         
         # 避免重复添加
-            if task_id and task_id not in scan.task_ids:
-                scan.task_ids.append(task_id)
-                scan.task_names.append(task_name)
-                scan.save()
+        if task_id and task_id not in scan.task_ids:
+            scan.task_ids.append(task_id)
+            scan.task_names.append(task_name)
+            scan.save()
             logger.debug(
                 "追加任务 - Scan ID: %s, Task: %s, 当前状态: %s",
                 scan_id,

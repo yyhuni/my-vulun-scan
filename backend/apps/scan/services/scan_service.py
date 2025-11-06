@@ -280,37 +280,32 @@ class ScanService:
             logger.exception("更新 Scan 状态失败 - Scan ID: %s, 错误: %s", scan_id, e)
             return False
     
-    def initialize_scan(
+    def start_scan_execution(
         self,
         scan_id: int,
         task_name: str,
-        task_id: str,
-        status: Optional[ScanTaskStatus] = None,
-        started_at: Optional[timezone.datetime] = None
+        task_id: str
     ) -> bool:
         """
-        初始化扫描（任务开始时调用）
+        启动扫描执行（由 initiate_scan_task 调用）
         
         职责：
-        - 检查扫描状态
-        - 如果是首次（INITIATED）：启动扫描，设置状态和时间
-        - 如果非首次（RUNNING）：只追加任务到列表
+        - 验证扫描状态必须是 INITIATED
+        - 更新状态为 RUNNING
+        - 设置开始时间
+        - 初始化任务列表
         
-        说明：
-        - 此方法会被每个任务的 task_prerun 信号调用
-        - 第一个任务（initiate_scan_task）：INITIATED → RUNNING
-        - 后续任务（subfinder, httpx等）：只追加 task_ids/task_names
-        - status 和 started_at 参数只在首次启动时有效，非首次会被忽略
+        前置条件：
+        - Scan 状态必须是 INITIATED（由 Service 层创建时设置）
+        - 只能由 initiate_scan_task 调用一次
         
         Args:
             scan_id: 扫描任务 ID
-            task_name: 任务名称
+            task_name: 任务名称（通常是 'initiate_scan'）
             task_id: Celery 任务 ID
-            status: 要更新的状态（仅首次启动时使用，默认 RUNNING）
-            started_at: 扫描开始时间（仅首次启动时使用，默认当前时间）
         
         Returns:
-            是否初始化成功
+            是否启动成功
         """
         try:
             # 获取当前扫描状态（不需要关联对象）
@@ -319,45 +314,38 @@ class ScanService:
                 logger.error("Scan 不存在 - Scan ID: %s", scan_id)
                 return False
             
-            # Service 层判断：根据状态决定调用哪个 Repository 方法
-            if scan.status == ScanTaskStatus.INITIATED:
-                # 首次启动：调用 start_scan (INITIATED → RUNNING)
-                result = self.scan_repo.start_scan(
-                    scan_id=scan_id,
-                    status=status or ScanTaskStatus.RUNNING,
-                    task_id=task_id,
-                    task_name=task_name,
-                    started_at=started_at
+            # 验证状态：必须是 INITIATED
+            if scan.status != ScanTaskStatus.INITIATED:
+                logger.error(
+                    "Scan 状态异常 - 期望 INITIATED，实际 %s, Scan ID: %s",
+                    ScanTaskStatus(scan.status).label,
+                    scan_id
                 )
-                
-                if result:
-                    logger.info(
-                        "初始化扫描（首次启动）- Scan ID: %s, 任务: %s, 状态: %s → %s",
-                        scan_id,
-                        task_name,
-                        ScanTaskStatus.INITIATED.label,
-                        ScanTaskStatus(status or ScanTaskStatus.RUNNING).label
-                    )
-            else:
-                # 非首次：调用 append_task（只追加任务列表）
-                result = self.scan_repo.append_task(
-                    scan_id=scan_id,
-                    task_id=task_id,
-                    task_name=task_name
+                return False
+            
+            # 启动扫描：INITIATED → RUNNING
+            # Service 层决定状态转换和时间戳
+            result = self.scan_repo.start_scan(
+                scan_id=scan_id,
+                status=ScanTaskStatus.RUNNING,
+                task_id=task_id,
+                task_name=task_name,
+                started_at=timezone.now()
+            )
+            
+            if result:
+                logger.info(
+                    "启动扫描执行 - Scan ID: %s, 任务: %s, 状态: %s → %s",
+                    scan_id,
+                    task_name,
+                    ScanTaskStatus.INITIATED.label,
+                    ScanTaskStatus.RUNNING.label
                 )
-                
-                if result:
-                    logger.info(
-                        "初始化扫描（追加任务）- Scan ID: %s, 任务: %s, 当前状态: %s",
-                        scan_id,
-                        task_name,
-                        ScanTaskStatus(scan.status).label
-                    )
             
             return result
                 
         except Exception as e:  # noqa: BLE001
-            logger.exception("初始化扫描任务失败 - Scan ID: %s, 错误: %s", scan_id, e)
+            logger.exception("启动扫描执行失败 - Scan ID: %s, 错误: %s", scan_id, e)
             return False
     
     def get_scan_completion_status(self, scan_id: int) -> tuple[bool, Dict[str, int], Optional[ScanTaskStatus]]:
