@@ -54,9 +54,7 @@ def finalize_scan_task(self, scan_id: int = None) -> dict:
     if not scan_id:
         raise ValueError("scan_id is required")
     
-    logger.info("="*60)
     logger.info("开始完成扫描 - Scan ID: %s", scan_id)
-    logger.info("="*60)
     
     # 延迟导入避免循环依赖
     from apps.scan.services import ScanService, ScanTaskService
@@ -71,7 +69,7 @@ def finalize_scan_task(self, scan_id: int = None) -> dict:
             exclude_tasks=['initiate_scan', 'finalize_scan']
         )
         
-        logger.info("任务统计: %s", stats)
+        logger.debug("任务统计: %s", stats)
         
     except Exception as e:
         logger.exception("获取任务统计失败 - Scan ID: %s, 错误: %s", scan_id, e)
@@ -120,9 +118,7 @@ def finalize_scan_task(self, scan_id: int = None) -> dict:
     # 3. 更新 Scan 状态
     try:
         scan_service.complete_scan(scan_id, final_status)
-        logger.info("="*60)
-        logger.info("✓ 扫描完成 - Scan ID: %s, 状态: %s", scan_id, final_status.label)
-        logger.info("="*60)
+        logger.info("扫描完成 - Scan ID: %s, 状态: %s", scan_id, final_status.label)
         
     except Exception as e:
         logger.exception("更新 Scan 状态失败 - Scan ID: %s, 错误: %s", scan_id, e)

@@ -257,7 +257,7 @@ class ScanService:
         try:
             result = self.scan_repo.update_status(scan_id, status, message)
             if result:
-                logger.info(
+                logger.debug(
                     "更新 Scan 状态成功 - Scan ID: %s, 状态: %s", 
                     scan_id, 
                     ScanTaskStatus(status).label
@@ -448,7 +448,7 @@ class ScanService:
             if not result:
                 return False
             
-            logger.info("✓ Scan 已更新为 ABORTED - Scan ID: %s", scan_id)
+            logger.debug("Scan 已更新为 ABORTED - Scan ID: %s", scan_id)
             return True
                 
         except Exception as e:  # noqa: BLE001
@@ -576,8 +576,8 @@ class ScanService:
                 )
                 
                 action = "已终止" if should_terminate else "已取消"
-                logger.info(
-                    "✓ %s任务: %s [%s] (Task ID: %s) - Scan ID: %s",
+                logger.debug(
+                    "%s任务: %s [%s] (Task ID: %s) - Scan ID: %s",
                     action, task_name, task_status, task_id, scan_id
                 )
                 revoked_count += 1
@@ -632,7 +632,7 @@ class ScanService:
             )
             
             if result:
-                logger.info(
+                logger.debug(
                     "追加任务到 Scan - Scan ID: %s, Task: %s, Task ID: %s",
                     scan_id,
                     task_name,

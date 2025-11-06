@@ -127,7 +127,7 @@ class ScanRepository:
             创建的 Scan 对象列表
         """
         created_scans = Scan.objects.bulk_create(scans)  # type: ignore  # pylint: disable=no-member
-        logger.info("批量创建 Scan - 数量: %d", len(created_scans))
+        logger.debug("批量创建 Scan - 数量: %d", len(created_scans))
         return created_scans
     
     @staticmethod
@@ -158,7 +158,7 @@ class ScanRepository:
         try:
             scan = Scan.objects.get(id=scan_id)  # type: ignore  # pylint: disable=no-member
             scan.delete()
-            logger.info("删除 Scan - ID: %s", scan_id)
+            logger.debug("删除 Scan - ID: %s", scan_id)
             return True
         except Scan.DoesNotExist:  # type: ignore  # pylint: disable=no-member
             logger.warning("Scan 不存在 - Scan ID: %s", scan_id)

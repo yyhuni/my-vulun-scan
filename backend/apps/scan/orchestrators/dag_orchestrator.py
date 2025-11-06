@@ -62,9 +62,9 @@ class DAGOrchestrator:
                 }
             }
         """
-        logger.info("="*60)
-        logger.info("开始构建动态 DAG 工作流")
-        logger.info("="*60)
+        logger.debug("="*60)
+        logger.debug("开始构建动态 DAG 工作流")
+        logger.debug("="*60)
         
         # 1. 构建任务字典（任务名称 -> Celery 签名）
         tasks = self._build_tasks(scan, config)
@@ -97,20 +97,18 @@ class DAGOrchestrator:
                 task_names.append(task_sig.task)
         task_names.append('finalize_scan')
         
-        logger.info("="*60)
-        logger.info("DAG 工作流构建完成")
-        logger.info("总任务数: %d", len(task_names))
-        logger.info("执行阶段: %d", len(stages) + 1)  # +1 for finalize
+        logger.info("DAG 工作流构建完成 - 任务数: %d, 阶段: %d", len(task_names), len(stages) + 1)
         
-        # 打印执行计划
+        # 打印执行计划(详细)
+        logger.debug("="*60)
         for i, stage in enumerate(stages, 1):
             if len(stage) == 1:
-                logger.info("  Stage %d: %s", i, stage[0].task)
+                logger.debug("  Stage %d: %s", i, stage[0].task)
             else:
                 task_list = ' ∥ '.join([sig.task for sig in stage])
-                logger.info("  Stage %d: %s (并行)", i, task_list)
-        logger.info("  Stage %d: finalize_scan", len(stages) + 1)
-        logger.info("="*60)
+                logger.debug("  Stage %d: %s (并行)", i, task_list)
+        logger.debug("  Stage %d: finalize_scan", len(stages) + 1)
+        logger.debug("="*60)
         
         return workflow, task_names
     
@@ -157,7 +155,7 @@ class DAGOrchestrator:
                 task_sig = task_func.si(**task_kwargs)
                 tasks[task_name] = task_sig
                 
-                logger.info("✓ 添加任务: %s", task_name)
+                logger.debug("✓ 添加任务: %s", task_name)
                 
             except Exception as e:
                 logger.exception("加载任务 %s 失败: %s", task_name, e)

@@ -91,7 +91,7 @@ class ScanTaskService:
             )
             
             if created:
-                logger.info(
+                logger.debug(
                     "初始化 ScanTask - Scan ID: %s, Task: %s, Task ID: %s, 状态: %s",
                     scan_id,
                     task_name,
@@ -183,7 +183,7 @@ class ScanTaskService:
                     task_name
                 )
             
-            logger.info(
+            logger.debug(
                 "更新 ScanTask 状态 - Scan ID: %s, Task: %s, 状态: %s",
                 scan_id,
                 task_name,

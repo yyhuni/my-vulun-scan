@@ -90,7 +90,7 @@ def initiate_scan_task(self, scan_id: int = None):
         # 子任务将在此目录下创建各自的模块目录（如 subdomain_discovery/）
         try:
             workspace_dir.mkdir(parents=True, exist_ok=True)
-            logger.info("创建扫描工作空间目录: %s", workspace_dir)
+            logger.debug("创建扫描工作空间目录: %s", workspace_dir)
         except OSError as e:
             logger.error("创建工作空间目录失败: %s - %s", workspace_dir, e)
             raise
@@ -114,7 +114,7 @@ def initiate_scan_task(self, scan_id: int = None):
             logger.error("%s - Scan ID: %s", error_msg, scan_id)
             raise RuntimeError(error_msg)
         
-        logger.info("✓ Scan 状态已更新为 RUNNING - Scan ID: %s", scan_id)
+        logger.debug("Scan 状态已更新为 RUNNING - Scan ID: %s", scan_id)
         
         # 解析 engine 配置
         config = _parse_engine_config(engine.configuration)
@@ -142,12 +142,8 @@ def initiate_scan_task(self, scan_id: int = None):
             }
         
         # 执行工作流
-        logger.info("开始执行工作流 - Scan ID: %s, 任务数: %d", scan_id, len(task_names))
+        logger.info("工作流已启动 - Scan ID: %s, 任务: %s", scan_id, ' -> '.join(task_names))
         workflow.apply_async()
-        
-        # 注意：任务信息的更新由 StatusUpdateHandler 通过 task_prerun 信号统一处理
-        # 每个任务真正开始执行时会自动追加 task_id 和 task_name
-        logger.info("✓ 工作流已启动 - Scan ID: %s, 任务: %s", scan_id, ' -> '.join(task_names))
         
         # 返回结果
         return {

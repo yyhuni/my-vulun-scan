@@ -114,7 +114,7 @@ class StatusUpdateHandler:
         )
         
         if not append_result:
-            logger.warning(
+            logger.debug(
                 "追加任务信息失败（可能 task_id 无效）- Task: %s, Scan ID: %s",
                 task_name, scan_id
             )
@@ -129,7 +129,7 @@ class StatusUpdateHandler:
         )
         
         if not init_result:
-            logger.warning(
+            logger.debug(
                 "创建 ScanTask 记录失败（可能 task_id 无效）- Task: %s, Scan ID: %s",
                 task_name, scan_id
             )
@@ -196,7 +196,7 @@ class StatusUpdateHandler:
         
         # 关键：跳过编排任务和收尾任务
         if task_name in self.ORCHESTRATOR_TASKS:
-            logger.info(
+            logger.debug(
                 "编排/收尾任务 ScanTask 已更新，跳过 Scan 更新 - Task: %s, Scan ID: %s",
                 task_name, scan_id
             )
@@ -204,7 +204,7 @@ class StatusUpdateHandler:
         
         # 工作任务 ScanTask 已更新：不更新 Scan
         # 因为只有 finalize_scan 负责更新 Scan 的最终状态
-        logger.info("工作任务 ScanTask 已更新 - Task: %s, Scan ID: %s", task_name, scan_id)
+        logger.debug("工作任务 ScanTask 已更新 - Task: %s, Scan ID: %s", task_name, scan_id)
     
     def on_task_failure(
         self, 
