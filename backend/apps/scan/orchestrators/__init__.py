@@ -1,8 +1,8 @@
 from .workflow_orchestrator import WorkflowOrchestrator
-from .workflow_registry import get_workflow_registry
+from .dag_orchestrator import DAGOrchestrator
 
 __all__ = [
     'WorkflowOrchestrator',
-    'get_workflow_registry',
+    'DAGOrchestrator',
 ]
 

@@ -10,7 +10,6 @@
 """
 
 from celery import shared_task
-from apps.scan.services import ScanService
 from apps.scan.orchestrators import WorkflowOrchestrator
 from pathlib import Path
 import logging
@@ -65,11 +64,11 @@ def initiate_scan_task(self, scan_id: int):
         }
     """
     try:
+        # 延迟导入避免循环依赖
+        from apps.scan.services import ScanService
+        
         # 通过 Service 层获取 Scan 对象
-        # 注意：get_scan() 内部使用 get_by_id(prefetch_relations=True)
-        # 会自动预加载 engine 和 target，避免 N+1 查询
-        scan_service = ScanService()
-        scan = scan_service.get_scan(scan_id)
+        scan = ScanService().get_scan(scan_id, prefetch_relations=True)
         
         if not scan:
             logger.error("Scan with ID %s does not exist", scan_id)
@@ -95,6 +94,29 @@ def initiate_scan_task(self, scan_id: int):
             "初始化扫描任务 - Scan ID: %s, Target: %s, Engine: %s, Task ID: %s, Workspace: %s",
             scan_id, scan.target.name, engine.name, self.request.id, workspace_dir
         )
+        
+        # 显式更新 Scan 状态和任务信息（编排任务职责）
+        # 注意：这是编排任务，应该显式控制 Scan 状态
+        # 工作任务（如 subdomain_discovery）则通过信号隐式处理
+        from apps.common.definitions import ScanTaskStatus
+        from django.utils import timezone as tz
+        from apps.scan.repositories import ScanRepository
+        
+        # 更新 Scan 状态为 RUNNING 并追加任务信息
+        if scan.status == ScanTaskStatus.INITIATED:
+            # 首次启动：更新状态并设置开始时间
+            scan_repo = ScanRepository()
+            scan_repo.start_scan(
+                scan_id=scan_id,
+                status=ScanTaskStatus.RUNNING,
+                task_id=self.request.id,
+                task_name='initiate_scan',
+                started_at=tz.now()
+            )
+            logger.info("✓ Scan 状态已更新为 RUNNING - Scan ID: %s", scan_id)
+        else:
+            # 已经是 RUNNING 状态（理论上不应该发生）
+            logger.warning("Scan 已经是 RUNNING 状态，跳过更新 - Scan ID: %s", scan_id)
         
         # 解析 engine 配置
         config = _parse_engine_config(engine.configuration)

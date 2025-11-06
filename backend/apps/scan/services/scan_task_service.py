@@ -205,6 +205,80 @@ class ScanTaskService:
         except Exception as e:  # noqa: BLE001
             logger.exception("检查任务完成状态失败 - Scan ID: %s, 错误: %s", scan_id, e)
             return False, {'total': 0}
+    
+    def get_task_stats(
+        self, 
+        scan_id: int, 
+        exclude_tasks: Optional[List[str]] = None
+    ) -> Dict[str, int]:
+        """
+        获取 ScanTask 的状态统计
+        
+        用于 finalize_scan_task 统计所有子任务的状态，决定 Scan 的最终状态
+        
+        Args:
+            scan_id: 扫描 ID
+            exclude_tasks: 要排除的任务名称列表（如 ['initiate_scan', 'finalize_scan']）
+        
+        Returns:
+            {
+                'total': int,         # 总任务数
+                'running': int,       # 运行中
+                'successful': int,    # 成功
+                'failed': int,        # 失败
+                'aborted': int,       # 中止
+                'pending': int        # 待执行
+            }
+        
+        示例：
+            >>> service = ScanTaskService()
+            >>> stats = service.get_task_stats(
+            ...     scan_id=123,
+            ...     exclude_tasks=['initiate_scan', 'finalize_scan']
+            ... )
+            >>> print(stats)
+            {'total': 3, 'successful': 2, 'failed': 1, 'aborted': 0, 'running': 0, 'pending': 0}
+        """
+        try:
+            from django.db.models import Count, Q
+            
+            # 获取所有 ScanTask
+            queryset = self.scan_task_repo.filter(scan_id=scan_id)
+            
+            # 排除指定任务
+            if exclude_tasks:
+                queryset = queryset.exclude(name__in=exclude_tasks)
+            
+            # 统计各状态数量
+            stats = queryset.aggregate(
+                total=Count('id'),
+                running=Count('id', filter=Q(status=ScanTaskStatus.RUNNING)),
+                successful=Count('id', filter=Q(status=ScanTaskStatus.SUCCESSFUL)),
+                failed=Count('id', filter=Q(status=ScanTaskStatus.FAILED)),
+                aborted=Count('id', filter=Q(status=ScanTaskStatus.ABORTED)),
+                pending=Count('id', filter=Q(status=ScanTaskStatus.PENDING))
+            )
+            
+            # 转换为标准格式（确保所有值都是 int，不是 None）
+            return {
+                'total': stats['total'] or 0,
+                'running': stats['running'] or 0,
+                'successful': stats['successful'] or 0,
+                'failed': stats['failed'] or 0,
+                'aborted': stats['aborted'] or 0,
+                'pending': stats['pending'] or 0
+            }
+            
+        except Exception as e:  # noqa: BLE001
+            logger.exception("获取任务统计失败 - Scan ID: %s, 错误: %s", scan_id, e)
+            return {
+                'total': 0,
+                'running': 0,
+                'successful': 0,
+                'failed': 0,
+                'aborted': 0,
+                'pending': 0
+            }
 
 
 # 导出接口

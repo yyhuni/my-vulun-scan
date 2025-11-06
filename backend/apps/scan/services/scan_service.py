@@ -60,7 +60,7 @@ class ScanService:
             self._task_service = ScanTaskService()
         return self._task_service
     
-    def get_scan(self, scan_id: int) -> Scan | None:
+    def get_scan(self, scan_id: int, prefetch_relations: bool ) -> Scan | None:
         """
         获取扫描任务（包含关联对象）
         
@@ -72,7 +72,7 @@ class ScanService:
         Returns:
             Scan 对象（包含 engine 和 target）或 None
         """
-        return self.scan_repo.get_by_id(scan_id, prefetch_relations=True)
+        return self.scan_repo.get_by_id(scan_id, prefetch_relations)
     
     def get_scan_workspace(self, scan_id: int) -> str | None:
         """
@@ -435,6 +435,45 @@ class ScanService:
                 
         except Exception as e:  # noqa: BLE001
             logger.exception("完成扫描失败 - Scan ID: %s, 错误: %s", scan_id, e)
+            return False
+    
+    def append_task_to_scan(
+        self,
+        scan_id: int,
+        task_id: str,
+        task_name: str
+    ) -> bool:
+        """
+        追加任务信息到 Scan
+        
+        用于工作任务通过信号追加自己的任务 ID 和名称到 Scan 记录
+        
+        Args:
+            scan_id: 扫描 ID
+            task_id: Celery 任务 ID
+            task_name: 任务名称
+        
+        Returns:
+            是否追加成功
+        """
+        try:
+            result = self.scan_repo.append_task(
+                scan_id=scan_id,
+                task_id=task_id,
+                task_name=task_name
+            )
+            
+            if result:
+                logger.info(
+                    "追加任务到 Scan - Scan ID: %s, Task: %s",
+                    scan_id,
+                    task_name
+                )
+            
+            return result
+            
+        except Exception as e:  # noqa: BLE001
+            logger.exception("追加任务到 Scan 失败 - Scan ID: %s, 错误: %s", scan_id, e)
             return False
     
     def _trigger_workspace_cleanup(self, scan_id: int) -> None:

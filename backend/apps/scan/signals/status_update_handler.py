@@ -6,8 +6,6 @@
 
 import logging
 
-from django.utils import timezone
-
 from apps.scan.services import ScanService, ScanTaskService
 from apps.common.definitions import ScanTaskStatus
 
@@ -22,7 +20,15 @@ class StatusUpdateHandler:
     - 监听 Celery 任务信号
     - 更新 Scan 状态（通过 ScanService）
     - 更新 ScanTask 状态（通过 ScanTaskService）
+    
+    DAG 工作流说明：
+    - 编排任务和收尾任务（initiate_scan, finalize_scan）完成时不触发 Scan 更新
+    - 只有 finalize_scan 负责更新 Scan 的最终状态
+    - 任务失败/中止时立即更新 Scan 状态（因为 chain 会中断，finalize 不会执行）
     """
+    
+    # 编排任务和收尾任务（完成时不触发 Scan 更新）
+    ORCHESTRATOR_TASKS = {'initiate_scan', 'finalize_scan'}
     
     def __init__(self):
         self.task_service = ScanTaskService()
@@ -38,20 +44,18 @@ class StatusUpdateHandler:
         **extra  # pylint: disable=unused-argument
     ):
         """
-        任务开始前：初始化 Scan 信息和更新状态
+        任务开始前：创建 ScanTask 记录
         
         职责：
-        - 由信号处理器控制状态更新为 RUNNING（仅第一次）
-        - 由信号处理器控制 started_at 时间设置（仅第一次）
-        - 初始化或追加 task_ids 和 task_names
-        - 创建 ScanTask 记录
+        - 创建 ScanTask 记录（所有任务）
+        - 追加 task_ids 和 task_names 到 Scan（仅工作任务）
+        
+        职责分离：
+        - 编排任务（initiate_scan, finalize_scan）：在任务内部显式控制 Scan 状态
+        - 工作任务（subdomain_discovery 等）：通过 initialize_scan 追加任务信息
         
         信号：task_prerun
         触发时机：任务开始执行前
-        
-        架构说明：
-        - Service 层提供灵活的接口（接受 status 和 started_at 参数）
-        - Signal 层控制具体的数据（传入具体的状态和时间值）
         """
         scan_id = kwargs.get('scan_id') if kwargs else None
         if not scan_id:
@@ -79,16 +83,16 @@ class StatusUpdateHandler:
             scan_id
         )
         
-        # 初始化扫描（由信号处理器控制状态和时间）
-        self.scan_service.initialize_scan(
-            scan_id=scan_id,
-            task_name=task_name,
-            task_id=task_id or '',
-            status=ScanTaskStatus.RUNNING,  # 由信号处理器控制状态
-            started_at=timezone.now()  # 由信号处理器控制开始时间
-        )
+        # 编排任务跳过（它们在任务内部显式控制）
+        # 工作任务通过 Service 追加任务信息到 Scan
+        if task_name not in self.ORCHESTRATOR_TASKS:
+            self.scan_service.append_task_to_scan(
+                scan_id=scan_id,
+                task_id=task_id or '',
+                task_name=task_name
+            )
         
-        # 初始化 ScanTask 记录
+        # 所有任务都创建 ScanTask 记录
         self.task_service.initialize_task(
             scan_id=scan_id,
             task_name=task_name,
@@ -110,12 +114,15 @@ class StatusUpdateHandler:
         
         职责：
         - 更新 ScanTask 状态
-        - 检查扫描是否完成
+        - 跳过编排任务和收尾任务的 Scan 更新
         
         信号：task_success
         触发时机：任务成功完成
         
-        注意：results_dir 由 initiate_scan_task 创建并保存，子任务不再更新
+        DAG 工作流说明：
+        - 编排任务（initiate_scan）和收尾任务（finalize_scan）完成时不更新 Scan
+        - 只有 finalize_scan 负责更新 Scan 的最终状态
+        - 工作任务完成只更新 ScanTask，不影响 Scan
         """
         scan_id = kwargs.get('scan_id') if kwargs else None
         if not scan_id:
@@ -151,8 +158,17 @@ class StatusUpdateHandler:
             status=ScanTaskStatus.SUCCESSFUL
         )
         
-        # 检查并更新扫描完成状态
-        self._handle_scan_completion(scan_id)
+        # 关键：跳过编排任务和收尾任务
+        if task_name in self.ORCHESTRATOR_TASKS:
+            logger.info(
+                "编排/收尾任务 ScanTask 已更新，跳过 Scan 更新 - Task: %s, Scan ID: %s",
+                task_name, scan_id
+            )
+            return  # ← 不更新 Scan
+        
+        # 工作任务 ScanTask 已更新：不更新 Scan
+        # 因为只有 finalize_scan 负责更新 Scan 的最终状态
+        logger.info("工作任务 ScanTask 已更新 - Task: %s, Scan ID: %s", task_name, scan_id)
     
     def on_task_failure(
         self, 
@@ -165,13 +181,15 @@ class StatusUpdateHandler:
         **extra  # pylint: disable=unused-argument
     ):
         """
-        任务失败：更新 ScanTask 状态，并检查扫描完成情况
+        任务失败：更新 ScanTask 状态，并立即更新 Scan 状态
         
         信号：task_failure
         触发时机：任务执行失败
         
-        注意：不立即更新 Scan 状态为 FAILED，因为工作流中可能有多个任务。
-        由 check_scan_completion() 在所有任务完成后统一判断整体状态。
+        DAG 工作流说明：
+        - 任务失败时立即更新 Scan 状态为 FAILED
+        - 因为 chain 会中断，finalize_scan 不会执行
+        - 需要在这里立即更新，确保 Scan 状态正确
         """
         scan_id = kwargs.get('scan_id') if kwargs else None
         if not scan_id:
@@ -204,7 +222,7 @@ class StatusUpdateHandler:
             error_message
         )
         
-        # 只更新 ScanTask 状态（不更新 Scan 状态）
+        # 1. 更新 ScanTask 状态
         self.task_service.update_task_status(
             scan_id=scan_id,
             task_name=task_name,
@@ -214,8 +232,10 @@ class StatusUpdateHandler:
             error_traceback=error_traceback
         )
         
-        # 检查并更新扫描完成状态
-        self._handle_scan_completion(scan_id)
+        # 2. 关键：立即更新 Scan 状态
+        # 因为 chain 会中断，finalize 不会执行
+        logger.warning("任务失败，立即更新 Scan - Scan ID: %s", scan_id)
+        self.scan_service.complete_scan(scan_id, ScanTaskStatus.FAILED)
     
     def on_task_revoked(
         self, 
@@ -227,7 +247,7 @@ class StatusUpdateHandler:
         **extra  # pylint: disable=unused-argument
     ):
         """
-        任务被强制中止/撤销：更新 ScanTask 状态，并检查扫描完成情况
+        任务被强制中止/撤销：更新 ScanTask 状态，并立即更新 Scan 状态
         
         信号：task_revoked
         触发时机：
@@ -236,11 +256,10 @@ class StatusUpdateHandler:
         - Worker进程被关闭
         - 其他强制中止场景
         
-        注意：
-        - 这不是任务正常完成，而是被强制终止
-        - ABORTED 状态表示任务未完整执行
-        - 不立即更新 Scan 状态，由 check_scan_completion() 统一判断
-        - 如果有任务被中止，整个扫描会被标记为 ABORTED
+        DAG 工作流说明：
+        - 任务被中止时立即更新 Scan 状态为 ABORTED
+        - 因为 chain 会中断，finalize_scan 不会执行
+        - 需要在这里立即更新，确保 Scan 状态正确
         """
         # 从 request 对象获取信息
         if not request:
@@ -278,7 +297,7 @@ class StatusUpdateHandler:
             reason
         )
         
-        # 只更新 ScanTask 状态（不更新 Scan 状态）
+        # 1. 更新 ScanTask 状态
         self.task_service.update_task_status(
             scan_id=scan_id,
             task_name=task_name,
@@ -287,8 +306,10 @@ class StatusUpdateHandler:
             error_message=f"任务被中止: {reason}"
         )
         
-        # 检查并更新扫描完成状态
-        self._handle_scan_completion(scan_id)
+        # 2. 关键：立即更新 Scan 状态
+        # 因为 chain 会中断，finalize 不会执行
+        logger.warning("任务中止，立即更新 Scan - Scan ID: %s", scan_id)
+        self.scan_service.complete_scan(scan_id, ScanTaskStatus.ABORTED)
     
     def _handle_scan_completion(self, scan_id: int) -> None:
         """

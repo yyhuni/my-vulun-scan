@@ -48,7 +48,7 @@ class ScanRepository:
             if for_update:
                 queryset = Scan.objects.select_for_update()  # type: ignore  # pylint: disable=no-member
             else:
-            queryset = Scan.objects  # type: ignore  # pylint: disable=no-member
+                queryset = Scan.objects  # type: ignore  # pylint: disable=no-member
             
             # 预加载关联对象（性能优化：默认不加载）
             if prefetch_relations:
