@@ -297,7 +297,7 @@ class ScanTaskService:
             from django.db.models import Count, Q
             
             # 获取所有 ScanTask
-            queryset = self.scan_task_repo.filter(scan_id=scan_id)
+            queryset = self.scan_task_repo.filter_by_scan(scan_id=scan_id)
             
             # 排除指定任务
             if exclude_tasks:

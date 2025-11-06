@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(name='initiate_scan', bind=True)
-def initiate_scan_task(self, scan_id: int):
+def initiate_scan_task(self, scan_id: int = None):
     """
     初始化扫描任务，根据 engine 配置动态编排和执行工作流
     
@@ -50,7 +50,7 @@ def initiate_scan_task(self, scan_id: int):
     
     Args:
         self: Celery task instance (由 bind=True 提供)
-        scan_id: Scan 对象的 ID
+        scan_id: Scan 对象的 ID（关键字参数，便于信号处理器统一获取）
     
     Returns:
         dict: {
@@ -64,6 +64,10 @@ def initiate_scan_task(self, scan_id: int):
         }
     """
     try:
+        # 参数验证
+        if not scan_id:
+            raise ValueError("scan_id is required")
+        
         # 延迟导入避免循环依赖
         from apps.scan.services import ScanService
         

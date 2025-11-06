@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(name='finalize_scan', bind=True)
-def finalize_scan_task(self, scan_id: int) -> dict:
+def finalize_scan_task(self, scan_id: int = None) -> dict:
     """
     完成扫描任务
     
@@ -30,7 +30,7 @@ def finalize_scan_task(self, scan_id: int) -> dict:
     
     Args:
         self: Celery task instance（由 bind=True 提供）
-        scan_id: 扫描 ID
+        scan_id: 扫描 ID（关键字参数，便于信号处理器统一获取）
     
     Returns:
         {
@@ -50,6 +50,10 @@ def finalize_scan_task(self, scan_id: int) -> dict:
         - 如果有任务失败（FAILED）→ Scan = FAILED
         - 如果所有任务成功（SUCCESSFUL）→ Scan = SUCCESSFUL
     """
+    # 参数验证
+    if not scan_id:
+        raise ValueError("scan_id is required")
+    
     logger.info("="*60)
     logger.info("开始完成扫描 - Scan ID: %s", scan_id)
     logger.info("="*60)

@@ -90,7 +90,8 @@ class StatusUpdateHandler:
             logger.debug("维护任务，跳过追踪 - Task: %s", task_name)
             return
         
-        # 安全获取 scan_id，使用默认值确保任务能被追踪
+        # 安全获取 scan_id（统一从 kwargs 中获取）
+        # 所有扫描任务的 scan_id 都应该是关键字参数
         scan_id = kwargs.get('scan_id') if kwargs else None
         if not scan_id:
             logger.warning("任务没有 scan_id 参数，但仍会尝试记录任务信息")
@@ -172,7 +173,7 @@ class StatusUpdateHandler:
             logger.debug("维护任务成功，跳过追踪 - Task: %s", task_name)
             return
         
-        # 安全获取 scan_id
+        # 安全获取 scan_id（统一从 kwargs 中获取）
         scan_id = kwargs.get('scan_id') if kwargs else None
         if not scan_id:
             logger.warning("任务没有 scan_id 参数，使用默认值")
@@ -241,7 +242,7 @@ class StatusUpdateHandler:
             logger.debug("维护任务失败，跳过追踪 - Task: %s", task_name)
             return
         
-        # 安全获取 scan_id
+        # 安全获取 scan_id（统一从 kwargs 中获取）
         scan_id = kwargs.get('scan_id') if kwargs else None
         if not scan_id:
             logger.warning("任务没有 scan_id 参数，使用默认值")
