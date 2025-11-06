@@ -44,6 +44,11 @@ class StatusUpdateHandler:
     # 但失败/中止时仍然会立即更新 Scan 状态
     ORCHESTRATOR_TASKS = {'initiate_scan', 'finalize_scan'}
     
+    # 维护任务白名单
+    # 这些任务不需要追踪 ScanTask，也不会更新 Scan 状态
+    # 特点：独立运行、定期执行、与具体扫描任务无关
+    MAINTENANCE_TASKS = {'cleanup_old_scans', 'health_check', 'stats_report'}
+    
     def __init__(self):
         self.task_service = ScanTaskService()
         self.scan_service = ScanService(task_service=self.task_service)
@@ -71,29 +76,25 @@ class StatusUpdateHandler:
         信号：task_prerun
         触发时机：任务开始执行前
         """
+        if not task:
+            task_name = f"unknown_task_{task_id or 'no_id'}"
+            logger.error("task 参数为 None，使用默认名称: %s", task_name)
+        else:
+            task_name = getattr(task, 'name', None)
+            if not task_name:
+                task_name = f"unknown_task_{task_id or 'no_id'}"
+                logger.error("task.name 为空，使用默认名称: %s", task_name)
+        
+        # 跳过维护任务（不需要追踪）
+        if task_name in self.MAINTENANCE_TASKS:
+            logger.debug("维护任务，跳过追踪 - Task: %s", task_name)
+            return
+        
         # 安全获取 scan_id，使用默认值确保任务能被追踪
         scan_id = kwargs.get('scan_id') if kwargs else None
         if not scan_id:
             logger.warning("任务没有 scan_id 参数，但仍会尝试记录任务信息")
             scan_id = -1  # 使用特殊值标记无 scan_id 的任务
-            
-        # 安全获取 task_name，使用默认值确保任务能被追踪
-        if not task:
-            task_name = f"unknown_task_{task_id or 'no_id'}"
-            logger.error(
-                "task 参数为 None，使用默认名称: %s - Scan ID: %s",
-                task_name,
-                scan_id
-            )
-        else:
-            task_name = getattr(task, 'name', None)
-            if not task_name:
-                task_name = f"unknown_task_{task_id or 'no_id'}"
-                logger.error(
-                    "task.name 为空，使用默认名称: %s - Scan ID: %s",
-                    task_name,
-                    scan_id
-                )
         
         # 记录任务开始（task_id 验证由 Service 层负责）
         logger.info(
@@ -156,29 +157,26 @@ class StatusUpdateHandler:
         - 只有 finalize_scan 负责更新 Scan 的最终状态
         - 工作任务完成只更新 ScanTask，不影响 Scan
         """
-        # 安全获取 scan_id，使用默认值确保任务能被追踪
-        scan_id = kwargs.get('scan_id') if kwargs else None
-        if not scan_id:
-            logger.warning("任务没有 scan_id 参数，使用默认值")
-            scan_id = -1  # 使用特殊值标记无 scan_id 的任务
-        
-        # 安全获取 task_name，使用默认值确保任务能被追踪
+        # 安全获取 task_name
         if not sender:
             task_name = f"unknown_task_{task_id or 'no_id'}"
-            logger.error(
-                "sender 参数为 None，使用默认名称: %s - Scan ID: %s",
-                task_name,
-                scan_id
-            )
+            logger.error("sender 参数为 None，使用默认名称: %s", task_name)
         else:
             task_name = getattr(sender, 'name', None)
             if not task_name:
                 task_name = f"unknown_task_{task_id or 'no_id'}"
-                logger.error(
-                    "sender.name 为空，使用默认名称: %s - Scan ID: %s",
-                    task_name,
-                    scan_id
-                )
+                logger.error("sender.name 为空，使用默认名称: %s", task_name)
+        
+        # 跳过维护任务（不需要更新）
+        if task_name in self.MAINTENANCE_TASKS:
+            logger.debug("维护任务成功，跳过追踪 - Task: %s", task_name)
+            return
+        
+        # 安全获取 scan_id
+        scan_id = kwargs.get('scan_id') if kwargs else None
+        if not scan_id:
+            logger.warning("任务没有 scan_id 参数，使用默认值")
+            scan_id = -1
         
         logger.info(
             "任务执行成功 - Task: %s, Task ID: %s, Scan ID: %s",
@@ -228,29 +226,26 @@ class StatusUpdateHandler:
         - 因为 chain 会中断，finalize_scan 不会执行
         - 需要在这里立即更新，确保 Scan 状态正确
         """
-        # 安全获取 scan_id，使用默认值确保任务能被追踪
-        scan_id = kwargs.get('scan_id') if kwargs else None
-        if not scan_id:
-            logger.warning("任务没有 scan_id 参数，使用默认值")
-            scan_id = -1  # 使用特殊值标记无 scan_id 的任务
-        
-        # 安全获取 task_name，使用默认值确保任务能被追踪
+        # 安全获取 task_name
         if not sender:
             task_name = f"unknown_task_{task_id or 'no_id'}"
-            logger.error(
-                "sender 参数为 None，使用默认名称: %s - Scan ID: %s",
-                task_name,
-                scan_id
-            )
+            logger.error("sender 参数为 None，使用默认名称: %s", task_name)
         else:
             task_name = getattr(sender, 'name', None)
             if not task_name:
                 task_name = f"unknown_task_{task_id or 'no_id'}"
-                logger.error(
-                    "sender.name 为空，使用默认名称: %s - Scan ID: %s",
-                    task_name,
-                    scan_id
-                )
+                logger.error("sender.name 为空，使用默认名称: %s", task_name)
+        
+        # 跳过维护任务（不需要更新）
+        if task_name in self.MAINTENANCE_TASKS:
+            logger.debug("维护任务失败，跳过追踪 - Task: %s", task_name)
+            return
+        
+        # 安全获取 scan_id
+        scan_id = kwargs.get('scan_id') if kwargs else None
+        if not scan_id:
+            logger.warning("任务没有 scan_id 参数，使用默认值")
+            scan_id = -1
         
         # 安全获取错误信息
         error_message = str(exception) if exception else 'Unknown error'

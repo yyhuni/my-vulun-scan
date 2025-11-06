@@ -5,13 +5,13 @@
 """
 
 import logging
-import os
 import uuid
-from typing import Dict, List, Optional, TYPE_CHECKING
+from typing import Dict, List, TYPE_CHECKING
 from datetime import datetime
 from pathlib import Path
 
 from celery import current_app
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
@@ -21,7 +21,6 @@ from apps.targets.models import Target
 from apps.engine.models import ScanEngine
 from apps.scan.tasks.initiate_scan_task import initiate_scan_task
 from apps.common.definitions import ScanTaskStatus
-from apps.scan.utils import remove_directory
 
 if TYPE_CHECKING:
     from apps.scan.services.scan_task_service import ScanTaskService
@@ -98,7 +97,7 @@ class ScanService:
         示例：/data/scans/scan_20231104_152030_a1b2c3d4/
         
         Raises:
-            ValueError: 如果环境变量 SCAN_RESULTS_DIR 未设置或为空
+            ValueError: 如果 SCAN_RESULTS_DIR 未设置或为空
         
         Note:
             使用 UUID 后缀确保路径唯一性，避免高并发场景下的路径冲突
@@ -106,10 +105,10 @@ class ScanService:
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         unique_id = uuid.uuid4().hex[:8]  # 添加 8 位唯一标识
         
-        # 验证环境变量是否设置
-        base_dir = os.getenv('SCAN_RESULTS_DIR')
+        # 从 settings 获取，保持配置统一
+        base_dir = getattr(settings, 'SCAN_RESULTS_DIR', None)
         if not base_dir:
-            error_msg = "环境变量 SCAN_RESULTS_DIR 未设置，无法创建扫描工作空间"
+            error_msg = "SCAN_RESULTS_DIR 未设置，无法创建扫描工作空间"
             logger.error(error_msg)
             raise ValueError(error_msg)
         
@@ -398,9 +397,6 @@ class ScanService:
             if not result:
                 return False
             
-            # 触发清理
-            self._trigger_workspace_cleanup(scan_id)
-            
             return True
                 
         except Exception as e:  # noqa: BLE001
@@ -414,7 +410,6 @@ class ScanService:
         职责：
         - 检查当前状态（保护 FAILED 不被覆盖）
         - 更新为 ABORTED（如果适用）
-        - 触发工作空间清理
         
         Args:
             scan_id: 扫描任务 ID
@@ -443,17 +438,12 @@ class ScanService:
                     ScanTaskStatus(scan.status).label,
                     scan_id
                 )
-                # 虽然不更新状态，但仍然触发清理（如果还未清理）
-                self._trigger_workspace_cleanup(scan_id)
                 return True
             
             # 更新为 ABORTED
             result = self.update_status(scan_id, ScanTaskStatus.ABORTED)
             if not result:
                 return False
-            
-            # 触发清理
-            self._trigger_workspace_cleanup(scan_id)
             
             logger.info("✓ Scan 已更新为 ABORTED - Scan ID: %s", scan_id)
             return True
@@ -473,7 +463,6 @@ class ScanService:
         职责：
         - 更新 Scan 状态为 FAILED
         - 查询并撤销同一 Scan 下所有可撤销的任务（RUNNING + PENDING）
-        - 触发工作空间清理
         
         Args:
             scan_id: 扫描任务 ID
@@ -507,8 +496,6 @@ class ScanService:
             
             if not cancellable_tasks:
                 logger.info("没有可撤销的任务 - Scan ID: %s", scan_id)
-                # 触发清理后返回
-                self._trigger_workspace_cleanup(scan_id)
                 return True
             
             # 过滤掉已失败的任务（避免重复）
@@ -519,7 +506,6 @@ class ScanService:
             
             if not tasks_to_revoke:
                 logger.info("过滤后没有需要撤销的任务 - Scan ID: %s", scan_id)
-                self._trigger_workspace_cleanup(scan_id)
                 return True
             
             # 3. 撤销所有可撤销的任务（RUNNING + PENDING）
@@ -537,9 +523,6 @@ class ScanService:
                 "✓ 成功撤销 %d/%d 个任务 - Scan ID: %s",
                 revoked_count, len(tasks_to_revoke), scan_id
             )
-            
-            # 4. 触发清理
-            self._trigger_workspace_cleanup(scan_id)
             
             return True
                 
@@ -659,33 +642,6 @@ class ScanService:
             logger.exception("追加任务到 Scan 失败 - Scan ID: %s, 错误: %s", scan_id, e)
             return False
     
-    def _trigger_workspace_cleanup(self, scan_id: int) -> None:
-        """
-        触发工作空间清理（扫描完成后）
-        
-        清理策略：删除工作空间目录释放磁盘空间
-        
-        Args:
-            scan_id: 扫描任务 ID
-        """
-        try:
-            scan = self.scan_repo.get_by_id(scan_id)
-            if not scan:
-                logger.warning("Scan %s 不存在，无法清理工作空间", scan_id)
-                return
-            
-            workspace_dir = scan.results_dir
-            if workspace_dir:
-                logger.info("开始清理工作空间 - Scan ID: %s, Path: %s", scan_id, workspace_dir)
-                
-                # 调用工具清理目录
-                if remove_directory(workspace_dir):
-                    logger.info("✓ 工作空间清理完成 - Scan ID: %s", scan_id)
-                else:
-                    logger.warning("工作空间清理失败 - Scan ID: %s, Path: %s", scan_id, workspace_dir)
-            
-        except Exception as e:  # noqa: BLE001
-            logger.exception("触发工作空间清理失败 - Scan ID: %s, 错误: %s", scan_id, e)
 
 
 # 导出接口

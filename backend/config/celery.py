@@ -30,6 +30,18 @@ app.conf.task_routes = {
         'routing_key': 'orchestrator.initiate_scan',
     },
     
+    # 收尾任务 -> orchestrator 队列
+    'finalize_scan': {
+        'queue': 'orchestrator',
+        'routing_key': 'orchestrator.finalize_scan',
+    },
+    
+    # 维护任务 -> orchestrator 队列（定时清理）
+    'cleanup_old_scans': {
+        'queue': 'orchestrator',
+        'routing_key': 'orchestrator.cleanup_old_scans',
+    },
+    
     # 扫描任务 -> scans 队列（重量级、限制并发）
     'subdomain_discovery': {
         'queue': 'scans',
@@ -73,6 +85,24 @@ app.conf.worker_prefetch_multiplier = 1  # 每个 worker 只预取 1 个任务
 
 # app.conf.result_backend = 'redis://localhost:6379/0'
 # app.conf.result_expires = 3600  # 结果过期时间：1小时
+
+
+# ==================== Celery Beat 定时任务配置 ====================
+# 配置定期执行的任务
+
+from celery.schedules import crontab
+
+app.conf.beat_schedule = {
+    # 每天凌晨 2 点执行清理任务
+    'cleanup-old-scans-daily': {
+        'task': 'cleanup_old_scans',
+        'schedule': crontab(hour=2, minute=0),  # 每天凌晨 2:00
+        'options': {
+            'queue': 'orchestrator',
+            'expires': 3600,  # 任务过期时间：1小时
+        },
+    },
+}
 
 
 # ==================== 调试配置 ====================
