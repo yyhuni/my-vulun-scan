@@ -11,6 +11,7 @@ from typing import Dict, List, Optional, TYPE_CHECKING
 from datetime import datetime
 from pathlib import Path
 
+from celery import current_app
 from django.db import transaction
 from django.utils import timezone
 
@@ -132,25 +133,7 @@ class ScanService:
             1. 使用 bulk_create 批量插入数据库（避免 N+1 问题）
             2. 使用事务保护批量操作（确保原子性）
             3. 预先生成所有数据，减少数据库交互次数
-        
-        字段初始化策略：
-            Service层初始化（创建时）：
-            - target: 扫描目标（必填）
-            - engine: 扫描引擎（必填）
-            - results_dir: 工作空间路径（预先生成，带UUID避免冲突）
-            - status: INITIATED（显式设置初始状态）
-            - task_ids: []（显式初始化为空列表）
-            
-            Signal层更新（任务执行时由 StatusUpdateHandler 自动更新）：
-            - status: INITIATED → RUNNING → SUCCESSFUL/FAILED/ABORTED
-            - started_at: 首个任务开始时设置（信号处理器控制）
-            - task_ids: 追加每个 Celery 任务 ID
-            - task_names: 追加每个任务名称
-            - stopped_at: 任务完成时自动设置
-            - error_message: 任务失败时记录错误信息
-            
-            自动生成字段：
-            - id: 数据库自增主键
+
         
         Note:
             - Celery 任务仍然串行提交，未来可考虑使用 celery.group 批量提交
@@ -390,7 +373,7 @@ class ScanService:
     
     def complete_scan(self, scan_id: int, status: ScanTaskStatus) -> bool:
         """
-        完成扫描（更新状态并触发清理）
+        完成扫描（正常收尾流程）
         
         职责：
         - 更新扫描状态
@@ -398,10 +381,14 @@ class ScanService:
         
         Args:
             scan_id: 扫描任务 ID
-            status: 最终状态
+            status: 最终状态（来自 finalize_scan 的任务统计）
         
         Returns:
             是否完成成功
+        
+        Note:
+            此方法专门用于 finalize_scan_task 的正常收尾流程
+            任务撤销场景请使用 abort_scan_on_revoked()
         """
         try:
             # 更新状态
@@ -417,6 +404,200 @@ class ScanService:
         except Exception as e:  # noqa: BLE001
             logger.exception("完成扫描失败 - Scan ID: %s, 错误: %s", scan_id, e)
             return False
+    
+    def abort_scan_on_revoked(self, scan_id: int) -> bool:
+        """
+        处理任务被撤销时的 Scan 状态更新
+        
+        职责：
+        - 检查当前状态（保护 FAILED 不被覆盖）
+        - 更新为 ABORTED（如果适用）
+        - 触发工作空间清理
+        
+        Args:
+            scan_id: 扫描任务 ID
+        
+        Returns:
+            是否处理成功
+        
+        Note:
+            专门用于 on_task_revoked 信号处理
+            包含状态保护逻辑，防止级联撤销覆盖 FAILED 状态
+        """
+        try:
+            # 获取当前状态
+            scan = self.scan_repo.get_by_id(scan_id)
+            if not scan:
+                logger.error("Scan 不存在 - Scan ID: %s", scan_id)
+                return False
+            
+            # 状态保护：FAILED 优先级高于 ABORTED
+            # 场景：任务失败 → Scan=FAILED → 级联撤销其他任务 → 不应该变成 ABORTED
+            if scan.status == ScanTaskStatus.FAILED:
+                logger.info(
+                    "Scan 已处于 FAILED 状态，跳过 ABORTED 更新（级联撤销保护） - Scan ID: %s",
+                    scan_id
+                )
+                # 虽然不更新状态，但仍然触发清理
+                self._trigger_workspace_cleanup(scan_id)
+                return True
+            
+            # 更新为 ABORTED
+            result = self.update_status(scan_id, ScanTaskStatus.ABORTED)
+            if not result:
+                return False
+            
+            # 触发清理
+            self._trigger_workspace_cleanup(scan_id)
+            
+            logger.info("✓ Scan 已更新为 ABORTED - Scan ID: %s", scan_id)
+            return True
+                
+        except Exception as e:  # noqa: BLE001
+            logger.exception("处理任务撤销失败 - Scan ID: %s, 错误: %s", scan_id, e)
+            return False
+    
+    def fail_scan_with_cascade(
+        self, 
+        scan_id: int,
+        failed_task_id: Optional[str] = None
+    ) -> bool:
+        """
+        标记扫描为失败并撤销所有可撤销的任务
+        
+        职责：
+        - 更新 Scan 状态为 FAILED
+        - 查询并撤销同一 Scan 下所有可撤销的任务（RUNNING + PENDING）
+        - 触发工作空间清理
+        
+        Args:
+            scan_id: 扫描任务 ID
+            failed_task_id: 已失败的任务 ID（用于排除，避免重复撤销）
+        
+        Returns:
+            是否处理成功
+        
+        Note:
+            此方法专门用于处理任务失败场景，与 complete_scan 职责分离
+            
+            撤销策略：
+            - RUNNING 任务: 强制终止（terminate=True）
+            - PENDING 任务: 取消调度（terminate=False）
+            - SUCCESSFUL/FAILED/ABORTED: 不处理（保持原状态）
+        """
+        try:
+            # 1. 立即更新 Scan 状态为 FAILED
+            logger.warning("开始失败处理 - Scan ID: %s", scan_id)
+            result = self.update_status(scan_id, ScanTaskStatus.FAILED)
+            if not result:
+                logger.error("更新 Scan 状态为 FAILED 失败 - Scan ID: %s", scan_id)
+                return False
+            
+            # 2. 查询所有正在运行的任务
+            if not self.task_service:
+                logger.error("TaskService 未初始化，无法撤销任务")
+                return False
+            
+            cancellable_tasks = self.task_service.get_running_tasks(scan_id)
+            
+            if not cancellable_tasks:
+                logger.info("没有可撤销的任务 - Scan ID: %s", scan_id)
+                # 触发清理后返回
+                self._trigger_workspace_cleanup(scan_id)
+                return True
+            
+            # 过滤掉已失败的任务（避免重复）
+            tasks_to_revoke = [
+                task for task in cancellable_tasks 
+                if task['task_id'] != failed_task_id
+            ]
+            
+            if not tasks_to_revoke:
+                logger.info("过滤后没有需要撤销的任务 - Scan ID: %s", scan_id)
+                self._trigger_workspace_cleanup(scan_id)
+                return True
+            
+            # 3. 撤销所有可撤销的任务（RUNNING + PENDING）
+            running_count = sum(1 for t in tasks_to_revoke if t.get('status') == ScanTaskStatus.RUNNING)
+            pending_count = sum(1 for t in tasks_to_revoke if t.get('status') == ScanTaskStatus.PENDING)
+            
+            logger.warning(
+                "检测到任务失败，开始撤销 %d 个任务 - Scan ID: %s (RUNNING: %d, PENDING: %d)",
+                len(tasks_to_revoke), scan_id, running_count, pending_count
+            )
+            
+            revoked_count = self._revoke_tasks(tasks_to_revoke, scan_id)
+            
+            logger.warning(
+                "✓ 成功撤销 %d/%d 个任务 - Scan ID: %s",
+                revoked_count, len(tasks_to_revoke), scan_id
+            )
+            
+            # 4. 触发清理
+            self._trigger_workspace_cleanup(scan_id)
+            
+            return True
+                
+        except Exception as e:  # noqa: BLE001
+            logger.exception(
+                "失败处理时发生错误 - Scan ID: %s, 错误: %s",
+                scan_id, e
+            )
+            return False
+    
+    def _revoke_tasks(
+        self, 
+        tasks: List[Dict[str, str]], 
+        scan_id: int
+    ) -> int:
+        """
+        撤销任务列表（区分 RUNNING 和 PENDING）
+        
+        Args:
+            tasks: 任务列表 [{'task_id': 'xxx', 'task_name': 'yyy', 'status': 'RUNNING'}, ...]
+            scan_id: 扫描 ID（用于日志）
+        
+        Returns:
+            成功撤销的任务数量
+        
+        Note:
+            - RUNNING 任务: terminate=True（强制终止正在执行的任务）
+            - PENDING 任务: terminate=False（只取消调度，不发送终止信号）
+        """
+        app = current_app._get_current_object()
+        revoked_count = 0
+        
+        for task in tasks:
+            task_id = task['task_id']
+            task_name = task['task_name']
+            task_status = task.get('status', ScanTaskStatus.RUNNING)  # 默认 RUNNING
+            
+            try:
+                # 根据状态决定是否需要终止
+                # RUNNING: 需要强制终止（terminate=True）
+                # PENDING: 只需取消调度（terminate=False）
+                should_terminate = (task_status == ScanTaskStatus.RUNNING)
+                
+                app.control.revoke(
+                    task_id, 
+                    terminate=should_terminate,
+                    signal='SIGTERM' if should_terminate else None
+                )
+                
+                action = "已终止" if should_terminate else "已取消"
+                logger.info(
+                    "✓ %s任务: %s [%s] (Task ID: %s) - Scan ID: %s",
+                    action, task_name, task_status, task_id, scan_id
+                )
+                revoked_count += 1
+                
+            except Exception as e:  # noqa: BLE001
+                logger.error(
+                    "撤销任务失败: %s [%s] (Task ID: %s) - Scan ID: %s, 错误: %s",
+                    task_name, task_status, task_id, scan_id, e
+                )
+        
+        return revoked_count
     
     def append_task_to_scan(
         self,

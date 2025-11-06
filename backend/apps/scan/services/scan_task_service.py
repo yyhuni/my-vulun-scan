@@ -237,6 +237,43 @@ class ScanTaskService:
             logger.exception("检查任务完成状态失败 - Scan ID: %s, 错误: %s", scan_id, e)
             return False, {'total': 0}
     
+    def get_running_tasks(self, scan_id: int) -> List[Dict[str, str]]:
+        """
+        获取指定 Scan 下所有可撤销的任务（RUNNING + PENDING）
+        
+        Args:
+            scan_id: 扫描 ID
+        
+        Returns:
+            任务信息列表，格式:
+            [
+                {
+                    'task_id': 'xxx', 
+                    'task_name': 'subdomain_discovery',
+                    'status': 'RUNNING'
+                },
+                {
+                    'task_id': 'yyy', 
+                    'task_name': 'port_scan',
+                    'status': 'PENDING'
+                },
+                ...
+            ]
+        
+        Note:
+            用于任务失败时撤销其他可撤销的任务
+            - RUNNING: 正在执行，需要强制终止
+            - PENDING: 等待执行，需要取消调度
+        """
+        try:
+            return self.scan_task_repo.get_running_tasks(scan_id)
+        except Exception as e:  # noqa: BLE001
+            logger.exception(
+                "获取可撤销任务失败 - Scan ID: %s, 错误: %s",
+                scan_id, e
+            )
+            return []
+    
     def get_task_stats(
         self, 
         scan_id: int, 

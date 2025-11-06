@@ -265,10 +265,17 @@ class StatusUpdateHandler:
             error_traceback=error_traceback
         )
         
-        # 2. 关键：立即更新 Scan 状态
+        # 2. 关键：标记 Scan 为失败并撤销其他正在运行的任务
         # 因为 chain 会中断，finalize 不会执行
-        logger.warning("任务失败，立即更新 Scan - Scan ID: %s", scan_id)
-        self.scan_service.complete_scan(scan_id, ScanTaskStatus.FAILED)
+        # 使用专门的失败处理方法，集中处理：
+        #   - 更新 Scan 状态为 FAILED
+        #   - 撤销同一 Scan 下所有 RUNNING 任务
+        #   - 触发工作空间清理
+        logger.error("任务失败，开始失败级联处理 - Scan ID: %s", scan_id)
+        self.scan_service.fail_scan_with_cascade(
+            scan_id=scan_id,
+            failed_task_id=task_id
+        )
     
     def on_task_revoked(
         self, 
@@ -339,10 +346,11 @@ class StatusUpdateHandler:
             error_message=f"任务被中止: {reason}"
         )
         
-        # 2. 关键：立即更新 Scan 状态
+        # 2. 处理任务被撤销的 Scan 状态更新
         # 因为 chain 会中断，finalize 不会执行
-        logger.warning("任务中止，立即更新 Scan - Scan ID: %s", scan_id)
-        self.scan_service.complete_scan(scan_id, ScanTaskStatus.ABORTED)
+        # 使用专门的方法，包含级联撤销保护逻辑
+        logger.warning("任务中止，处理 Scan 撤销状态 - Scan ID: %s", scan_id)
+        self.scan_service.abort_scan_on_revoked(scan_id)
     
     def _handle_scan_completion(self, scan_id: int) -> None:
         """

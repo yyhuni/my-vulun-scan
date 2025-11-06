@@ -284,6 +284,76 @@ class ScanTaskRepository:
         return ScanTaskRepository.filter_by_scan_and_status(scan_id, status).count()
     
     @staticmethod
+    def get_running_tasks(scan_id: int) -> List[Dict[str, str]]:
+        """
+        获取指定 Scan 下所有可撤销的任务信息（RUNNING + PENDING）
+        
+        Args:
+            scan_id: 扫描 ID
+        
+        Returns:
+            任务信息列表，格式:
+            [
+                {
+                    'task_id': 'xxx', 
+                    'task_name': 'subdomain_discovery',
+                    'status': 'RUNNING'
+                },
+                {
+                    'task_id': 'yyy', 
+                    'task_name': 'port_scan',
+                    'status': 'PENDING'
+                },
+                ...
+            ]
+            
+        Note:
+            - 返回 RUNNING 和 PENDING 状态的任务
+            - RUNNING: 正在执行，需要终止（terminate=True）
+            - PENDING: 等待执行，需要取消（terminate=False）
+            - 过滤掉 task_id 为空的任务
+        """
+        try:
+            tasks = ScanTask.objects.filter(  # type: ignore  # pylint: disable=no-member
+                scan_id=scan_id,
+                status__in=[
+                    ScanTaskStatus.RUNNING,   # 正在执行
+                    ScanTaskStatus.PENDING    # 等待执行
+                ]
+            ).exclude(
+                task_id__isnull=True
+            ).exclude(
+                task_id__exact=''
+            ).values('task_id', 'name', 'status')
+            
+            # 将 QuerySet 转换为列表，并规范化字段名
+            result = [
+                {
+                    'task_id': task['task_id'],
+                    'task_name': task['name'],
+                    'status': task['status']  # 包含状态，用于区分处理
+                }
+                for task in tasks
+            ]
+            
+            running_count = sum(1 for t in result if t['status'] == ScanTaskStatus.RUNNING)
+            pending_count = sum(1 for t in result if t['status'] == ScanTaskStatus.PENDING)
+            
+            logger.debug(
+                "查询到 %d 个可撤销任务 - Scan ID: %s (RUNNING: %d, PENDING: %d)",
+                len(result), scan_id, running_count, pending_count
+            )
+            
+            return result
+            
+        except Exception as e:
+            logger.exception(
+                "查询可撤销任务失败 - Scan ID: %s: %s",
+                scan_id, e
+            )
+            return []
+    
+    @staticmethod
     def get_status_statistics(scan_id: int) -> Dict[str, int]:
         """
         获取指定扫描任务的状态统计信息
