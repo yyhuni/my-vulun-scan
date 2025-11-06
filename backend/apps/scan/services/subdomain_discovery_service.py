@@ -33,7 +33,11 @@ class SubdomainDiscoveryService:
         },
         {
             'name': 'subfinder',
-            'command': 'subfinder -d {target} -o {output_file} -silent'
+            'command': 'subfinder -d {target} -o {output_file}'
+        },
+        {
+            'name': 'echo',
+            'command': 'echo {target}.com.cn > {output_file}'
         }
     ]
     
