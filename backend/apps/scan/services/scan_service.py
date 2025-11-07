@@ -15,7 +15,6 @@ from pathlib import Path
 from celery import current_app
 from django.conf import settings
 from django.db import transaction
-from django.utils import timezone
 
 from apps.scan.models import Scan
 from apps.scan.repositories import ScanRepository
@@ -267,21 +266,20 @@ class ScanService:
             logger.exception("更新 Scan 状态失败 - Scan ID: %s, 错误: %s", scan_id, e)
             return False
     
-    def start_scan_execution(
+    def update_scan_to_running(
         self,
         scan_id: int
     ) -> bool:
         """
-        启动扫描执行（由 initiate_scan_task 调用）
+        更新扫描状态为 RUNNING（由 initiate_scan_task 调用）
         
         职责：
-        - 验证扫描状态必须是 INITIATED
-        - 更新状态为 RUNNING
-        - 设置开始时间
+        - 验证扫描状态必须是 INITIATED（业务规则验证）
+        - 委托 Repository 层进行数据更新
+        - 记录业务日志
         
         注意：
         - 任务信息（task_ids, task_names）由信号处理器统一追加
-        - 不再需要传递 task_id 和 task_name
         
         前置条件：
         - Scan 状态必须是 INITIATED（由 Service 层创建时设置）
@@ -291,16 +289,16 @@ class ScanService:
             scan_id: 扫描任务 ID
         
         Returns:
-            是否启动成功
+            是否更新成功
         """
         try:
-            # 获取当前扫描状态（不需要关联对象）
+            # 步骤 1: 获取当前扫描状态（业务验证）
             scan = self.scan_repo.get_by_id(scan_id)
             if not scan:
                 logger.error("Scan 不存在 - Scan ID: %s", scan_id)
                 return False
             
-            # 验证状态：必须是 INITIATED
+            # 步骤 2: 验证状态（业务规则）
             if scan.status != ScanTaskStatus.INITIATED:
                 logger.error(
                     "Scan 状态异常 - 期望 INITIATED，实际 %s, Scan ID: %s",
@@ -309,23 +307,29 @@ class ScanService:
                 )
                 return False
             
-            # 启动扫描：INITIATED → RUNNING
-            # Service 层只负责状态转换，任务信息由信号处理器追加
-            scan.status = ScanTaskStatus.RUNNING
-            scan.started_at = timezone.now()
-            scan.save()
-            
-            logger.info(
-                "启动扫描执行 - Scan ID: %s, 状态: %s → %s",
-                scan_id,
-                ScanTaskStatus.INITIATED.label,
-                ScanTaskStatus.RUNNING.label
+            # 步骤 3: 委托 Repository 层进行数据更新
+            result = self.scan_repo.update_status(
+                scan_id=scan_id,
+                status=ScanTaskStatus.RUNNING
             )
             
-            return True
+            if result:
+                logger.info(
+                    "扫描状态已更新 - Scan ID: %s, 状态: %s → %s",
+                    scan_id,
+                    ScanTaskStatus.INITIATED.label,
+                    ScanTaskStatus.RUNNING.label
+                )
+            else:
+                logger.error(
+                    "更新扫描状态失败 - Scan ID: %s（数据库操作失败）",
+                    scan_id
+                )
+            
+            return result
                 
         except Exception as e:  # noqa: BLE001
-            logger.exception("启动扫描执行失败 - Scan ID: %s, 错误: %s", scan_id, e)
+            logger.exception("更新扫描状态失败 - Scan ID: %s, 错误: %s", scan_id, e)
             return False
     
     def get_scan_completion_status(self, scan_id: int) -> tuple[bool, Dict[str, int], ScanTaskStatus | None]:

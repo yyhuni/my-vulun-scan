@@ -223,7 +223,8 @@ class ScanRepository:
     def update_status(
         scan_id: int,
         status: ScanTaskStatus,
-        error_message: str | None = None
+        error_message: str | None = None,
+        started_at: datetime | None = None
     ) -> bool:
         """
         更新扫描任务状态
@@ -232,6 +233,7 @@ class ScanRepository:
             scan_id: 扫描任务 ID
             status: 新状态
             error_message: 错误消息（可选）
+            started_at: 开始时间（可选，仅在状态转为 RUNNING 时使用）
         
         Returns:
             是否更新成功
@@ -244,6 +246,10 @@ class ScanRepository:
         
         if error_message:
             scan.error_message = error_message[:300]
+        
+        # 如果状态转为 RUNNING，设置开始时间
+        if status == ScanTaskStatus.RUNNING:
+            scan.started_at = started_at or timezone.now()
         
         # 如果任务完成，更新结束时间
         if status in [

@@ -72,30 +72,7 @@ class ScanCommandExecutor:
                 124, command, f"Command timeout after {self.timeout}s"
             ) from exc
     
-    def execute_scan_tool(self, tool_name: str, command: str) -> bool:
-        """
-        执行扫描工具命令
-        
-        Args:
-            tool_name: 工具名称（用于日志，如 'amass'、'subfinder'）
-            command: 要执行的命令
-        
-        Returns:
-            执行成功返回 True，失败抛出异常
-        
-        Raises:
-            subprocess.CalledProcessError: 命令执行失败
-        """
-        logger.info("Executing scan tool: %s", tool_name)
-        
-        try:
-            self.execute(command, capture_output=False)
-            logger.info("Scan tool '%s' completed successfully", tool_name)
-            return True
-        
-        except subprocess.CalledProcessError as e:
-            logger.warning("Scan tool '%s' failed: %s", tool_name, str(e))
-            raise
+    
 
 
 # 创建默认实例（）

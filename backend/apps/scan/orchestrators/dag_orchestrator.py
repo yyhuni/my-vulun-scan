@@ -36,7 +36,7 @@ class DAGOrchestrator:
         # 'vuln_scan': 'apps.scan.tasks.vuln_scan_task.vuln_scan_task',
     }
     
-    def dispatch_workflow(self, scan: Scan, config: dict) -> Tuple[Optional[Any], list]:
+    def dispatch_workflow(self, scan: Scan, config: dict) -> Tuple[Any, list]:
         """
         根据配置动态构建 DAG 工作流
         
@@ -46,7 +46,10 @@ class DAGOrchestrator:
         
         Returns:
             (workflow, task_names): Celery workflow 对象和任务名称列表
-            如果构建失败，返回 (None, [])
+        
+        Raises:
+            ValueError: 配置错误（没有可执行任务、循环依赖等）
+            RuntimeError: 工作流构建失败
         
         示例配置：
             {
@@ -68,27 +71,21 @@ class DAGOrchestrator:
         
         # 1. 构建任务字典（任务名称 -> Celery 签名）
         tasks = self._build_tasks(scan, config)
-        
         if not tasks:
-            logger.warning("没有可执行的任务")
-            return None, []
+            raise ValueError("没有可执行的任务")
         
         # 2. 提取依赖关系
         dependencies = self._extract_dependencies(config, tasks.keys())
         
         # 3. 拓扑排序分组
         stages = self._build_dependency_stages(dependencies, tasks)
-        
         if not stages:
-            logger.error("拓扑排序失败，可能存在循环依赖")
-            return None, []
+            raise ValueError("拓扑排序失败，可能存在循环依赖")
         
         # 4. 构建 workflow
         workflow = self._build_workflow(stages, scan.id)
-        
         if not workflow:
-            logger.error("构建 workflow 失败")
-            return None, []
+            raise RuntimeError("构建 workflow 失败")
         
         # 5. 收集任务名称（包含 finalize）
         task_names = []
@@ -261,8 +258,7 @@ class DAGOrchestrator:
         queue = deque([task for task, degree in in_degree.items() if degree == 0])
         
         if not queue:
-            logger.error("没有入度为 0 的任务，可能存在循环依赖")
-            return []
+            raise ValueError("没有入度为 0 的任务，可能存在循环依赖")
         
         stages = []
         processed_count = 0
@@ -297,16 +293,13 @@ class DAGOrchestrator:
         
         # 4. 检查是否所有任务都被处理（检测循环依赖）
         if processed_count != len(tasks):
-            logger.error(
-                "拓扑排序未完成，处理了 %d/%d 任务，可能存在循环依赖",
-                processed_count,
-                len(tasks)
+            raise ValueError(
+                f"拓扑排序未完成，处理了 {processed_count}/{len(tasks)} 任务，可能存在循环依赖"
             )
-            return []
         
         return stages
     
-    def _build_workflow(self, stages: List[List[Any]], scan_id: int) -> Optional[Any]:
+    def _build_workflow(self, stages: List[List[Any]], scan_id: int) -> Any:
         """
         构建 Celery Canvas workflow
         
@@ -317,6 +310,10 @@ class DAGOrchestrator:
         Returns:
             Celery workflow 对象（chain）
         
+        Raises:
+            ValueError: 阶段列表为空
+            RuntimeError: 构建 workflow 失败
+        
         结构：
             - 单个任务的阶段：直接使用签名
             - 多个任务的阶段：使用 group 包装（并行执行）
@@ -324,7 +321,7 @@ class DAGOrchestrator:
             - 最后添加 finalize_scan_task
         """
         if not stages:
-            return None
+            raise ValueError("阶段列表为空，无法构建 workflow")
         
         try:
             # 动态加载 finalize_scan_task
@@ -352,7 +349,7 @@ class DAGOrchestrator:
             
         except Exception as e:
             logger.exception("构建 workflow 失败: %s", e)
-            return None
+            raise RuntimeError(f"构建 workflow 失败: {e}") from e
 
 
 # 导出接口

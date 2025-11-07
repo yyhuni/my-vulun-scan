@@ -62,6 +62,10 @@ def initiate_scan_task(self, scan_id: int = None):
             'task_count': int,  # 工作流中的任务数量
             'task_names': list  # 任务名称列表
         }
+    
+    Raises:
+        ValueError: 参数验证失败或配置错误
+        RuntimeError: 状态转换失败或工作流构建失败
     """
     try:
         # 参数验证
@@ -76,70 +80,37 @@ def initiate_scan_task(self, scan_id: int = None):
         scan = scan_service.get_scan(scan_id, prefetch_relations=True)
         
         if not scan:
-            logger.error("Scan with ID %s does not exist", scan_id)
             raise ValueError(f"Scan with ID {scan_id} does not exist")
         
         # 访问关联对象（已预加载，无额外查询）
         engine = scan.engine
-        
-        # 从数据库读取工作空间路径（由 Service 层生成）
         workspace_dir = Path(scan.results_dir)
         
         # 创建扫描工作空间目录
-        # 职责：Task 层负责执行具体操作（创建实际目录）
-        # 子任务将在此目录下创建各自的模块目录（如 subdomain_discovery/）
-        try:
-            workspace_dir.mkdir(parents=True, exist_ok=True)
-            logger.debug("创建扫描工作空间目录: %s", workspace_dir)
-        except OSError as e:
-            logger.error("创建工作空间目录失败: %s - %s", workspace_dir, e)
-            raise
+        workspace_dir.mkdir(parents=True, exist_ok=True)
+        logger.debug("创建扫描工作空间目录: %s", workspace_dir)
         
         logger.info(
             "初始化扫描任务 - Scan ID: %s, Target: %s, Engine: %s, Task ID: %s, Workspace: %s",
             scan_id, scan.target.name, engine.name, self.request.id, workspace_dir
         )
         
-        # 显式更新 Scan 状态和任务信息（编排任务职责）
-        # 注意：这是编排任务，应该显式控制 Scan 状态
-        # 工作任务（如 subdomain_discovery）则通过信号隐式处理
-        
-        # 通过 Service 层启动扫描执行
-        # Service 层负责：状态验证、状态转换(INITIATED → RUNNING)、时间戳生成
-        # 任务信息（task_ids, task_names）由信号处理器统一追加
-        result = scan_service.start_scan_execution(scan_id=scan_id)
-        
-        if not result:
-            error_msg = "启动扫描执行失败（可能状态异常或数据库错误）"
-            logger.error("%s - Scan ID: %s", error_msg, scan_id)
-            raise RuntimeError(error_msg)
+        # 更新扫描状态为 RUNNING
+        if not scan_service.update_scan_to_running(scan_id=scan_id):
+            raise RuntimeError(f"更新扫描状态失败 - Scan ID: {scan_id}")
         
         logger.debug("Scan 状态已更新为 RUNNING - Scan ID: %s", scan_id)
         
         # 解析 engine 配置
         config = _parse_engine_config(engine.configuration)
-        
         if not config:
-            logger.warning("Engine %s 没有配置，跳过任务调度", engine.name)
-            return {
-                'success': False,
-                'scan_id': scan_id,
-                'message': 'No engine configuration found'
-            }
+            raise ValueError(f"Engine {engine.name} 没有配置，无法启动扫描")
         
         # 使用编排器构建工作流
         orchestrator = WorkflowOrchestrator()
         workflow, task_names = orchestrator.dispatch_workflow(scan, config)
-        
         if not workflow:
-            logger.warning("工作流构建失败 - Scan ID: %s", scan_id)
-            return {
-                'success': False,
-                'scan_id': scan_id,
-                'target': scan.target.name,
-                'engine_id': engine.id,
-                'message': 'Failed to build workflow'
-            }
+            raise RuntimeError(f"工作流构建失败 - Scan ID: {scan_id}")
         
         # 执行工作流
         logger.info("工作流已启动 - Scan ID: %s, 任务: %s", scan_id, ' -> '.join(task_names))
@@ -157,10 +128,20 @@ def initiate_scan_task(self, scan_id: int = None):
         }
         
     except ValueError as e:
-        logger.error("Scan error: %s", e)
+        # 配置错误或参数验证失败
+        logger.error("配置错误: %s", e)
+        raise
+    except RuntimeError as e:
+        # 运行时错误（状态转换失败、工作流构建失败）
+        logger.error("运行时错误: %s", e)
+        raise
+    except OSError as e:
+        # 文件系统错误（工作空间创建失败）
+        logger.error("文件系统错误: %s", e)
         raise
     except Exception as e:  # noqa: BLE001
-        logger.exception("Failed to initiate scan: %s", e)
+        # 其他未预期错误
+        logger.exception("初始化扫描任务失败: %s", e)
         # 注意：失败状态更新由 StatusUpdateHandler 通过 task_failure 信号处理
         raise
 
