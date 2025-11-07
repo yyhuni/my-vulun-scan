@@ -8,6 +8,12 @@
 - 统一管理所有扫描工具的命令执行（子域名发现、端口扫描等）
 - 控制系统级别的并发命令数量，避免资源耗尽
 - 提供灵活的配置和监控能力
+
+命令输出日志：
+- 通过 settings.COMMAND_LOG_OUTPUT 控制是否记录命令的详细输出
+- 启用后，所有命令的执行信息（stdout/stderr）将记录到 command_output.log
+- 日志格式模拟终端显示，stdout 和 stderr 按实际执行顺序交错记录
+- 开发环境建议启用：export COMMAND_LOG_OUTPUT=True
 """
 
 import logging
@@ -24,6 +30,12 @@ from django.conf import settings
 from apps.scan.utils.command_executor import ScanCommandExecutor
 
 logger = logging.getLogger(__name__)
+
+# 在启动时记录命令输出日志状态
+if settings.COMMAND_LOG_OUTPUT:
+    logger.info("命令输出日志已启用 - 详细输出将记录到 command_output.log")
+else:
+    logger.debug("命令输出日志未启用 - 设置 COMMAND_LOG_OUTPUT=True 以启用")
 
 
 class CommandStatus(Enum):
@@ -98,6 +110,10 @@ class CommandPoolExecutor:
     _instance: Optional['CommandPoolExecutor'] = None
     _lock = threading.Lock()
     
+    # 批次ID管理（用于日志追踪）
+    _batch_counter = 0
+    _counter_lock = threading.Lock()
+    
     # ==================== 配置常量 ====================
     
     # 从 settings 读取默认配置
@@ -131,6 +147,21 @@ class CommandPoolExecutor:
                         cls._instance.default_timeout
                     )
         return cls._instance
+    
+    @classmethod
+    def _get_next_batch_id(cls) -> int:
+        """
+        生成递增的批次ID（线程安全）
+        
+        Returns:
+            批次ID（从1开始递增）
+        
+        Note:
+            用于日志追踪，区分不同批次的任务执行
+        """
+        with cls._counter_lock:
+            cls._batch_counter += 1
+            return cls._batch_counter
     
     # ==================== 初始化 ====================
     
@@ -198,8 +229,14 @@ class CommandPoolExecutor:
         if self._executor._shutdown:
             raise RuntimeError("命令池已关闭，无法提交新任务")
         
+        # 生成批次ID用于日志追踪
+        batch_id = self._get_next_batch_id()
+        
         total_tasks = len(tasks)
-        logger.info("开始并行执行 %d 个命令任务（最大并发: %d）", total_tasks, self.max_workers)
+        logger.info(
+            "[批次#%d] 开始并行执行 %d 个命令任务（最大并发: %d）", 
+            batch_id, total_tasks, self.max_workers
+        )
         
         # 提交所有任务到线程池
         future_to_task: Dict[Future, CommandTask] = {}
@@ -222,8 +259,8 @@ class CommandPoolExecutor:
                 # 日志输出
                 status = "成功" if result.success else "失败"
                 logger.info(
-                    "[%d/%d] 任务 '%s' %s (耗时: %.2f秒)",
-                    completed_count, total_tasks, task.name, status, result.duration
+                    "[批次#%d][%d/%d] 任务 '%s' %s (耗时: %.2f秒)",
+                    batch_id, completed_count, total_tasks, task.name, status, result.duration
                 )
             
             except Exception as e:  # noqa: BLE001 - 最后的安全网，确保不抛异常
@@ -244,8 +281,8 @@ class CommandPoolExecutor:
         failed_count = total_tasks - success_count
         
         logger.info(
-            "命令执行完成 - 总数: %d, 成功: %d, 失败: %d",
-            total_tasks, success_count, failed_count
+            "[批次#%d] 命令执行完成 - 总数: %d, 成功: %d, 失败: %d",
+            batch_id, total_tasks, success_count, failed_count
         )
         
         return results

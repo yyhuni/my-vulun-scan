@@ -272,6 +272,22 @@ COMMAND_TIMEOUT = int(os.getenv('COMMAND_TIMEOUT', '3600'))
 
 COMMAND_POOL_MAX_WORKERS = int(os.getenv('COMMAND_POOL_MAX_WORKERS', '5'))
 
+# 命令输出日志记录开关
+# 
+# 说明：
+# - 控制是否将命令的详细输出（stdout/stderr）记录到日志文件
+# - 开发环境下建议开启，便于调试和追踪命令执行情况
+# - 生产环境可关闭以减少日志量
+# 
+# 配置方式：
+# - 环境变量优先：COMMAND_LOG_OUTPUT
+# - 默认值：False（不记录）
+#
+# 示例环境变量：
+# COMMAND_LOG_OUTPUT=True  # 开启命令输出日志记录
+
+COMMAND_LOG_OUTPUT = os.getenv('COMMAND_LOG_OUTPUT', 'False') == 'True'
+
 
 # ==================== 日志配置 ====================
 # 日志配置说明：

@@ -6,8 +6,6 @@
 
 from .command_executor import (
     ScanCommandExecutor,
-    execute_command,
-    default_executor,
 )
 
 from .command_pool_executor import (
@@ -24,8 +22,6 @@ from .directory_cleanup import (
 __all__ = [
     # 命令执行
     'ScanCommandExecutor',
-    'execute_command',
-    'default_executor',
     
     # 命令池执行管理器
     'CommandPoolExecutor',
