@@ -1,10 +1,10 @@
 from django.db import models
 
 
-class ScanTaskStatus(models.IntegerChoices):
+class ScanTaskStatus(models.TextChoices):
     """扫描任务状态枚举"""
-    ABORTED = -2, '中止'
-    FAILED = -1, '失败'
-    INITIATED = 0, '初始化'
-    RUNNING = 1, '运行中'
-    SUCCESSFUL = 2, '成功'
+    ABORTED = 'aborted', '中止'
+    FAILED = 'failed', '失败'
+    INITIATED = 'initiated', '初始化'
+    RUNNING = 'running', '运行中'
+    SUCCESSFUL = 'successful', '成功'

@@ -22,7 +22,8 @@ class Scan(models.Model):
     started_at = models.DateTimeField(null=True, blank=True, help_text='扫描实际开始时间（第一个任务开始执行时）')
     stopped_at = models.DateTimeField(null=True, blank=True, help_text='扫描结束时间')
 
-    status = models.IntegerField(
+    status = models.CharField(
+        max_length=20,
         choices=ScanTaskStatus.choices,
         default=ScanTaskStatus.INITIATED,
         db_index=True,
@@ -105,7 +106,8 @@ class ScanTask(models.Model):
     name = models.CharField(max_length=1000, help_text='任务名称')
     description = models.TextField(blank=True, default='', help_text='任务描述')
 
-    status = models.IntegerField(
+    status = models.CharField(
+        max_length=20,
         choices=ScanTaskStatus.choices,
         default=ScanTaskStatus.INITIATED,
         db_index=True,

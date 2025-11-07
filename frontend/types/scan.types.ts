@@ -1,4 +1,8 @@
-export type ScanStatus = "pending" | "running" | "completed" | "failed"
+/**
+ * 扫描任务状态枚举
+ * 与后端 ScanTaskStatus 保持完全一致
+ */
+export type ScanStatus = "aborted" | "failed" | "initiated" | "running" | "successful"
 
 export interface ScanRecord {
   id: number

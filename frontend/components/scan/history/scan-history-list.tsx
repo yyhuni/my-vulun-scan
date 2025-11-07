@@ -54,7 +54,7 @@ export function ScanHistoryList() {
       },
       scanEngine: "Full Scan",
       lastScan: "2025-01-10 14:30:00",
-      status: "completed",
+      status: "successful",
       progress: 100,
     },
     {
@@ -111,7 +111,7 @@ export function ScanHistoryList() {
       },
       scanEngine: "Port Scan",
       lastScan: "2025-01-13 16:00:00",
-      status: "pending",
+      status: "initiated",
       progress: 0,
     },
     {
@@ -130,7 +130,7 @@ export function ScanHistoryList() {
       },
       scanEngine: "Full Scan",
       lastScan: "2025-01-11 09:00:00",
-      status: "completed",
+      status: "successful",
       progress: 100,
     },
   ])

@@ -125,9 +125,19 @@ function StatusBadge({ status }: { status: ScanStatus }) {
     variant: "secondary" | "default" | "outline" | "destructive"
     className?: string
   }> = {
-    pending: {
+    aborted: {
+      icon: IconCircleX,
+      label: "Aborted",
+      variant: "secondary",
+    },
+    failed: {
+      icon: IconCircleX,
+      label: "Failed",
+      variant: "destructive",
+    },
+    initiated: {
       icon: IconClock,
-      label: "Pending",
+      label: "Initiated",
       variant: "secondary",
     },
     running: {
@@ -136,15 +146,10 @@ function StatusBadge({ status }: { status: ScanStatus }) {
       variant: "default",
       className: "animate-pulse",
     },
-    completed: {
+    successful: {
       icon: IconCircleCheck,
       label: "Successful",
       variant: "outline",
-    },
-    failed: {
-      icon: IconCircleX,
-      label: "Failed",
-      variant: "destructive",
     },
   }
 
@@ -409,15 +414,15 @@ export const createScanHistoryColumns = ({
       const progress = row.getValue("progress") as number
       const status = row.original.status
       
-      // 如果状态是completed，显示100%
-      const displayProgress = status === "completed" ? 100 : progress
+      // 如果状态是successful，显示100%
+      const displayProgress = status === "successful" ? 100 : progress
       
       return (
         <div className="flex items-center gap-2 min-w-[120px]">
           <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
             <div 
               className={`h-full transition-all ${
-                status === "completed" ? "bg-green-500" : 
+                status === "successful" ? "bg-green-500" : 
                 status === "failed" ? "bg-red-500" : 
                 status === "running" ? "bg-blue-500" : 
                 "bg-gray-400"
