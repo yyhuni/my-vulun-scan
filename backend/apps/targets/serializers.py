@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.db import IntegrityError
 from .models import Organization, Target
 from apps.common.normalizer import normalize_target
 from apps.common.validators import detect_target_type
@@ -54,9 +55,15 @@ class TargetSerializer(serializers.ModelSerializer):
             # 3. 写入
             validated_data['name'] = normalized_name
             validated_data['type'] = target_type
+            
+            return super().create(validated_data)
         except ValueError as e:
             raise serializers.ValidationError({'name': str(e)})
-        return super().create(validated_data)
+        except IntegrityError:
+            # 处理唯一性约束冲突
+            raise serializers.ValidationError({
+                'name': f'目标 "{normalized_name}" 已存在'
+            })
     
     def update(self, instance, validated_data):
         """更新目标时，如果 name 变化则重新规范化和检测类型"""
@@ -72,7 +79,14 @@ class TargetSerializer(serializers.ModelSerializer):
                 validated_data['type'] = target_type
             except ValueError as e:
                 raise serializers.ValidationError({'name': str(e)})
-        return super().update(instance, validated_data)
+        
+        try:
+            return super().update(instance, validated_data)
+        except IntegrityError:
+            # 处理唯一性约束冲突
+            raise serializers.ValidationError({
+                'name': f'目标 "{validated_data.get("name", instance.name)}" 已存在'
+            })
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
