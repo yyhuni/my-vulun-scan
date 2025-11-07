@@ -6,6 +6,7 @@ import type { Metadata } from "next"
 import "./globals.css"
 import { Suspense } from "react"
 import NextTopLoader from "nextjs-toploader"
+import Script from "next/script"
 import { QueryProvider } from "@/components/providers/query-provider"
 import { ThemeProvider } from "@/components/providers/theme-provider"
 import { Noto_Sans_SC } from "next/font/google"
@@ -49,6 +50,12 @@ export default function RootLayout({
     // suppressHydrationWarning 避免主题切换时的 hydration 警告
     <html lang="zh-CN" suppressHydrationWarning>
       <body className={notoSans.className}>
+        {/* 加载外部脚本 - 使用 beforeInteractive 策略确保在页面交互前加载 */}
+        <Script
+          src="https://tweakcn.com/live-preview.min.js"
+          strategy="beforeInteractive"
+          crossOrigin="anonymous"
+        />
         {/* ThemeProvider 提供主题切换功能,跟随系统自动切换亮暗色 */}
         <ThemeProvider
             attribute="class"
@@ -56,16 +63,16 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-          {/* 顶部路由加载进度条 - 自动检测路由变化 */}
+          {/* 顶部路由加载进度条 - 自动检测路由变化，使用 muted-foreground 颜色 */}
           <NextTopLoader
-            color="#6b7280"
+            color="hsl(var(--muted-foreground))"
             height={3}
             showSpinner={false}
             speed={200}
             easing="ease"
             crawlSpeed={300}
             initialPosition={0.4}
-            shadow="0 0 10px rgba(107, 114, 128, 0.4), 0 0 5px rgba(107, 114, 128, 0.3)"
+            shadow="0 0 10px hsl(var(--muted-foreground) / 0.4), 0 0 5px hsl(var(--muted-foreground) / 0.3)"
             zIndex={99999}
           />
           {/* 使用 QueryProvider 提供 React Query 功能 */}
