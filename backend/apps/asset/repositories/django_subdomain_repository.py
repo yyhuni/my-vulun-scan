@@ -18,6 +18,9 @@ class DjangoSubdomainRepository(SubdomainRepository):
                 name=item.name,
                 scan_id=item.scan_id,
                 target_id=item.target_id,
+                cname=[],  # 显式设置为空列表，避免 ArrayField 类型不匹配
+                is_cdn=False,  # 设置默认值
+                cdn_name='',  # 设置默认值
             )
             for item in items
         ]
