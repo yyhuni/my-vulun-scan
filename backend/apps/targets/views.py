@@ -79,18 +79,20 @@ class OrganizationViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # 验证目标是否存在且属于该组织
-        existing_targets = organization.targets.filter(id__in=target_ids)
-        existing_count = existing_targets.count()
-        
-        if existing_count == 0:
-            return Response(
-                {'error': '未找到要解除关联的目标'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # 解除关联
-        organization.targets.remove(*existing_targets)
+        # 使用事务保护
+        with transaction.atomic():
+            # 验证目标是否存在且属于该组织
+            existing_targets = organization.targets.filter(id__in=target_ids)
+            existing_count = existing_targets.count()
+            
+            if existing_count == 0:
+                return Response(
+                    {'error': '未找到要解除关联的目标'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # 解除关联
+            organization.targets.remove(*existing_targets)
         
         return Response({
             'unlinked_count': existing_count,
