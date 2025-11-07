@@ -10,7 +10,7 @@ import logging
 from typing import List
 from datetime import datetime
 
-from django.db import transaction
+from django.db import transaction, DatabaseError
 from django.db.models import QuerySet
 from django.utils import timezone
 
@@ -62,27 +62,78 @@ class ScanRepository:
             return None
     
     @staticmethod
-    def get_by_id_for_update(scan_id: int, prefetch_relations: bool = False) -> Scan | None:
+    def get_by_id_for_update(
+        scan_id: int,
+        prefetch_relations: bool = False,
+        nowait: bool = False,
+        skip_locked: bool = False
+    ) -> Scan | None:
         """
         根据 ID 获取扫描任务（加锁）
         
-        用于需要更新的场景，避免并发冲突
-        
-        注意：这是 get_by_id(for_update=True) 的便捷方法
+        用于需要更新的场景，避免并发冲突和死锁
         
         Args:
             scan_id: 扫描任务 ID
             prefetch_relations: 是否预加载关联对象（engine, target）
                               更新操作通常不需要，默认为 False
+            nowait: 如果无法立即获取锁，抛出 DatabaseError 而不是等待
+                   适用于对响应时间敏感的场景
+            skip_locked: 如果行被锁定，跳过该行（返回 None）
+                        适用于可以跳过已锁定记录的场景
         
         Returns:
             Scan 对象或 None
+        
+        Raises:
+            DatabaseError: 当 nowait=True 且无法立即获取锁时
+        
+        死锁预防:
+            - nowait=True: 避免等待锁，防止循环等待导致死锁
+            - skip_locked=True: 跳过已锁定的行，避免阻塞
+        
+        Example:
+            # 场景1: 关键更新，必须获取锁
+            try:
+                scan = ScanRepository.get_by_id_for_update(scan_id)
+            except DatabaseError:
+                # 处理获取锁失败
+                pass
+            
+            # 场景2: 快速失败，不等待
+            try:
+                scan = ScanRepository.get_by_id_for_update(scan_id, nowait=True)
+            except DatabaseError:
+                # 立即返回，不阻塞
+                logger.warning("无法获取锁，稍后重试")
+            
+            # 场景3: 跳过已锁定的记录
+            scan = ScanRepository.get_by_id_for_update(scan_id, skip_locked=True)
+            if not scan:
+                # 记录被锁定或不存在
+                pass
         """
-        return ScanRepository.get_by_id(
-            scan_id=scan_id,
-            prefetch_relations=prefetch_relations,
-            for_update=True
-        )
+        try:
+            queryset = Scan.objects.select_for_update(  # type: ignore  # pylint: disable=no-member
+                nowait=nowait,
+                skip_locked=skip_locked
+            )
+            
+            if prefetch_relations:
+                queryset = queryset.select_related('engine', 'target')
+            
+            return queryset.get(id=scan_id)
+        except Scan.DoesNotExist:  # type: ignore  # pylint: disable=no-member
+            logger.warning("Scan 不存在 - Scan ID: %s", scan_id)
+            return None
+        except DatabaseError as e:
+            if nowait:
+                logger.warning(
+                    "无法获取锁（nowait=True）- Scan ID: %s, 错误: %s",
+                    scan_id,
+                    str(e)
+                )
+            raise
     
     @staticmethod
     def create(
