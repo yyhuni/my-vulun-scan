@@ -17,6 +17,15 @@ class ScanEngine(models.Model):
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['-created_at']),
+            models.Index(fields=['is_default']),  # 优化默认引擎查询
+        ]
+        constraints = [
+            # PostgreSQL 部分唯一索引：确保最多只有一个 is_default=True 的记录
+            models.UniqueConstraint(
+                fields=['is_default'],
+                condition=models.Q(is_default=True),
+                name='unique_default_scan_engine'
+            )
         ]
     def __str__(self):
         return str(self.name or f'ScanEngine {self.id}')

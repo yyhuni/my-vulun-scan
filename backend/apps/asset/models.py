@@ -1,5 +1,6 @@
 
 from django.db import models
+from django.contrib.postgres.fields import ArrayField
 
 
 class Subdomain(models.Model):
@@ -24,11 +25,11 @@ class Subdomain(models.Model):
     )
     name = models.CharField(max_length=1000, help_text='子域名名称')
     created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
-    cname = models.CharField(
-        max_length=5000,
+    cname = ArrayField(
+        models.CharField(max_length=255),
         blank=True,
-        default='',
-        help_text='CNAME记录（多个用逗号分隔），由httpx探测获取'
+        default=list,
+        help_text='CNAME记录列表，由httpx探测获取'
     )
     is_cdn = models.BooleanField(
         default=False,
@@ -139,11 +140,11 @@ class Endpoint(models.Model):
         default=False,
         help_text='是否为子域名的默认根端点（如 http://api.example.com/）'
     )
-    matched_gf_patterns = models.CharField(
-        max_length=10000,
-        default='',
+    matched_gf_patterns = ArrayField(
+        models.CharField(max_length=100),
         blank=True,
-        help_text='匹配的GF模式列表（逗号分隔），用于识别敏感端点（如api, debug, config等）'
+        default=list,
+        help_text='匹配的GF模式列表，用于识别敏感端点（如api, debug, config等）'
     )
 
     class Meta:
