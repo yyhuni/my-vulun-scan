@@ -4,20 +4,44 @@ from apps.common.normalizer import normalize_target
 from apps.common.validators import detect_target_type
 
 
+class SimpleOrganizationSerializer(serializers.ModelSerializer):
+    """
+    简化版组织序列化器 - 用于嵌套在其他序列化器中
+    
+    注意事项:
+    1. 只包含基本字段 (id, name)，不嵌套 targets
+    2. 避免循环引用：Organization ↔ Target 是多对多关系
+       如果双向嵌套会导致无限递归
+    3. 适用场景：
+       - 在 TargetSerializer 中显示所属组织列表
+       - 在其他需要显示组织基本信息的地方
+    """
+    class Meta:
+        model = Organization
+        fields = ['id', 'name']
+
+
 class TargetSerializer(serializers.ModelSerializer):
-    organizations = serializers.SerializerMethodField()
+    """
+    目标序列化器
+    
+    性能优化说明:
+    1. 使用嵌套序列化器 SimpleOrganizationSerializer 显示关联的组织
+    2. ⚠️ 重要：ViewSet 必须使用 prefetch_related('organizations')
+       否则会产生 N+1 查询问题：
+       - 没有预加载：100 个目标 = 1 + 100 = 101 次查询
+       - 正确预加载：100 个目标 = 1 + 1 = 2 次查询
+    
+    已优化的视图:
+    - TargetViewSet: queryset = Target.objects.prefetch_related('organizations')
+    - OrganizationViewSet.targets(): queryset.prefetch_related('organizations')
+    """
+    organizations = SimpleOrganizationSerializer(many=True, read_only=True)
     
     class Meta:
         model = Target
         fields = ['id', 'name', 'type', 'created_at', 'last_scanned_at', 'organizations']
-        read_only_fields = ['id', 'created_at', 'type', 'organizations']
-    
-    def get_organizations(self, obj):
-        """获取目标关联的组织列表"""
-        return [
-            {'id': org.id, 'name': org.name}
-            for org in obj.organizations.all()
-        ]
+        read_only_fields = ['id', 'created_at', 'type']
     
     def create(self, validated_data):
         """创建目标时自动规范化、检测目标类型"""
@@ -52,16 +76,14 @@ class TargetSerializer(serializers.ModelSerializer):
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
-    target_count = serializers.SerializerMethodField()
+    # 使用 IntegerField 接收由 annotate 预计算的 target_count
+    # 避免 N+1 查询问题（在 ViewSet 的 get_queryset 中使用 annotate 预计算）
+    target_count = serializers.IntegerField(read_only=True)
     
     class Meta:
         model = Organization
         fields = ['id', 'name', 'description', 'created_at', 'target_count']
         read_only_fields = ['id', 'created_at', 'target_count']
-    
-    def get_target_count(self, obj):
-        """获取目标数量"""
-        return obj.targets.count()
 
 
 class BatchCreateTargetSerializer(serializers.Serializer):
