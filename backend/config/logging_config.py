@@ -24,13 +24,12 @@ import os
 from pathlib import Path
 
 
-def get_logging_config(debug: bool = False, base_dir: Path = None):
+def get_logging_config(debug: bool = False):
     """
     获取日志配置字典
     
     Args:
         debug: 是否为 DEBUG 模式
-        base_dir: 项目根目录（用于日志文件路径）
     
     Returns:
         dict: Django LOGGING 配置字典

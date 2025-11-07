@@ -125,9 +125,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'zh-hans'
+LANGUAGE_CODE = os.getenv('LANGUAGE_CODE', 'zh-hans')
 
-TIME_ZONE = 'Asia/Shanghai'
+TIME_ZONE = os.getenv('TIME_ZONE', 'Asia/Shanghai')
 
 USE_I18N = True
 
@@ -194,11 +194,11 @@ CELERY_ENABLE_UTC = True
 
 # 任务确认配置（确保任务不丢失）
 CELERY_TASK_ACKS_LATE = True  # 任务执行完成后才确认
-CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # 每个 worker 只预取 1 个任务
+CELERY_WORKER_PREFETCH_MULTIPLIER = int(os.getenv('CELERY_WORKER_PREFETCH_MULTIPLIER', '1'))  # 每个 worker 只预取 1 个任务
 
 # 超时配置
-CELERY_TASK_TIME_LIMIT = 3600  # 硬超时：1小时（强制终止）
-CELERY_TASK_SOFT_TIME_LIMIT = 3000  # 软超时：50分钟（抛出异常，允许清理）
+CELERY_TASK_TIME_LIMIT = int(os.getenv('CELERY_TASK_TIME_LIMIT', '3600'))  # 硬超时：1小时（强制终止）
+CELERY_TASK_SOFT_TIME_LIMIT = int(os.getenv('CELERY_TASK_SOFT_TIME_LIMIT', '3000'))  # 软超时：50分钟（抛出异常，允许清理）
 
 # 队列路由配置（在 celery.py 中定义）
 # 队列说明：
@@ -309,6 +309,6 @@ COMMAND_LOG_OUTPUT = os.getenv('COMMAND_LOG_OUTPUT', 'False') == 'True'
 
 from config.logging_config import get_logging_config
 
-LOGGING = get_logging_config(debug=DEBUG, base_dir=BASE_DIR)
+LOGGING = get_logging_config(debug=DEBUG)
 
 
