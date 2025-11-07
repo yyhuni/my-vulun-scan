@@ -1,71 +1,20 @@
 "use client"
 
-import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { IconRadar } from "@tabler/icons-react"
 import { ScanHistoryList } from "@/components/scan/history/scan-history-list"
-
-// 模拟数据 - 用于统计卡片
-const mockData = [
-  {
-    id: 1,
-    name: "生产环境安全扫描",
-    type: "全面扫描",
-    targets: ["example.com", "api.example.com"],
-    status: "completed" as const,
-    startTime: "2025-01-10 14:30:00",
-    endTime: "2025-01-10 15:45:00",
-    duration: "1小时15分",
-    findings: 23,
-  },
-  {
-    id: 2,
-    name: "开发环境快速检测",
-    type: "快速扫描",
-    targets: ["dev.example.com"],
-    status: "running" as const,
-    startTime: "2025-01-13 10:20:00",
-    findings: 12,
-  },
-  {
-    id: 3,
-    name: "API接口漏洞扫描",
-    type: "漏洞扫描",
-    targets: ["192.168.1.100"],
-    status: "failed" as const,
-    startTime: "2025-01-12 08:15:00",
-    endTime: "2025-01-12 08:20:00",
-    duration: "5分钟",
-    findings: 0,
-  },
-  {
-    id: 4,
-    name: "测试环境端口扫描",
-    type: "端口扫描",
-    targets: ["192.168.1.0/24"],
-    status: "pending" as const,
-    startTime: "2025-01-13 16:00:00",
-    findings: 0,
-  },
-  {
-    id: 5,
-    name: "Web应用漏洞检测",
-    type: "漏洞扫描",
-    targets: ["webapp.example.com"],
-    status: "completed" as const,
-    startTime: "2025-01-11 09:00:00",
-    endTime: "2025-01-11 10:30:00",
-    duration: "1小时30分",
-    findings: 15,
-  },
-]
+import { useScans } from "@/hooks/use-scans"
 
 /**
  * 扫描历史页面
  * 显示所有扫描任务的历史记录
  */
 export default function ScanHistoryPage() {
-  const [scans] = useState(mockData)
+  // 获取所有扫描数据用于统计（不分页）
+  const { data } = useScans({ page: 1, pageSize: 1000 })
+  
+  const scans = data?.results || []
+  const totalScans = data?.total || 0
 
   return (
     <div className="flex flex-col gap-6 py-4 md:py-6">
@@ -88,7 +37,7 @@ export default function ScanHistoryPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{scans.length}</div>
+              <div className="text-2xl font-bold">{totalScans}</div>
             </CardContent>
           </Card>
           <Card>
@@ -111,19 +60,19 @@ export default function ScanHistoryPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
-                {scans.filter(s => s.status === "completed").length}
+                {scans.filter(s => s.status === "successful").length}
               </div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                发现问题
+                发现资产
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-orange-600">
-                {scans.reduce((sum, s) => sum + s.findings, 0)}
+                {scans.reduce((sum, s) => sum + s.summary.subdomains + s.summary.endpoints, 0)}
               </div>
             </CardContent>
           </Card>

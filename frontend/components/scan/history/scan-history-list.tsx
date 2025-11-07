@@ -18,122 +18,55 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { toast } from "sonner"
+import { useScans } from "@/hooks/use-scans"
+import { deleteScan, bulkDeleteScans } from "@/services/scan.service"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 
 /**
  * 扫描历史列表组件
  * 用于显示和管理扫描历史记录
  */
 export function ScanHistoryList() {
+  const queryClient = useQueryClient()
   const [selectedScans, setSelectedScans] = useState<ScanRecord[]>([])
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [scanToDelete, setScanToDelete] = useState<ScanRecord | null>(null)
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
-  const [isLoading] = useState(false)
   
   // 分页状态
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 10,
   })
-
-  // 模拟数据 - TODO: 替换为实际的 API 调用
-  const [scans, setScans] = useState<ScanRecord[]>([
-    {
-      id: 1,
-      domainName: "www.xinye.com",
-      summary: {
-        subdomains: 15,
-        endpoints: 234,
-        vulnerabilities: {
-          total: 5,
-          critical: 1,
-          high: 2,
-          medium: 2,
-          low: 0,
-        },
-      },
-      scanEngine: "Full Scan",
-      lastScan: "2025-01-10 14:30:00",
-      status: "successful",
-      progress: 100,
+  
+  // 获取扫描列表数据
+  const { data, isLoading, error } = useScans({
+    page: pagination.pageIndex + 1, // API 页码从 1 开始
+    pageSize: pagination.pageSize,
+  })
+  
+  // 扫描列表数据
+  const scans = data?.results || []
+  
+  // 删除单个扫描的 mutation
+  const deleteMutation = useMutation({
+    mutationFn: deleteScan,
+    onSuccess: () => {
+      // 刷新列表数据
+      queryClient.invalidateQueries({ queryKey: ['scans'] })
     },
-    {
-      id: 2,
-      domainName: "dev.example.com",
-      summary: {
-        subdomains: 8,
-        endpoints: 120,
-        vulnerabilities: {
-          total: 12,
-          critical: 0,
-          high: 3,
-          medium: 5,
-          low: 4,
-        },
-      },
-      scanEngine: "Quick Scan",
-      lastScan: "2025-01-13 10:20:00",
-      status: "running",
-      progress: 65,
+  })
+  
+  // 批量删除的 mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: bulkDeleteScans,
+    onSuccess: () => {
+      // 刷新列表数据
+      queryClient.invalidateQueries({ queryKey: ['scans'] })
+      // 清空选中项
+      setSelectedScans([])
     },
-    {
-      id: 3,
-      domainName: "api.example.com",
-      summary: {
-        subdomains: 3,
-        endpoints: 89,
-        vulnerabilities: {
-          total: 0,
-          critical: 0,
-          high: 0,
-          medium: 0,
-          low: 0,
-        },
-      },
-      scanEngine: "Vulnerability Scan",
-      lastScan: "2025-01-12 08:15:00",
-      status: "failed",
-      progress: 45,
-    },
-    {
-      id: 4,
-      domainName: "test.example.com",
-      summary: {
-        subdomains: 0,
-        endpoints: 0,
-        vulnerabilities: {
-          total: 0,
-          critical: 0,
-          high: 0,
-          medium: 0,
-          low: 0,
-        },
-      },
-      scanEngine: "Port Scan",
-      lastScan: "2025-01-13 16:00:00",
-      status: "initiated",
-      progress: 0,
-    },
-    {
-      id: 5,
-      domainName: "webapp.example.com",
-      summary: {
-        subdomains: 22,
-        endpoints: 456,
-        vulnerabilities: {
-          total: 15,
-          critical: 2,
-          high: 5,
-          medium: 6,
-          low: 2,
-        },
-      },
-      scanEngine: "Full Scan",
-      lastScan: "2025-01-11 09:00:00",
-      status: "successful",
-      progress: 100,
-    },
-  ])
+  })
 
   // 辅助函数 - 格式化日期
   const formatDate = (dateString: string): string => {
@@ -167,11 +100,11 @@ export function ScanHistoryList() {
     setDeleteDialogOpen(false)
     
     try {
-      // TODO: 调用实际的删除 API
-      setScans(prev => prev.filter(s => s.id !== scanToDelete.id))
-      toast.success(`已删除扫描记录: ${scanToDelete.domainName}`)
-    } catch {
+      await deleteMutation.mutateAsync(scanToDelete.id)
+      toast.success(`已删除扫描记录: ${scanToDelete.targetName}`)
+    } catch (error) {
       toast.error("删除失败，请重试")
+      console.error('删除失败:', error)
     } finally {
       setScanToDelete(null)
     }
@@ -194,12 +127,11 @@ export function ScanHistoryList() {
     setBulkDeleteDialogOpen(false)
     
     try {
-      // TODO: 调用实际的批量删除 API
-      setScans(prev => prev.filter(s => !deletedIds.includes(s.id)))
-      toast.success(`已删除 ${selectedScans.length} 个扫描记录`)
-      setSelectedScans([])
-    } catch {
+      const result = await bulkDeleteMutation.mutateAsync(deletedIds)
+      toast.success(result.message || `已删除 ${result.deletedCount} 个扫描记录`)
+    } catch (error) {
       toast.error("批量删除失败，请重试")
+      console.error('批量删除失败:', error)
     }
   }
 
@@ -220,6 +152,21 @@ export function ScanHistoryList() {
     [navigate]
   )
 
+  // 错误处理
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <p className="text-destructive mb-4">加载扫描历史失败</p>
+        <button 
+          onClick={() => queryClient.invalidateQueries({ queryKey: ['scans'] })}
+          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+        >
+          重试
+        </button>
+      </div>
+    )
+  }
+
   // 加载状态
   if (isLoading) {
     return <LoadingState message="加载扫描历史数据中..." />
@@ -232,8 +179,8 @@ export function ScanHistoryList() {
         columns={scanColumns as ColumnDef<ScanRecord>[]}
         onBulkDelete={handleBulkDelete}
         onSelectionChange={setSelectedScans}
-        searchPlaceholder="搜索域名..."
-        searchColumn="domainName"
+        searchPlaceholder="搜索目标名称..."
+        searchColumn="targetName"
         pagination={pagination}
         setPagination={setPagination}
         onPaginationChange={handlePaginationChange}
@@ -245,7 +192,7 @@ export function ScanHistoryList() {
           <AlertDialogHeader>
             <AlertDialogTitle>确认删除</AlertDialogTitle>
             <AlertDialogDescription>
-              此操作无法撤销。这将永久删除扫描记录 &quot;{scanToDelete?.domainName}&quot; 及其相关数据。
+              此操作无法撤销。这将永久删除扫描记录 &quot;{scanToDelete?.targetName}&quot; 及其相关数据。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -274,8 +221,8 @@ export function ScanHistoryList() {
             <ul className="text-sm space-y-1">
               {selectedScans.map((scan) => (
                 <li key={scan.id} className="flex items-center justify-between">
-                  <span className="font-medium">{scan.domainName}</span>
-                  <span className="text-muted-foreground text-xs">{scan.scanEngine}</span>
+                  <span className="font-medium">{scan.targetName}</span>
+                  <span className="text-muted-foreground text-xs">{scan.engineName}</span>
                 </li>
               ))}
             </ul>

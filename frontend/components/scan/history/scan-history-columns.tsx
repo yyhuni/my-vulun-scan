@@ -276,15 +276,15 @@ export const createScanHistoryColumns = ({
     enableHiding: false,
   },
 
-  // Domain Name 列
+  // Target Name 列
   {
-    accessorKey: "domainName",
+    accessorKey: "targetName",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Domain Name" />
+      <DataTableColumnHeader column={column} title="Target Name" />
     ),
     cell: ({ row }) => {
-      const domainName = row.getValue("domainName") as string
-      return <CopyableCell value={domainName} maxWidth="250px" truncateLength={35} successMessage="已复制域名" />
+      const targetName = row.getValue("targetName") as string
+      return <CopyableCell value={targetName} maxWidth="250px" truncateLength={35} successMessage="已复制目标名称" />
     },
   },
 
@@ -365,33 +365,36 @@ export const createScanHistoryColumns = ({
     enableSorting: false,
   },
 
-  // Scan Engine Used 列
+  // Engine Name 列
   {
-    accessorKey: "scanEngine",
+    accessorKey: "engineName",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Scan Engine Used" />
+      <DataTableColumnHeader column={column} title="Engine Name" />
     ),
     cell: ({ row }) => {
-      const scanEngine = row.getValue("scanEngine") as string
+      const engineName = row.getValue("engineName") as string
       return (
         <Badge variant="secondary">
-          {scanEngine}
+          {engineName}
         </Badge>
       )
     },
   },
 
-  // Last Scan 列
+  // Started At 列
   {
-    accessorKey: "lastScan",
+    accessorKey: "startedAt",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Last Scan" />
+      <DataTableColumnHeader column={column} title="Started At" />
     ),
-    cell: ({ row }) => (
-      <div className="text-sm text-muted-foreground">
-        {formatDate(row.getValue("lastScan"))}
-      </div>
-    ),
+    cell: ({ row }) => {
+      const startedAt = row.getValue("startedAt") as string | null
+      return (
+        <div className="text-sm text-muted-foreground">
+          {startedAt ? formatDate(startedAt) : '-'}
+        </div>
+      )
+    },
   },
 
   // Status 列

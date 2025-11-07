@@ -6,7 +6,7 @@ export type ScanStatus = "aborted" | "failed" | "initiated" | "running" | "succe
 
 export interface ScanRecord {
   id: number
-  domainName: string
+  targetName: string           // 目标名称（对应后端 targetName）
   summary: {
     subdomains: number
     endpoints: number
@@ -18,10 +18,10 @@ export interface ScanRecord {
       low: number
     }
   }
-  scanEngine: string
-  lastScan: string
+  engineName: string           // 引擎名称（对应后端 engineName）
+  startedAt: string | null     // 开始时间（对应后端 startedAt）
   status: ScanStatus
-  progress: number // 0-100
+  progress: number             // 0-100
 }
 
 export interface GetScansParams {
@@ -31,7 +31,7 @@ export interface GetScansParams {
 }
 
 export interface GetScansResponse {
-  scans: ScanRecord[]
+  results: ScanRecord[]        // 对应后端 results 字段
   total: number
   page: number
   pageSize: number
