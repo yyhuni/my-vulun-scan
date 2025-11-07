@@ -16,7 +16,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed, Future
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, Dict, Callable
+from typing import List, Optional, Dict
 from enum import Enum
 
 from django.conf import settings
@@ -40,17 +40,15 @@ class CommandTask:
     """
     命令任务数据类
     
-    封装单个命令任务的所有信息
+    封装单个命令任务的输入参数（不包含执行结果）
+    
+    Note:
+        Task 应该是不可变的输入，执行结果存储在 CommandResult 中
     """
     name: str                           # 任务名称（如 'amass', 'subfinder'）
     command: str                        # 要执行的命令
     output_file: Optional[Path] = None  # 输出文件路径
     validate_output: bool = True        # 是否验证输出文件
-    
-    # 执行结果
-    status: CommandStatus = CommandStatus.PENDING
-    error_message: Optional[str] = None
-    return_code: Optional[int] = None
 
 
 @dataclass
@@ -58,13 +56,15 @@ class CommandResult:
     """
     命令执行结果数据类
     
-    封装单个命令的执行结果
+    封装单个命令的完整执行结果
     """
     task: CommandTask                   # 原始任务
     success: bool                       # 是否成功
+    status: CommandStatus               # 执行状态
+    duration: float = 0.0               # 执行耗时（秒）
     output_file: Optional[Path] = None  # 生成的输出文件
     error: Optional[str] = None         # 错误信息
-    duration: float = 0.0               # 执行耗时（秒）
+    return_code: Optional[int] = None   # 命令退出码
 
 
 class CommandPoolExecutor:
@@ -132,19 +132,6 @@ class CommandPoolExecutor:
                     )
         return cls._instance
     
-    @classmethod
-    def reset_instance(cls) -> None:
-        """
-        重置单例实例（主要用于测试）
-        
-        警告：会关闭线程池，确保没有任务正在执行
-        """
-        with cls._lock:
-            if cls._instance is not None:
-                cls._instance.shutdown()
-                cls._instance = None
-                logger.warning("命令池执行管理器已重置")
-    
     # ==================== 初始化 ====================
     
     def __init__(self, max_workers: int = DEFAULT_MAX_WORKERS, default_timeout: int = DEFAULT_TIMEOUT):
@@ -175,15 +162,6 @@ class CommandPoolExecutor:
             thread_name_prefix="cmd_pool"
         )
         
-        # 统计信息
-        self._stats = {
-            'total_executed': 0,
-            'total_success': 0,
-            'total_failed': 0,
-            'total_timeout': 0,
-        }
-        self._stats_lock = threading.Lock()
-        
         logger.debug(
             "CommandPoolExecutor 初始化完成 - max_workers=%d, default_timeout=%d",
             max_workers, default_timeout
@@ -193,16 +171,13 @@ class CommandPoolExecutor:
     
     def execute_tasks(
         self,
-        tasks: List[CommandTask],
-        progress_callback: Optional[Callable[[CommandResult], None]] = None
+        tasks: List[CommandTask]
     ) -> List[CommandResult]:
         """
         并行执行多个命令任务
         
         Args:
             tasks: 命令任务列表
-            progress_callback: 进度回调函数，每个任务完成时调用
-                              回调参数: CommandResult
         
         Returns:
             命令执行结果列表（顺序与输入任务一致）
@@ -212,22 +187,16 @@ class CommandPoolExecutor:
             RuntimeError: 线程池已关闭
         
         Example:
-            >>> def on_progress(result: CommandResult):
-            ...     print(f"{result.task.name}: {'成功' if result.success else '失败'}")
-            >>> 
-            >>> results = manager.execute_tasks(tasks, progress_callback=on_progress)
+            >>> results = manager.execute_tasks(tasks)
         """
         if not tasks:
             raise ValueError("任务列表不能为空")
         
         # 检查线程池是否已关闭
-        try:
-            # 尝试提交一个虚拟任务来检查线程池状态
-            test_future = self._executor.submit(lambda: None)
-            test_future.result(timeout=0.1)
-        except RuntimeError as e:
-            if "shutdown" in str(e).lower():
-                raise RuntimeError("命令池已关闭") from e
+        # ThreadPoolExecutor 没有提供公共方法检查关闭状态，需要访问 _shutdown 属性
+        # pylint: disable=protected-access
+        if self._executor._shutdown:
+            raise RuntimeError("命令池已关闭，无法提交新任务")
         
         total_tasks = len(tasks)
         logger.info("开始并行执行 %d 个命令任务（最大并发: %d）", total_tasks, self.max_workers)
@@ -250,16 +219,6 @@ class CommandPoolExecutor:
                 result = future.result()
                 results_map[task.name] = result
                 
-                # 更新统计
-                self._update_stats(result)
-                
-                # 进度回调
-                if progress_callback:
-                    try:
-                        progress_callback(result)
-                    except Exception as e:  # noqa: BLE001 - 回调失败不应影响主流程
-                        logger.warning("进度回调函数执行失败 - 任务 '%s': %s", task.name, e)
-                
                 # 日志输出
                 status = "成功" if result.success else "失败"
                 logger.info(
@@ -273,6 +232,7 @@ class CommandPoolExecutor:
                 results_map[task.name] = CommandResult(
                     task=task,
                     success=False,
+                    status=CommandStatus.FAILED,
                     error=f"未预期错误: {str(e)}"
                 )
         
@@ -289,58 +249,6 @@ class CommandPoolExecutor:
         )
         
         return results
-    
-    def execute_single_command(
-        self,
-        name: str,
-        command: str,
-        output_file: Optional[Path] = None,
-        validate_output: bool = True
-    ) -> CommandResult:
-        """
-        执行单个命令（便捷方法）
-        
-        Args:
-            name: 命令名称
-            command: 要执行的命令
-            output_file: 输出文件路径
-            validate_output: 是否验证输出文件
-        
-        Returns:
-            命令执行结果
-        
-        Note:
-            超时时间使用全局配置 COMMAND_TIMEOUT
-        
-        Example:
-            >>> result = manager.execute_single_command(
-            ...     name='amass',
-            ...     command='amass enum -d example.com -o /tmp/amass.txt',
-            ...     output_file=Path('/tmp/amass.txt')
-            ... )
-        """
-        task = CommandTask(
-            name=name,
-            command=command,
-            output_file=output_file,
-            validate_output=validate_output
-        )
-        return self._execute_single_task(task)
- 
-    
-    def shutdown(self, wait: bool = True) -> None:
-        """
-        关闭线程池
-        
-        Args:
-            wait: 是否等待正在执行的任务完成
-        
-        Note:
-            关闭后不能再提交新任务
-        """
-        logger.info("正在关闭命令池执行管理器...")
-        self._executor.shutdown(wait=wait)
-        logger.info("命令池执行管理器已关闭")
     
     # ==================== 私有方法 ====================
     
@@ -362,15 +270,12 @@ class CommandPoolExecutor:
         start_time = time.time()
         timeout = self.default_timeout
         
-        # 更新任务状态
-        task.status = CommandStatus.RUNNING
-        
         logger.debug("开始执行任务 '%s' - 超时: %d秒", task.name, timeout)
         
         try:
             # 使用现有的 ScanCommandExecutor 执行命令
             executor = ScanCommandExecutor(timeout=timeout)
-            executor.execute_scan_tool(task.name, task.command)
+            executor.execute(task.command)
             
             # 验证输出文件（如果需要）
             if task.validate_output and task.output_file:
@@ -382,117 +287,75 @@ class CommandPoolExecutor:
             
             # 执行成功
             duration = time.time() - start_time
-            task.status = CommandStatus.SUCCESS
             
             return CommandResult(
                 task=task,
                 success=True,
-                output_file=task.output_file,
-                duration=duration
+                status=CommandStatus.SUCCESS,
+                duration=duration,
+                output_file=task.output_file
             )
         
         except subprocess.TimeoutExpired:
             # 超时
             duration = time.time() - start_time
-            task.status = CommandStatus.TIMEOUT
             error_msg = f"执行超时 ({timeout}秒)"
-            task.error_message = error_msg
             
             logger.warning("任务 '%s' 执行超时", task.name)
             
             return CommandResult(
                 task=task,
                 success=False,
-                error=error_msg,
-                duration=duration
+                status=CommandStatus.TIMEOUT,
+                duration=duration,
+                error=error_msg
             )
         
         except subprocess.CalledProcessError as e:
             # 命令执行失败
             duration = time.time() - start_time
-            task.status = CommandStatus.FAILED
-            task.return_code = e.returncode
             error_msg = f"命令执行失败 (退出码: {e.returncode})"
-            task.error_message = error_msg
             
             logger.warning("任务 '%s' 执行失败 - 退出码: %d", task.name, e.returncode)
             
             return CommandResult(
                 task=task,
                 success=False,
+                status=CommandStatus.FAILED,
+                duration=duration,
                 error=error_msg,
-                duration=duration
+                return_code=e.returncode
             )
         
         except (OSError, IOError) as e:
             # 文件系统错误
             duration = time.time() - start_time
-            task.status = CommandStatus.FAILED
             error_msg = f"文件系统错误: {type(e).__name__}: {e}"
-            task.error_message = error_msg
             
             logger.error("任务 '%s' 文件系统错误: %s", task.name, e)
             
             return CommandResult(
                 task=task,
                 success=False,
-                error=error_msg,
-                duration=duration
+                status=CommandStatus.FAILED,
+                duration=duration,
+                error=error_msg
             )
         
         except Exception as e:  # noqa: BLE001 - 最后的安全网，捕获所有未处理的异常
             # 未预期错误
             duration = time.time() - start_time
-            task.status = CommandStatus.FAILED
             error_msg = f"未预期错误: {type(e).__name__}: {e}"
-            task.error_message = error_msg
             
             logger.error("任务 '%s' 执行时发生未预期错误: %s", task.name, e, exc_info=True)
             
             return CommandResult(
                 task=task,
                 success=False,
-                error=error_msg,
-                duration=duration
+                status=CommandStatus.FAILED,
+                duration=duration,
+                error=error_msg
             )
-    
-    def _update_stats(self, result: CommandResult) -> None:
-        """
-        更新统计信息
-        
-        Args:
-            result: 命令执行结果
-        """
-        with self._stats_lock:
-            self._stats['total_executed'] += 1
-            
-            if result.success:
-                self._stats['total_success'] += 1
-            else:
-                self._stats['total_failed'] += 1
-                
-                if result.task.status == CommandStatus.TIMEOUT:
-                    self._stats['total_timeout'] += 1
-
-
-# ==================== 便捷函数 ====================
-
-def get_command_pool() -> CommandPoolExecutor:
-    """
-    获取命令池执行管理器单例（便捷函数）
-    
-    Returns:
-        CommandPoolExecutor 单例实例
-    
-    Note:
-        配置通过 Django settings 统一管理：
-        - COMMAND_POOL_MAX_WORKERS: 最大并发数
-        - COMMAND_TIMEOUT: 默认超时时间
-    
-    Example:
-        >>> pool = get_command_pool()
-    """
-    return CommandPoolExecutor.get_instance()
 
 
 # ==================== 导出接口 ====================
@@ -502,6 +365,5 @@ __all__ = [
     'CommandTask',
     'CommandResult',
     'CommandStatus',
-    'get_command_pool',
 ]
 

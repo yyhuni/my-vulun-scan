@@ -15,7 +15,6 @@ from .command_pool_executor import (
     CommandTask,
     CommandResult,
     CommandStatus,
-    get_command_pool,
 )
 
 from .directory_cleanup import (
@@ -33,7 +32,6 @@ __all__ = [
     'CommandTask',
     'CommandResult',
     'CommandStatus',
-    'get_command_pool',
     
     # 目录清理
     'remove_directory',

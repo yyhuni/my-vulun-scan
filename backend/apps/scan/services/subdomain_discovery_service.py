@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Dict
 
-from apps.scan.utils.command_executor import ScanCommandExecutor
+from apps.scan.utils.command_pool_executor import CommandPoolExecutor, CommandTask
 
 logger = logging.getLogger(__name__)
 
@@ -54,9 +54,11 @@ class SubdomainDiscoveryService:
         
         Args:
             timeout: 命令执行超时时间（秒），默认为 DEFAULT_TIMEOUT
+        
+        Note:
+            使用全局命令池执行管理器进行并行执行
         """
         self.timeout = timeout or self.DEFAULT_TIMEOUT
-        self.executor = ScanCommandExecutor(timeout=self.timeout)
         logger.debug("SubdomainDiscoveryService initialized with timeout=%d", self.timeout)
     
     # ==================== 公共方法 ====================
@@ -215,7 +217,7 @@ class SubdomainDiscoveryService:
         timestamp: str
     ) -> List[Path]:
         """
-        执行所有配置的扫描工具
+        并行执行所有配置的扫描工具
         
         Args:
             target: 目标域名
@@ -226,69 +228,46 @@ class SubdomainDiscoveryService:
             成功生成的结果文件路径列表（可能为空列表）
         
         Note:
-            单个工具失败不会中断整个流程，会继续执行其他工具
+            - 使用命令池并行执行所有工具，提升执行效率
+            - 单个工具失败不会中断整个流程
         """
-        result_files = []
         total_tools = len(self.SCAN_TOOLS)
-        errors = []
+        logger.info("开始并行执行 %d 个扫描工具 - 目标: %s", total_tools, target)
         
-        logger.info("开始执行 %d 个扫描工具 - 目标: %s", total_tools, target)
-        
-        for idx, tool_config in enumerate(self.SCAN_TOOLS, 1):
+        # 构建任务列表
+        tasks = []
+        for tool_config in self.SCAN_TOOLS:
             tool_name = tool_config['name']
             command_template = tool_config['command']
             
             # 为每个工具生成输出文件（使用时间戳）
             output_file = scan_dir / f"{tool_name}_{timestamp}.txt"
             
-            try:
-                # 使用 f-string 构建命令（替代 .format()）
-                command = command_template.replace('{target}', target).replace('{output_file}', str(output_file))
-                
-                logger.info("[%d/%d] 执行扫描工具: %s", idx, total_tools, tool_name)
-                self.executor.execute_scan_tool(tool_name, command)
-                
-                # 检查输出文件是否生成且非空
-                if output_file.exists():
-                    file_size = output_file.stat().st_size
-                    if file_size > 0:
-                        result_files.append(output_file)
-                        logger.info(
-                            "[%d/%d] %s 完成 - 文件: %s (大小: %d 字节)",
-                            idx, total_tools, tool_name, output_file.name, file_size
-                        )
-                    else:
-                        error_msg = f"{tool_name}: 文件为空"
-                        logger.warning("[%d/%d] %s", idx, total_tools, error_msg)
-                        errors.append(error_msg)
-                else:
-                    error_msg = f"{tool_name}: 未生成结果文件"
-                    logger.warning("[%d/%d] %s", idx, total_tools, error_msg)
-                    errors.append(error_msg)
+            # 构建命令
+            command = command_template.replace('{target}', target).replace('{output_file}', str(output_file))
             
-            except subprocess.CalledProcessError as e:
-                error_msg = f"{tool_name} 失败 (退出码 {e.returncode})"
-                logger.warning("[%d/%d] %s, 继续执行下一个工具", idx, total_tools, error_msg)
-                errors.append(error_msg)
-                continue
-            
-            except subprocess.TimeoutExpired:
-                error_msg = f"{tool_name} 超时 ({self.timeout}秒)"
-                logger.warning("[%d/%d] %s, 继续执行下一个工具", idx, total_tools, error_msg)
-                errors.append(error_msg)
-                continue
-            
-            except (OSError, IOError) as e:
-                error_msg = f"{tool_name} 文件系统错误: {type(e).__name__}: {e}"
-                logger.error("[%d/%d] %s, 继续执行下一个工具", idx, total_tools, error_msg)
-                errors.append(error_msg)
-                continue
-            
-            except Exception as e:
-                error_msg = f"{tool_name} 未预期错误: {type(e).__name__}: {e}"
-                logger.error("[%d/%d] %s, 继续执行下一个工具", idx, total_tools, error_msg)
-                errors.append(error_msg)
-                continue
+            # 创建任务
+            task = CommandTask(
+                name=tool_name,
+                command=command,
+                output_file=output_file,
+                validate_output=True  # 验证输出文件
+            )
+            tasks.append(task)
+        
+        # 使用命令池并行执行
+        command_pool = CommandPoolExecutor.get_instance()
+        results = command_pool.execute_tasks(tasks)
+        
+        # 收集成功的结果文件
+        result_files = []
+        errors = []
+        
+        for result in results:
+            if result.success and result.output_file:
+                result_files.append(result.output_file)
+            else:
+                errors.append(f"{result.task.name}: {result.error}")
         
         # 汇总结果
         success_count = len(result_files)

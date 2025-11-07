@@ -8,9 +8,8 @@ import logging
 from pathlib import Path
 
 from apps.scan.utils.command_pool_executor import (
-    get_command_pool,
-    CommandTask,
-    CommandResult
+    CommandPoolExecutor,
+    CommandTask
 )
 
 # 配置日志
@@ -31,7 +30,7 @@ def example_1_basic_usage():
     logger.info("=" * 60)
     
     # 获取命令池管理器（单例，配置通过 Django settings 管理）
-    pool = get_command_pool()
+    pool = CommandPoolExecutor.get_instance()
     
     # 准备输出目录
     output_dir = Path('/tmp/scan_results')
@@ -73,15 +72,15 @@ def example_1_basic_usage():
             logger.error(f"✗ {result.task.name}: 失败 - {result.error}")
 
 
-def example_2_with_progress_callback():
+def example_2_parallel_execution():
     """
-    示例 2: 使用进度回调
+    示例 2: 并行执行多个任务（CommandPool 自动输出进度日志）
     """
     logger.info("=" * 60)
-    logger.info("示例 2: 使用进度回调")
+    logger.info("示例 2: 并行执行多个任务")
     logger.info("=" * 60)
     
-    pool = get_command_pool()
+    pool = CommandPoolExecutor.get_instance()
     output_dir = Path('/tmp/scan_results')
     
     tasks = [
@@ -93,16 +92,8 @@ def example_2_with_progress_callback():
         for i in range(1, 4)
     ]
     
-    # 定义进度回调
-    def on_progress(result: CommandResult):
-        status = "✓" if result.success else "✗"
-        logger.info(
-            f"[进度回调] {status} {result.task.name} - "
-            f"耗时 {result.duration:.2f}秒"
-        )
-    
-    # 执行任务
-    results = pool.execute_tasks(tasks, progress_callback=on_progress)
+    # 执行任务（CommandPool 会自动输出进度日志）
+    results = pool.execute_tasks(tasks)
     
     logger.info(f"所有任务完成: {len(results)} 个")
 
@@ -115,7 +106,7 @@ def example_3_handle_failures():
     logger.info("示例 3: 处理失败的任务")
     logger.info("=" * 60)
     
-    pool = get_command_pool()
+    pool = CommandPoolExecutor.get_instance()
     output_dir = Path('/tmp/scan_results')
     
     # 创建一些会失败的任务
@@ -158,15 +149,17 @@ def example_5_single_command():
     logger.info("示例 5: 执行单个命令")
     logger.info("=" * 60)
     
-    pool = get_command_pool()
+    pool = CommandPoolExecutor.get_instance()
     output_file = Path('/tmp/scan_results/single.txt')
     
-    # 执行单个命令（使用全局默认超时）
-    result = pool.execute_single_command(
+    # 执行单个命令（通过线程池管理）
+    task = CommandTask(
         name='single_test',
         command='echo "Single command test" > /tmp/scan_results/single.txt',
         output_file=output_file
     )
+    results = pool.execute_tasks([task])
+    result = results[0]
     
     if result.success:
         logger.info(f"✓ 命令执行成功: {result.output_file}")
@@ -187,7 +180,7 @@ def main():
         example_1_basic_usage()
         print()
         
-        example_2_with_progress_callback()
+        example_2_parallel_execution()
         print()
         
         example_3_handle_failures()
@@ -195,8 +188,6 @@ def main():
         
         example_5_single_command()
         print()
-        
-        example_4_get_statistics()
         
         logger.info("=" * 60)
         logger.info("所有示例执行完成！")
