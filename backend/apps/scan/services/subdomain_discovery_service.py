@@ -11,6 +11,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Dict
 
+from apps.common.normalizer import normalize_domain
+from apps.common.validators import validate_domain
 from apps.scan.utils.command_pool_executor import CommandPoolExecutor, CommandTask
 
 logger = logging.getLogger(__name__)
@@ -96,12 +98,24 @@ class SubdomainDiscoveryService:
             ...     base_dir='/data/scans/scan_20251106_223626_dcf142ab'
             ... )
         """
-        # 参数验证
+        # 1. 基本参数检查
         if not target or not isinstance(target, str):
             raise ValueError(f"Invalid target provided: {target}")
         
         if not base_dir:
             raise ValueError("base_dir is required (must be provided by initiate_scan_task)")
+        
+        # 2. 规范化和验证域名
+        try:
+            normalized_target = normalize_domain(target)
+            validate_domain(normalized_target)
+            logger.info("域名验证通过: %s -> %s", target, normalized_target)
+        except ValueError as e:
+            logger.error("无效的目标域名: %s, 错误: %s", target, e)
+            raise ValueError(f"无效的目标域名: {e}") from e
+        
+        # 3. 使用规范化后的域名进行后续操作
+        target = normalized_target
         
         # 生成唯一时间戳
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S%f')
