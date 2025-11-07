@@ -18,6 +18,8 @@
 
 import logging
 
+from django.db import transaction
+
 from apps.scan.services import ScanService, ScanTaskService
 from apps.common.definitions import ScanTaskStatus
 
@@ -99,8 +101,11 @@ class StatusUpdateHandler:
         # 所有扫描任务的 scan_id 都应该是关键字参数
         scan_id = kwargs.get('scan_id') if kwargs else None
         if not scan_id:
-            logger.warning("任务没有 scan_id 参数，但仍会尝试记录任务信息")
-            scan_id = -1  # 使用特殊值标记无 scan_id 的任务
+            logger.error(
+                "任务没有 scan_id 参数，跳过记录 - Task: %s, Task ID: %s",
+                task_name, task_id or 'N/A'
+            )
+            return  # 直接返回，不创建无效记录
         
         # 记录任务开始（task_id 验证由 Service 层负责）
         logger.info(
@@ -112,32 +117,46 @@ class StatusUpdateHandler:
         
         # 统一追加所有任务信息到 Scan（包括编排任务和工作任务）
         # Service 层会验证 task_id，如果无效会返回 False
-        append_result = self.scan_service.append_task_to_scan(
-            scan_id=scan_id,
-            task_id=task_id or '',
-            task_name=task_name
-        )
-        
-        if not append_result:
-            logger.debug(
-                "追加任务信息失败（可能 task_id 无效）- Task: %s, Scan ID: %s",
-                task_name, scan_id
+        try:
+            append_result = self.scan_service.append_task_to_scan(
+                scan_id=scan_id,
+                task_id=task_id or '',
+                task_name=task_name
             )
+            
+            if not append_result:
+                logger.debug(
+                    "追加任务信息失败（可能 task_id 无效）- Task: %s, Scan ID: %s",
+                    task_name, scan_id
+                )
+        except Exception as e:
+            logger.exception(
+                "追加任务信息时发生异常 - Task: %s, Scan ID: %s, Error: %s",
+                task_name, scan_id, e
+            )
+            # 不中断信号处理流程
         
         # 所有任务都创建 ScanTask 记录
         # Service 层会验证 task_id，如果无效会返回 False
-        init_result = self.task_service.initialize_task(
-            scan_id=scan_id,
-            task_name=task_name,
-            task_id=task_id or '',
-            status=ScanTaskStatus.RUNNING
-        )
-        
-        if not init_result:
-            logger.debug(
-                "创建 ScanTask 记录失败（可能 task_id 无效）- Task: %s, Scan ID: %s",
-                task_name, scan_id
+        try:
+            init_result = self.task_service.initialize_task(
+                scan_id=scan_id,
+                task_name=task_name,
+                task_id=task_id or '',
+                status=ScanTaskStatus.RUNNING
             )
+            
+            if not init_result:
+                logger.debug(
+                    "创建 ScanTask 记录失败（可能 task_id 无效）- Task: %s, Scan ID: %s",
+                    task_name, scan_id
+                )
+        except Exception as e:
+            logger.exception(
+                "创建 ScanTask 记录时发生异常 - Task: %s, Scan ID: %s, Error: %s",
+                task_name, scan_id, e
+            )
+            # 不中断信号处理流程
     
     def on_task_success(
         self, 
@@ -196,8 +215,11 @@ class StatusUpdateHandler:
         # 安全获取 scan_id（统一从 kwargs 中获取）
         scan_id = kwargs.get('scan_id') if kwargs else None
         if not scan_id:
-            logger.warning("任务没有 scan_id 参数，使用默认值")
-            scan_id = -1
+            logger.error(
+                "任务没有 scan_id 参数，跳过记录 - Task: %s, Task ID: %s",
+                task_name, task_id or 'N/A'
+            )
+            return  # 直接返回，不创建无效记录
         
         logger.info(
             "任务执行成功 - Task: %s, Task ID: %s, Scan ID: %s",
@@ -207,12 +229,19 @@ class StatusUpdateHandler:
         )
         
         # 更新 ScanTask 状态（Service 层会验证 task_id）
-        self.task_service.update_task_status(
-            scan_id=scan_id,
-            task_name=task_name,
-            task_id=task_id or '',
-            status=ScanTaskStatus.SUCCESSFUL
-        )
+        try:
+            self.task_service.update_task_status(
+                scan_id=scan_id,
+                task_name=task_name,
+                task_id=task_id or '',
+                status=ScanTaskStatus.SUCCESSFUL
+            )
+        except Exception as e:
+            logger.exception(
+                "更新 ScanTask 状态时发生异常 - Task: %s, Scan ID: %s, Error: %s",
+                task_name, scan_id, e
+            )
+            # 不中断信号处理流程
         
         # 关键：跳过编排任务和收尾任务
         if task_name in self.ORCHESTRATOR_TASKS:
@@ -280,8 +309,11 @@ class StatusUpdateHandler:
         # 安全获取 scan_id（统一从 kwargs 中获取）
         scan_id = kwargs.get('scan_id') if kwargs else None
         if not scan_id:
-            logger.warning("任务没有 scan_id 参数，使用默认值")
-            scan_id = -1
+            logger.error(
+                "任务没有 scan_id 参数，跳过记录 - Task: %s, Task ID: %s, 错误: %s",
+                task_name, task_id or 'N/A', str(exception) if exception else 'Unknown error'
+            )
+            return  # 直接返回，不创建无效记录
         
         # 安全获取错误信息
         error_message = str(exception) if exception else 'Unknown error'
@@ -295,27 +327,38 @@ class StatusUpdateHandler:
             error_message
         )
         
-        # 1. 更新 ScanTask 状态（Service 层会验证 task_id）
-        self.task_service.update_task_status(
-            scan_id=scan_id,
-            task_name=task_name,
-            task_id=task_id or '',
-            status=ScanTaskStatus.FAILED,
-            error_message=error_message,
-            error_traceback=error_traceback
-        )
-        
-        # 2. 关键：标记 Scan 为失败并撤销其他正在运行的任务
-        # 因为 chain 会中断，finalize 不会执行
-        # 使用专门的失败处理方法，集中处理：
-        #   - 更新 Scan 状态为 FAILED
-        #   - 撤销同一 Scan 下所有 RUNNING 任务
-        #   - 触发工作空间清理
-        logger.error("任务失败，开始失败级联处理 - Scan ID: %s", scan_id)
-        self.scan_service.fail_scan_with_cascade(
-            scan_id=scan_id,
-            failed_task_id=task_id
-        )
+        # 使用事务保护多个数据库操作，确保数据一致性
+        # 1. 更新 ScanTask 状态
+        # 2. 标记 Scan 为失败并撤销其他任务
+        try:
+            with transaction.atomic():
+                # 1. 更新 ScanTask 状态（Service 层会验证 task_id）
+                self.task_service.update_task_status(
+                    scan_id=scan_id,
+                    task_name=task_name,
+                    task_id=task_id or '',
+                    status=ScanTaskStatus.FAILED,
+                    error_message=error_message,
+                    error_traceback=error_traceback
+                )
+                
+                # 2. 关键：标记 Scan 为失败并撤销其他正在运行的任务
+                # 因为 chain 会中断，finalize 不会执行
+                # 使用专门的失败处理方法，集中处理：
+                #   - 更新 Scan 状态为 FAILED
+                #   - 撤销同一 Scan 下所有 RUNNING 任务
+                #   - 触发工作空间清理
+                logger.error("任务失败，开始失败级联处理 - Scan ID: %s", scan_id)
+                self.scan_service.fail_scan_with_cascade(
+                    scan_id=scan_id,
+                    failed_task_id=task_id
+                )
+        except Exception as e:
+            logger.exception(
+                "更新任务失败状态时发生异常 - Task: %s, Scan ID: %s, Error: %s",
+                task_name, scan_id, e
+            )
+            # 不中断信号处理流程，但数据库操作已回滚
     
     def on_task_revoked(
         self, 
@@ -346,12 +389,10 @@ class StatusUpdateHandler:
             sender, request, terminated, signum, expired
         )
         
-        # 从 request 对象获取信息，使用默认值确保任务能被追踪
+        # 从 request 对象获取信息
         if not request:
-            logger.error("任务撤销信号没有 request 对象，使用默认值")
-            task_id = 'unknown_revoked_task'
-            task_name = 'unknown_revoked_task'
-            scan_id = -1
+            logger.error("任务撤销信号没有 request 对象，无法追踪，跳过记录")
+            return  # 直接返回，不创建无效记录
         else:
             # 安全获取 task_id
             task_id = getattr(request, 'id', None)
@@ -374,11 +415,14 @@ class StatusUpdateHandler:
                     task_name
                 )
             
-            # 安全获取 scan_id，使用默认值确保任务能被追踪
+            # 安全获取 scan_id
             scan_id = kwargs.get('scan_id') if kwargs else None
             if not scan_id:
-                logger.warning("任务没有 scan_id 参数，使用默认值")
-                scan_id = -1
+                logger.error(
+                    "任务没有 scan_id 参数，跳过记录 - Task: %s, Task ID: %s",
+                    task_name, task_id
+                )
+                return  # 直接返回，不创建无效记录
         
         reason = f"Terminated={terminated}, Signal={signum}, Expired={expired}"
         logger.warning(
@@ -389,19 +433,30 @@ class StatusUpdateHandler:
             reason
         )
         
-        # 1. 更新 ScanTask 状态（Service 层会验证 task_id）
-        self.task_service.update_task_status(
-            scan_id=scan_id,
-            task_name=task_name,
-            task_id=task_id or '',
-            status=ScanTaskStatus.ABORTED,
-            error_message=f"任务被中止: {reason}"
-        )
-        
-        # 2. 处理任务被撤销的 Scan 状态更新
-        # 因为 chain 会中断，finalize 不会执行
-        # 使用专门的方法，包含级联撤销保护逻辑
-        logger.warning("任务中止，处理 Scan 撤销状态 - Scan ID: %s", scan_id)
-        self.scan_service.abort_scan_on_revoked(scan_id)
+        # 使用事务保护多个数据库操作，确保数据一致性
+        # 1. 更新 ScanTask 状态
+        # 2. 处理 Scan 撤销状态
+        try:
+            with transaction.atomic():
+                # 1. 更新 ScanTask 状态（Service 层会验证 task_id）
+                self.task_service.update_task_status(
+                    scan_id=scan_id,
+                    task_name=task_name,
+                    task_id=task_id or '',
+                    status=ScanTaskStatus.ABORTED,
+                    error_message=f"任务被中止: {reason}"
+                )
+                
+                # 2. 处理任务被撤销的 Scan 状态更新
+                # 因为 chain 会中断，finalize 不会执行
+                # 使用专门的方法，包含级联撤销保护逻辑
+                logger.warning("任务中止，处理 Scan 撤销状态 - Scan ID: %s", scan_id)
+                self.scan_service.abort_scan_on_revoked(scan_id)
+        except Exception as e:
+            logger.exception(
+                "更新任务撤销状态时发生异常 - Task: %s, Scan ID: %s, Error: %s",
+                task_name, scan_id, e
+            )
+            # 不中断信号处理流程，但数据库操作已回滚
     
 

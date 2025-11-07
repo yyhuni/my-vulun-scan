@@ -13,8 +13,11 @@ from datetime import datetime
 from pathlib import Path
 
 from celery import current_app
+from celery.exceptions import CeleryError
 from django.conf import settings
 from django.db import transaction
+from django.db.utils import DatabaseError, IntegrityError, OperationalError
+from django.core.exceptions import ValidationError, ObjectDoesNotExist
 
 from apps.scan.models import Scan
 from apps.scan.repositories import ScanRepository
@@ -69,7 +72,7 @@ class ScanService:
             self._task_service = ScanTaskService()
         return self._task_service
     
-    def get_scan(self, scan_id: int, prefetch_relations: bool ) -> Scan | None:
+    def get_scan(self, scan_id: int, prefetch_relations: bool) -> Scan | None:
         """
         获取扫描任务（包含关联对象）
         
@@ -156,13 +159,12 @@ class ScanService:
                     task_names=[],  # 显式初始化为空列表
                 )
                 scans_to_create.append(scan)
-            except Exception as e:
+            except (ValidationError, ValueError) as e:
                 logger.error(
-                    "准备扫描任务数据失败 - Target: %s, Engine: %s, 错误: %s",
+                    "准备扫描任务数据失败（验证错误） - Target: %s, Engine: %s, 错误: %s",
                     target.name,
                     engine.name,
-                    e,
-                    exc_info=True
+                    e
                 )
                 # 继续处理其他目标，不中断批量操作
                 continue
@@ -180,11 +182,16 @@ class ScanService:
                     "批量创建扫描任务记录成功 - 数量: %d",
                     len(created_scans)
                 )
-        except Exception as e:
+        except (DatabaseError, IntegrityError) as e:
+            logger.exception(
+                "数据库错误：批量创建扫描任务记录失败 - 错误: %s",
+                e
+            )
+            return []
+        except ValidationError as e:
             logger.error(
-                "批量创建扫描任务记录失败 - 错误: %s",
-                e,
-                exc_info=True
+                "验证错误：扫描任务数据无效 - 错误: %s",
+                e
             )
             return []
         
@@ -202,13 +209,12 @@ class ScanService:
                     scan.id,
                     result.id
                 )
-            except Exception as e:
+            except CeleryError as e:
                 failed_count += 1
                 logger.error(
-                    "提交扫描任务失败 - Scan ID: %s, 错误: %s",
+                    "Celery 错误：提交扫描任务失败 - Scan ID: %s, 错误: %s",
                     scan.id,
-                    e,
-                    exc_info=True
+                    e
                 )
                 # 标记为失败状态
                 try:
@@ -217,12 +223,11 @@ class ScanService:
                         ScanTaskStatus.FAILED,
                         error_message='提交 Celery 任务失败'
                     )
-                except Exception as save_error:
+                except (DatabaseError, OperationalError) as save_error:
                     logger.error(
-                        "更新扫描任务状态失败 - Scan ID: %s, 错误: %s",
+                        "数据库错误：更新扫描任务状态失败 - Scan ID: %s, 错误: %s",
                         scan.id,
-                        save_error,
-                        exc_info=True
+                        save_error
                     )
         
         logger.info(
@@ -262,8 +267,11 @@ class ScanService:
                     ScanTaskStatus(status).label
                 )
             return result
-        except Exception as e:  # noqa: BLE001
-            logger.exception("更新 Scan 状态失败 - Scan ID: %s, 错误: %s", scan_id, e)
+        except (DatabaseError, OperationalError) as e:
+            logger.exception("数据库错误：更新 Scan 状态失败 - Scan ID: %s", scan_id)
+            raise  # 数据库错误应该向上传播
+        except ObjectDoesNotExist:
+            logger.error("Scan 不存在 - Scan ID: %s", scan_id)
             return False
     
     def update_scan_to_running(
@@ -328,8 +336,11 @@ class ScanService:
             
             return result
                 
-        except Exception as e:  # noqa: BLE001
-            logger.exception("更新扫描状态失败 - Scan ID: %s, 错误: %s", scan_id, e)
+        except (DatabaseError, OperationalError) as e:
+            logger.exception("数据库错误：更新扫描状态失败 - Scan ID: %s", scan_id)
+            raise  # 数据库错误应该向上传播
+        except ObjectDoesNotExist:
+            logger.error("Scan 不存在 - Scan ID: %s", scan_id)
             return False
     
     def get_scan_completion_status(self, scan_id: int) -> tuple[bool, Dict[str, int], ScanTaskStatus | None]:
@@ -375,8 +386,11 @@ class ScanService:
             
             return True, stats, suggested_status
                 
-        except Exception as e:  # noqa: BLE001
-            logger.exception("获取扫描完成状态失败 - Scan ID: %s, 错误: %s", scan_id, e)
+        except (DatabaseError, OperationalError) as e:
+            logger.exception("数据库错误：获取扫描完成状态失败 - Scan ID: %s", scan_id)
+            raise  # 数据库错误应该向上传播
+        except ObjectDoesNotExist:
+            logger.error("Scan 不存在 - Scan ID: %s", scan_id)
             return False, {'total': 0}, None
     
     def complete_scan(self, scan_id: int, status: ScanTaskStatus) -> bool:
@@ -406,8 +420,11 @@ class ScanService:
             
             return True
                 
-        except Exception as e:  # noqa: BLE001
-            logger.exception("完成扫描失败 - Scan ID: %s, 错误: %s", scan_id, e)
+        except (DatabaseError, OperationalError) as e:
+            logger.exception("数据库错误：完成扫描失败 - Scan ID: %s", scan_id)
+            raise  # 数据库错误应该向上传播
+        except ObjectDoesNotExist:
+            logger.error("Scan 不存在 - Scan ID: %s", scan_id)
             return False
     
     def abort_scan_on_revoked(self, scan_id: int) -> bool:
@@ -455,8 +472,11 @@ class ScanService:
             logger.debug("Scan 已更新为 ABORTED - Scan ID: %s", scan_id)
             return True
                 
-        except Exception as e:  # noqa: BLE001
-            logger.exception("处理任务撤销失败 - Scan ID: %s, 错误: %s", scan_id, e)
+        except (DatabaseError, OperationalError) as e:
+            logger.exception("数据库错误：处理任务撤销失败 - Scan ID: %s", scan_id)
+            raise  # 数据库错误应该向上传播
+        except ObjectDoesNotExist:
+            logger.error("Scan 不存在 - Scan ID: %s", scan_id)
             return False
     
     def fail_scan_with_cascade(
@@ -533,11 +553,14 @@ class ScanService:
             
             return True
                 
-        except Exception as e:  # noqa: BLE001
+        except (DatabaseError, OperationalError) as e:
             logger.exception(
-                "失败处理时发生错误 - Scan ID: %s, 错误: %s",
-                scan_id, e
+                "数据库错误：失败处理时发生错误 - Scan ID: %s",
+                scan_id
             )
+            raise  # 数据库错误应该向上传播
+        except ObjectDoesNotExist:
+            logger.error("Scan 不存在 - Scan ID: %s", scan_id)
             return False
     
     def _revoke_tasks(
@@ -586,9 +609,9 @@ class ScanService:
                 )
                 revoked_count += 1
                 
-            except Exception as e:  # noqa: BLE001
+            except CeleryError as e:
                 logger.error(
-                    "撤销任务失败: %s [%s] (Task ID: %s) - Scan ID: %s, 错误: %s",
+                    "Celery 错误：撤销任务失败: %s [%s] (Task ID: %s) - Scan ID: %s, 错误: %s",
                     task_name, task_status, task_id, scan_id, e
                 )
         
@@ -645,8 +668,11 @@ class ScanService:
             
             return result
             
-        except Exception as e:  # noqa: BLE001
-            logger.exception("追加任务到 Scan 失败 - Scan ID: %s, 错误: %s", scan_id, e)
+        except (DatabaseError, OperationalError) as e:
+            logger.exception("数据库错误：追加任务到 Scan 失败 - Scan ID: %s", scan_id)
+            raise  # 数据库错误应该向上传播
+        except ObjectDoesNotExist:
+            logger.error("Scan 不存在 - Scan ID: %s", scan_id)
             return False
     
 

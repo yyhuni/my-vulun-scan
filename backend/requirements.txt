@@ -5,8 +5,8 @@ djangorestframework-camel-case==1.4.2
 psycopg2-binary==2.9.10
 
 # API 文档
-drf-yasg
-setuptools
+drf-yasg==1.21.7
+setuptools==75.6.0
 
 # CORS 支持
 django-cors-headers==4.3.1

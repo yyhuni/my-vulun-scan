@@ -75,8 +75,14 @@ def subdomain_discovery_task(target: str, scan_id: int = None, target_id: int = 
         # ========== 解析并保存子域名到数据库 ==========
         subdomains = service.get_scan_results(result_file)
         
+        # 空结果是正常业务场景，不应视为失败
         if not subdomains:
-            raise RuntimeError(f"无法读取扫描结果或结果为空 - 目标: {target}, 文件: {result_file}")
+            logger.info("子域名扫描完成 - 目标: %s, 未发现任何子域名（这是正常情况）", target)
+            return {
+                'total': 0,
+                'target': target,
+                'result_file': result_file
+            }
         
         total_count = len(subdomains)
         logger.info("发现 %d 个子域名", total_count)
@@ -89,7 +95,7 @@ def subdomain_discovery_task(target: str, scan_id: int = None, target_id: int = 
             target_id=target_id
         )
         
-        logger.info("子域名扫描完成 - 发现 %d 个子域名", saved_count)
+        logger.info("子域名扫描完成 - 目标: %s, 成功保存 %d 个子域名", target, saved_count)
         
         # 注意：文件和目录清理由 CleanupHandler 通过 task_postrun 信号统一处理
         
@@ -139,25 +145,26 @@ def _validate_and_save_subdomains(
     max_retries: int = 3
 ) -> int:
     """
-    验证域名并批量保存到数据库
+    验证、标准化、去重并批量保存子域名到数据库
     
     Args:
         subdomains: 子域名列表
-        target: 目标域名（用于错误日志）
+        target: 目标域名（用于日志）
         scan_id: 扫描任务 ID
         target_id: 目标 ID
         batch_size: 批量插入的大小
         max_retries: 数据库操作最大重试次数
     
     Returns:
-        saved_count: 成功保存的子域名数量
+        saved_count: 成功保存的子域名数量（如果无有效域名则返回 0）
         
     Raises:
-        RuntimeError: 验证或保存失败时抛出
+        RuntimeError: 数据库操作失败时抛出
     """
-    valid_subdomains = []
+    valid_subdomains = set()  # 使用 set 自动去重
+    invalid_count = 0
     
-    # 步骤 1: 验证域名
+    # 步骤 1: 验证、标准化、去重
     logger.debug("开始验证 %d 个子域名", len(subdomains))
     
     for subdomain in subdomains:
@@ -167,34 +174,45 @@ def _validate_and_save_subdomains(
         if not subdomain:
             continue
         
+        # 标准化：转小写（域名不区分大小写）
+        subdomain = subdomain.lower()
+        
         # 验证是否为有效域名
         try:
             if validate_domain(subdomain):
-                valid_subdomains.append(subdomain)
+                valid_subdomains.add(subdomain)  # set 自动去重
             else:
+                invalid_count += 1
                 logger.debug("无效子域名: %s", subdomain)
         except (ValueError, TypeError) as e:
+            invalid_count += 1
             logger.debug("验证子域名失败 %s: %s", subdomain, e)
             continue
     
     valid_count = len(valid_subdomains)
-    logger.debug("验证完成: %d/%d 个子域名有效", valid_count, len(subdomains))
+    duplicate_count = len(subdomains) - invalid_count - valid_count
     
+    logger.info(
+        "验证完成 - 总数: %d, 有效: %d, 无效: %d, 重复: %d",
+        len(subdomains), valid_count, invalid_count, duplicate_count
+    )
+    
+    # 无有效域名时，返回 0 而不抛异常
     if not valid_subdomains:
-        error_msg = f"没有有效的子域名可保存 - 目标: {target}"
-        logger.warning(error_msg)
-        raise RuntimeError(error_msg)
+        logger.info("没有有效的子域名可保存 - 目标: %s（这是正常情况）", target)
+        return 0
     
     # 步骤 2: 通过仓储批量保存到数据库
     repository = DjangoSubdomainRepository()
     saved_count = 0
-    total_batches = (len(valid_subdomains) + batch_size - 1) // batch_size
+    valid_list = list(valid_subdomains)  # 转为列表以便分批
+    total_batches = (len(valid_list) + batch_size - 1) // batch_size
 
     logger.debug("开始保存到数据库: %d 批次, 每批 %d 条", total_batches, batch_size)
 
     # 分批转换 DTO 并保存
-    for i in range(0, len(valid_subdomains), batch_size):
-        batch = valid_subdomains[i:i + batch_size]
+    for i in range(0, len(valid_list), batch_size):
+        batch = valid_list[i:i + batch_size]
         batch_num = i // batch_size + 1
         items = [
             SubdomainDTO(name=sub, scan_id=scan_id, target_id=target_id)
