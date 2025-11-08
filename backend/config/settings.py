@@ -181,35 +181,26 @@ CORS_ALLOW_CREDENTIALS = True
 # ==================== CSRF 配置 ====================
 CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000').split(',')
 
-# ==================== Celery 配置 ====================
-# Celery broker 配置（使用 Redis）
-CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+# ==================== Prefect 配置 ====================
+# Prefect API 服务器地址
+PREFECT_API_URL = os.getenv('PREFECT_API_URL', 'http://localhost:4200/api')
 
-# Celery 结果后端（可选）
-# CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
-# CELERY_RESULT_EXPIRES = 3600  # 结果过期时间：1小时
+# Prefect 数据库配置（使用独立的 prefect 数据库）
+# 注意：需要在 PostgreSQL 中创建 prefect 数据库
+PREFECT_DATABASE_NAME = os.getenv('PREFECT_DATABASE_NAME', 'prefect')
 
-# 任务序列化格式
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_SERIALIZER = 'json'
-CELERY_ACCEPT_CONTENT = ['json']
+# Prefect 工作池名称
+PREFECT_DEFAULT_WORK_POOL_NAME = os.getenv('PREFECT_DEFAULT_WORK_POOL_NAME', 'default')
 
-# 时区配置
-CELERY_TIMEZONE = TIME_ZONE
-CELERY_ENABLE_UTC = True
+# 任务超时配置
+PREFECT_TASK_DEFAULT_TIMEOUT_SECONDS = int(os.getenv('PREFECT_TASK_DEFAULT_TIMEOUT_SECONDS', '3600'))  # 默认超时：1小时
 
-# 任务确认配置（确保任务不丢失）
-CELERY_TASK_ACKS_LATE = True  # 任务执行完成后才确认
-CELERY_WORKER_PREFETCH_MULTIPLIER = int(os.getenv('CELERY_WORKER_PREFETCH_MULTIPLIER', '1'))  # 每个 worker 只预取 1 个任务
+# 任务重试配置
+PREFECT_TASK_DEFAULT_RETRIES = int(os.getenv('PREFECT_TASK_DEFAULT_RETRIES', '3'))  # 默认重试次数
+PREFECT_TASK_DEFAULT_RETRY_DELAY_SECONDS = int(os.getenv('PREFECT_TASK_DEFAULT_RETRY_DELAY_SECONDS', '60'))  # 重试延迟：60秒
 
-# 超时配置
-CELERY_TASK_TIME_LIMIT = int(os.getenv('CELERY_TASK_TIME_LIMIT', '3600'))  # 硬超时：1小时（强制终止）
-CELERY_TASK_SOFT_TIME_LIMIT = int(os.getenv('CELERY_TASK_SOFT_TIME_LIMIT', '3000'))  # 软超时：50分钟（抛出异常，允许清理）
-
-# 队列路由配置（在 celery.py 中定义）
-# 队列说明：
-# - orchestrator: 编排任务（轻量级、高并发）
-# - scans: 扫描任务（重量级、限制并发）
+# Prefect 日志级别
+PREFECT_LOGGING_LEVEL = os.getenv('PREFECT_LOGGING_LEVEL', 'INFO')
 
 
 # ==================== 扫描结果存储和清理配置 ====================

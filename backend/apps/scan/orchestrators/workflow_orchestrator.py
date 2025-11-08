@@ -2,6 +2,7 @@
 工作流编排器模块
 
 负责根据配置构建 DAG 工作流
+使用 Prefect Flow 实现
 """
 
 import logging
@@ -19,15 +20,16 @@ class WorkflowOrchestrator:
     
     职责：
     - 使用 DAG 编排器动态构建工作流
-    - 返回工作流供调用者执行
+    - 返回 Prefect Flow 函数供调用者执行
     
     不负责：
     - 执行工作流（由调用者控制）
     
     架构说明：
-    - 完全替换了之前的 workflow_registry 模式
+    - 完全替换了之前的 Celery Canvas 模式
     - 使用 DAGOrchestrator 实现配置驱动的动态工作流
     - 支持任务依赖关系和自动并行化
+    - 返回 Prefect Flow 函数
     """
     
     def __init__(self):
@@ -36,14 +38,14 @@ class WorkflowOrchestrator:
     
     def dispatch_workflow(self, scan: Scan, config: dict) -> Tuple[Optional[Any], list]:
         """
-        根据配置编排工作流（使用 DAG）
+        根据配置编排工作流（使用 Prefect DAG）
         
         Args:
             scan: Scan 对象
             config: 解析后的配置字典（包含 depends_on 字段）
         
         Returns:
-            (workflow, task_names): 工作流对象和任务名称列表
+            (flow_func, task_names): Prefect Flow 函数和任务名称列表
             如果构建失败，返回 (None, [])
         
         配置示例：
@@ -57,14 +59,14 @@ class WorkflowOrchestrator:
         """
         logger.info("开始编排工作流 - Scan ID: %s", scan.id)
         
-        # 使用 DAG 编排器
-        workflow, expected_tasks = self.dag_orchestrator.dispatch_workflow(scan, config)
+        # 使用 DAG 编排器构建 Prefect Flow
+        flow_func, expected_tasks = self.dag_orchestrator.build_scan_flow(scan, config)
         
-        if not workflow:
+        if not flow_func:
             logger.warning("工作流构建失败 - Scan ID: %s", scan.id)
             return None, []
         
         logger.info("✓ 工作流已构建 - Scan ID: %s, 任务数: %d", scan.id, len(expected_tasks))
         
-        return workflow, expected_tasks
+        return flow_func, expected_tasks
 

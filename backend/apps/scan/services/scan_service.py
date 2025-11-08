@@ -12,8 +12,8 @@ from typing import Dict, List, TYPE_CHECKING
 from datetime import datetime
 from pathlib import Path
 
-from celery import current_app
-from celery.exceptions import CeleryError
+# Celery imports removed - migrated to Prefect
+# Celery imports removed - migrated to Prefect
 from django.conf import settings
 from django.db import transaction
 from django.db.utils import DatabaseError, IntegrityError, OperationalError
@@ -23,7 +23,7 @@ from apps.scan.models import Scan
 from apps.scan.repositories import ScanRepository
 from apps.targets.models import Target
 from apps.engine.models import ScanEngine
-from apps.scan.tasks.initiate_scan_task import initiate_scan_task
+from apps.scan.tasks.initiate_scan_task import initiate_scan_flow
 from apps.common.definitions import ScanTaskStatus
 
 if TYPE_CHECKING:
@@ -196,23 +196,24 @@ class ScanService:
             return []
         
         # 第三步：提交 Celery 任务
-        # TODO: 未来可优化为 celery.group 批量提交，进一步提升性能
+        # TODO: 未来可优化为 Prefect 批量提交，进一步提升性能
         successful_scans = []
         failed_count = 0
         
         for scan in created_scans:
             try:
-                result = initiate_scan_task.delay(scan_id=scan.id)
+                # 使用 Prefect Flow 在后台异步执行
+                flow_run = initiate_scan_flow.apply_async(kwargs={'scan_id': scan.id})
                 successful_scans.append(scan)
                 logger.info(
-                    "扫描任务已提交 - Scan ID: %s, Task ID: %s",
+                    "扫描任务已提交 - Scan ID: %s, Flow Run: %s",
                     scan.id,
-                    result.id
+                    flow_run.name if flow_run else 'N/A'
                 )
-            except CeleryError as e:
+            except Exception as e:
                 failed_count += 1
                 logger.error(
-                    "Celery 错误：提交扫描任务失败 - Scan ID: %s, 错误: %s",
+                    "Prefect 错误：提交扫描任务失败 - Scan ID: %s, 错误: %s",
                     scan.id,
                     e
                 )
@@ -221,7 +222,7 @@ class ScanService:
                     self.scan_repo.update_status(
                         scan.id,
                         ScanTaskStatus.FAILED,
-                        error_message='提交 Celery 任务失败'
+                        error_message='提交 Prefect 任务失败'
                     )
                 except (DatabaseError, OperationalError) as save_error:
                     logger.error(
@@ -279,7 +280,7 @@ class ScanService:
         scan_id: int
     ) -> bool:
         """
-        更新扫描状态为 RUNNING（由 initiate_scan_task 调用）
+        更新扫描状态为 RUNNING（由 initiate_scan_flow 调用）
         
         职责：
         - 验证扫描状态必须是 INITIATED（业务规则验证）
@@ -291,7 +292,7 @@ class ScanService:
         
         前置条件：
         - Scan 状态必须是 INITIATED（由 Service 层创建时设置）
-        - 只能由 initiate_scan_task 调用一次
+        - 只能由 initiate_scan_flow 调用一次
         
         Args:
             scan_id: 扫描任务 ID

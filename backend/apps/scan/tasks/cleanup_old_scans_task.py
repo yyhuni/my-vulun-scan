@@ -3,10 +3,9 @@
 
 负责定期清理过期的扫描结果目录，释放磁盘空间
 
-队列策略：
-- 使用 orchestrator 队列（轻量级、维护任务）
-- 特点：定时执行、批量清理
-- Worker 配置建议：低并发（-c 5）
+特点：
+- 定时执行、批量清理
+- IO 密集型任务
 """
 
 import logging
@@ -14,7 +13,7 @@ import os
 import time
 from pathlib import Path
 
-from celery import shared_task
+from prefect import task, flow
 from django.conf import settings
 
 from apps.scan.utils import remove_directory
@@ -22,8 +21,8 @@ from apps.scan.utils import remove_directory
 logger = logging.getLogger(__name__)
 
 
-@shared_task(name='cleanup_old_scans', bind=True)
-def cleanup_old_scans_task(self) -> dict:
+@flow(name='cleanup_old_scans', log_prints=True)
+def cleanup_old_scans_flow() -> dict:
     """
     清理超过保留期限的扫描结果目录
     
@@ -49,12 +48,12 @@ def cleanup_old_scans_task(self) -> dict:
         }
     
     Note:
-        - 此任务由 Celery Beat 定时调度（默认每天凌晨执行）
+        - 此Flow由 Prefect Schedule 定时调度（默认每天凌晨执行）
         - 只扫描 SCAN_RESULTS_DIR 目录下的一级子目录
         - 不涉及数据库操作，纯文件系统清理
     """
     logger.info("="*60)
-    logger.info("开始定时清理扫描结果 - Task ID: %s", self.request.id)
+    logger.info("开始定时清理扫描结果")
     logger.info("="*60)
     
     try:
@@ -331,5 +330,5 @@ def _cleanup_directory(dir_info: dict) -> dict:
 
 
 # 导出接口
-__all__ = ['cleanup_old_scans_task']
+__all__ = ['cleanup_old_scans_flow']
 

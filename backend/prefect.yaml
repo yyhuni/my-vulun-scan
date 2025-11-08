@@ -1,0 +1,39 @@
+# Prefect 部署配置文件
+# 用于定义 Prefect Server 和 Worker 的配置
+
+# Prefect API 配置
+prefect-version: 2.14.21
+name: scanner-backend
+
+# 工作池配置
+work_pools:
+  - name: default
+    type: process
+    concurrency_limit: 10
+    description: 默认工作池，用于执行扫描任务
+
+# 部署配置
+deployments:
+  - name: cleanup-old-scans-daily
+    entrypoint: deployments/cleanup_deployment.py:cleanup_old_scans_flow
+    work_pool:
+      name: default
+    schedule:
+      cron: "0 2 * * *"
+      timezone: "Asia/Shanghai"
+    tags:
+      - maintenance
+      - cleanup
+      - scheduled
+
+# 存储配置（可选）
+storage:
+  # 使用本地文件系统存储
+  type: local
+  path: /Users/yangyang/Desktop/scanner/backend
+
+# 环境变量
+env:
+  DJANGO_SETTINGS_MODULE: config.settings
+  PREFECT_API_URL: ${PREFECT_API_URL:-http://localhost:4200/api}
+

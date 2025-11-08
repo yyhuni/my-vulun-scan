@@ -3,23 +3,28 @@
 
 负责在所有子任务完成后统一更新 Scan 状态
 
-队列策略：
-- 使用 orchestrator 队列（轻量级、高并发）
-- 特点：CPU 密集型、执行快（<1秒）
-- Worker 配置建议：高并发（-c 50）
+特点：
+- 轻量级、执行快（<1秒）
+- 无需重试（状态更新失败会抛出异常）
 """
 
 import logging
 
-from celery import shared_task
+from prefect import task
+from django.conf import settings
 
 from apps.common.definitions import ScanTaskStatus
 
 logger = logging.getLogger(__name__)
 
 
-@shared_task(name='finalize_scan', bind=True)
-def finalize_scan_task(self, scan_id: int = None) -> dict:
+@task(
+    name='finalize_scan',
+    retries=settings.PREFECT_TASK_DEFAULT_RETRIES,
+    retry_delay_seconds=settings.PREFECT_TASK_DEFAULT_RETRY_DELAY_SECONDS,
+    log_prints=True
+)
+def finalize_scan_task(scan_id: int = None) -> dict:
     """
     完成扫描任务
     
@@ -29,8 +34,7 @@ def finalize_scan_task(self, scan_id: int = None) -> dict:
     - 更新 Scan 状态为最终状态
     
     Args:
-        self: Celery task instance（由 bind=True 提供）
-        scan_id: 扫描 ID（关键字参数，便于信号处理器统一获取）
+        scan_id: 扫描 ID
     
     Returns:
         {
@@ -41,7 +45,6 @@ def finalize_scan_task(self, scan_id: int = None) -> dict:
         }
     
     Note:
-        - 使用 .si() 签名，不接收前面任务的返回值
         - 通过查询 ScanTask 表来获取所有任务的状态
         - 排除编排任务和收尾任务自身（initiate_scan, finalize_scan）
     

@@ -1,14 +1,12 @@
 #!/bin/bash
 
 ################################################################################
-# XingRin 后端服务停止脚本
+# XingRin 后端服务停止脚本 (Prefect 版本)
 # 
 # 停止以下服务：
 # 1. Django 开发服务器
-# 2. Celery Worker - orchestrator 队列
-# 3. Celery Worker - scans 队列
-# 4. Celery Beat
-# 5. Flower
+# 2. Prefect Server
+# 3. Prefect Worker
 ################################################################################
 
 # 颜色定义
@@ -99,24 +97,20 @@ kill_by_port() {
 # 1. 先按 PID 文件停止
 echo -e "${BLUE}[阶段 1/2] 停止已知服务...${NC}"
 stop_service_by_pid "Django" "$PID_DIR/django.pid"
-stop_service_by_pid "Celery Worker - orchestrator" "$PID_DIR/celery_orchestrator.pid"
-stop_service_by_pid "Celery Worker - scans" "$PID_DIR/celery_scans.pid"
-stop_service_by_pid "Celery Beat" "$PID_DIR/celery_beat.pid"
-stop_service_by_pid "Flower" "$PID_DIR/flower.pid"
+stop_service_by_pid "Prefect Server" "$PID_DIR/prefect_server.pid"
+stop_service_by_pid "Prefect Worker" "$PID_DIR/prefect_worker.pid"
 
 echo ""
 echo -e "${BLUE}[阶段 2/2] 清理残留进程和端口占用...${NC}"
 
 # 2. 按端口清理（确保端口释放）
 kill_by_port 8888 "Django"
-kill_by_port 5555 "Flower"
+kill_by_port 4200 "Prefect"
 
 # 3. 按进程名清理残留进程
 kill_by_process_name "manage.py runserver" "Django"
-kill_by_process_name "celery.*worker.*orchestrator" "Celery Worker - orchestrator"
-kill_by_process_name "celery.*worker.*scans" "Celery Worker - scans"
-kill_by_process_name "celery.*beat" "Celery Beat"
-kill_by_process_name "celery.*flower" "Flower"
+kill_by_process_name "prefect server" "Prefect Server"
+kill_by_process_name "prefect worker" "Prefect Worker"
 
 # 清理所有 PID 文件
 rm -f "$PID_DIR"/*.pid 2>/dev/null

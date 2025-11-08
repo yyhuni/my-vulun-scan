@@ -1,14 +1,12 @@
 #!/bin/bash
 
 ################################################################################
-# XingRin 后端服务启动脚本
+# XingRin 后端服务启动脚本 (Prefect 版本)
 # 
 # 启动以下服务：
 # 1. Django 开发服务器 (端口 8888)
-# 2. Celery Worker - orchestrator 队列 (编排任务)
-# 3. Celery Worker - scans 队列 (扫描任务)
-# 4. Celery Beat (定时任务调度器)
-# 5. Flower (Celery 监控工具，端口 5555)
+# 2. Prefect Server (端口 4200)
+# 3. Prefect Worker (默认工作池)
 ################################################################################
 
 # 颜色定义
@@ -21,7 +19,7 @@ NC='\033[0m' # No Color
 # 项目路径
 PROJECT_DIR="$HOME/Desktop/scanner/backend"
 VENV_PYTHON="$HOME/Desktop/scanner/.venv/bin/python"
-VENV_CELERY="$HOME/Desktop/scanner/.venv/bin/celery"
+VENV_PREFECT="$HOME/Desktop/scanner/.venv/bin/prefect"
 
 # 运行时目录
 VAR_DIR="$PROJECT_DIR/var"
@@ -48,14 +46,14 @@ if [ ! -f "$VENV_PYTHON" ]; then
     exit 1
 fi
 
-# 检查 Redis 是否运行（通过 Docker 容器）
-if docker ps --filter "name=vulun-redis" --filter "status=running" --format "{{.Names}}" | grep -q "vulun-redis"; then
-    echo -e "${GREEN}✅ Redis 已运行 (容器: vulun-redis)${NC}"
+# 检查 PostgreSQL 是否运行
+if docker ps --filter "name=vulun-postgres" --filter "status=running" --format "{{.Names}}" | grep -q "vulun-postgres"; then
+    echo -e "${GREEN}✅ PostgreSQL 已运行 (容器: vulun-postgres)${NC}"
 else
-    echo -e "${RED}❌ Redis 未运行${NC}"
-    echo -e "${YELLOW}请先启动 Redis:${NC}"
+    echo -e "${RED}❌ PostgreSQL 未运行${NC}"
+    echo -e "${YELLOW}请先启动 PostgreSQL:${NC}"
     echo -e "  ${BLUE}cd ~/Desktop/scanner/docker/infrastructure${NC}"
-    echo -e "  ${BLUE}docker-compose up -d redis${NC}"
+    echo -e "  ${BLUE}docker-compose up -d postgres${NC}"
     echo ""
     exit 1
 fi
@@ -71,9 +69,9 @@ if lsof -ti:8888 > /dev/null 2>&1; then
     port_check_failed=true
 fi
 
-if lsof -ti:5555 > /dev/null 2>&1; then
-    echo -e "${RED}❌ 端口 5555 (Flower) 已被占用${NC}"
-    echo -e "${YELLOW}   占用进程 PID: $(lsof -ti:5555)${NC}"
+if lsof -ti:4200 > /dev/null 2>&1; then
+    echo -e "${RED}❌ 端口 4200 (Prefect) 已被占用${NC}"
+    echo -e "${YELLOW}   占用进程 PID: $(lsof -ti:4200)${NC}"
     port_check_failed=true
 fi
 
@@ -92,7 +90,7 @@ echo -e "${BLUE}正在启动各项服务...${NC}"
 echo ""
 
 # 1. 启动 Django 开发服务器
-echo -e "${YELLOW}[1/5] 启动 Django 开发服务器 (端口 8888)...${NC}"
+echo -e "${YELLOW}[1/3] 启动 Django 开发服务器 (端口 8888)...${NC}"
 nohup $VENV_PYTHON manage.py runserver 0.0.0.0:8888 \
     > "$LOG_DIR/django.log" 2>&1 &
 echo $! > "$PID_DIR/django.pid"
@@ -103,66 +101,34 @@ else
     echo -e "${RED}   ❌ Django 启动失败，请检查日志: $LOG_DIR/django.log${NC}"
 fi
 
-# 2. 启动 Celery Worker - orchestrator 队列
-echo -e "${YELLOW}[2/5] 启动 Celery Worker - orchestrator 队列...${NC}"
-nohup $VENV_CELERY -A config worker \
-    --queues=orchestrator \
-    --concurrency=4 \
-    --loglevel=info \
-    --logfile="$LOG_DIR/celery_orchestrator.log" \
-    --pidfile="$PID_DIR/celery_orchestrator.pid" \
-    --hostname=orchestrator@%h \
-    > "$LOG_DIR/celery_orchestrator_stdout.log" 2>&1 &
-sleep 2
-if [ -f "$PID_DIR/celery_orchestrator.pid" ] && ps -p $(cat "$PID_DIR/celery_orchestrator.pid") > /dev/null 2>&1; then
-    echo -e "${GREEN}   ✅ Orchestrator Worker 启动成功 (PID: $(cat "$PID_DIR/celery_orchestrator.pid"))${NC}"
+# 2. 启动 Prefect Server
+echo -e "${YELLOW}[2/3] 启动 Prefect Server (端口 4200)...${NC}"
+export PREFECT_API_DATABASE_CONNECTION_URL="postgresql+asyncpg://postgres:postgres@localhost:5432/prefect"
+nohup $VENV_PREFECT server start \
+    --host 0.0.0.0 \
+    --port 4200 \
+    > "$LOG_DIR/prefect_server.log" 2>&1 &
+echo $! > "$PID_DIR/prefect_server.pid"
+sleep 3
+if ps -p $(cat "$PID_DIR/prefect_server.pid") > /dev/null 2>&1; then
+    echo -e "${GREEN}   ✅ Prefect Server 启动成功 (PID: $(cat "$PID_DIR/prefect_server.pid"))${NC}"
 else
-    echo -e "${RED}   ❌ Orchestrator Worker 启动失败，请检查日志${NC}"
+    echo -e "${RED}   ❌ Prefect Server 启动失败，请检查日志${NC}"
 fi
 
-# 3. 启动 Celery Worker - scans 队列
-echo -e "${YELLOW}[3/5] 启动 Celery Worker - scans 队列...${NC}"
-nohup $VENV_CELERY -A config worker \
-    --queues=scans \
-    --concurrency=2 \
-    --loglevel=info \
-    --logfile="$LOG_DIR/celery_scans.log" \
-    --pidfile="$PID_DIR/celery_scans.pid" \
-    --hostname=scans@%h \
-    > "$LOG_DIR/celery_scans_stdout.log" 2>&1 &
+# 3. 启动 Prefect Worker
+echo -e "${YELLOW}[3/3] 启动 Prefect Worker (工作池: default)...${NC}"
+export PREFECT_API_URL="http://localhost:4200/api"
+nohup $VENV_PREFECT worker start \
+    --pool default \
+    --limit 10 \
+    > "$LOG_DIR/prefect_worker.log" 2>&1 &
+echo $! > "$PID_DIR/prefect_worker.pid"
 sleep 2
-if [ -f "$PID_DIR/celery_scans.pid" ] && ps -p $(cat "$PID_DIR/celery_scans.pid") > /dev/null 2>&1; then
-    echo -e "${GREEN}   ✅ Scans Worker 启动成功 (PID: $(cat "$PID_DIR/celery_scans.pid"))${NC}"
+if ps -p $(cat "$PID_DIR/prefect_worker.pid") > /dev/null 2>&1; then
+    echo -e "${GREEN}   ✅ Prefect Worker 启动成功 (PID: $(cat "$PID_DIR/prefect_worker.pid"))${NC}"
 else
-    echo -e "${RED}   ❌ Scans Worker 启动失败，请检查日志${NC}"
-fi
-
-# 4. 启动 Celery Beat (定时任务调度器)
-echo -e "${YELLOW}[4/5] 启动 Celery Beat (定时任务调度器)...${NC}"
-nohup $VENV_CELERY -A config beat \
-    --schedule="$DB_DIR/celerybeat-schedule" \
-    --loglevel=info \
-    --logfile="$LOG_DIR/celery_beat.log" \
-    --pidfile="$PID_DIR/celery_beat.pid" \
-    > "$LOG_DIR/celery_beat_stdout.log" 2>&1 &
-sleep 2
-if [ -f "$PID_DIR/celery_beat.pid" ] && ps -p $(cat "$PID_DIR/celery_beat.pid") > /dev/null 2>&1; then
-    echo -e "${GREEN}   ✅ Celery Beat 启动成功 (PID: $(cat "$PID_DIR/celery_beat.pid"))${NC}"
-else
-    echo -e "${RED}   ❌ Celery Beat 启动失败，请检查日志${NC}"
-fi
-
-# 5. 启动 Flower (监控工具)
-echo -e "${YELLOW}[5/5] 启动 Flower (端口 5555)...${NC}"
-nohup $VENV_CELERY -A config flower \
-    --conf=config/flower_config.py \
-    > "$LOG_DIR/flower.log" 2>&1 &
-echo $! > "$PID_DIR/flower.pid"
-sleep 2
-if ps -p $(cat "$PID_DIR/flower.pid") > /dev/null 2>&1; then
-    echo -e "${GREEN}   ✅ Flower 启动成功 (PID: $(cat "$PID_DIR/flower.pid"))${NC}"
-else
-    echo -e "${RED}   ❌ Flower 启动失败，请检查日志: $LOG_DIR/flower.log${NC}"
+    echo -e "${RED}   ❌ Prefect Worker 启动失败，请检查日志${NC}"
 fi
 
 echo ""
@@ -173,15 +139,13 @@ echo ""
 echo -e "${YELLOW}服务访问地址：${NC}"
 echo -e "  • Django API:     ${GREEN}http://localhost:8888${NC}"
 echo -e "  • API 文档:       ${GREEN}http://localhost:8888/swagger/${NC}"
-echo -e "  • Flower 监控:    ${GREEN}http://localhost:5555${NC}"
+echo -e "  • Prefect UI:     ${GREEN}http://localhost:4200${NC}"
 echo ""
 echo -e "${YELLOW}日志文件位置：${NC}"
 echo -e "  • Django:         $LOG_DIR/django.log"
-echo -e "  • Orchestrator:   $LOG_DIR/celery_orchestrator.log"
-echo -e "  • Scans Worker:   $LOG_DIR/celery_scans.log"
-echo -e "  • Celery Beat:    $LOG_DIR/celery_beat.log"
-echo -e "  • Flower:         $LOG_DIR/flower.log"
+echo -e "  • Prefect Server: $LOG_DIR/prefect_server.log"
+echo -e "  • Prefect Worker: $LOG_DIR/prefect_worker.log"
 echo ""
 echo -e "${YELLOW}停止所有服务：${NC}"
-echo -e "  bash stop.sh"
+echo -e "  bash script/stop.sh"
 echo ""

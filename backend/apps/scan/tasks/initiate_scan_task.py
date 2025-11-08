@@ -3,13 +3,12 @@
 
 负责初始化扫描任务，根据 engine 配置调度工作流
 
-队列策略：
-- 使用 orchestrator 队列（轻量级、高并发）
-- 特点：CPU 密集型、执行快（<1秒）
-- Worker 配置建议：高并发（-c 50）
+特点：
+- 轻量级、执行快（<1秒）
+- 负责创建工作空间并触发 Prefect Flow
 """
 
-from celery import shared_task
+from prefect import flow
 from apps.scan.orchestrators import WorkflowOrchestrator
 from pathlib import Path
 import logging
@@ -18,8 +17,8 @@ import yaml
 logger = logging.getLogger(__name__)
 
 
-@shared_task(name='initiate_scan', bind=True)
-def initiate_scan_task(self, scan_id: int = None):
+@flow(name='initiate_scan', log_prints=True)
+def initiate_scan_flow(scan_id: int = None):
     """
     初始化扫描任务，根据 engine 配置动态编排和执行工作流
     
@@ -27,19 +26,17 @@ def initiate_scan_task(self, scan_id: int = None):
     - 创建扫描工作空间目录（从 scan.results_dir 读取路径）
     - 解析引擎配置
     - 使用 Orchestrator 构建工作流
-    - 执行工作流（决定何时执行、如何执行）
+    - 执行工作流（调用 Prefect Flow）
     
     不负责：
     - 生成工作空间路径（由 Service 层负责）
-    - 更新任务状态（由信号处理器负责）
-    - 创建 ScanTask 记录（由信号处理器负责）
     - 构建工作流逻辑（由 WorkflowOrchestrator 负责）
     
     职责分离：
     - Service 层: 生成工作空间路径字符串
-    - Task 层: 创建实际目录
-    - WorkflowOrchestrator: 编排工作流（匹配模式、构建 workflow 对象）
-    - initiate_scan_task: 执行工作流（决定何时执行、如何执行）
+    - Flow 层: 创建实际目录并触发子工作流
+    - WorkflowOrchestrator: 编排工作流（构建 Flow 对象）
+    - initiate_scan_flow: 执行编排后的工作流
     
     目录结构：
     - 工作空间：{SCAN_RESULTS_DIR}/scan_{timestamp}/
@@ -49,8 +46,7 @@ def initiate_scan_task(self, scan_id: int = None):
       - vulnerability_scan/
     
     Args:
-        self: Celery task instance (由 bind=True 提供)
-        scan_id: Scan 对象的 ID（关键字参数，便于信号处理器统一获取）
+        scan_id: Scan 对象的 ID
     
     Returns:
         dict: {
@@ -90,8 +86,8 @@ def initiate_scan_task(self, scan_id: int = None):
         logger.debug("创建扫描工作空间目录: %s", workspace_dir)
         
         logger.info(
-            "初始化扫描任务 - Scan ID: %s, Target: %s, Engine: %s, Task ID: %s, Workspace: %s",
-            scan_id, scan.target.name, engine.name, self.request.id, workspace_dir
+            "初始化扫描任务 - Scan ID: %s, Target: %s, Engine: %s, Workspace: %s",
+            scan_id, scan.target.name, engine.name, workspace_dir
         )
         
         # 更新扫描状态为 RUNNING
@@ -105,15 +101,15 @@ def initiate_scan_task(self, scan_id: int = None):
         if not config:
             raise ValueError(f"Engine {engine.name} 没有配置，无法启动扫描")
         
-        # 使用编排器构建工作流
+        # 使用编排器构建 Prefect Flow
         orchestrator = WorkflowOrchestrator()
-        workflow, expected_tasks = orchestrator.dispatch_workflow(scan, config)
-        if not workflow:
+        flow_func, expected_tasks = orchestrator.dispatch_workflow(scan, config)
+        if not flow_func:
             raise RuntimeError(f"工作流构建失败 - Scan ID: {scan_id}")
         
-        # 执行工作流
+        # 执行工作流（调用 Prefect Flow）
         logger.info("工作流已启动 - Scan ID: %s, 任务: %s", scan_id, ' -> '.join(expected_tasks))
-        workflow.apply_async()
+        flow_func()
         
         # 返回结果
         return {

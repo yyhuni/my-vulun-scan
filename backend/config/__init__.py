@@ -1,11 +1,14 @@
 """
 配置包初始化
 
-确保 Celery 应用在 Django 启动时被加载
+确保 Prefect 配置在 Django 启动时被加载
 """
 
-# 导入 Celery 应用实例，确保在 Django 启动时加载
-from .celery import app as celery_app
+# 导入 Prefect 配置，确保在 Django 启动时加载
+from .prefect import configure_prefect
 
-__all__ = ('celery_app',)
+# 配置 Prefect
+configure_prefect()
+
+__all__ = ('configure_prefect',)
 

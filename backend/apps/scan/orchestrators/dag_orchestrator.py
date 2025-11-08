@@ -2,6 +2,7 @@
 DAG 编排器模块
 
 负责根据配置动态构建 DAG（有向无环图）工作流
+使用 Prefect 的原生 Flow 和 Task 实现
 """
 
 import logging
@@ -9,7 +10,8 @@ from typing import Dict, List, Tuple, Any, Optional, Set
 from collections import deque
 from importlib import import_module
 
-from celery import chain, group
+from prefect import flow, task
+from prefect.futures import wait
 
 from apps.scan.models import Scan
 
@@ -23,7 +25,7 @@ class DAGOrchestrator:
     职责：
     - 解析配置中的任务依赖关系
     - 使用拓扑排序（Kahn 算法）构建执行阶段
-    - 动态构建 Celery Canvas workflow
+    - 动态构建 Prefect Flow workflow
     - 自动在工作流末尾添加 finalize_scan_task
     """
     
@@ -36,16 +38,16 @@ class DAGOrchestrator:
         # 'vuln_scan': 'apps.scan.tasks.vuln_scan_task.vuln_scan_task',
     }
     
-    def dispatch_workflow(self, scan: Scan, config: dict) -> Tuple[Any, list]:
+    def build_scan_flow(self, scan: Scan, config: dict) -> Tuple[Any, list]:
         """
-        根据配置动态构建 DAG 工作流
+        根据配置动态构建 DAG 工作流（返回 Prefect Flow）
         
         Args:
             scan: Scan 对象
             config: 解析后的配置字典（包含 depends_on 字段）
         
         Returns:
-            (workflow, task_names): Celery workflow 对象和任务名称列表
+            (flow_func, task_names): Prefect flow 函数和任务名称列表
         
         Raises:
             ValueError: 配置错误（没有可执行任务、循环依赖等）
@@ -69,7 +71,7 @@ class DAGOrchestrator:
         logger.debug("开始构建动态 DAG 工作流")
         logger.debug("="*60)
         
-        # 1. 构建任务字典（任务名称 -> Celery 签名）
+        # 1. 构建任务字典（任务名称 -> Task 函数）
         tasks = self._build_tasks(scan, config)
         if not tasks:
             raise ValueError("没有可执行的任务")
@@ -78,49 +80,89 @@ class DAGOrchestrator:
         dependencies = self._extract_dependencies(config, tasks.keys())
         
         # 3. 拓扑排序分组
-        stages = self._build_dependency_stages(dependencies, tasks)
+        stages = self._build_dependency_stages(dependencies, list(tasks.keys()))
         if not stages:
             raise ValueError("拓扑排序失败，可能存在循环依赖")
         
-        # 4. 构建 workflow
-        workflow = self._build_workflow(stages, scan.id)
-        if not workflow:
-            raise RuntimeError("构建 workflow 失败")
-        
-        # 5. 收集任务名称（包含 finalize）
-        task_names = []
-        for stage in stages:
-            for task_sig in stage:
-                task_names.append(task_sig.task)
-        task_names.append('finalize_scan')
-        
-        logger.info("DAG 工作流构建完成 - 任务数: %d, 阶段: %d", len(task_names), len(stages) + 1)
-        
-        # 打印执行计划(详细)
-        self._print_execution_plan(stages)
-        
-        return workflow, task_names
-    
-    def _build_tasks(self, scan: Scan, config: dict) -> Dict[str, Any]:
-        """
-        构建任务签名字典
-        
-        Args:
-            scan: Scan 对象
-            config: 配置字典
-        
-        Returns:
-            {task_name: celery_signature}
-        """
-        tasks = {}
-        
-        # 准备任务参数
+        # 4. 构建任务参数
         task_kwargs = {
             'target': scan.target.name,
             'scan_id': scan.id,
             'target_id': scan.target.id,
             'workspace_dir': scan.results_dir
         }
+        
+        # 5. 收集任务名称（包含 finalize）
+        task_names = []
+        for stage in stages:
+            task_names.extend(stage)
+        task_names.append('finalize_scan')
+        
+        logger.info("DAG 工作流构建完成 - 任务数: %d, 阶段: %d", len(task_names), len(stages) + 1)
+        
+        # 打印执行计划
+        self._print_execution_plan(stages)
+        
+        # 6. 创建动态 Flow 函数
+        @flow(name=f"scan-workflow-{scan.id}", log_prints=True)
+        def scan_workflow():
+            """动态生成的扫描工作流"""
+            logger.info("开始执行扫描工作流 - Scan ID: %s", scan.id)
+            
+            # 按阶段执行任务
+            for stage_idx, stage_task_names in enumerate(stages, 1):
+                logger.info("执行 Stage %d: %s", stage_idx, ', '.join(stage_task_names))
+                
+                if len(stage_task_names) == 1:
+                    # 单个任务：直接执行
+                    task_name = stage_task_names[0]
+                    task_func = tasks[task_name]
+                    task_func(**task_kwargs)
+                else:
+                    # 多个任务：并行执行
+                    futures = []
+                    for task_name in stage_task_names:
+                        task_func = tasks[task_name]
+                        future = task_func.submit(**task_kwargs)
+                        futures.append(future)
+                    
+                    # 等待所有并行任务完成
+                    wait(futures)
+                    
+                    # 检查是否有任务失败
+                    for future in futures:
+                        if future.state.is_failed():
+                            raise RuntimeError(f"任务失败: {future.name}")
+            
+            # 执行 finalize_scan_task
+            from apps.scan.tasks.finalize_scan_task import finalize_scan_task
+            logger.info("执行 finalize_scan")
+            finalize_scan_task(scan_id=scan.id)
+            
+            logger.info("扫描工作流完成 - Scan ID: %s", scan.id)
+            
+            return {
+                'success': True,
+                'scan_id': scan.id,
+                'target': scan.target.name,
+                'workspace_dir': str(scan.results_dir),
+                'executed_tasks': task_names
+            }
+        
+        return scan_workflow, task_names
+    
+    def _build_tasks(self, scan: Scan, config: dict) -> Dict[str, Any]:
+        """
+        构建任务函数字典
+        
+        Args:
+            scan: Scan 对象
+            config: 配置字典
+        
+        Returns:
+            {task_name: prefect_task_function}
+        """
+        tasks = {}
         
         for task_name, task_config in config.items():
             # 检查任务是否启用
@@ -140,10 +182,7 @@ class DAGOrchestrator:
                     logger.warning("任务 %s 加载失败，跳过", task_name)
                     continue
                 
-                # 创建不可变签名（使用 si）
-                task_sig = task_func.si(**task_kwargs)
-                tasks[task_name] = task_sig
-                
+                tasks[task_name] = task_func
                 logger.debug("✓ 添加任务: %s", task_name)
                 
             except Exception as e:
@@ -221,14 +260,14 @@ class DAGOrchestrator:
     def _build_dependency_stages(
         self,
         dependencies: Dict[str, List[str]],
-        tasks: Dict[str, Any]
-    ) -> List[List[Any]]:
+        task_names: List[str]
+    ) -> List[List[str]]:
         """
         使用拓扑排序（Kahn 算法）将任务按依赖层级分组
         
         Args:
             dependencies: 依赖关系字典 {task: [dep1, dep2, ...]}
-            tasks: 任务签名字典 {task_name: celery_signature}
+            task_names: 任务名称列表
         
         Returns:
             [[stage1_tasks], [stage2_tasks], ...] 
@@ -241,7 +280,7 @@ class DAGOrchestrator:
             4. 重复直到所有任务处理完
         """
         # 1. 计算入度
-        in_degree = {task: 0 for task in tasks.keys()}
+        in_degree = {task: 0 for task in task_names}
         
         for task, deps in dependencies.items():
             in_degree[task] = len(deps)
@@ -259,8 +298,7 @@ class DAGOrchestrator:
         while queue:
             # 当前层所有入度为 0 的任务（可以并行执行）
             current_stage_names = list(queue)
-            current_stage_sigs = [tasks[name] for name in current_stage_names]
-            stages.append(current_stage_sigs)
+            stages.append(current_stage_names)
             
             processed_count += len(current_stage_names)
             
@@ -284,14 +322,14 @@ class DAGOrchestrator:
                             queue.append(other_task)
         
         # 4. 检查是否所有任务都被处理（检测循环依赖）
-        if processed_count != len(tasks):
+        if processed_count != len(task_names):
             raise ValueError(
-                f"拓扑排序未完成，处理了 {processed_count}/{len(tasks)} 任务，可能存在循环依赖"
+                f"拓扑排序未完成，处理了 {processed_count}/{len(task_names)} 任务，可能存在循环依赖"
             )
         
         return stages
     
-    def _print_execution_plan(self, stages: List[List[Any]]) -> None:
+    def _print_execution_plan(self, stages: List[List[str]]) -> None:
         """
         打印执行计划（树状结构）
         
@@ -303,66 +341,13 @@ class DAGOrchestrator:
         logger.debug("="*60)
         for i, stage in enumerate(stages, 1):
             if len(stage) == 1:
-                logger.debug("  Stage %d: %s", i, stage[0].task)
+                logger.debug("  Stage %d: %s", i, stage[0])
             else:
-                task_list = ' ∥ '.join([sig.task for sig in stage])
+                task_list = ' ∥ '.join(stage)
                 logger.debug("  Stage %d: %s (并行)", i, task_list)
         logger.debug("  Stage %d: finalize_scan", len(stages) + 1)
         logger.debug("="*60)
-    
-    def _build_workflow(self, stages: List[List[Any]], scan_id: int) -> Any:
-        """
-        构建 Celery Canvas workflow
-        
-        Args:
-            stages: 任务阶段列表
-            scan_id: 扫描 ID
-        
-        Returns:
-            Celery workflow 对象（chain）
-        
-        Raises:
-            ValueError: 阶段列表为空
-            RuntimeError: 构建 workflow 失败
-        
-        结构：
-            - 单个任务的阶段：直接使用签名
-            - 多个任务的阶段：使用 group 包装（并行执行）
-            - 所有阶段：使用 chain 串联
-            - 最后添加 finalize_scan_task
-        """
-        if not stages:
-            raise ValueError("阶段列表为空，无法构建 workflow")
-        
-        try:
-            # 动态加载 finalize_scan_task
-            from apps.scan.tasks.finalize_scan_task import finalize_scan_task
-            
-            # 构建阶段列表
-            stage_workflows = []
-            
-            for stage in stages:
-                if len(stage) == 1:
-                    # 单个任务：直接使用
-                    stage_workflows.append(stage[0])
-                else:
-                    # 多个任务：使用 group 并行执行
-                    stage_workflows.append(group(*stage))
-            
-            # 添加 finalize_scan_task（使用 si 不接收参数）
-            finalize_sig = finalize_scan_task.si(scan_id=scan_id)
-            stage_workflows.append(finalize_sig)
-            
-            # 使用 chain 串联所有阶段
-            workflow = chain(*stage_workflows)
-            
-            return workflow
-            
-        except Exception as e:
-            logger.exception("构建 workflow 失败: %s", e)
-            raise RuntimeError(f"构建 workflow 失败: {e}") from e
 
 
 # 导出接口
 __all__ = ['DAGOrchestrator']
-
