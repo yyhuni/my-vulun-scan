@@ -58,9 +58,8 @@ def initiate_scan_task(self, scan_id: int = None):
             'scan_id': int,
             'target': str,
             'engine_id': int,
-            'workspace': str,  # 工作空间路径
-            'task_count': int,  # 工作流中的任务数量
-            'task_names': list  # 任务名称列表
+            'workspace_dir': str,  # 工作空间路径
+            'expected_tasks': list  # 预期执行的任务名称列表
         }
     
     Raises:
@@ -108,12 +107,12 @@ def initiate_scan_task(self, scan_id: int = None):
         
         # 使用编排器构建工作流
         orchestrator = WorkflowOrchestrator()
-        workflow, task_names = orchestrator.dispatch_workflow(scan, config)
+        workflow, expected_tasks = orchestrator.dispatch_workflow(scan, config)
         if not workflow:
             raise RuntimeError(f"工作流构建失败 - Scan ID: {scan_id}")
         
         # 执行工作流
-        logger.info("工作流已启动 - Scan ID: %s, 任务: %s", scan_id, ' -> '.join(task_names))
+        logger.info("工作流已启动 - Scan ID: %s, 任务: %s", scan_id, ' -> '.join(expected_tasks))
         workflow.apply_async()
         
         # 返回结果
@@ -122,9 +121,8 @@ def initiate_scan_task(self, scan_id: int = None):
             'scan_id': scan_id,
             'target': scan.target.name,
             'engine_id': engine.id,
-            'workspace': str(workspace_dir),
-            'task_count': len(task_names),
-            'task_names': task_names
+            'workspace_dir': str(workspace_dir),
+            'expected_tasks': expected_tasks
         }
         
     except ValueError as e:
