@@ -177,7 +177,7 @@ export const createOrganizationColumns = ({
       return (
         <Link 
           href={`/organization/${organization.id}`}
-          className="font-medium text-primary hover:underline block"
+          className="font-medium hover:text-primary hover:underline transition-colors block"
         >
           {row.getValue("name")}
         </Link>

@@ -128,28 +128,32 @@ function StatusBadge({ status }: { status: ScanStatus }) {
     aborted: {
       icon: IconCircleX,
       label: "Aborted",
-      variant: "secondary",
+      variant: "outline",
+      className: "bg-chart-2/20 text-chart-2 border-chart-2/30 hover:bg-chart-2/30 transition-colors",
     },
     failed: {
       icon: IconCircleX,
       label: "Failed",
-      variant: "destructive",
+      variant: "outline",
+      className: "bg-destructive/20 text-destructive border-destructive/30 hover:bg-destructive/30 transition-colors",
     },
     initiated: {
       icon: IconClock,
       label: "Initiated",
-      variant: "secondary",
+      variant: "outline",
+      className: "bg-chart-4/20 text-chart-4 border-chart-4/30 hover:bg-chart-4/30 transition-colors",
     },
     running: {
       icon: IconLoader,
       label: "Running",
-      variant: "default",
-      className: "animate-pulse",
+      variant: "outline",
+      className: "bg-chart-3/20 text-chart-3 border-chart-3/30 hover:bg-chart-3/30 transition-colors",
     },
     successful: {
       icon: IconCircleCheck,
       label: "Successful",
       variant: "outline",
+      className: "bg-chart-1/20 text-chart-1 border-chart-1/30 hover:bg-chart-1/30 transition-colors",
     },
   }
 
@@ -310,8 +314,8 @@ export const createScanHistoryColumns = ({
             <Tooltip>
               <TooltipTrigger asChild>
                 <Badge 
-                  variant="outline" 
-                  className="font-mono bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 hover:bg-blue-500/20 transition-colors cursor-default"
+                  variant="outline"
+                  className="bg-chart-4/20 text-chart-4 border-chart-4/30 hover:bg-chart-4/30 transition-colors"
                 >
                   {summary.subdomains}
                 </Badge>
@@ -326,8 +330,8 @@ export const createScanHistoryColumns = ({
             <Tooltip>
               <TooltipTrigger asChild>
                 <Badge 
-                  variant="outline" 
-                  className="font-mono bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20 transition-colors cursor-default"
+                  variant="outline"
+                  className="bg-chart-1/20 text-chart-1 border-chart-1/30 hover:bg-chart-1/30 transition-colors"
                 >
                   {summary.endpoints}
                 </Badge>
@@ -342,12 +346,12 @@ export const createScanHistoryColumns = ({
             <Tooltip>
               <TooltipTrigger asChild>
                 <Badge 
-                  variant="outline" 
-                  className={`font-mono transition-colors cursor-default ${
+                  variant="outline"
+                  className={
                     summary.vulnerabilities.total > 0 
-                      ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20 hover:bg-orange-500/20' 
-                      : 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20 hover:bg-slate-500/20'
-                  }`}
+                      ? "bg-destructive/20 text-destructive border-destructive/30 hover:bg-destructive/30 transition-colors"
+                      : "bg-muted text-muted-foreground border-muted hover:bg-muted/80 transition-colors"
+                  }
                 >
                   {summary.vulnerabilities.total}
                 </Badge>
@@ -425,9 +429,11 @@ export const createScanHistoryColumns = ({
           <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
             <div 
               className={`h-full transition-all ${
-                status === "successful" ? "bg-chart-4" : 
+                status === "successful" ? "bg-chart-1" : 
                 status === "failed" ? "bg-destructive" : 
                 status === "running" ? "bg-chart-3" : 
+                status === "aborted" ? "bg-chart-2" :
+                status === "initiated" ? "bg-chart-4" :
                 "bg-muted-foreground"
               }`}
               style={{ width: `${displayProgress}%` }}

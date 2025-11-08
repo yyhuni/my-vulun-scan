@@ -257,7 +257,7 @@ export const createAllTargetsColumns = ({
         <div className="group inline-flex items-center gap-1 max-w-[350px]">
           <button
             onClick={() => navigate(`/target/${targetId}/details`)}
-            className="text-sm font-medium text-primary hover:underline cursor-pointer truncate"
+            className="text-sm font-medium hover:text-primary hover:underline transition-colors cursor-pointer truncate"
             title={name}
           >
             {name}
