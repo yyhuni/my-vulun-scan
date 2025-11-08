@@ -28,6 +28,7 @@ import {
   ChevronDown,
   Copy,
   Check,
+  StopCircle,
 } from "lucide-react"
 import {
   IconClock,
@@ -172,6 +173,7 @@ interface CreateColumnsProps {
   formatDate: (dateString: string) => string
   navigate: (path: string) => void
   handleDelete: (scan: ScanRecord) => void
+  handleStop: (scan: ScanRecord) => void
 }
 
 /**
@@ -181,11 +183,16 @@ function ScanRowActions({
   scan,
   onView,
   onDelete,
+  onStop,
 }: {
   scan: ScanRecord
   onView: () => void
   onDelete: () => void
+  onStop: () => void
 }) {
+  // 只有在运行中或初始化状态时才显示停止选项
+  const canStop = scan.status === 'running' || scan.status === 'initiated'
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -202,6 +209,16 @@ function ScanRowActions({
           <Eye />
           View Results
         </DropdownMenuItem>
+        {canStop && (
+          <DropdownMenuItem
+            onClick={onStop}
+            className="text-chart-2 focus:text-chart-2"
+          >
+            <StopCircle />
+            Stop Scan
+          </DropdownMenuItem>
+        )}
+        {canStop && <DropdownMenuSeparator />}
         <DropdownMenuItem
           onClick={onDelete}
           className="text-destructive focus:text-destructive"
@@ -255,6 +272,7 @@ export const createScanHistoryColumns = ({
   formatDate,
   navigate,
   handleDelete,
+  handleStop,
 }: CreateColumnsProps): ColumnDef<ScanRecord>[] => [
   // 选择列
   {
@@ -456,6 +474,7 @@ export const createScanHistoryColumns = ({
         scan={row.original}
         onView={() => navigate(`/scan/history/${row.original.id}/`)}
         onDelete={() => handleDelete(row.original)}
+        onStop={() => handleStop(row.original)}
       />
     ),
     enableSorting: false,

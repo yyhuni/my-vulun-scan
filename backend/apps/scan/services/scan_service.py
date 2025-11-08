@@ -427,9 +427,102 @@ class ScanService:
             logger.error("Scan 不存在 - Scan ID: %s", scan_id)
             return False
     
+    def stop_scan(self, scan_id: int) -> tuple[bool, int]:
+        """
+        主动停止扫描任务（用户发起）
+        
+        职责：
+        - 验证扫描状态（只能停止 RUNNING/INITIATED）
+        - 撤销所有 Celery 任务
+        - 更新状态为 ABORTED
+        
+        Args:
+            scan_id: 扫描任务 ID
+        
+        Returns:
+            (是否成功, 撤销的任务数量)
+        
+        Note:
+            此方法用于 API 主动停止场景
+            先更新状态,利用终态保护机制防止信号重复更新
+        """
+        try:
+            # 1. 获取扫描对象
+            scan = self.scan_repo.get_by_id(scan_id)
+            if not scan:
+                logger.error("Scan 不存在 - Scan ID: %s", scan_id)
+                return False, 0
+            
+            # 2. 验证状态（只能停止 RUNNING/INITIATED）
+            if scan.status not in [ScanTaskStatus.RUNNING, ScanTaskStatus.INITIATED]:
+                logger.warning(
+                    "无法停止扫描：当前状态为 %s - Scan ID: %s",
+                    ScanTaskStatus(scan.status).label,
+                    scan_id
+                )
+                return False, 0
+            
+            # 3. 获取任务列表
+            task_ids = scan.task_ids or []
+            
+            # 4. 撤销所有 Celery 任务（先执行实际操作）
+            revoked_count = 0
+            if task_ids:
+                app = current_app._get_current_object()
+                
+                for task_id in task_ids:
+                    try:
+                        app.control.revoke(
+                            task_id,
+                            terminate=True,
+                            signal='SIGTERM'
+                        )
+                        revoked_count += 1
+                        logger.debug("已撤销任务: %s - Scan ID: %s", task_id, scan_id)
+                    except CeleryError as e:
+                        logger.error(
+                            "撤销任务失败: %s - Scan ID: %s, Error: %s",
+                            task_id, scan_id, e
+                        )
+                        # 继续处理其他任务
+                
+                logger.info(
+                    "已撤销 %d/%d 个任务 - Scan ID: %s",
+                    revoked_count, len(task_ids), scan_id
+                )
+            else:
+                logger.info("无关联任务需要撤销 - Scan ID: %s", scan_id)
+            
+            # 5. 更新状态为 ABORTED（记录操作结果）
+            # 注意: 这个更新是必要的,原因:
+            # - 有任务时: task_revoked 信号会先更新状态,这里是幂等操作
+            # - 无任务时: 没有信号触发,必须由这里更新状态
+            # - 部分失败时: 确保状态最终正确
+            result = self.update_status(scan_id, ScanTaskStatus.ABORTED)
+            if not result:
+                logger.warning(
+                    "更新扫描状态为 ABORTED 失败 - Scan ID: %s (任务已撤销 %d 个)",
+                    scan_id, revoked_count
+                )
+                # 即使状态更新失败,任务已经撤销,返回成功
+                # 信号处理器可能已经更新了状态
+            
+            logger.info(
+                "扫描已停止 - Scan ID: %s, 撤销任务数: %d",
+                scan_id, revoked_count
+            )
+            return True, revoked_count
+            
+        except (DatabaseError, OperationalError) as e:
+            logger.exception("数据库错误：停止扫描失败 - Scan ID: %s", scan_id)
+            raise
+        except ObjectDoesNotExist:
+            logger.error("Scan 不存在 - Scan ID: %s", scan_id)
+            return False, 0
+    
     def abort_scan_on_revoked(self, scan_id: int) -> bool:
         """
-        处理任务被撤销时的 Scan 状态更新
+        处理任务被撤销时的 Scan 状态更新（信号触发）
         
         职责：
         - 检查当前状态（保护 FAILED 不被覆盖）

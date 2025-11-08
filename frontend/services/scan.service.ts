@@ -41,3 +41,13 @@ export async function bulkDeleteScans(ids: number[]): Promise<{ message: string;
   const res = await api.post<{ message: string; deletedCount: number }>('/scans/bulk_delete/', { ids })
   return res.data
 }
+
+/**
+ * 停止扫描任务
+ * @param id - 扫描ID
+ * @returns 操作结果
+ */
+export async function stopScan(id: number): Promise<{ message: string; revokedTaskCount: number }> {
+  const res = await api.post<{ message: string; revokedTaskCount: number }>(`/scans/${id}/stop/`)
+  return res.data
+}

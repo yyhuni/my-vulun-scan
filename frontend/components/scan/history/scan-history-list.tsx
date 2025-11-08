@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { toast } from "sonner"
 import { useScans } from "@/hooks/use-scans"
-import { deleteScan, bulkDeleteScans } from "@/services/scan.service"
+import { deleteScan, bulkDeleteScans, stopScan } from "@/services/scan.service"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 
 /**
@@ -32,6 +32,8 @@ export function ScanHistoryList() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [scanToDelete, setScanToDelete] = useState<ScanRecord | null>(null)
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
+  const [stopDialogOpen, setStopDialogOpen] = useState(false)
+  const [scanToStop, setScanToStop] = useState<ScanRecord | null>(null)
   
   // 分页状态
   const [pagination, setPagination] = useState({
@@ -65,6 +67,15 @@ export function ScanHistoryList() {
       queryClient.invalidateQueries({ queryKey: ['scans'] })
       // 清空选中项
       setSelectedScans([])
+    },
+  })
+  
+  // 停止扫描的 mutation
+  const stopMutation = useMutation({
+    mutationFn: stopScan,
+    onSuccess: () => {
+      // 刷新列表数据
+      queryClient.invalidateQueries({ queryKey: ['scans'] })
     },
   })
 
@@ -117,6 +128,29 @@ export function ScanHistoryList() {
     }
     setBulkDeleteDialogOpen(true)
   }
+  
+  // 处理停止扫描
+  const handleStopScan = (scan: ScanRecord) => {
+    setScanToStop(scan)
+    setStopDialogOpen(true)
+  }
+  
+  // 确认停止扫描
+  const confirmStop = async () => {
+    if (!scanToStop) return
+
+    setStopDialogOpen(false)
+    
+    try {
+      await stopMutation.mutateAsync(scanToStop.id)
+      toast.success(`已停止扫描任务: ${scanToStop.targetName}`)
+    } catch (error) {
+      toast.error("停止失败，请重试")
+      console.error('停止扫描失败:', error)
+    } finally {
+      setScanToStop(null)
+    }
+  }
 
   // 确认批量删除
   const confirmBulkDelete = async () => {
@@ -148,6 +182,7 @@ export function ScanHistoryList() {
         formatDate,
         navigate,
         handleDelete: handleDeleteScan,
+        handleStop: handleStopScan,
       }),
     [navigate]
   )
@@ -234,6 +269,27 @@ export function ScanHistoryList() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               删除 {selectedScans.length} 个记录
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 停止扫描确认对话框 */}
+      <AlertDialog open={stopDialogOpen} onOpenChange={setStopDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认停止扫描</AlertDialogTitle>
+            <AlertDialogDescription>
+              确定要停止扫描任务 &quot;{scanToStop?.targetName}&quot; 吗？扫描将会中止，已收集的数据将会保留。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmStop} 
+              className="bg-chart-2 text-white hover:bg-chart-2/90"
+            >
+              停止扫描
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

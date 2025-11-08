@@ -10,6 +10,7 @@ from .serializers import ScanSerializer, ScanHistorySerializer
 from .services.scan_service import ScanService
 from apps.targets.models import Target, Organization
 from apps.engine.models import ScanEngine
+from apps.common.definitions import ScanTaskStatus
 
 
 class ScanViewSet(viewsets.ModelViewSet):
@@ -282,6 +283,68 @@ class ScanViewSet(viewsets.ModelViewSet):
             })
         
         except (DatabaseError, OperationalError):
+            return Response(
+                {'error': '数据库错误，请稍后重试'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+    
+    @action(detail=True, methods=['post'])
+    def stop(self, request, pk=None):  # pylint: disable=unused-argument
+        """
+        停止扫描任务
+        
+        URL: POST /api/scans/{id}/stop/
+        
+        功能:
+        - 终止正在运行或初始化的扫描任务
+        - 撤销所有关联的 Celery 任务
+        - 更新扫描状态为 'aborted'
+        
+        状态限制:
+        - 只能停止 'running' 或 'initiated' 状态的扫描
+        - 已完成、失败或中止的扫描无法停止
+        
+        返回:
+        - message: 成功消息
+        - revokedTaskCount: 撤销的任务数量
+        """
+        try:
+            # 使用 Service 层处理停止逻辑
+            scan_service = ScanService()
+            success, revoked_count = scan_service.stop_scan(scan_id=pk)
+            
+            if not success:
+                # 检查是否是状态不允许的问题
+                scan = Scan.objects.get(id=pk)  # type: ignore  # pylint: disable=no-member
+                if scan.status not in [ScanTaskStatus.RUNNING, ScanTaskStatus.INITIATED]:
+                    return Response(
+                        {
+                            'error': f'无法停止扫描：当前状态为 {ScanTaskStatus(scan.status).label}',
+                            'detail': '只能停止运行中或初始化状态的扫描'
+                        },
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                # 其他失败原因
+                return Response(
+                    {'error': '停止扫描失败'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+            
+            return Response(
+                {
+                    'message': f'扫描已停止，已撤销 {revoked_count} 个任务',
+                    'revokedTaskCount': revoked_count
+                },
+                status=status.HTTP_200_OK
+            )
+        
+        except ObjectDoesNotExist:
+            return Response(
+                {'error': f'扫描 ID {pk} 不存在'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        except (DatabaseError, IntegrityError, OperationalError):
             return Response(
                 {'error': '数据库错误，请稍后重试'},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE
