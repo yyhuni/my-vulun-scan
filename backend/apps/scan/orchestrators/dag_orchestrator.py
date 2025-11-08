@@ -97,15 +97,7 @@ class DAGOrchestrator:
         logger.info("DAG 工作流构建完成 - 任务数: %d, 阶段: %d", len(task_names), len(stages) + 1)
         
         # 打印执行计划(详细)
-        logger.debug("="*60)
-        for i, stage in enumerate(stages, 1):
-            if len(stage) == 1:
-                logger.debug("  Stage %d: %s", i, stage[0].task)
-            else:
-                task_list = ' ∥ '.join([sig.task for sig in stage])
-                logger.debug("  Stage %d: %s (并行)", i, task_list)
-        logger.debug("  Stage %d: finalize_scan", len(stages) + 1)
-        logger.debug("="*60)
+        self._print_execution_plan(stages)
         
         return workflow, task_names
     
@@ -298,6 +290,25 @@ class DAGOrchestrator:
             )
         
         return stages
+    
+    def _print_execution_plan(self, stages: List[List[Any]]) -> None:
+        """
+        打印执行计划（树状结构）
+        
+        Args:
+            stages: 任务阶段列表
+        """
+        logger.debug("="*60)
+        logger.debug("执行计划:")
+        logger.debug("="*60)
+        for i, stage in enumerate(stages, 1):
+            if len(stage) == 1:
+                logger.debug("  Stage %d: %s", i, stage[0].task)
+            else:
+                task_list = ' ∥ '.join([sig.task for sig in stage])
+                logger.debug("  Stage %d: %s (并行)", i, task_list)
+        logger.debug("  Stage %d: finalize_scan", len(stages) + 1)
+        logger.debug("="*60)
     
     def _build_workflow(self, stages: List[List[Any]], scan_id: int) -> Any:
         """
