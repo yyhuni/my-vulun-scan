@@ -27,6 +27,9 @@ import type { ScanEngine } from "@/types/engine.types"
 import { initiateScan } from "@/services/scan.service"
 import { toast } from "sonner"
 
+// 导入引擎 hooks
+import { useEngines } from "@/hooks/use-engines"
+
 // 组件属性类型定义
 interface InitiateScanDialogProps {
   organization?: Organization | null  // 选中的组织（可选，用于显示信息）
@@ -59,108 +62,33 @@ export function InitiateScanDialog({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [expandedEngineId, setExpandedEngineId] = useState<string | null>(null)
 
-  // TODO: 使用 React Query 获取引擎列表
-  // const { data: engines, isLoading } = useEngines({ is_enabled: true })
-  
-  // 临时模拟数据（待实现 API 后删除）
-  const mockEngines: ScanEngine[] = [
-    {
-      id: 1,
-      name: "Full Scan",
-      type: "comprehensive",
-      description: "全面深度扫描，覆盖所有已知漏洞类型，耗时较长但最全面",
-      tools: ["Nmap", "Masscan", "Nikto", "SQLMap", "XSStrike"],
-      tool_ids: [1, 2, 3, 4, 5],
-      is_enabled: true,
-      created_at: "2024-01-01T00:00:00Z",
-      updated_at: "2024-01-01T00:00:00Z",
-      usage_count: 89,
-      capabilities: [
-        "Subdomain Discovery",
-        "WAF Detection",
-        "Screenshot",
-        "OSINT",
-        "Port Scan",
-        "Directory and Files Search",
-        "Fetch Endpoints(URLs)",
-        "Vulnerability Scan",
-      ],
-    },
-    {
-      id: 2,
-      name: "OSINT",
-      type: "custom",
-      description: "开源情报收集，通过公开渠道收集目标信息",
-      tools: ["theHarvester", "Recon-ng", "Shodan"],
-      tool_ids: [7, 8, 9],
-      is_enabled: true,
-      created_at: "2024-01-01T00:00:00Z",
-      updated_at: "2024-01-01T00:00:00Z",
-      usage_count: 156,
-      capabilities: ["OSINT", "Subdomain Discovery"],
-    },
-    {
-      id: 3,
-      name: "Port Scan",
-      type: "quick",
-      description: "快速端口扫描，识别开放的服务和端口",
-      tools: ["Nmap", "Masscan"],
-      tool_ids: [1, 2],
-      is_enabled: true,
-      created_at: "2024-01-01T00:00:00Z",
-      updated_at: "2024-01-01T00:00:00Z",
-      usage_count: 234,
-      capabilities: ["Port Scan"],
-    },
-    {
-      id: 4,
-      name: "Subdomain Scan",
-      type: "custom",
-      description: "子域名发现和枚举，找出所有相关子域名",
-      tools: ["Subfinder", "Amass", "DNSrecon"],
-      tool_ids: [10, 11, 12],
-      is_enabled: true,
-      created_at: "2024-01-01T00:00:00Z",
-      updated_at: "2024-01-01T00:00:00Z",
-      usage_count: 178,
-      capabilities: ["Subdomain Discovery"],
-    },
-    {
-      id: 5,
-      name: "Vulnerability Scan",
-      type: "custom",
-      description: "Web 应用漏洞扫描，检测 SQL 注入、XSS 等常见漏洞",
-      tools: ["Nikto", "SQLMap", "XSStrike", "Burp Suite"],
-      tool_ids: [3, 4, 5, 6],
-      is_enabled: true,
-      created_at: "2024-01-01T00:00:00Z",
-      updated_at: "2024-01-01T00:00:00Z",
-      usage_count: 92,
-      capabilities: ["Vulnerability Scan", "WAF Detection"],
-    },
-    {
-      id: 6,
-      name: "reNgine Recommended",
-      type: "comprehensive",
-      description: "reNgine 推荐配置，平衡速度和覆盖面的最佳实践",
-      tools: ["Nmap", "Subfinder", "Nuclei", "httpx", "waybackurls"],
-      tool_ids: [1, 10, 13, 14, 15],
-      is_enabled: true,
-      created_at: "2024-01-01T00:00:00Z",
-      updated_at: "2024-01-01T00:00:00Z",
-      usage_count: 456,
-      capabilities: [
-        "Subdomain Discovery",
-        "Port Scan",
-        "Screenshot",
-        "Fetch Endpoints(URLs)",
-        "Vulnerability Scan",
-      ],
-    },
-  ]
+  // 从后端获取引擎列表
+  const { data: engines, isLoading, error } = useEngines()
 
-  const engines = mockEngines
-  const isLoading = false
+  // 解析 YAML 配置以获取引擎的能力信息
+  const parseEngineCapabilities = (configuration: string): string[] => {
+    if (!configuration) return []
+    
+    try {
+      // 简单的文本解析，查找 YAML 配置中的扫描阶段
+      const capabilities: string[] = []
+      
+      // 查找是否启用了不同的扫描功能
+      if (configuration.includes('subdomain_discovery')) capabilities.push('Subdomain Discovery')
+      if (configuration.includes('port_scan')) capabilities.push('Port Scan')
+      if (configuration.includes('waf_detection')) capabilities.push('WAF Detection')
+      if (configuration.includes('screenshot')) capabilities.push('Screenshot')
+      if (configuration.includes('osint')) capabilities.push('OSINT')
+      if (configuration.includes('dir_file_fuzz')) capabilities.push('Directory and Files Search')
+      if (configuration.includes('fetch_url')) capabilities.push('Fetch Endpoints(URLs)')
+      if (configuration.includes('vulnerability_scan')) capabilities.push('Vulnerability Scan')
+      
+      return capabilities
+    } catch (e) {
+      console.error('解析引擎配置失败:', e)
+      return []
+    }
+  }
 
   // 切换展开/收起
   const toggleExpand = (engineId: string) => {
@@ -188,7 +116,7 @@ export function InitiateScanDialog({
       const response = await initiateScan({
         organizationId,
         targetId,
-        engine: Number(selectedEngineId),
+        engineId: Number(selectedEngineId),
       })
       
       // 显示成功消息
@@ -255,7 +183,14 @@ export function InitiateScanDialog({
                   加载引擎中...
                 </span>
               </div>
-            ) : engines.length === 0 ? (
+            ) : error ? (
+              <div className="py-8 text-center">
+                <p className="text-sm text-destructive mb-2">加载引擎失败</p>
+                <p className="text-xs text-muted-foreground">
+                  {error instanceof Error ? error.message : '未知错误'}
+                </p>
+              </div>
+            ) : !engines || engines.length === 0 ? (
               <div className="py-8 text-center text-sm text-muted-foreground">
                 暂无可用引擎
               </div>
@@ -270,88 +205,94 @@ export function InitiateScanDialog({
                 disabled={isSubmitting}
                 className="space-y-2"
               >
-                {engines.map((engine) => (
-                  <Collapsible
-                    key={engine.id}
-                    open={expandedEngineId === engine.id.toString()}
-                    onOpenChange={() => toggleExpand(engine.id.toString())}
-                  >
-                    <div
-                      className={`rounded-lg border transition-all ${
-                        selectedEngineId === engine.id.toString()
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover:border-muted-foreground/50"
-                      }`}
+                {engines.map((engine) => {
+                  const capabilities = parseEngineCapabilities(engine.configuration || '')
+                  
+                  return (
+                    <Collapsible
+                      key={engine.id}
+                      open={expandedEngineId === engine.id.toString()}
+                      onOpenChange={() => toggleExpand(engine.id.toString())}
                     >
-                      {/* 引擎主信息 */}
-                      <div className="flex items-center gap-3 p-4">
-                        {/* Radio 按钮 */}
-                        <RadioGroupItem
-                          value={engine.id.toString()}
-                          id={`engine-${engine.id}`}
-                          className="mt-0.5"
-                        />
-                        
-                        {/* 引擎名称和标签 */}
-                        <label
-                          htmlFor={`engine-${engine.id}`}
-                          className="flex-1 cursor-pointer"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{engine.name}</span>
-                            <Badge variant="secondary" className="text-xs">
-                              Default Engine
-                            </Badge>
-                          </div>
-                        </label>
-                        
-                        {/* 展开按钮 */}
-                        <CollapsibleTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                          >
-                            {expandedEngineId === engine.id.toString() ? (
-                              <ChevronUp className="h-4 w-4" />
-                            ) : (
-                              <ChevronDown className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </CollapsibleTrigger>
-                      </div>
-
-                      {/* 可展开的详情内容 */}
-                      <CollapsibleContent>
-                        <div className="border-t px-4 py-4">
-                          {/* Engine Capabilities 标题 */}
-                          <h4 className="text-sm font-medium text-muted-foreground mb-3">
-                            Engine Capabilities
-                          </h4>
+                      <div
+                        className={`rounded-lg border transition-all ${
+                          selectedEngineId === engine.id.toString()
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-muted-foreground/50"
+                        }`}
+                      >
+                        {/* 引擎主信息 */}
+                        <div className="flex items-center gap-3 p-4">
+                          {/* Radio 按钮 */}
+                          <RadioGroupItem
+                            value={engine.id.toString()}
+                            id={`engine-${engine.id}`}
+                            className="mt-0.5"
+                          />
                           
-                          {/* 能力列表 */}
-                          {engine.capabilities && engine.capabilities.length > 0 ? (
-                            <div className="space-y-2">
-                              {engine.capabilities.map((capability, index) => (
-                                <div
-                                  key={index}
-                                  className="flex items-center gap-2 text-sm text-muted-foreground"
-                                >
-                                  <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
-                                  <span>{capability}</span>
-                                </div>
-                              ))}
+                          {/* 引擎名称和标签 */}
+                          <label
+                            htmlFor={`engine-${engine.id}`}
+                            className="flex-1 cursor-pointer"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{engine.name}</span>
+                              {engine.is_default && (
+                                <Badge variant="secondary" className="text-xs">
+                                  Default Engine
+                                </Badge>
+                              )}
                             </div>
-                          ) : (
-                            <p className="text-sm text-muted-foreground">
-                              暂无能力信息
-                            </p>
-                          )}
+                          </label>
+                          
+                          {/* 展开按钮 */}
+                          <CollapsibleTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                            >
+                              {expandedEngineId === engine.id.toString() ? (
+                                <ChevronUp className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </CollapsibleTrigger>
                         </div>
-                      </CollapsibleContent>
-                    </div>
-                  </Collapsible>
-                ))}
+
+                        {/* 可展开的详情内容 */}
+                        <CollapsibleContent>
+                          <div className="border-t px-4 py-4">
+                            {/* Engine Capabilities 标题 */}
+                            <h4 className="text-sm font-medium text-muted-foreground mb-3">
+                              Engine Capabilities
+                            </h4>
+                            
+                            {/* 能力列表 */}
+                            {capabilities.length > 0 ? (
+                              <div className="space-y-2">
+                                {capabilities.map((capability, index) => (
+                                  <div
+                                    key={index}
+                                    className="flex items-center gap-2 text-sm text-muted-foreground"
+                                  >
+                                    <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
+                                    <span>{capability}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-muted-foreground">
+                                暂无能力信息
+                              </p>
+                            )}
+                          </div>
+                        </CollapsibleContent>
+                      </div>
+                    </Collapsible>
+                  )
+                })}
               </RadioGroup>
             )}
           </div>

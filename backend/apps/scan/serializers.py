@@ -47,8 +47,8 @@ class ScanHistorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Scan
         fields = [
-            'id', 'target_name', 'engine_name', 'started_at',
-            'status', 'summary', 'progress'
+            'id', 'target', 'target_name', 'engine', 'engine_name', 
+            'started_at', 'status', 'summary', 'progress'
         ]
     
     def get_summary(self, obj):

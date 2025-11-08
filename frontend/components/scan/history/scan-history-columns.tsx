@@ -298,15 +298,60 @@ export const createScanHistoryColumns = ({
     enableHiding: false,
   },
 
-  // Target Name 列
+  // Target 列
   {
     accessorKey: "targetName",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Target Name" />
+      <DataTableColumnHeader column={column} title="Target" />
     ),
     cell: ({ row }) => {
       const targetName = row.getValue("targetName") as string
-      return <CopyableCell value={targetName} maxWidth="250px" truncateLength={35} successMessage="已复制目标名称" />
+      const targetId = row.original.target
+      const [copied, setCopied] = React.useState(false)
+      
+      const handleCopy = async (e: React.MouseEvent) => {
+        e.stopPropagation()
+        try {
+          await navigator.clipboard.writeText(targetName)
+          setCopied(true)
+          toast.success("已复制目标名称")
+          setTimeout(() => setCopied(false), 2000)
+        } catch {
+          toast.error('复制失败')
+        }
+      }
+      
+      return (
+        <div className="group inline-flex items-center gap-1 max-w-[250px]">
+          {targetId ? (
+            <button
+              onClick={() => navigate(`/target/${targetId}/details`)}
+              className="text-sm font-medium hover:text-primary hover:underline transition-colors cursor-pointer truncate"
+              title={targetName}
+            >
+              {targetName}
+            </button>
+          ) : (
+            <span className="text-sm font-medium truncate" title={targetName}>
+              {targetName}
+            </span>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`h-6 w-6 flex-shrink-0 hover:bg-accent transition-opacity ${
+              copied ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+            }`}
+            onClick={handleCopy}
+          >
+            {copied ? (
+              <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+            ) : (
+              <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+            )}
+          </Button>
+        </div>
+      )
     },
   },
 

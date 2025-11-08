@@ -169,23 +169,6 @@ export default function ScheduledScanPage() {
     )
   }, [])
 
-  // 批量删除
-  const handleBulkDelete = React.useCallback((selectedIds: number[]) => {
-    toast.promise(
-      new Promise((resolve) => {
-        setTimeout(() => {
-          setScheduledScans((prev) => prev.filter((s) => !selectedIds.includes(s.id)))
-          resolve(true)
-        }, 1000)
-      }),
-      {
-        loading: `正在删除 ${selectedIds.length} 个任务...`,
-        success: `成功删除 ${selectedIds.length} 个定时任务`,
-        error: "批量删除失败",
-      }
-    )
-  }, [])
-
   // 添加新任务
   const handleAddNew = React.useCallback(() => {
     toast.info("打开新建定时任务对话框")
@@ -239,7 +222,6 @@ export default function ScheduledScanPage() {
           data={scheduledScans}
           columns={columns}
           onAddNew={handleAddNew}
-          onBulkDelete={handleBulkDelete}
           searchPlaceholder="搜索任务名称..."
           searchColumn="name"
           addButtonText="新建定时扫描"

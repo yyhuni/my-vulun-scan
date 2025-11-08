@@ -16,6 +16,14 @@ class ScanEngineSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'created_at']
     
+    def to_representation(self, instance):
+        """自定义序列化输出"""
+        data = super().to_representation(instance)
+        # 确保 configuration 字段存在且不为 null
+        if data.get('configuration') is None:
+            data['configuration'] = ''
+        return data
+    
     def validate_name(self, value):
         """验证引擎名称"""
         if not value.strip():
