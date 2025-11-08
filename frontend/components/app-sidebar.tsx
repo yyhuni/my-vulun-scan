@@ -14,6 +14,7 @@ import {
   IconChevronRight, // 右箭头图标
   IconRadar, // 雷达扫描图标
   IconTool, // 工具图标
+  IconFlask, // 实验瓶图标
 } from "@tabler/icons-react"
 // 导入路径名 hook
 import { usePathname } from "next/navigation"
@@ -103,6 +104,25 @@ const data = {
         {
           title: "命令管理", // 命令管理
           url: "/tools/command/",
+        },
+      ],
+    },
+    {
+      title: "测试中心", // 测试中心
+      url: "/test/",
+      icon: IconFlask,
+      items: [
+        {
+          title: "骨架屏测试", // 骨架屏测试
+          url: "/test/skeleton/",
+        },
+        {
+          title: "SSE 执行", // SSE 执行
+          url: "/test/sse-execution/",
+        },
+        {
+          title: "组件展示", // 组件展示
+          url: "/test/components-showcase/",
         },
       ],
     },

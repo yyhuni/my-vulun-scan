@@ -77,7 +77,7 @@ def subdomain_discovery_task(target: str, scan_id: int = None, target_id: int = 
         
         # 空结果是正常业务场景，不应视为失败
         if not subdomains:
-            logger.info("子域名扫描完成 - 目标: %s, 未发现任何子域名（这是正常情况）", target)
+            logger.info("子域名扫描完成 - 目标: %s, 未发现任何子域名", target)
             return {
                 'total': 0,
                 'target': target,

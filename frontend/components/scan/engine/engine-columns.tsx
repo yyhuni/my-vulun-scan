@@ -77,7 +77,7 @@ function parseEngineFeatures(engine: ScanEngine) {
  */
 function EngineTypeBadge({ type }: { type: EngineType }) {
   return (
-    <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400">
+    <Badge variant="secondary">
       Default Engine
     </Badge>
   )
@@ -90,13 +90,13 @@ function FeatureStatus({ enabled }: { enabled?: boolean }) {
   if (enabled) {
     return (
       <div className="flex justify-center">
-        <Check className="h-5 w-5 text-green-500" />
+        <Check className="h-5 w-5 text-chart-4" />
       </div>
     )
   }
   return (
     <div className="flex justify-center">
-      <XIcon className="h-5 w-5 text-red-500" />
+      <XIcon className="h-5 w-5 text-destructive" />
     </div>
   )
 }

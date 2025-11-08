@@ -334,7 +334,7 @@ export default function SSEExecutionTestPage() {
                 <span className="text-sm font-medium">状态:</span>
                 <Badge variant={getStatusColor()}>{status}</Badge>
                 {isConnected && (
-                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
+                  <Badge variant="outline" className="bg-chart-4/10 text-chart-4 border-chart-4/20 hover:bg-chart-4/20">
                     SSE 已连接
                   </Badge>
                 )}

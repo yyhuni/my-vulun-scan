@@ -99,7 +99,7 @@ function CopyableCell({
               onClick={handleCopy}
             >
               {copied ? (
-                <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                <Check className="h-3.5 w-3.5 text-chart-4" />
               ) : (
                 <Copy className="h-3.5 w-3.5 text-muted-foreground" />
               )}
@@ -311,7 +311,7 @@ export const createScanHistoryColumns = ({
               <TooltipTrigger asChild>
                 <Badge 
                   variant="outline" 
-                  className="font-mono bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border-cyan-500/20 hover:bg-cyan-500/20 transition-colors cursor-default"
+                  className="font-mono bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 hover:bg-blue-500/20 transition-colors cursor-default"
                 >
                   {summary.subdomains}
                 </Badge>
@@ -327,7 +327,7 @@ export const createScanHistoryColumns = ({
               <TooltipTrigger asChild>
                 <Badge 
                   variant="outline" 
-                  className="font-mono bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20 hover:bg-amber-500/20 transition-colors cursor-default"
+                  className="font-mono bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20 transition-colors cursor-default"
                 >
                   {summary.endpoints}
                 </Badge>
@@ -345,8 +345,8 @@ export const createScanHistoryColumns = ({
                   variant="outline" 
                   className={`font-mono transition-colors cursor-default ${
                     summary.vulnerabilities.total > 0 
-                      ? 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20 hover:bg-red-500/20' 
-                      : 'bg-gray-500/10 text-gray-700 dark:text-gray-400 border-gray-500/20 hover:bg-gray-500/20'
+                      ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20 hover:bg-orange-500/20' 
+                      : 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20 hover:bg-slate-500/20'
                   }`}
                 >
                   {summary.vulnerabilities.total}
@@ -425,10 +425,10 @@ export const createScanHistoryColumns = ({
           <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
             <div 
               className={`h-full transition-all ${
-                status === "successful" ? "bg-green-500" : 
-                status === "failed" ? "bg-red-500" : 
-                status === "running" ? "bg-blue-500" : 
-                "bg-gray-400"
+                status === "successful" ? "bg-chart-4" : 
+                status === "failed" ? "bg-destructive" : 
+                status === "running" ? "bg-chart-3" : 
+                "bg-muted-foreground"
               }`}
               style={{ width: `${displayProgress}%` }}
             />
