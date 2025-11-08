@@ -1,7 +1,6 @@
 "use client"
 
 import React from "react"
-import { toast } from "sonner"
 import { EngineDataTable, EngineEditDialog, EngineCreateDialog } from "@/components/scan/engine"
 import { createEngineColumns } from "@/components/scan/engine/engine-columns"
 import { useEngines, useCreateEngine, useUpdateEngine, useDeleteEngine } from "@/hooks/use-engines"
@@ -53,16 +52,6 @@ export default function ScanEnginePage() {
   const handleDelete = React.useCallback((engine: ScanEngine) => {
     deleteEngineMutation.mutate(engine.id)
   }, [deleteEngineMutation])
-
-  // 处理批量删除
-  const handleBulkDelete = async (selectedIds: number[]) => {
-    try {
-      await Promise.all(selectedIds.map(id => deleteEngineMutation.mutateAsync(id)))
-      toast.success(`成功删除 ${selectedIds.length} 个引擎`)
-    } catch (error) {
-      toast.error("批量删除失败")
-    }
-  }
 
   // 添加新引擎
   const handleAddNew = () => {
@@ -123,7 +112,6 @@ export default function ScanEnginePage() {
           data={engines}
           columns={columns}
           onAddNew={handleAddNew}
-          onBulkDelete={handleBulkDelete}
           searchPlaceholder="搜索引擎名称..."
           searchColumn="name"
           addButtonText="新建引擎"

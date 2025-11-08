@@ -23,7 +23,6 @@ import {
   IconChevronsRight,
   IconLayoutColumns,
   IconPlus,
-  IconTrash,
 } from "@tabler/icons-react"
 
 import { Button } from "@/components/ui/button"
@@ -58,8 +57,6 @@ interface EngineDataTableProps {
   data: ScanEngine[]
   columns: ColumnDef<ScanEngine>[]
   onAddNew?: () => void
-  onBulkDelete?: (selectedIds: number[]) => void
-  onSelectionChange?: (selectedRows: ScanEngine[]) => void
   searchPlaceholder?: string
   searchColumn?: string
   addButtonText?: string
@@ -74,14 +71,11 @@ export function EngineDataTable({
   data = [],
   columns,
   onAddNew,
-  onBulkDelete,
-  onSelectionChange,
   searchPlaceholder = "搜索引擎名称...",
   searchColumn = "name",
   addButtonText = "新建引擎",
 }: EngineDataTableProps) {
   // 表格状态管理
-  const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({})
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [sorting, setSorting] = React.useState<SortingState>([])
@@ -107,13 +101,10 @@ export function EngineDataTable({
     state: {
       sorting,
       columnVisibility,
-      rowSelection,
       columnFilters,
       pagination,
     },
     getRowId: (row) => row.id.toString(),
-    enableRowSelection: true,
-    onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
@@ -126,24 +117,6 @@ export function EngineDataTable({
     getFacetedUniqueValues: getFacetedUniqueValues(),
   })
 
-  // 监听选中行变化
-  React.useEffect(() => {
-    if (onSelectionChange) {
-      const selectedRows = table
-        .getFilteredSelectedRowModel()
-        .rows.map((row) => row.original)
-      onSelectionChange(selectedRows)
-    }
-  }, [rowSelection, onSelectionChange, table])
-
-  // 处理批量删除
-  const handleBulkDelete = () => {
-    if (onBulkDelete) {
-      const selectedRows = table.getFilteredSelectedRowModel().rows
-      const selectedIds = selectedRows.map((row) => row.original.id)
-      onBulkDelete(selectedIds)
-    }
-  }
 
   return (
     <div className="w-full space-y-4">
@@ -206,33 +179,13 @@ export function EngineDataTable({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* 批量删除按钮 */}
-          {onBulkDelete && (
-            <Button
-              onClick={handleBulkDelete}
-              size="sm"
-              variant="outline"
-              disabled={
-                table.getFilteredSelectedRowModel().rows.length === 0
-              }
-              className={
-                table.getFilteredSelectedRowModel().rows.length === 0
-                  ? "text-muted-foreground"
-                  : "text-destructive hover:text-destructive hover:bg-destructive/10"
-              }
-            >
-              <IconTrash />
-              Delete
-            </Button>
-          )}
-
           {/* 添加新记录按钮 */}
-          {onAddNew && (
+          {onAddNew ? (
             <Button onClick={onAddNew} size="sm">
               <IconPlus />
               {addButtonText}
             </Button>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -265,7 +218,6 @@ export function EngineDataTable({
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
                   className="group"
                 >
                   {row.getVisibleCells().map((cell) => (
@@ -293,13 +245,7 @@ export function EngineDataTable({
       </div>
 
       {/* 分页控制 */}
-      <div className="flex items-center justify-between px-2">
-        {/* 选中行信息 */}
-        <div className="flex-1 text-sm text-muted-foreground">
-          {table.getFilteredSelectedRowModel().rows.length} of{" "}
-          {table.getFilteredRowModel().rows.length} row(s) selected
-        </div>
-
+      <div className="flex items-center justify-end px-2">
         {/* 分页控制器 */}
         <div className="flex items-center space-x-6 lg:space-x-8">
           {/* 每页显示数量选择 */}

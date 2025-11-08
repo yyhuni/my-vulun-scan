@@ -12,12 +12,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
 // 导入图标组件
 import { MoreHorizontal, Play, Calendar, Edit, Trash2, ChevronsUpDown, ChevronUp, ChevronDown } from "lucide-react"
 // 导入 Next.js Link 组件
@@ -198,27 +192,11 @@ export const createOrganizationColumns = ({
         return <span className="text-muted-foreground">-</span>
       }
       
-      const isLong = description.length > 50
-      
       return (
         <div className="max-w-md">
-          <TooltipProvider delayDuration={500} skipDelayDuration={0}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="block truncate text-muted-foreground cursor-default">
-                  {description}
-                </span>
-              </TooltipTrigger>
-              <TooltipContent 
-                side="top" 
-                align="start"
-                sideOffset={5}
-                className={`text-xs ${isLong ? 'max-w-lg break-all' : 'max-w-md whitespace-pre-wrap'}`}
-              >
-                {description}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <span className="block truncate text-muted-foreground">
+            {description}
+          </span>
         </div>
       )
     },
