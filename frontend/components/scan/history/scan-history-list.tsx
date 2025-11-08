@@ -7,6 +7,7 @@ import { createScanHistoryColumns } from "./scan-history-columns"
 import type { ScanRecord } from "@/types/scan.types"
 import type { ColumnDef } from "@tanstack/react-table"
 import { LoadingState } from "@/components/loading-spinner"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -207,8 +208,58 @@ export function ScanHistoryList() {
     return <LoadingState message="加载扫描历史数据中..." />
   }
 
+  // 计算统计数据
+  const totalScans = data?.total || 0
+  const runningCount = scans.filter(s => s.status === "running").length
+  const successfulCount = scans.filter(s => s.status === "successful").length
+  const totalAssets = scans.reduce((sum, s) => sum + s.summary.subdomains + s.summary.endpoints, 0)
+
   return (
     <>
+      {/* 统计卡片 */}
+      <div className="grid gap-4 md:grid-cols-4 mb-6">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              总扫描次数
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalScans}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              运行中
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{runningCount}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              已完成
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{successfulCount}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              发现资产
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">{totalAssets}</div>
+          </CardContent>
+        </Card>
+      </div>
+
       <ScanHistoryDataTable
         data={scans}
         columns={scanColumns as ColumnDef<ScanRecord>[]}
@@ -218,6 +269,12 @@ export function ScanHistoryList() {
         searchColumn="targetName"
         pagination={pagination}
         setPagination={setPagination}
+        paginationInfo={{
+          total: data?.total || 0,
+          page: data?.page || 1,
+          pageSize: data?.pageSize || 10,
+          totalPages: data?.totalPages || 1,
+        }}
         onPaginationChange={handlePaginationChange}
       />
 
