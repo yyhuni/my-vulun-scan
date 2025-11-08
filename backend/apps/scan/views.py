@@ -11,6 +11,7 @@ from .services.scan_service import ScanService
 from apps.targets.models import Target, Organization
 from apps.engine.models import ScanEngine
 from apps.common.definitions import ScanTaskStatus
+from apps.asset.serializers import SubdomainListSerializer
 
 
 class ScanViewSet(viewsets.ModelViewSet):
@@ -345,6 +346,51 @@ class ScanViewSet(viewsets.ModelViewSet):
             )
         
         except (DatabaseError, IntegrityError, OperationalError):
+            return Response(
+                {'error': '数据库错误，请稍后重试'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+    
+    @action(detail=True, methods=['get'])
+    def subdomains(self, request, pk=None):  # pylint: disable=unused-argument
+        """
+        获取扫描关联的所有子域名
+        
+        URL: GET /api/scans/{id}/subdomains/
+        
+        功能:
+        - 返回指定扫描任务发现的所有子域名
+        - 包含子域名的详细信息（名称、CNAME、CDN 信息等）
+        
+        返回:
+        - count: 子域名总数
+        - results: 子域名列表
+        """
+        try:
+            # 获取扫描对象
+            scan = Scan.objects.get(id=pk)  # type: ignore  # pylint: disable=no-member
+            
+            # 获取该扫描的所有子域名（按创建时间倒序）
+            subdomains = scan.subdomains.all().order_by('-created_at')
+            
+            # 序列化返回
+            serializer = SubdomainListSerializer(subdomains, many=True)
+            
+            return Response(
+                {
+                    'count': subdomains.count(),
+                    'results': serializer.data
+                },
+                status=status.HTTP_200_OK
+            )
+        
+        except ObjectDoesNotExist:
+            return Response(
+                {'error': f'扫描 ID {pk} 不存在'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        except (DatabaseError, OperationalError):
             return Response(
                 {'error': '数据库错误，请稍后重试'},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE
