@@ -58,13 +58,13 @@ class WorkflowOrchestrator:
         logger.info("开始编排工作流 - Scan ID: %s", scan.id)
         
         # 使用 DAG 编排器
-        workflow, task_names = self.dag_orchestrator.dispatch_workflow(scan, config)
+        workflow, expected_tasks = self.dag_orchestrator.dispatch_workflow(scan, config)
         
         if not workflow:
             logger.warning("工作流构建失败 - Scan ID: %s", scan.id)
             return None, []
         
-        logger.info("✓ 工作流已构建 - Scan ID: %s, 任务数: %d", scan.id, len(task_names))
+        logger.info("✓ 工作流已构建 - Scan ID: %s, 任务数: %d", scan.id, len(expected_tasks))
         
-        return workflow, task_names
+        return workflow, expected_tasks
 
