@@ -238,3 +238,29 @@ export function useAllSubdomains(
     enabled: options?.enabled !== undefined ? options.enabled : true,
   })
 }
+
+// 获取目标的子域名列表
+export function useTargetSubdomains(
+  targetId: number,
+  params?: { page?: number; pageSize?: number },
+  options?: { enabled?: boolean }
+) {
+  return useQuery({
+    queryKey: ['targets', targetId, 'subdomains', { page: params?.page, pageSize: params?.pageSize }],
+    queryFn: () => SubdomainService.getSubdomainsByTargetId(targetId, params),
+    enabled: options?.enabled !== undefined ? options.enabled : !!targetId,
+  })
+}
+
+// 获取扫描的子域名列表
+export function useScanSubdomains(
+  scanId: number,
+  params?: { page?: number; pageSize?: number },
+  options?: { enabled?: boolean }
+) {
+  return useQuery({
+    queryKey: ['scans', scanId, 'subdomains', { page: params?.page, pageSize: params?.pageSize }],
+    queryFn: () => SubdomainService.getSubdomainsByScanId(scanId, params),
+    enabled: options?.enabled !== undefined ? options.enabled : !!scanId,
+  })
+}

@@ -9,7 +9,7 @@ export default function ScanHistorySubdomainPage() {
 
   return (
     <div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
-      <SubdomainsDetailView targetId={parseInt(id)} />
+      <SubdomainsDetailView scanId={parseInt(id)} />
     </div>
   )
 }

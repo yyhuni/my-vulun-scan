@@ -222,3 +222,60 @@ class TargetViewSet(viewsets.ModelViewSet):
             'failed_targets': failed_targets,
             'message': message
         }, status=status.HTTP_201_CREATED)
+    
+    @action(detail=True, methods=['get'])
+    def subdomains(self, request, pk=None):
+        """
+        获取目标关联的所有子域名（支持分页）
+        
+        URL: GET /api/targets/{id}/subdomains/?page=1&pageSize=10
+        
+        功能:
+        - 返回指定目标下的所有子域名
+        - 包含子域名的详细信息（名称、CNAME、CDN 信息等）
+        - 支持分页查询
+        
+        返回:
+        - results: 子域名列表
+        - total: 总记录数
+        - page: 当前页码
+        - page_size: 每页大小
+        - total_pages: 总页数
+        """
+        from apps.asset.serializers import SubdomainListSerializer
+        from apps.asset.models import Subdomain
+        from django.core.exceptions import ObjectDoesNotExist
+        from django.db import DatabaseError, OperationalError
+        
+        try:
+            # 获取目标对象
+            target = self.get_object()
+            
+            # 获取该目标的所有子域名（按创建时间倒序）
+            queryset = Subdomain.objects.filter(target=target).order_by('-created_at')
+            
+            # 使用分页器
+            paginator = self.paginator
+            page = paginator.paginate_queryset(queryset, request, view=self)
+            
+            if page is not None:
+                serializer = SubdomainListSerializer(page, many=True)
+                return paginator.get_paginated_response(serializer.data)
+            
+            # 如果没有分页参数，返回错误
+            return Response(
+                {'error': '必须提供分页参数 page 和 pageSize'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        except ObjectDoesNotExist:
+            return Response(
+                {'error': f'目标 ID {pk} 不存在'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        except (DatabaseError, OperationalError):
+            return Response(
+                {'error': '数据库错误，请稍后重试'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )

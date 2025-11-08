@@ -2,10 +2,13 @@
 
 import React, { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
-// TODO: useTargetDomains 已被删除，因为后端没有 /targets/{id}/domains/ API
-// 需要重新设计此组件的数据获取逻辑
 import { useTarget } from "@/hooks/use-targets"
-import { useDeleteSubdomain, useBatchDeleteSubdomains } from "@/hooks/use-subdomains"
+import { 
+  useDeleteSubdomain, 
+  useBatchDeleteSubdomains,
+  useTargetSubdomains,
+  useScanSubdomains 
+} from "@/hooks/use-subdomains"
 import { SubdomainsDataTable } from "./subdomains-data-table"
 import { createSubdomainColumns } from "./subdomains-columns"
 import { LoadingState, LoadingSpinner } from "@/components/loading-spinner"
@@ -22,13 +25,17 @@ import {
 import type { Subdomain } from "@/types/subdomain.types"
 
 /**
- * 目标域名详情视图组件
- * 用于显示和管理目标下的域名列表
+ * 子域名详情视图组件
+ * 支持两种模式：
+ * 1. targetId: 显示目标下的所有子域名
+ * 2. scanId: 显示扫描历史中的子域名
  */
 export function SubdomainsDetailView({
-  targetId
+  targetId,
+  scanId
 }: {
-  targetId: number
+  targetId?: number
+  scanId?: number
 }) {
   const [selectedSubdomains, setSelectedSubdomains] = useState<Subdomain[]>([])
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -41,24 +48,30 @@ export function SubdomainsDetailView({
     pageSize: 10,
   })
 
-  // TODO: 临时禁用数据获取，等待后端 API 重新设计
-  // 使用 React Query 获取目标域名数据
-  const data = undefined
-  const isLoading = false
-  const error = null
-  const refetch = () => Promise.resolve()
-  // const {
-  //   data,
-  //   isLoading,
-  //   error,
-  //   refetch
-  // } = useTargetDomains(targetId, {
-  //   page: pagination.pageIndex + 1, // 转换为 1-based
-  //   pageSize: pagination.pageSize,
-  // })
+  // 根据 targetId 或 scanId 获取子域名数据（传入分页参数）
+  const targetSubdomainsQuery = useTargetSubdomains(
+    targetId || 0,
+    {
+      page: pagination.pageIndex + 1, // 转换为 1-based
+      pageSize: pagination.pageSize,
+    },
+    { enabled: !!targetId }
+  )
+  const scanSubdomainsQuery = useScanSubdomains(
+    scanId || 0,
+    {
+      page: pagination.pageIndex + 1, // 转换为 1-based
+      pageSize: pagination.pageSize,
+    },
+    { enabled: !!scanId }
+  )
 
-  // 获取目标信息
-  const { data: targetData } = useTarget(targetId)
+  // 选择当前使用的查询结果
+  const activeQuery = targetId ? targetSubdomainsQuery : scanSubdomainsQuery
+  const { data: subdomainsData, isLoading, error, refetch } = activeQuery
+
+  // 获取目标信息（仅在 targetId 模式下）
+  const { data: targetData } = useTarget(targetId || 0)
 
   // Mutations
   const deleteSubdomain = useDeleteSubdomain()
@@ -183,6 +196,21 @@ export function SubdomainsDetailView({
     [formatDate, navigate, handleDeleteSubdomain, handleMarkImportant]
   )
 
+  // 转换后端数据格式为前端 Subdomain 类型（必须在条件渲染之前调用）
+  // 注意：后端使用 djangorestframework-camel-case 自动转换字段名为 camelCase
+  const subdomains: Subdomain[] = useMemo(() => {
+    if (!subdomainsData?.results) return []
+    return subdomainsData.results.map((item: any) => ({
+      id: item.id,
+      name: item.name,
+      createdAt: item.createdAt,      // 后端已转换为 camelCase
+      updatedAt: item.createdAt,      // 使用 createdAt 作为 updatedAt 的默认值
+      cname: item.cname || [],
+      isCdn: item.isCdn || false,     // 后端已转换为 camelCase
+      cdnName: item.cdnName || '',    // 后端已转换为 camelCase
+    }))
+  }, [subdomainsData])
+
   // 错误状态
   if (error) {
     return (
@@ -212,7 +240,7 @@ export function SubdomainsDetailView({
   return (
     <>
       <SubdomainsDataTable
-        data={data?.domains || []}
+        data={subdomains}
         columns={subdomainColumns}
         onBulkDelete={handleBulkDelete}
         onSelectionChange={setSelectedSubdomains}
@@ -225,10 +253,10 @@ export function SubdomainsDetailView({
         pagination={pagination}
         setPagination={setPagination}
         paginationInfo={{
-          total: data?.pagination.total || 0,
-          page: data?.pagination.page || 1,
-          pageSize: data?.pagination.pageSize || 10,
-          totalPages: data?.pagination.totalPages || 1,
+          total: subdomainsData?.total || 0,
+          page: subdomainsData?.page || 1,
+          pageSize: subdomainsData?.pageSize || 10,
+          totalPages: subdomainsData?.totalPages || 1,
         }}
         onPaginationChange={handlePaginationChange}
       />

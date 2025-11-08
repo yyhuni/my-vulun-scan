@@ -354,34 +354,41 @@ class ScanViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def subdomains(self, request, pk=None):  # pylint: disable=unused-argument
         """
-        获取扫描关联的所有子域名
+        获取扫描关联的所有子域名（支持分页）
         
-        URL: GET /api/scans/{id}/subdomains/
+        URL: GET /api/scans/{id}/subdomains/?page=1&pageSize=10
         
         功能:
         - 返回指定扫描任务发现的所有子域名
         - 包含子域名的详细信息（名称、CNAME、CDN 信息等）
+        - 支持分页查询
         
         返回:
-        - count: 子域名总数
         - results: 子域名列表
+        - total: 总记录数
+        - page: 当前页码
+        - page_size: 每页大小
+        - total_pages: 总页数
         """
         try:
             # 获取扫描对象
             scan = Scan.objects.get(id=pk)  # type: ignore  # pylint: disable=no-member
             
             # 获取该扫描的所有子域名（按创建时间倒序）
-            subdomains = scan.subdomains.all().order_by('-created_at')
+            queryset = scan.subdomains.all().order_by('-created_at')
             
-            # 序列化返回
-            serializer = SubdomainListSerializer(subdomains, many=True)
+            # 使用分页器
+            paginator = self.paginator
+            page = paginator.paginate_queryset(queryset, request, view=self)
             
+            if page is not None:
+                serializer = SubdomainListSerializer(page, many=True)
+                return paginator.get_paginated_response(serializer.data)
+            
+            # 如果没有分页参数，返回错误
             return Response(
-                {
-                    'count': subdomains.count(),
-                    'results': serializer.data
-                },
-                status=status.HTTP_200_OK
+                {'error': '必须提供分页参数 page 和 pageSize'},
+                status=status.HTTP_400_BAD_REQUEST
             )
         
         except ObjectDoesNotExist:

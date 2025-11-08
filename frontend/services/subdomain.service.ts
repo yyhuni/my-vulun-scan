@@ -115,4 +115,64 @@ export class SubdomainService {
     })
     return response.data
   }
+
+  /** 获取目标的子域名列表（支持分页） */
+  static async getSubdomainsByTargetId(
+    targetId: number,
+    params?: {
+      page?: number
+      pageSize?: number
+    }
+  ): Promise<{
+    results: Array<{
+      id: number
+      name: string
+      createdAt: string  // 后端自动转换为 camelCase
+      cname: string[]
+      isCdn: boolean     // 后端自动转换为 camelCase
+      cdnName: string    // 后端自动转换为 camelCase
+    }>
+    total: number
+    page: number
+    pageSize: number     // 后端自动转换为 camelCase
+    totalPages: number   // 后端自动转换为 camelCase
+  }> {
+    const response = await api.get(`/targets/${targetId}/subdomains/`, {
+      params: {
+        page: params?.page || 1,
+        pageSize: params?.pageSize || 10,
+      }
+    })
+    return response.data
+  }
+
+  /** 获取扫描的子域名列表（支持分页） */
+  static async getSubdomainsByScanId(
+    scanId: number,
+    params?: {
+      page?: number
+      pageSize?: number
+    }
+  ): Promise<{
+    results: Array<{
+      id: number
+      name: string
+      createdAt: string  // 后端自动转换为 camelCase
+      cname: string[]
+      isCdn: boolean     // 后端自动转换为 camelCase
+      cdnName: string    // 后端自动转换为 camelCase
+    }>
+    total: number
+    page: number
+    pageSize: number     // 后端自动转换为 camelCase
+    totalPages: number   // 后端自动转换为 camelCase
+  }> {
+    const response = await api.get(`/scans/${scanId}/subdomains/`, {
+      params: {
+        page: params?.page || 1,
+        pageSize: params?.pageSize || 10,
+      }
+    })
+    return response.data
+  }
 }
