@@ -23,7 +23,7 @@ from apps.scan.models import Scan
 from apps.scan.repositories import ScanRepository
 from apps.targets.models import Target
 from apps.engine.models import ScanEngine
-from apps.scan.tasks.initiate_scan_task import initiate_scan_flow
+from apps.scan.flows import initiate_scan_flow  # 从 flows 导入
 from apps.common.definitions import ScanTaskStatus
 
 if TYPE_CHECKING:
@@ -141,7 +141,6 @@ class ScanService:
 
         
         Note:
-            - Celery 任务仍然串行提交，未来可考虑使用 celery.group 批量提交
             - started_at 记录的是任务实际开始时间，由信号处理器在首个任务开始时设置
         """
         # 第一步：准备批量创建的数据
@@ -202,13 +201,44 @@ class ScanService:
         
         for scan in created_scans:
             try:
-                # 使用 Prefect Flow 在后台异步执行
-                flow_run = initiate_scan_flow.apply_async(kwargs={'scan_id': scan.id})
+                # 准备 Flow 参数（Service 层负责数据准备）
+                flow_kwargs = {
+                    'scan_id': scan.id,
+                    'target_name': scan.target.name,
+                    'target_id': scan.target.id,
+                    'workspace_dir': scan.results_dir,
+                    'engine_name': scan.engine.name,
+                    'engine_config': scan.engine.configuration
+                }
+                
+                # TODO: 正确的调用方式
+                # 方案 1: 使用 Prefect Deployment (推荐)
+                #   from prefect.deployments import run_deployment
+                #   flow_run = run_deployment(
+                #       name="initiate_scan/production",
+                #       parameters=flow_kwargs,
+                #       timeout=0
+                #   )
+                #
+                # 方案 2: Celery Task 包装 (过渡方案)
+                #   @shared_task
+                #   def initiate_scan_celery_task(**kwargs):
+                #       return initiate_scan_flow(**kwargs)
+                #   task = initiate_scan_celery_task.apply_async(kwargs=flow_kwargs)
+                
+                # ⚠️ 临时方案：同步调用（会阻塞请求）
+                # 生产环境必须改为上述异步方案之一
+                logger.warning(
+                    "⚠️ 使用同步调用 Flow（阻塞模式）- Scan ID: %s",
+                    scan.id
+                )
+                flow_result = initiate_scan_flow(**flow_kwargs)
+                
                 successful_scans.append(scan)
                 logger.info(
-                    "扫描任务已提交 - Scan ID: %s, Flow Run: %s",
+                    "扫描任务已提交 - Scan ID: %s, Result: %s",
                     scan.id,
-                    flow_run.name if flow_run else 'N/A'
+                    flow_result.get('success', False)
                 )
             except Exception as e:
                 failed_count += 1
@@ -280,19 +310,18 @@ class ScanService:
         scan_id: int
     ) -> bool:
         """
-        更新扫描状态为 RUNNING（由 initiate_scan_flow 调用）
+        更新扫描状态为 RUNNING（已废弃）
         
-        职责：
-        - 验证扫描状态必须是 INITIATED（业务规则验证）
-        - 委托 Repository 层进行数据更新
-        - 记录业务日志
+        废弃原因：
+        - 状态更新职责已移至 Prefect State Handlers
+        - Flow 层不应该调用 Service 层更新状态
+        - 通过 handlers/initiate_scan_flow_handlers.py 自动处理状态同步
         
-        注意：
-        - 任务信息（task_ids, task_names）由信号处理器统一追加
+        迁移指南：
+        - 使用 Prefect State Hooks（on_running, on_completion, on_failure）
+        - 不再需要手动调用此方法
         
-        前置条件：
-        - Scan 状态必须是 INITIATED（由 Service 层创建时设置）
-        - 只能由 initiate_scan_flow 调用一次
+        保留此方法仅用于向后兼容，未来版本将删除
         
         Args:
             scan_id: 扫描任务 ID

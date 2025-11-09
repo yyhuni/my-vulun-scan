@@ -13,7 +13,6 @@ from importlib import import_module
 from prefect import flow, task
 from prefect.futures import wait
 
-from apps.scan.models import Scan
 
 logger = logging.getLogger(__name__)
 
@@ -38,12 +37,22 @@ class DAGOrchestrator:
         # 'vuln_scan': 'apps.scan.tasks.vuln_scan_task.vuln_scan_task',
     }
     
-    def build_scan_flow(self, scan: Scan, config: dict) -> Tuple[Any, list]:
+    def build_scan_flow(
+        self,
+        scan_id: int,
+        target_name: str,
+        target_id: int,
+        workspace_dir: str,
+        config: dict
+    ) -> Tuple[Any, list]:
         """
         根据配置动态构建 DAG 工作流（返回 Prefect Flow）
         
         Args:
-            scan: Scan 对象
+            scan_id: 扫描任务 ID
+            target_name: 目标名称
+            target_id: 目标 ID
+            workspace_dir: 工作空间目录路径
             config: 解析后的配置字典（包含 depends_on 字段）
         
         Returns:
@@ -72,7 +81,7 @@ class DAGOrchestrator:
         logger.debug("="*60)
         
         # 1. 构建任务字典（任务名称 -> Task 函数）
-        tasks = self._build_tasks(scan, config)
+        tasks = self._build_tasks(config)
         if not tasks:
             raise ValueError("没有可执行的任务")
         
@@ -86,10 +95,10 @@ class DAGOrchestrator:
         
         # 4. 构建任务参数
         task_kwargs = {
-            'target': scan.target.name,
-            'scan_id': scan.id,
-            'target_id': scan.target.id,
-            'workspace_dir': scan.results_dir
+            'target': target_name,
+            'scan_id': scan_id,
+            'target_id': target_id,
+            'workspace_dir': workspace_dir
         }
         
         # 5. 收集任务名称（包含 finalize）
@@ -104,10 +113,10 @@ class DAGOrchestrator:
         self._print_execution_plan(stages)
         
         # 6. 创建动态 Flow 函数
-        @flow(name=f"scan-workflow-{scan.id}", log_prints=True)
+        @flow(name=f"scan-workflow-{scan_id}", log_prints=True)
         def scan_workflow():
             """动态生成的扫描工作流"""
-            logger.info("开始执行扫描工作流 - Scan ID: %s", scan.id)
+            logger.info("开始执行扫描工作流 - Scan ID: %s", scan_id)
             
             # 按阶段执行任务
             for stage_idx, stage_task_names in enumerate(stages, 1):
@@ -137,26 +146,25 @@ class DAGOrchestrator:
             # 执行 finalize_scan_task
             from apps.scan.tasks.finalize_scan_task import finalize_scan_task
             logger.info("执行 finalize_scan")
-            finalize_scan_task(scan_id=scan.id)
+            finalize_scan_task(scan_id=scan_id)
             
-            logger.info("扫描工作流完成 - Scan ID: %s", scan.id)
+            logger.info("扫描工作流完成 - Scan ID: %s", scan_id)
             
             return {
                 'success': True,
-                'scan_id': scan.id,
-                'target': scan.target.name,
-                'workspace_dir': str(scan.results_dir),
+                'scan_id': scan_id,
+                'target': target_name,
+                'workspace_dir': workspace_dir,
                 'executed_tasks': task_names
             }
         
         return scan_workflow, task_names
     
-    def _build_tasks(self, scan: Scan, config: dict) -> Dict[str, Any]:
+    def _build_tasks(self, config: dict) -> Dict[str, Any]:
         """
         构建任务函数字典
         
         Args:
-            scan: Scan 对象
             config: 配置字典
         
         Returns:
