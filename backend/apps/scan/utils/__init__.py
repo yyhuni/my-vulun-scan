@@ -4,31 +4,11 @@
 提供扫描相关的工具类和函数
 """
 
-from .command_executor import (
-    ScanCommandExecutor,
-)
-
-from .command_pool_executor import (
-    CommandPoolExecutor,
-    CommandTask,
-    CommandResult,
-    CommandStatus,
-)
-
 from .directory_cleanup import (
     remove_directory,
 )
 
 __all__ = [
-    # 命令执行
-    'ScanCommandExecutor',
-    
-    # 命令池执行管理器
-    'CommandPoolExecutor',
-    'CommandTask',
-    'CommandResult',
-    'CommandStatus',
-    
     # 目录清理
     'remove_directory',
 ]

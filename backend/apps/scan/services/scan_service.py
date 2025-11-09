@@ -2,18 +2,18 @@
 扫描任务服务
 
 负责 Scan 模型的所有业务逻辑
+
+使用 Prefect 3.x 进行异步任务编排
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import uuid
 from typing import Dict, List, TYPE_CHECKING
 from datetime import datetime
 from pathlib import Path
-
-# Celery imports removed - migrated to Prefect
-# Celery imports removed - migrated to Prefect
 from django.conf import settings
 from django.db import transaction
 from django.db.utils import DatabaseError, IntegrityError, OperationalError
@@ -30,6 +30,39 @@ if TYPE_CHECKING:
     from apps.scan.services.scan_task_service import ScanTaskService
 
 logger = logging.getLogger(__name__)
+
+
+def _submit_flow_deployment(deployment_name: str, parameters: Dict) -> str:
+    """
+    使用 Prefect 3.x Client API 提交 Flow Run（同步包装）
+    
+    Args:
+        deployment_name: Deployment 完整名称（格式: flow_name/deployment_name）
+        parameters: Flow 参数
+    
+    Returns:
+        Flow Run ID
+    
+    Raises:
+        Exception: 提交失败
+    """
+    async def _submit_async():
+        from prefect import get_client
+        
+        async with get_client() as client:
+            # 1. 读取 Deployment
+            deployment = await client.read_deployment_by_name(deployment_name)
+            
+            # 2. 创建 Flow Run
+            flow_run = await client.create_flow_run_from_deployment(
+                deployment.id,
+                parameters=parameters
+            )
+            
+            return str(flow_run.id)
+    
+    # 在同步上下文中运行异步代码
+    return asyncio.run(_submit_async())
 
 
 class ScanService:
@@ -125,7 +158,7 @@ class ScanService:
         engine: ScanEngine
     ) -> List[Scan]:
         """
-        为多个目标批量创建扫描任务并自动启动（优化版）
+        为多个目标批量创建扫描任务并通过 Prefect 3.x 异步启动
         
         Args:
             targets: 目标列表
@@ -137,11 +170,12 @@ class ScanService:
         性能优化：
             1. 使用 bulk_create 批量插入数据库（避免 N+1 问题）
             2. 使用事务保护批量操作（确保原子性）
-            3. 预先生成所有数据，减少数据库交互次数
-
+            3. 使用 Prefect 3.x Client API 异步提交任务（不阻塞请求）
         
         Note:
-            - started_at 记录的是任务实际开始时间，由信号处理器在首个任务开始时设置
+            - 任务通过 Prefect Deployment 提交到 Server
+            - Worker 异步执行，不阻塞 HTTP 请求
+            - Flow 状态由 Prefect Handlers 自动管理
         """
         # 第一步：准备批量创建的数据
         scans_to_create = []
@@ -195,8 +229,7 @@ class ScanService:
             )
             return []
         
-        # 第三步：提交 Celery 任务
-        # TODO: 未来可优化为 Prefect 批量提交，进一步提升性能
+        # 第三步：通过 Prefect 3.x 异步提交扫描任务
         successful_scans = []
         failed_count = 0
         
@@ -212,34 +245,19 @@ class ScanService:
                     'engine_config': scan.engine.configuration
                 }
                 
-                # TODO: 正确的调用方式
-                # 方案 1: 使用 Prefect Deployment (推荐)
-                #   from prefect.deployments import run_deployment
-                #   flow_run = run_deployment(
-                #       name="initiate_scan/production",
-                #       parameters=flow_kwargs,
-                #       timeout=0
-                #   )
-                #
-                # 方案 2: Celery Task 包装 (过渡方案)
-                #   @shared_task
-                #   def initiate_scan_celery_task(**kwargs):
-                #       return initiate_scan_flow(**kwargs)
-                #   task = initiate_scan_celery_task.apply_async(kwargs=flow_kwargs)
-                
-                # ⚠️ 临时方案：同步调用（会阻塞请求）
-                # 生产环境必须改为上述异步方案之一
-                logger.warning(
-                    "⚠️ 使用同步调用 Flow（阻塞模式）- Scan ID: %s",
-                    scan.id
+                # 使用 Prefect 3.x Client API 异步提交
+                # 直接使用 Prefect Client 提交任务到 Server
+                # 任务由 Worker 异步执行，不阻塞 HTTP 请求
+                flow_run_id = _submit_flow_deployment(
+                    deployment_name="initiate_scan/initiate-scan-on-demand",
+                    parameters=flow_kwargs
                 )
-                flow_result = initiate_scan_flow(**flow_kwargs)
                 
                 successful_scans.append(scan)
                 logger.info(
-                    "扫描任务已提交 - Scan ID: %s, Result: %s",
+                    "✓ 异步提交扫描任务成功 - Scan ID: %s, Flow Run ID: %s",
                     scan.id,
-                    flow_result.get('success', False)
+                    flow_run_id
                 )
             except Exception as e:
                 failed_count += 1

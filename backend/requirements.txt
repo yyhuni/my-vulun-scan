@@ -15,8 +15,7 @@ django-cors-headers==4.3.1
 python-dotenv==1.0.1
 
 # 异步任务和工作流编排
-prefect==2.14.21
-prefect-sqlalchemy==0.4.1
+prefect==3.4.25
 redis==5.0.3  # 可选：用于缓存
 
 # 测试框架

@@ -11,24 +11,28 @@
 """
 
 # Prefect Tasks（新架构）
-from .workspace_tasks import create_workspace_task
+from .workspace_tasks import create_scan_workspace_task
 from .config_tasks import parse_engine_config_task
 
-# Legacy Tasks（旧架构 - 待迁移）
-from .subdomain_discovery_task import subdomain_discovery_task
-from .finalize_scan_task import finalize_scan_task
-from .cleanup_old_scans_task import cleanup_old_scans_task
+# 子域名发现任务（已重构为多个子任务）
+from .subdomain_discovery import (
+    run_scanner_task,
+    merge_and_validate_task,
+    save_domains_task,
+)
 
 # 注意：
+# - subdomain_discovery_task 已重构为多个子任务（subdomain_discovery/）
+# - finalize_scan_task 已废弃（Handler 统一管理状态）
 # - initiate_scan_task 已迁移到 flows/initiate_scan_flow.py
-# - workflow_tasks.py 已废弃（编排逻辑应在 Flow 中，不应封装为 Task）
+# - cleanup_old_scans_task 已迁移到 flows（cleanup_old_scans_flow）
 
 __all__ = [
     # Prefect Tasks
-    'create_workspace_task',
+    'create_scan_workspace_task',
     'parse_engine_config_task',
-    # Legacy Tasks
-    'subdomain_discovery_task',
-    'finalize_scan_task',
-    'cleanup_old_scans_task',
+    # 子域名发现任务
+    'run_scanner_task',
+    'merge_and_validate_task',
+    'save_domains_task',
 ]
