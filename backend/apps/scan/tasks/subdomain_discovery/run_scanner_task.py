@@ -126,13 +126,13 @@ def run_scanner_task(
         
         # 检查执行结果
         if result.returncode != 0:
-            # 命令执行失败，读取错误日志
+            # 命令执行失败，读取错误日志（最后1000行）
             error_output = ""
             if log_file.exists() and log_file.stat().st_size > 0:
                 try:
                     with open(log_file, 'r', encoding='utf-8') as log_f:
                         lines = log_f.readlines()
-                        error_output = ''.join(lines[-20:]) if len(lines) > 20 else ''.join(lines)
+                        error_output = ''.join(lines[-1000:]) if len(lines) > 1000 else ''.join(lines)
                 except Exception:
                     error_output = "(无法读取日志文件)"
             
