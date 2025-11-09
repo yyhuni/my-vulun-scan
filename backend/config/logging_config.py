@@ -37,7 +37,6 @@ def get_logging_config(debug: bool = False):
     # 获取日志配置
     log_level = os.getenv('LOG_LEVEL', 'DEBUG' if debug else 'INFO')
     log_dir = os.getenv('LOG_DIR', '')
-    command_log_output = os.getenv('COMMAND_LOG_OUTPUT', 'False') == 'True'
     
     # 模块级别日志控制（可选）
     scan_log_level = os.getenv('SCAN_LOG_LEVEL', log_level)
@@ -79,19 +78,6 @@ def get_logging_config(debug: bool = False):
             'encoding': 'utf-8',
             'level': 'ERROR',  # 只记录 ERROR 及以上级别
         }
-        
-        # 如果启用了命令输出日志，添加专门的 handler
-        if command_log_output:
-            # 命令输出日志（包含命令、stdout、stderr、状态等完整信息）
-            logging_handlers['command_output'] = {
-                'class': 'logging.handlers.RotatingFileHandler',
-                'formatter': 'standard',
-                'filename': str(log_path / 'command_output.log'),
-                'maxBytes': 50 * 1024 * 1024,  # 50MB（包含所有输出）
-                'backupCount': 10,
-                'encoding': 'utf-8',
-                'level': 'DEBUG',
-            }
     
     # 构建完整的 LOGGING 配置
     logging_config = {
@@ -183,14 +169,5 @@ def get_logging_config(debug: bool = False):
             'handlers': log_handlers,
         },
     }
-    
-    # 如果启用了命令输出日志，添加专门的日志记录器
-    if command_log_output and log_dir:
-        # 命令输出记录器（记录命令执行的完整过程）
-        logging_config['loggers']['command_output'] = {
-            'handlers': ['command_output'],
-            'level': 'DEBUG',
-            'propagate': False,
-        }
     
     return logging_config

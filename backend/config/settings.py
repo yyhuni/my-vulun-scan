@@ -236,55 +236,6 @@ SCAN_RESULTS_DIR = os.getenv('SCAN_RESULTS_DIR')
 
 SCAN_RESULTS_RETENTION_DAYS = int(os.getenv('SCAN_RETENTION_DAYS', '7'))
 
-# ==================== 命令执行配置 ====================
-# 命令执行超时时间（单位：秒）
-# 
-# 说明：
-# - 用于控制扫描工具命令的最长执行时间
-# - 防止命令无限期挂起导致资源耗尽
-# - 适用于所有扫描工具（子域名发现、端口扫描、漏洞扫描等）
-# 
-# 配置方式：
-# - 环境变量优先：COMMAND_TIMEOUT
-# - 默认值：3600 秒（60分钟）
-#
-# 示例环境变量：
-# COMMAND_TIMEOUT=7200  # 命令超时时间 2 小时
-
-COMMAND_TIMEOUT = int(os.getenv('COMMAND_TIMEOUT', '3600'))
-
-# 命令池最大并发数（单位：个）
-# 
-# 说明：
-# - 控制系统级别同时执行的命令数量
-# - 避免并发过高导致系统资源耗尽
-# - 适用于所有使用 CommandPoolExecutor 的场景
-# 
-# 配置方式：
-# - 环境变量优先：COMMAND_POOL_MAX_WORKERS
-# - 默认值：5 个
-#
-# 示例环境变量：
-# COMMAND_POOL_MAX_WORKERS=10  # 允许同时执行 10 个命令
-
-COMMAND_POOL_MAX_WORKERS = int(os.getenv('COMMAND_POOL_MAX_WORKERS', '5'))
-
-# 命令输出日志记录开关
-# 
-# 说明：
-# - 控制是否将命令的详细输出（stdout/stderr）记录到日志文件
-# - 开发环境下建议开启，便于调试和追踪命令执行情况
-# - 生产环境可关闭以减少日志量
-# 
-# 配置方式：
-# - 环境变量优先：COMMAND_LOG_OUTPUT
-# - 默认值：False（不记录）
-#
-# 示例环境变量：
-# COMMAND_LOG_OUTPUT=True  # 开启命令输出日志记录
-
-COMMAND_LOG_OUTPUT = os.getenv('COMMAND_LOG_OUTPUT', 'False') == 'True'
-
 
 # ==================== 日志配置 ====================
 # 日志配置说明：

@@ -1,14 +1,41 @@
 """
 子域名发现扫描 Flow
 
-负责执行子域名发现扫描的完整流程
+负责编排子域名发现扫描的完整流程
+
+架构：
+- Flow 负责编排多个原子 Task
+- 支持并行执行扫描工具
+- 每个 Task 可独立重试
 """
 
 from prefect import flow
+from pathlib import Path
 import logging
-import yaml
 
 logger = logging.getLogger(__name__)
+
+# 扫描工具配置（在 Flow 层管理）
+# 
+# 如何添加新工具：
+# 1. 在下方字典中添加新的工具配置
+# 2. 无需修改其他代码，Flow 会自动并行执行所有配置的工具
+# 
+# 示例：
+# 'assetfinder': {
+#     'command': 'assetfinder --subs-only {target} > {output_file}',
+#     'timeout': 1200
+# }
+SCANNER_CONFIGS = {
+    'amass': {
+        'command': 'amass enum -passive -d {target} -o {output_file}',
+        'timeout': 3600
+    },
+    'subfinder': {
+        'command': 'subfinder -d {target} -o {output_file}',
+        'timeout': 1800
+    }
+}
 
 
 @flow(name="subdomain_discovery", log_prints=True)
@@ -16,25 +43,31 @@ def subdomain_discovery_flow(
     scan_id: int,
     target_name: str,
     target_id: int,
-    workspace_dir: str,
-    engine_config: str
+    scan_workspace_dir: str,
+    engine_config: str = None
 ) -> dict:
     """
     子域名发现扫描流程
+    
+    编排步骤：
+    1. 并行运行多个扫描工具（amass、subfinder）
+    2. 合并、解析并验证域名（一体化处理，高性能）
+    3. 批量保存到数据库
     
     Args:
         scan_id: 扫描任务 ID
         target_name: 目标名称（域名）
         target_id: 目标 ID
-        workspace_dir: 工作空间目录
-        engine_config: 引擎配置（YAML 格式字符串，作为参数传递）
+        scan_workspace_dir: Scan 工作空间目录（由 Service 层创建）
+        engine_config: 引擎配置（预留，暂未使用）
     
     Returns:
         dict: {
             'success': bool,
             'scan_id': int,
             'target': str,
-            'workspace_dir': str,
+            'scan_workspace_dir': str,
+            'total': int,
             'executed_tasks': list
         }
     
@@ -43,42 +76,96 @@ def subdomain_discovery_flow(
         RuntimeError: 执行失败
     """
     try:
+        
         logger.info(
             "="*60 + "\n" +
             "开始子域名发现扫描\n" +
             f"  Scan ID: {scan_id}\n" +
             f"  Target: {target_name}\n" +
-            f"  Workspace: {workspace_dir}\n" +
+            f"  Workspace: {scan_workspace_dir}\n" +
             "="*60
         )
         
-        # 解析配置（作为参数传递）
-        config = {}
-        if engine_config and engine_config.strip():
-            try:
-                config = yaml.safe_load(engine_config)
-            except yaml.YAMLError as e:
-                logger.warning("配置解析失败，使用默认配置: %s", e)
-                config = {}
+        # ==================== Step 1: 并行运行扫描工具 ====================
+        from apps.scan.tasks.subdomain_discovery import (
+            run_scanner_task,
+            merge_and_validate_task,
+            save_domains_task
+        )
         
-        # ==================== 执行子域名发现任务 ====================
-        from apps.scan.tasks.subdomain_discovery_task import subdomain_discovery_task
+        # 准备结果目录（集中管理路径）
+        result_dir = str(Path(scan_workspace_dir) / 'subdomain_discovery')
+        Path(result_dir).mkdir(parents=True, exist_ok=True)
         
-        subdomain_discovery_task(
+        logger.info(
+            "Step 1: 并行运行扫描工具（%s）",
+            ', '.join(SCANNER_CONFIGS.keys())
+        )
+        
+        # 提交并行任务（动态处理所有配置的工具）
+        futures = {}
+        for tool_name, config in SCANNER_CONFIGS.items():
+            future = run_scanner_task.submit(
+                tool=tool_name,
+                target=target_name,
+                result_dir=result_dir,  # 传递结果目录路径
+                command=config['command'],
+                timeout=config['timeout']
+            )
+            futures[tool_name] = future
+        
+        # 等待并行任务完成，获取结果
+        # 注意：Task 资源由 Prefect 调度器管理，完成后自动释放，不受此处等待影响
+        results = {tool_name: future.result() for tool_name, future in futures.items()}
+        
+        # 过滤掉失败的扫描结果（空字符串表示失败）
+        result_files = [result for result in results.values() if result]
+        
+        if not result_files:
+            tool_names = ', '.join(SCANNER_CONFIGS.keys())
+            raise RuntimeError(
+                f"所有扫描工具均失败 - 目标: {target_name}. "
+                f"请检查扫描工具是否正确安装（{tool_names}）"
+            )
+        
+        logger.info(
+            "✓ 扫描工具并行执行完成 - 成功: %d/%d",
+            len(result_files), len(SCANNER_CONFIGS)
+        )
+        
+        # ==================== Step 2: 合并并去重域名 ====================
+        logger.info("Step 2: 合并并去重域名")
+        
+        merged_file = merge_and_validate_task(
+            result_files=result_files,
+            result_dir=result_dir
+        )
+        
+        # ==================== Step 3: 流式保存到数据库 ====================
+        logger.info("Step 3: 流式保存到数据库")
+        
+        saved_count = save_domains_task(
+            domains_file=merged_file,
             scan_id=scan_id,
-            target_name=target_name,
-            target_id=target_id,
-            workspace_dir=workspace_dir
+            target_id=target_id
         )
         
         logger.info("="*60 + "\n✓ 子域名发现扫描完成\n" + "="*60)
+        
+        # 动态生成已执行的任务列表，用于返回结果
+        executed_tasks = [f'run_scanner ({tool})' for tool in SCANNER_CONFIGS.keys()]
+        executed_tasks.extend([
+            'merge_and_validate', 
+            'save_domains'
+        ])
         
         return {
             'success': True,
             'scan_id': scan_id,
             'target': target_name,
-            'workspace_dir': workspace_dir,
-            'executed_tasks': ['subdomain_discovery']
+            'scan_workspace_dir': scan_workspace_dir,
+            'total': saved_count,
+            'executed_tasks': executed_tasks
         }
         
     except ValueError as e:

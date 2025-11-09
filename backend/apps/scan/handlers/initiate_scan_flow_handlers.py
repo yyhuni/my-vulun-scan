@@ -5,10 +5,17 @@ initiate_scan_flow 状态处理器
 - on_running: Flow 开始运行时更新扫描状态为 RUNNING
 - on_completion: Flow 成功完成时更新扫描状态为 SUCCESSFUL
 - on_failure: Flow 失败时更新扫描状态为 FAILED
+- on_cancellation: Flow 被取消时更新扫描状态为 ABORTED
+- on_crashed: Flow 崩溃时更新扫描状态为 FAILED
+
+策略：快速失败（Fail-Fast）
+- 任何子任务失败都会导致 Flow 失败
+- Flow 成功 = 所有任务成功
+- 不需要统计子任务状态（简化架构）
 
 职责分离：
 - Flow 层只负责工作流编排和执行
-- 状态管理由 Prefect State Hooks 自动触发
+- 状态管理由 Prefect State Hooks 统一处理
 - 解耦业务逻辑和工作流执行
 """
 
@@ -79,6 +86,10 @@ def on_initiate_scan_flow_completed(flow: Flow, flow_run: FlowRun, state: State)
     - Prefect Flow 正常执行完成时自动触发
     - 在 Flow 函数体返回之后调用
     
+    策略：快速失败（Fail-Fast）
+    - Flow 成功完成 = 所有任务成功 → SUCCESSFUL
+    - Flow 执行失败 = 有任务失败 → FAILED (由 on_failed 处理)
+    
     Args:
         flow: Prefect Flow 对象
         flow_run: Flow 运行实例
@@ -100,6 +111,11 @@ def on_initiate_scan_flow_completed(flow: Flow, flow_run: FlowRun, state: State)
                 "✓ Flow 状态回调：扫描状态已更新为 SUCCESSFUL - Scan ID: %s, Flow Run: %s",
                 scan_id,
                 flow_run.id
+            )
+        else:
+            logger.error(
+                "✗ Flow 状态回调：更新扫描状态失败 - Scan ID: %s",
+                scan_id
             )
     except Exception as e:
         logger.exception(
@@ -145,6 +161,106 @@ def on_initiate_scan_flow_failed(flow: Flow, flow_run: FlowRun, state: State) ->
         if success:
             logger.error(
                 "✗ Flow 状态回调：扫描状态已更新为 FAILED - Scan ID: %s, Flow Run: %s, 错误: %s",
+                scan_id,
+                flow_run.id,
+                error_message
+            )
+    except Exception as e:
+        logger.exception(
+            "Flow 状态回调异常 - Scan ID: %s, 错误: %s",
+            scan_id,
+            e
+        )
+
+
+def on_initiate_scan_flow_cancelled(flow: Flow, flow_run: FlowRun, state: State) -> None:
+    """
+    initiate_scan_flow 被取消时的回调
+    
+    职责：更新 Scan 状态为 ABORTED
+    
+    触发时机：
+    - 用户主动取消扫描任务
+    - Flow 被外部系统中止
+    - 手动停止 Flow 运行
+    
+    Args:
+        flow: Prefect Flow 对象
+        flow_run: Flow 运行实例
+        state: Flow 当前状态
+    """
+    scan_id = flow_run.parameters.get('scan_id')
+    if not scan_id:
+        return
+    
+    try:
+        from apps.scan.services import ScanService
+        from apps.common.definitions import ScanTaskStatus
+        
+        service = ScanService()
+        success = service.update_status(
+            scan_id, 
+            ScanTaskStatus.ABORTED,
+            message="扫描任务已被取消"
+        )
+        
+        if success:
+            logger.warning(
+                "✗ Flow 状态回调：扫描状态已更新为 ABORTED - Scan ID: %s, Flow Run: %s",
+                scan_id,
+                flow_run.id
+            )
+    except Exception as e:
+        logger.exception(
+            "Flow 状态回调异常 - Scan ID: %s, 错误: %s",
+            scan_id,
+            e
+        )
+
+
+def on_initiate_scan_flow_crashed(flow: Flow, flow_run: FlowRun, state: State) -> None:
+    """
+    initiate_scan_flow 崩溃时的回调
+    
+    职责：更新 Scan 状态为 FAILED，并记录崩溃信息
+    
+    触发时机（系统级异常）：
+    - Prefect Worker 进程被杀（OOM、手动 kill -9）
+    - 服务器断电或重启
+    - Docker 容器意外退出
+    - 网络中断导致 Worker 失联
+    - 其他导致进程异常终止的情况
+    
+    与 on_failure 的区别：
+    - on_failure: Flow 代码抛出异常（正常的异常处理）
+    - on_crashed: 进程崩溃（系统级故障）
+    
+    Args:
+        flow: Prefect Flow 对象
+        flow_run: Flow 运行实例
+        state: Flow 当前状态（包含崩溃信息）
+    """
+    scan_id = flow_run.parameters.get('scan_id')
+    if not scan_id:
+        return
+    
+    try:
+        from apps.scan.services import ScanService
+        from apps.common.definitions import ScanTaskStatus
+        
+        # 提取崩溃信息
+        error_message = str(state.message) if state.message else "Flow 崩溃（系统异常）"
+        
+        service = ScanService()
+        success = service.update_status(
+            scan_id, 
+            ScanTaskStatus.FAILED,
+            message=f"系统崩溃: {error_message}"
+        )
+        
+        if success:
+            logger.critical(
+                "✗ Flow 状态回调：扫描任务崩溃，状态已更新为 FAILED - Scan ID: %s, Flow Run: %s, 错误: %s",
                 scan_id,
                 flow_run.id,
                 error_message

@@ -86,28 +86,28 @@ class ScanService:
         """
         return self.scan_repo.get_by_id(scan_id, prefetch_relations)
     
-    def _generate_workspace_path(self) -> str:
+    def _generate_scan_workspace_dir(self) -> str:
         """
-        生成工作空间目录路径
+        生成 Scan 工作空间目录路径
         
         职责：
-        - 生成唯一的工作空间目录路径字符串
-        - 不创建实际目录（由 task 层负责）
+        - 生成唯一的 Scan 级别工作空间目录路径字符串
+        - 不创建实际目录（由 Flow 层负责）
         
         Returns:
-            工作空间目录路径字符串
+            Scan 工作空间目录路径字符串
         
-        格式：{SCAN_RESULTS_DIR}/scan_{timestamp}_{unique_id}/
-        示例：/data/scans/scan_20231104_152030_a1b2c3d4/
+        格式：{SCAN_RESULTS_DIR}/scan_{timestamp}_{uuid4}/
+        示例：/data/scans/scan_20231104_152030_a3f2/
         
         Raises:
             ValueError: 如果 SCAN_RESULTS_DIR 未设置或为空
         
         Note:
-            使用 UUID 后缀确保路径唯一性，避免高并发场景下的路径冲突
+            使用秒级时间戳 + 4 位 UUID 确保路径唯一性，兼顾性能、可读性和防冲突
         """
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        unique_id = uuid.uuid4().hex[:8]  # 添加 8 位唯一标识
+        unique_id = uuid.uuid4().hex[:4]  # 4 位十六进制UUID
         
         # 从 settings 获取，保持配置统一
         base_dir = getattr(settings, 'SCAN_RESULTS_DIR', None)
@@ -116,8 +116,8 @@ class ScanService:
             logger.error(error_msg)
             raise ValueError(error_msg)
         
-        workspace_path = str(Path(base_dir) / f"scan_{timestamp}_{unique_id}")
-        return workspace_path
+        scan_workspace_dir = str(Path(base_dir) / f"scan_{timestamp}_{unique_id}")
+        return scan_workspace_dir
     
     def create_scans_for_targets(
         self,
@@ -148,11 +148,12 @@ class ScanService:
         
         for target in targets:
             try:
-                results_dir = self._generate_workspace_path()
+                # 生成 Scan 工作空间目录路径
+                scan_workspace_dir = self._generate_scan_workspace_dir()
                 scan = Scan(
                     target=target,
                     engine=engine,
-                    results_dir=results_dir,
+                    results_dir=scan_workspace_dir,  # 保存到数据库字段
                     status=ScanTaskStatus.INITIATED,  # 显式设置初始状态
                     task_ids=[],  # 显式初始化为空列表
                     task_names=[],  # 显式初始化为空列表
@@ -206,7 +207,7 @@ class ScanService:
                     'scan_id': scan.id,
                     'target_name': scan.target.name,
                     'target_id': scan.target.id,
-                    'workspace_dir': scan.results_dir,
+                    'scan_workspace_dir': scan.results_dir,  # Scan 工作空间目录
                     'engine_name': scan.engine.name,
                     'engine_config': scan.engine.configuration
                 }

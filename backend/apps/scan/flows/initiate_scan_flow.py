@@ -21,9 +21,11 @@ import logging
 from apps.scan.handlers import (
     on_initiate_scan_flow_running,
     on_initiate_scan_flow_completed,
-    on_initiate_scan_flow_failed
+    on_initiate_scan_flow_failed,
+    on_initiate_scan_flow_cancelled,
+    on_initiate_scan_flow_crashed
 )
-from apps.scan.tasks.workspace_tasks import create_workspace_task
+from apps.scan.tasks.workspace_tasks import create_scan_workspace_task
 
 logger = logging.getLogger(__name__)
 
@@ -36,13 +38,15 @@ logger = logging.getLogger(__name__)
     log_prints=True,
     on_running=[on_initiate_scan_flow_running],
     on_completion=[on_initiate_scan_flow_completed],
-    on_failure=[on_initiate_scan_flow_failed]
+    on_failure=[on_initiate_scan_flow_failed],
+    on_cancellation=[on_initiate_scan_flow_cancelled],
+    on_crashed=[on_initiate_scan_flow_crashed]
 )
 def initiate_scan_flow(
     scan_id: int,
     target_name: str,
     target_id: int,
-    workspace_dir: str,
+    scan_workspace_dir: str,
     engine_name: str,
     engine_config: str
 ) -> dict:
@@ -58,7 +62,7 @@ def initiate_scan_flow(
         scan_id: 扫描任务 ID
         target_name: 目标名称
         target_id: 目标 ID
-        workspace_dir: 工作空间目录路径
+        scan_workspace_dir: Scan 工作空间目录路径
         engine_name: 引擎名称（用于选择对应的 flow）
         engine_config: 引擎配置（YAML 格式字符串，作为参数传递）
     
@@ -67,7 +71,7 @@ def initiate_scan_flow(
             'success': bool,
             'scan_id': int,
             'target': str,
-            'workspace_dir': str,
+            'scan_workspace_dir': str,
             'executed_tasks': list
         }
     
@@ -79,24 +83,24 @@ def initiate_scan_flow(
         # ==================== 参数验证 ====================
         if not scan_id:
             raise ValueError("scan_id is required")
-        if not workspace_dir:
-            raise ValueError("workspace_dir is required")
+        if not scan_workspace_dir:
+            raise ValueError("scan_workspace_dir is required")
         if not engine_name:
             raise ValueError("engine_name is required")
         
         
         logger.info(
             "="*60 + "\n" +
-            "初始化扫描任务\n" +
+            "开始初始化扫描任务\n" +
             f"  Scan ID: {scan_id}\n" +
             f"  Target: {target_name}\n" +
             f"  Engine: {engine_name}\n" +
-            f"  Workspace: {workspace_dir}\n" +
+            f"  Workspace: {scan_workspace_dir}\n" +
             "="*60
         )
         
-        # ==================== Task 1: 创建工作空间 ====================
-        workspace_path = create_workspace_task(workspace_dir)
+        # ==================== Task 1: 创建 Scan 工作空间 ====================
+        scan_workspace_path = create_scan_workspace_task(scan_workspace_dir)
         
         # ==================== Task 2: 根据 engine_name 选择对应的 flow ====================
         logger.info(f"选择执行 flow: {engine_name}")
@@ -107,7 +111,7 @@ def initiate_scan_flow(
                 scan_id=scan_id,
                 target_name=target_name,
                 target_id=target_id,
-                workspace_dir=str(workspace_path),
+                scan_workspace_dir=str(scan_workspace_path),
                 engine_config=engine_config
             )
         # 未来扩展:
@@ -123,11 +127,10 @@ def initiate_scan_flow(
                 f"可用引擎: subdomain discovery"
             )
         
-        # ==================== Task 3: 最终化扫描任务（通用逻辑） ====================
-        logger.info("执行最终任务: finalize_scan")
-        from apps.scan.tasks.finalize_scan_task import finalize_scan_task
-        
-        finalize_scan_task(scan_id=scan_id)
+        # ==================== 完成 ====================
+        # 状态更新由 Handler (on_completed/on_failed) 自动处理
+        # - Flow 成功 → Handler 设置 SUCCESSFUL
+        # - Flow 失败 → Handler 设置 FAILED
         
         logger.info("="*60 + "\n✓ 扫描任务初始化完成\n" + "="*60)
         
