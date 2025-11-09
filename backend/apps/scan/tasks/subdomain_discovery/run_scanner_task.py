@@ -51,11 +51,10 @@ def run_scanner_task(
     
     Note:
         - 扫描结果通过工具的 -o 参数写入结果文件
-        - 工具的 stdout/stderr 输出写入日志文件，避免大量输出占用内存
-        - 文件命名格式：{tool}_{timestamp}_{uuid4}.txt/log（含4位UUID确保唯一性）
+        - 只记录 stderr（错误输出），stdout 直接丢弃以节省 I/O 性能
+        - 日志文件统一随 workspace 管理，默认保留 7 天自动清理
+        - 文件命名格式：{tool}_{timestamp}_{uuid4}.txt（含4位UUID确保唯一性）
         - 示例：amass_20250109_161900_a3f2.txt, amass_20250109_161900_a3f2.log
-        - 日志生命周期：随 workspace 目录一起管理，默认保留 7 天（SCAN_RESULTS_RETENTION_DAYS）
-        - 优点：日志和结果文件在一起，便于归档和打包；缺点：会被定时清理任务自动删除
     
     Design:
         - Task 不包含配置，由 Flow 层传入，提高灵活性和可测试性
@@ -113,34 +112,35 @@ def run_scanner_task(
     try:
         logger.debug("执行命令: %s", actual_command)
         logger.debug("结果文件: %s", output_file)
-        logger.debug("日志文件: %s", log_file)
         
-        # 执行扫描 - stdout/stderr 重定向到文件，避免大量输出占用内存
+        # 执行扫描 - 只记录 stderr，stdout 直接丢弃（节省 I/O）
         with open(log_file, 'w', encoding='utf-8') as log_f:
             result = subprocess.run(
                 actual_command,
                 shell=True,
-                stdout=log_f,
-                stderr=subprocess.STDOUT,  # stderr 合并到 stdout
+                stdout=subprocess.DEVNULL,  # 丢弃标准输出
+                stderr=log_f,  # 只记录错误输出
                 timeout=timeout,
                 check=False  # 不自动抛异常，手动处理
             )
         
-        # 检查结果
+        # 检查执行结果
         if result.returncode != 0:
-            # 读取日志文件的最后几行用于错误报告（避免读取整个文件）
-            try:
-                with open(log_file, 'r', encoding='utf-8') as log_f:
-                    lines = log_f.readlines()
-                    last_lines = ''.join(lines[-20:]) if len(lines) > 20 else ''.join(lines)
-            except Exception:
-                last_lines = "(无法读取日志文件)"
+            # 命令执行失败，读取错误日志
+            error_output = ""
+            if log_file.exists() and log_file.stat().st_size > 0:
+                try:
+                    with open(log_file, 'r', encoding='utf-8') as log_f:
+                        lines = log_f.readlines()
+                        error_output = ''.join(lines[-20:]) if len(lines) > 20 else ''.join(lines)
+                except Exception:
+                    error_output = "(无法读取日志文件)"
             
             logger.warning(
-                "扫描工具 %s 返回非零状态码: %d\n最后输出:\n%s",
-                tool, result.returncode, last_lines
+                "扫描工具 %s 返回非零状态码: %d%s",
+                tool, result.returncode,
+                f"\n错误输出:\n{error_output}" if error_output else ""
             )
-            # 不抛异常，继续检查文件
         
         # 验证输出文件
         if not output_file.exists():
@@ -171,6 +171,9 @@ def run_scanner_task(
     except subprocess.TimeoutExpired as e:
         error_msg = f"扫描工具 {tool} 执行超时（{timeout}秒）"
         logger.error(error_msg)
+        # 超时时日志文件已保留
+        if log_file.exists():
+            logger.debug("超时日志已保存: %s", log_file)
         raise RuntimeError(error_msg) from e
     
     except subprocess.SubprocessError as e:
