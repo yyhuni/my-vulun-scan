@@ -105,6 +105,93 @@ class ScanService:
         """
         return self.scan_repo.get_by_id(scan_id, prefetch_relations)
     
+    def prepare_initiate_scan(
+        self,
+        organization_id: int | None = None,
+        target_id: int | None = None,
+        engine_id: int | None = None
+    ) -> tuple[List[Target], ScanEngine]:
+        """
+        准备发起扫描任务（查询和验证）
+        
+        负责所有数据库查询和业务验证逻辑，供视图层调用。
+        
+        Args:
+            organization_id: 组织ID（可选）
+            target_id: 目标ID（可选）
+            engine_id: 扫描引擎ID（必填）
+        
+        Returns:
+            (目标列表, 扫描引擎对象)
+        
+        Raises:
+            ValidationError: 参数验证失败
+            ObjectDoesNotExist: 资源不存在（Organization/Target/ScanEngine）
+        
+        Note:
+            - organization_id 和 target_id 必须二选一
+            - 如果提供 organization_id，返回该组织下所有目标
+            - 如果提供 target_id，返回单个目标列表
+        """
+        from apps.targets.models import Organization
+        
+        # 1. 参数验证
+        if not engine_id:
+            raise ValidationError('缺少必填参数: engine_id')
+        
+        if not organization_id and not target_id:
+            raise ValidationError('必须提供 organization_id 或 target_id 其中之一')
+        
+        if organization_id and target_id:
+            raise ValidationError('organization_id 和 target_id 只能提供其中之一')
+        
+        # 2. 查询扫描引擎
+        try:
+            engine = ScanEngine.objects.get(id=engine_id)  # type: ignore  # pylint: disable=no-member
+        except ScanEngine.DoesNotExist as e:
+            logger.error("扫描引擎不存在 - Engine ID: %s", engine_id)
+            raise ObjectDoesNotExist(f'ScanEngine ID {engine_id} 不存在') from e
+        
+        # 3. 根据参数获取目标列表
+        targets = []
+        
+        if organization_id:
+            # 根据组织ID获取所有目标
+            try:
+                organization = Organization.objects.get(id=organization_id)  # type: ignore  # pylint: disable=no-member
+            except Organization.DoesNotExist as e:
+                logger.error("组织不存在 - Organization ID: %s", organization_id)
+                raise ObjectDoesNotExist(f'Organization ID {organization_id} 不存在') from e
+            
+            targets = list(organization.targets.all())
+            
+            if not targets:
+                raise ValidationError(f'组织 ID {organization_id} 下没有目标')
+            
+            logger.debug(
+                "准备发起扫描 - 组织: %s, 目标数量: %d, 引擎: %s",
+                organization.name,
+                len(targets),
+                engine.name
+            )
+        else:
+            # 根据目标ID获取单个目标
+            try:
+                target = Target.objects.get(id=target_id)  # type: ignore  # pylint: disable=no-member
+            except Target.DoesNotExist as e:
+                logger.error("目标不存在 - Target ID: %s", target_id)
+                raise ObjectDoesNotExist(f'Target ID {target_id} 不存在') from e
+            
+            targets = [target]
+            
+            logger.debug(
+                "准备发起扫描 - 目标: %s, 引擎: %s",
+                target.name,
+                engine.name
+            )
+        
+        return targets, engine
+    
     def _generate_scan_workspace_dir(self) -> str:
         """
         生成 Scan 工作空间目录路径
@@ -138,7 +225,7 @@ class ScanService:
         scan_workspace_dir = str(Path(base_dir) / f"scan_{timestamp}_{unique_id}")
         return scan_workspace_dir
     
-    def create_scans_for_targets(
+    def create_scans(
         self,
         targets: List[Target],
         engine: ScanEngine

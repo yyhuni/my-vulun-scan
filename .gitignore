@@ -94,6 +94,8 @@ backend/vendor/
 # ============================
 .vscode/
 .idea/
+.cursor/
+.claude/
 .playwright-mcp/
 *.swp
 *.swo
