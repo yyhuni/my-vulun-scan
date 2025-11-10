@@ -4,6 +4,7 @@ from django.db import models
 class ScanStatus(models.TextChoices):
     """扫描任务状态枚举（与 Prefect 状态对齐）"""
     CANCELLED = 'cancelled', '已取消'
+    CANCELLING = 'cancelling', '正在取消'  # 取消中间状态
     COMPLETED = 'completed', '已完成'
     CRASHED = 'crashed', '崩溃'
     FAILED = 'failed', '失败'

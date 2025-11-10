@@ -476,20 +476,27 @@ class ScanService:
         """
         主动停止扫描任务（用户发起）
         
-        职责：
-        - 验证扫描状态（只能停止 RUNNING/INITIATED）
-        - 取消所有 Prefect Flow Runs
-        - 状态由 on_cancelled Handler 自动更新为 CANCELLED
+        工作流程：
+        1. 验证扫描状态（只能停止 RUNNING/INITIATED）
+        2. 发送 Cancelling 信号到 Prefect Flow Runs
+        3. 立即更新状态为 CANCELLING（前端显示）
+        4. Worker 检测到信号后终止 Flow（3-5秒内）
+        5. on_cancellation handler 自动更新为 CANCELLED
         
         Args:
             scan_id: 扫描任务 ID
         
         Returns:
-            (是否成功, 取消的 Flow Run 数量)
+            (是否成功, 发送取消信号的 Flow Run 数量)
+        
+        状态转换：
+            RUNNING/INITIATED → CANCELLING → CANCELLED
+            ↑                   ↑             ↑
+            当前状态            此方法设置     Handler 自动设置
         
         Note:
-            此方法用于 API 主动停止场景
-            状态更新完全由 Prefect Handler 管理
+            使用 Cancelling 状态而不是直接 Cancelled，
+            确保 Prefect Handler 被触发，实现状态管理的统一
         """
         try:
             # 1. 获取扫描对象
@@ -510,31 +517,50 @@ class ScanService:
             # 3. 获取任务列表
             flow_run_ids = scan.flow_run_ids or []
             
-            # 4. 取消所有 Prefect Flow Runs（使用异步客户端）
+            # 4. 发送取消信号到 Prefect（使用 Cancelling 状态）
+            # 策略：设置为 Cancelling → Worker 检测 → 终止 Flow → 触发 Handler → 自动更新 DB
             cancelled_count = 0
             if flow_run_ids:
                 from prefect import get_client
                 from uuid import UUID
                 
                 async def _cancel_flows():
-                    """异步取消多个 Flow Run"""
-                    from prefect.states import Cancelled
+                    """
+                    发送取消信号到 Prefect Flow Runs
+                    
+                    工作流程：
+                    1. 设置 Flow Run 状态为 Cancelling（取消信号）
+                    2. Worker 检测到 Cancelling 状态后会主动终止 Flow 执行
+                    3. Flow 自然进入 Cancelled 状态
+                    4. 触发 on_initiate_scan_flow_cancelled handler
+                    5. Handler 自动更新数据库状态为 CANCELLED
+                    
+                    优势：
+                    - 状态更新完全由 Handler 管理，架构统一
+                    - 无需手动调用 update_status()
+                    - 符合 Prefect 状态机设计
+                    """
+                    from prefect.states import Cancelling  # 使用 Cancelling 而不是 Cancelled
                     
                     count = 0
                     async with get_client() as client:
                         for flow_run_id in flow_run_ids:
                             try:
-                                # Prefect 3.x: 使用 set_flow_run_state 设置为 Cancelled 状态
+                                # 设置为 Cancelling 状态（取消信号）
+                                # Worker 会检测此状态并终止 Flow，触发 on_cancellation handler
                                 await client.set_flow_run_state(
                                     flow_run_id=UUID(flow_run_id),
-                                    state=Cancelled(message="用户手动取消扫描"),
+                                    state=Cancelling(message="用户手动取消扫描"),
                                     force=True
                                 )
                                 count += 1
-                                logger.debug("已取消 Flow Run: %s - Scan ID: %s", flow_run_id, scan_id)
+                                logger.debug(
+                                    "已发送取消信号 (Cancelling) - Flow Run: %s, Scan ID: %s",
+                                    flow_run_id, scan_id
+                                )
                             except Exception as e:
                                 logger.error(
-                                    "取消 Flow Run 失败: %s - Scan ID: %s, Error: %s",
+                                    "发送取消信号失败 - Flow Run: %s, Scan ID: %s, Error: %s",
                                     flow_run_id, scan_id, e
                                 )
                                 # 继续处理其他任务
@@ -543,32 +569,29 @@ class ScanService:
                 try:
                     cancelled_count = asyncio.run(_cancel_flows())
                     logger.info(
-                        "已取消 %d/%d 个 Flow Run - Scan ID: %s",
+                        "✓ 已发送取消信号给 %d/%d 个 Flow Run - Scan ID: %s",
                         cancelled_count, len(flow_run_ids), scan_id
+                    )
+                    logger.info(
+                        "Worker 将在 3-5 秒内检测到信号并终止 Flow 执行，"
+                        "on_cancellation handler 会自动更新数据库状态为 CANCELLED"
                     )
                 except Exception as e:
                     logger.error("连接 Prefect Server 失败: %s", e)
+                    return False, 0
             else:
                 logger.info("无关联 Flow Run 需要取消 - Scan ID: %s", scan_id)
             
-            # 5. 手动更新状态为 CANCELLED
-            # 注意：外部 API 调用 set_flow_run_state 不会触发 on_cancellation handler
-            # 因此需要手动更新数据库状态
+            # 5. 立即更新 UI 显示状态为 CANCELLING（可选的乐观更新）
+            # 实际的 CANCELLED 状态会由 Handler 在 Flow 终止后自动设置
             if cancelled_count > 0:
-                from django.utils import timezone
                 self.update_status(
                     scan_id,
-                    ScanStatus.CANCELLED,
-                    message="用户手动取消扫描",
-                    stopped_at=timezone.now()
+                    ScanStatus.CANCELLING,
+                    message="正在取消扫描任务..."
                 )
                 logger.info(
-                    "✓ 已取消扫描 - Scan ID: %s, Flow Run: %d 个，状态已更新为 CANCELLED",
-                    scan_id, cancelled_count
-                )
-            else:
-                logger.warning(
-                    "未能取消任何 Flow Run - Scan ID: %s",
+                    "✓ 已更新状态为 CANCELLING - Scan ID: %s, 等待 Worker 终止 Flow",
                     scan_id
                 )
             

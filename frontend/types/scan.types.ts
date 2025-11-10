@@ -2,7 +2,7 @@
  * 扫描任务状态枚举
  * 与后端 ScanTaskStatus 保持完全一致（已对齐 Prefect 术语）
  */
-export type ScanStatus = "cancelled" | "completed" | "crashed" | "failed" | "initiated" | "running"
+export type ScanStatus = "cancelled" | "cancelling" | "completed" | "crashed" | "failed" | "initiated" | "running"
 
 export interface ScanRecord {
   id: number

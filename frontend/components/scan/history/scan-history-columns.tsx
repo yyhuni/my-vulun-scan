@@ -132,6 +132,12 @@ function StatusBadge({ status }: { status: ScanStatus }) {
       variant: "outline",
       className: "bg-chart-2/20 text-chart-2 border-chart-2/30 hover:bg-chart-2/30 transition-colors",
     },
+    cancelling: {
+      icon: StopCircle,
+      label: "Cancelling",
+      variant: "outline",
+      className: "bg-orange-500/20 text-orange-500 border-orange-500/30 hover:bg-orange-500/30 transition-colors",
+    },
     completed: {
       icon: IconCircleCheck,
       label: "Completed",
@@ -196,7 +202,7 @@ function ScanRowActions({
   onDelete: () => void
   onStop: () => void
 }) {
-  // 只有在运行中或初始化状态时才显示停止选项
+  // 只有在运行中或初始化状态时才显示停止选项（cancelling 状态下不允许再次停止）
   const canStop = scan.status === 'running' || scan.status === 'initiated'
 
   return (
@@ -502,6 +508,7 @@ export const createScanHistoryColumns = ({
                 status === "failed" ? "bg-destructive" : 
                 status === "running" ? "bg-chart-3" : 
                 status === "cancelled" ? "bg-chart-2" :
+                status === "cancelling" ? "bg-orange-500" :
                 status === "crashed" ? "bg-purple-500" :
                 status === "initiated" ? "bg-chart-4" :
                 "bg-muted-foreground"
