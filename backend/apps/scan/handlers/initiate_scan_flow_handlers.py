@@ -53,9 +53,14 @@ def on_initiate_scan_flow_running(flow: Flow, flow_run: FlowRun, state: State) -
     try:
         from apps.scan.services import ScanService
         from apps.common.definitions import ScanStatus
+        from django.utils import timezone
         
         service = ScanService()
-        success = service.update_status(scan_id, ScanStatus.RUNNING)
+        success = service.update_status(
+            scan_id, 
+            ScanStatus.RUNNING,
+            started_at=timezone.now()  # Handler 决定设置开始时间
+        )
         
         if success:
             logger.info(
@@ -103,9 +108,14 @@ def on_initiate_scan_flow_completed(flow: Flow, flow_run: FlowRun, state: State)
     try:
         from apps.scan.services import ScanService
         from apps.common.definitions import ScanStatus
+        from django.utils import timezone
         
         service = ScanService()
-        success = service.update_status(scan_id, ScanStatus.COMPLETED)
+        success = service.update_status(
+            scan_id, 
+            ScanStatus.COMPLETED,
+            stopped_at=timezone.now()  # Handler 决定设置结束时间
+        )
         
         if success:
             logger.info(
@@ -148,6 +158,7 @@ def on_initiate_scan_flow_failed(flow: Flow, flow_run: FlowRun, state: State) ->
     try:
         from apps.scan.services import ScanService
         from apps.common.definitions import ScanStatus
+        from django.utils import timezone
         
         # 提取错误信息
         error_message = str(state.message) if state.message else "Flow 执行失败"
@@ -156,7 +167,8 @@ def on_initiate_scan_flow_failed(flow: Flow, flow_run: FlowRun, state: State) ->
         success = service.update_status(
             scan_id, 
             ScanStatus.FAILED,
-            message=error_message
+            message=error_message,
+            stopped_at=timezone.now()  # Handler 决定设置结束时间
         )
         
         if success:
@@ -197,12 +209,14 @@ def on_initiate_scan_flow_cancelled(flow: Flow, flow_run: FlowRun, state: State)
     try:
         from apps.scan.services import ScanService
         from apps.common.definitions import ScanStatus
+        from django.utils import timezone
         
         service = ScanService()
         success = service.update_status(
             scan_id, 
             ScanStatus.CANCELLED,
-            message="扫描任务已被取消"
+            message="扫描任务已被取消",
+            stopped_at=timezone.now()  # Handler 决定设置结束时间
         )
         
         if success:
@@ -248,6 +262,7 @@ def on_initiate_scan_flow_crashed(flow: Flow, flow_run: FlowRun, state: State) -
     try:
         from apps.scan.services import ScanService
         from apps.common.definitions import ScanStatus
+        from django.utils import timezone
         
         # 提取崩溃信息
         error_message = str(state.message) if state.message else "Flow 崩溃（系统异常）"
@@ -256,7 +271,8 @@ def on_initiate_scan_flow_crashed(flow: Flow, flow_run: FlowRun, state: State) -
         success = service.update_status(
             scan_id, 
             ScanStatus.CRASHED,
-            message=f"系统崩溃: {error_message}"
+            message=f"系统崩溃: {error_message}",
+            stopped_at=timezone.now()  # Handler 决定设置结束时间
         )
         
         if success:

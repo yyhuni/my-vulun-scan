@@ -344,7 +344,7 @@ class ScanService:
                     self.scan_repo.update_status(
                         scan.id,
                         ScanStatus.FAILED,
-                        error_message='提交 Prefect 任务失败'
+                        error_message='提交 Prefect 任务失败，请检查 Prefect Server 状态',
                     )
                 except (DatabaseError, OperationalError) as save_error:
                     logger.error(
@@ -368,7 +368,9 @@ class ScanService:
         self, 
         scan_id: int, 
         status: ScanStatus, 
-        message: str | None = None
+        message: str | None = None,
+        started_at: datetime | None = None,
+        stopped_at: datetime | None = None
     ) -> bool:
         """
         更新 Scan 状态
@@ -377,12 +379,24 @@ class ScanService:
             scan_id: 扫描任务 ID
             status: 新状态
             message: 错误消息（可选）
+            started_at: 开始时间（可选）
+            stopped_at: 结束时间（可选）
         
         Returns:
             是否更新成功
+        
+        Note:
+            Service 层负责业务逻辑，决定何时传递时间戳
+            Repository 层只负责数据更新
         """
         try:
-            result = self.scan_repo.update_status(scan_id, status, message)
+            result = self.scan_repo.update_status(
+                scan_id, 
+                status, 
+                message,
+                started_at=started_at,
+                stopped_at=stopped_at
+            )
             if result:
                 logger.debug(
                     "更新 Scan 状态成功 - Scan ID: %s, 状态: %s", 
@@ -397,74 +411,62 @@ class ScanService:
             logger.error("Scan 不存在 - Scan ID: %s", scan_id)
             return False
     
-    def update_scan_to_running(
-        self,
-        scan_id: int
-    ) -> bool:
+    
+    
+    def bulk_delete(self, scan_ids: List[int]) -> tuple[int, str]:
         """
-        更新扫描状态为 RUNNING（已废弃）
-        
-        废弃原因：
-        - 状态更新职责已移至 Prefect State Handlers
-        - Flow 层不应该调用 Service 层更新状态
-        - 通过 handlers/initiate_scan_flow_handlers.py 自动处理状态同步
-        
-        迁移指南：
-        - 使用 Prefect State Hooks（on_running, on_completion, on_failure）
-        - 不再需要手动调用此方法
-        
-        保留此方法仅用于向后兼容，未来版本将删除
+        批量删除扫描任务（级联删除关联数据）
         
         Args:
-            scan_id: 扫描任务 ID
+            scan_ids: 扫描任务 ID 列表
         
         Returns:
-            是否更新成功
+            (删除数量, 消息)
+        
+        Raises:
+            DatabaseError: 数据库错误
+            IntegrityError: 完整性约束错误
+        
+        Note:
+            - 使用 Repository 层批量删除
+            - Django ORM 会自动级联删除相关数据
+            - 异常向上传播，由视图层处理
         """
         try:
-            # 步骤 1: 获取当前扫描状态（业务验证）
-            scan = self.scan_repo.get_by_id(scan_id)
-            if not scan:
-                logger.error("Scan 不存在 - Scan ID: %s", scan_id)
-                return False
-            
-            # 步骤 2: 验证状态（业务规则）
-            if scan.status != ScanStatus.INITIATED:
-                logger.error(
-                    "Scan 状态异常 - 期望 INITIATED，实际 %s, Scan ID: %s",
-                    ScanStatus(scan.status).label,
-                    scan_id
-                )
-                return False
-            
-            # 步骤 3: 委托 Repository 层进行数据更新
-            result = self.scan_repo.update_status(
-                scan_id=scan_id,
-                status=ScanStatus.RUNNING
+            deleted_count, _ = self.scan_repo.bulk_delete(scan_ids)
+            logger.info(
+                "批量删除扫描任务成功 - 数量: %d, IDs: %s",
+                deleted_count,
+                scan_ids
             )
-            
-            if result:
-                logger.info(
-                    "扫描状态已更新 - Scan ID: %s, 状态: %s → %s",
-                    scan_id,
-                    ScanStatus.INITIATED.label,
-                    ScanStatus.RUNNING.label
-                )
-            else:
-                logger.error(
-                    "更新扫描状态失败 - Scan ID: %s（数据库操作失败）",
-                    scan_id
-                )
-            
-            return result
-                
-        except (DatabaseError, OperationalError) as e:
-            logger.exception("数据库错误：更新扫描状态失败 - Scan ID: %s", scan_id)
-            raise  # 数据库错误应该向上传播
-        except ObjectDoesNotExist:
-            logger.error("Scan 不存在 - Scan ID: %s", scan_id)
-            return False
+            return deleted_count, f"已删除 {deleted_count} 个扫描记录"
+        except (DatabaseError, IntegrityError, OperationalError) as e:
+            logger.exception(
+                "数据库错误：批量删除扫描任务失败 - IDs: %s",
+                scan_ids
+            )
+            raise
     
+    def get_statistics(self) -> dict:
+        """
+        获取扫描任务统计数据
+        
+        Returns:
+            统计数据字典
+        
+        Raises:
+            DatabaseError: 数据库错误
+        
+        Note:
+            使用 Repository 层的聚合查询，性能优异
+        """
+        try:
+            statistics = self.scan_repo.get_statistics()
+            logger.debug("获取扫描统计数据成功 - 总数: %d", statistics['total'])
+            return statistics
+        except (DatabaseError, OperationalError) as e:
+            logger.exception("数据库错误：获取扫描统计数据失败")
+            raise
     
     def stop_scan(self, scan_id: int) -> tuple[bool, int]:
         """
@@ -549,116 +551,7 @@ class ScanService:
             logger.error("Scan 不存在 - Scan ID: %s", scan_id)
             return False, 0
     
-    def abort_scan_on_revoked(self, scan_id: int) -> bool:
-        """
-        处理任务被撤销时的 Scan 状态更新（信号触发）
-        
-        职责：
-        - 检查当前状态（保护 FAILED 不被覆盖）
-        - 更新为 ABORTED（如果适用）
-        
-        Args:
-            scan_id: 扫描任务 ID
-        
-        Returns:
-            是否处理成功
-        
-        Note:
-            专门用于 on_task_revoked 信号处理
-            包含状态保护逻辑，防止级联撤销覆盖 FAILED 状态
-        """
-        try:
-            # 获取当前状态
-            scan = self.scan_repo.get_by_id(scan_id)
-            if not scan:
-                logger.error("Scan 不存在 - Scan ID: %s", scan_id)
-                return False
-            
-            # 状态保护：保护所有终态不被覆盖
-            # 终态优先级：SUCCESSFUL = FAILED = ABORTED
-            # 场景1：任务失败 → Scan=FAILED → 级联撤销其他任务 → 不应该变成 ABORTED
-            # 场景2：finalize_scan → Scan=SUCCESSFUL → 延迟的 revoked 信号 → 不应该变成 ABORTED
-            if scan.status in self.FINAL_STATUSES:
-                logger.info(
-                    "Scan 已处于终态 %s，跳过 ABORTED 更新（终态保护） - Scan ID: %s",
-                    ScanStatus(scan.status).label,
-                    scan_id
-                )
-                return True
-            
-            # 更新为 ABORTED
-            result = self.update_status(scan_id, ScanStatus.ABORTED)
-            if not result:
-                return False
-            
-            logger.debug("Scan 已更新为 ABORTED - Scan ID: %s", scan_id)
-            return True
-                
-        except (DatabaseError, OperationalError) as e:
-            logger.exception("数据库错误：处理任务撤销失败 - Scan ID: %s", scan_id)
-            raise  # 数据库错误应该向上传播
-        except ObjectDoesNotExist:
-            logger.error("Scan 不存在 - Scan ID: %s", scan_id)
-            return False
     
-    
-    def append_task_to_scan(
-        self,
-        scan_id: int,
-        flow_run_id: str,
-        flow_run_name: str
-    ) -> bool:
-        """
-        追加 Flow Run 信息到 Scan
-        
-        用于工作任务通过信号追加自己的 Flow Run ID 和名称到 Scan 记录
-        
-        Args:
-            scan_id: 扫描 ID
-            flow_run_id: Prefect Flow Run ID（不能为空）
-            flow_run_name: Flow Run 名称
-        
-        Returns:
-            是否追加成功
-        """
-        try:
-            # 验证参数（业务规则）
-            if not flow_run_id or not flow_run_id.strip():
-                logger.error(
-                    "flow_run_id 为空或无效 - Scan ID: %s, Flow Run: %s, flow_run_id: '%s'",
-                    scan_id, flow_run_name, flow_run_id
-                )
-                return False
-            
-            if not flow_run_name or not flow_run_name.strip():
-                logger.error(
-                    "flow_run_name 为空或无效 - Scan ID: %s, flow_run_id: %s",
-                    scan_id, flow_run_id
-                )
-                return False
-            
-            result = self.scan_repo.append_task(
-                scan_id=scan_id,
-                flow_run_id=flow_run_id,
-                flow_run_name=flow_run_name
-            )
-            
-            if result:
-                logger.debug(
-                    "追加 Flow Run 到 Scan - Scan ID: %s, Flow Run: %s, Flow Run ID: %s",
-                    scan_id,
-                    flow_run_name,
-                    flow_run_id
-                )
-            
-            return result
-            
-        except (DatabaseError, OperationalError) as e:
-            logger.exception("数据库错误：追加任务到 Scan 失败 - Scan ID: %s", scan_id)
-            raise  # 数据库错误应该向上传播
-        except ObjectDoesNotExist:
-            logger.error("Scan 不存在 - Scan ID: %s", scan_id)
-            return False
     
 
 

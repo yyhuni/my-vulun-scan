@@ -182,38 +182,27 @@ class ScanRepository:
         return created_scans
     
     @staticmethod
-    def save(scan: Scan) -> Scan:
+    def bulk_delete(scan_ids: List[int]) -> tuple[int, dict]:
         """
-        保存扫描任务
+        批量删除扫描任务（级联删除关联数据）
         
         Args:
-            scan: Scan 对象
+            scan_ids: 扫描任务 ID 列表
         
         Returns:
-            保存后的 Scan 对象
-        """
-        scan.save()
-        return scan
-    
-    @staticmethod
-    def delete(scan_id: int) -> bool:
-        """
-        删除扫描任务
+            (删除数量, 删除详情字典)
         
-        Args:
-            scan_id: 扫描任务 ID
-        
-        Returns:
-            是否删除成功
+        Note:
+            Django ORM 的 delete() 方法会自动级联删除相关联的对象
+            返回值格式: (总删除数量, {'model_name': 删除数量, ...})
         """
-        try:
-            scan = Scan.objects.get(id=scan_id)  # type: ignore  # pylint: disable=no-member
-            scan.delete()
-            logger.debug("删除 Scan - ID: %s", scan_id)
-            return True
-        except Scan.DoesNotExist:  # type: ignore  # pylint: disable=no-member
-            logger.warning("Scan 不存在 - Scan ID: %s", scan_id)
-            return False
+        deleted_count, deleted_details = Scan.objects.filter(id__in=scan_ids).delete()  # type: ignore  # pylint: disable=no-member
+        logger.debug(
+            "批量删除 Scan - 删除数量: %d, 详情: %s",
+            deleted_count,
+            deleted_details
+        )
+        return deleted_count, deleted_details
     
     # ==================== 查询操作 ====================
     
@@ -234,38 +223,50 @@ class ScanRepository:
         return queryset
     
     @staticmethod
-    def filter_by_status(status: ScanStatus, prefetch_relations: bool = True) -> QuerySet[Scan]:
+    def get_statistics() -> dict:
         """
-        根据状态筛选扫描任务
-        
-        Args:
-            status: 任务状态
-            prefetch_relations: 是否预加载关联对象（engine, target）
+        获取扫描任务统计数据
         
         Returns:
-            Scan QuerySet
+            统计数据字典
+        
+        Note:
+            使用数据库聚合查询，性能优异
         """
-        queryset = Scan.objects.filter(status=status)  # type: ignore  # pylint: disable=no-member
-        if prefetch_relations:
-            queryset = queryset.select_related('engine', 'target')
-        return queryset
+        from django.db.models import Count
+        
+        # 基础统计
+        total_scans = Scan.objects.count()  # type: ignore  # pylint: disable=no-member
+        
+        # 按状态统计
+        running_scans = Scan.objects.filter(status='running').count()  # type: ignore  # pylint: disable=no-member
+        successful_scans = Scan.objects.filter(status='successful').count()  # type: ignore  # pylint: disable=no-member
+        failed_scans = Scan.objects.filter(status='failed').count()  # type: ignore  # pylint: disable=no-member
+        aborted_scans = Scan.objects.filter(status='aborted').count()  # type: ignore  # pylint: disable=no-member
+        initiated_scans = Scan.objects.filter(status='initiated').count()  # type: ignore  # pylint: disable=no-member
+        
+        # 统计总资产数（注意：这里统计的是关联记录数，不是去重后的）
+        total_assets = Scan.objects.aggregate(  # type: ignore  # pylint: disable=no-member
+            total_subdomains=Count('subdomains'),
+            total_endpoints=Count('endpoints')
+        )
+        
+        total_subdomains = total_assets['total_subdomains'] or 0
+        total_endpoints = total_assets['total_endpoints'] or 0
+        
+        return {
+            'total': total_scans,
+            'running': running_scans,
+            'successful': successful_scans,
+            'failed': failed_scans,
+            'aborted': aborted_scans,
+            'initiated': initiated_scans,
+            'total_subdomains': total_subdomains,
+            'total_endpoints': total_endpoints,
+            'total_assets': total_subdomains + total_endpoints
+        }
     
-    @staticmethod
-    def filter_by_target(target_id: int, prefetch_relations: bool = True) -> QuerySet[Scan]:
-        """
-        根据目标筛选扫描任务
-        
-        Args:
-            target_id: 目标 ID
-            prefetch_relations: 是否预加载关联对象（engine, target）
-        
-        Returns:
-            Scan QuerySet
-        """
-        queryset = Scan.objects.filter(target_id=target_id)  # type: ignore  # pylint: disable=no-member
-        if prefetch_relations:
-            queryset = queryset.select_related('engine', 'target')
-        return queryset
+    
     
     # ==================== 状态更新操作 ====================
     
@@ -275,7 +276,8 @@ class ScanRepository:
         scan_id: int,
         status: ScanStatus,
         error_message: str | None = None,
-        started_at: datetime | None = None
+        started_at: datetime | None = None,
+        stopped_at: datetime | None = None
     ) -> bool:
         """
         更新扫描任务状态
@@ -284,10 +286,15 @@ class ScanRepository:
             scan_id: 扫描任务 ID
             status: 新状态
             error_message: 错误消息（可选）
-            started_at: 开始时间（可选，仅在状态转为 RUNNING 时使用）
+            started_at: 开始时间（可选，由调用方决定是否传递）
+            stopped_at: 结束时间（可选，由调用方决定是否传递）
         
         Returns:
             是否更新成功
+        
+        Note:
+            Repository 层不判断业务状态，只负责数据更新
+            是否设置时间戳由调用方（Service/Handler）决定
         """
         scan = ScanRepository.get_by_id_for_update(scan_id)
         if not scan:
@@ -298,17 +305,12 @@ class ScanRepository:
         if error_message:
             scan.error_message = error_message[:300]
         
-        # 如果状态转为 RUNNING，设置开始时间
-        if status == ScanStatus.RUNNING:
-            scan.started_at = started_at or timezone.now()
+        # 根据传递的参数更新时间戳（由调用方决定）
+        if started_at is not None:
+            scan.started_at = started_at
         
-        # 如果任务完成，更新结束时间
-        if status in [
-            ScanStatus.COMPLETED,
-            ScanStatus.FAILED,
-            ScanStatus.CANCELLED
-        ]:
-            scan.stopped_at = timezone.now()
+        if stopped_at is not None:
+            scan.stopped_at = stopped_at
         
         scan.save()
         logger.debug(
@@ -318,231 +320,8 @@ class ScanRepository:
         )
         return True
     
-    @staticmethod
-    @transaction.atomic
-    def update_started_at(scan_id: int, started_at: datetime | None = None) -> bool:
-        """
-        更新扫描开始时间
-        
-        Args:
-            scan_id: 扫描任务 ID
-            started_at: 开始时间（默认为当前时间）
-        
-        Returns:
-            是否更新成功
-        """
-        scan = ScanRepository.get_by_id_for_update(scan_id)
-        if not scan:
-            return False
-        
-        scan.started_at = started_at or timezone.now()
-        scan.save()
-        logger.debug("更新 Scan 开始时间 - ID: %s, 时间: %s", scan_id, scan.started_at)
-        return True
+  
     
-    @staticmethod
-    @transaction.atomic
-    def update_stopped_at(scan_id: int, stopped_at: datetime | None = None) -> bool:
-        """
-        更新扫描结束时间
-        
-        Args:
-            scan_id: 扫描任务 ID
-            stopped_at: 结束时间（默认为当前时间）
-        
-        Returns:
-            是否更新成功
-        """
-        scan = ScanRepository.get_by_id_for_update(scan_id)
-        if not scan:
-            return False
-        
-        scan.stopped_at = stopped_at or timezone.now()
-        scan.save()
-        logger.debug("更新 Scan 结束时间 - ID: %s, 时间: %s", scan_id, scan.stopped_at)
-        return True
-    
-    # ==================== Flow Run ID 管理 ====================
-    
-    @staticmethod
-    @transaction.atomic
-    def add_task(scan_id: int, flow_run_id: str, flow_run_name: str) -> bool:
-        """
-        添加 Flow Run ID 和名称
-        
-        Args:
-            scan_id: 扫描任务 ID
-            flow_run_id: Prefect Flow Run ID
-            flow_run_name: Flow Run 名称
-        
-        Returns:
-            是否添加成功
-        """
-        scan = ScanRepository.get_by_id_for_update(scan_id)
-        if not scan:
-            return False
-        
-        # 避免重复添加
-        if flow_run_id and flow_run_id not in scan.flow_run_ids:
-            scan.flow_run_ids.append(flow_run_id)
-            scan.flow_run_names.append(flow_run_name)
-            scan.save()
-            logger.debug("添加 Flow Run ID - Scan ID: %s, Flow Run: %s", scan_id, flow_run_name)
-        
-        return True
-    
-    @staticmethod
-    @transaction.atomic
-    def initialize_task_lists(scan_id: int, flow_run_id: str, flow_run_name: str) -> bool:
-        """
-        初始化 Flow Run ID 和名称列表
-        
-        Args:
-            scan_id: 扫描任务 ID
-            flow_run_id: Prefect Flow Run ID
-            flow_run_name: Flow Run 名称
-        
-        Returns:
-            是否初始化成功
-        """
-        scan = ScanRepository.get_by_id_for_update(scan_id)
-        if not scan:
-            return False
-        
-        scan.flow_run_ids = [flow_run_id] if flow_run_id else []
-        scan.flow_run_names = [flow_run_name]
-        scan.save()
-        logger.debug("初始化 Flow Run 列表 - Scan ID: %s, Flow Run: %s", scan_id, flow_run_name)
-        return True
-    
-    # ==================== 组合更新操作 ====================
-    
-    @staticmethod
-    @transaction.atomic
-    def start_scan(
-        scan_id: int,
-        status: ScanStatus,
-        flow_run_id: str,
-        flow_run_name: str,
-        started_at: datetime | None = None
-    ) -> bool:
-        """
-        启动扫描（首次初始化）
-        
-        职责：
-        - 更新状态（INITIATED → RUNNING）
-        - 设置开始时间
-        - 初始化 Flow Run 列表
-        
-        注意：此方法不做状态检查，由调用方（Service）确保只在 INITIATED 状态调用
-        
-        Args:
-            scan_id: 扫描任务 ID
-            status: 新状态
-            flow_run_id: Prefect Flow Run ID
-            flow_run_name: Flow Run 名称
-            started_at: 开始时间（默认为当前时间）
-        
-        Returns:
-            是否启动成功
-        """
-        scan = ScanRepository.get_by_id_for_update(scan_id)
-        if not scan:
-            return False
-        
-        # 更新状态和时间
-        scan.status = status
-        scan.started_at = started_at or timezone.now()
-        
-        # 初始化 Flow Run 列表
-        scan.flow_run_ids = [flow_run_id] if flow_run_id else []
-        scan.flow_run_names = [flow_run_name]
-        
-        scan.save()
-        logger.debug(
-            "启动 Scan - ID: %s, 状态: %s, Flow Run: %s",
-            scan_id,
-            ScanStatus(status).label,
-            flow_run_name
-        )
-        return True
-    
-    @staticmethod
-    def append_task(
-        scan_id: int,
-        flow_run_id: str,
-        flow_run_name: str
-    ) -> bool:
-        """
-        追加 Flow Run 到扫描（使用原子更新避免死锁）
-        
-        职责：
-        - 添加 Flow Run ID 和名称到列表
-        - 不改变扫描状态
-        - 使用 PostgreSQL 原子操作避免并发死锁
-        
-        Args:
-            scan_id: 扫描任务 ID
-            flow_run_id: Prefect Flow Run ID
-            flow_run_name: Flow Run 名称
-        
-        Returns:
-            是否追加成功
-        
-        Note:
-            使用 PostgreSQL 的 array_append 函数实现原子更新
-            避免了 select_for_update 的锁竞争问题
-            高并发场景下性能更好，不会产生死锁
-        """
-        from django.db import connection
-        
-        try:
-            if not flow_run_id:
-                logger.debug(
-                    "flow_run_id 为空，跳过追加 - Scan ID: %s, Flow Run: %s",
-                    scan_id,
-                    flow_run_name
-                )
-                return False
-            
-            # 使用原生 SQL 实现原子更新
-            # PostgreSQL 的 array_append 是原子操作，不需要加锁
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    """
-                    UPDATE scan
-                    SET flow_run_ids = array_append(flow_run_ids, %s),
-                        flow_run_names = array_append(flow_run_names, %s)
-                    WHERE id = %s
-                    """,
-                    [flow_run_id, flow_run_name, scan_id]
-                )
-                updated_count = cursor.rowcount
-            
-            if updated_count > 0:
-                logger.debug(
-                    "追加 Flow Run 成功（原子更新）- Scan ID: %s, Flow Run: %s, Flow Run ID: %s",
-                    scan_id,
-                    flow_run_name,
-                    flow_run_id
-                )
-                return True
-            else:
-                logger.warning(
-                    "追加任务失败，Scan 不存在 - Scan ID: %s",
-                    scan_id
-                )
-                return False
-                
-        except Exception as e:  # noqa: BLE001
-            logger.error(
-                "追加任务失败 - Scan ID: %s, Task: %s, 错误: %s",
-                scan_id,
-                task_name,
-                e
-            )
-            return False
-
 
 # 导出接口
 __all__ = ['ScanRepository']

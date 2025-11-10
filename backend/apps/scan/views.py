@@ -153,12 +153,13 @@ class ScanViewSet(viewsets.ModelViewSet):
             )
         
         try:
-            # 批量删除（级联删除关联数据）
-            deleted_count, _ = Scan.objects.filter(id__in=ids).delete()  # type: ignore  # pylint: disable=no-member
+            # 使用 Service 层批量删除（级联删除关联数据）
+            scan_service = ScanService()
+            deleted_count, message = scan_service.bulk_delete(ids)
             
             return Response(
                 {
-                    'message': f'已删除 {deleted_count} 个扫描记录',
+                    'message': message,
                     'deletedCount': deleted_count
                 },
                 status=status.HTTP_200_OK
@@ -190,39 +191,21 @@ class ScanViewSet(viewsets.ModelViewSet):
         - totalEndpoints: 总共发现的端点数量
         - totalAssets: 总资产数（子域名 + 端点）
         """
-        from django.db.models import Count
-        
         try:
-            # 基础统计
-            total_scans = Scan.objects.count()  # type: ignore  # pylint: disable=no-member
-            
-            # 按状态统计
-            running_scans = Scan.objects.filter(status='running').count()  # type: ignore  # pylint: disable=no-member
-            successful_scans = Scan.objects.filter(status='successful').count()  # type: ignore  # pylint: disable=no-member
-            failed_scans = Scan.objects.filter(status='failed').count()  # type: ignore  # pylint: disable=no-member
-            aborted_scans = Scan.objects.filter(status='aborted').count()  # type: ignore  # pylint: disable=no-member
-            initiated_scans = Scan.objects.filter(status='initiated').count()  # type: ignore  # pylint: disable=no-member
-            
-            # 统计总资产数（注意：这里统计的是关联记录数，不是去重后的）
-            # 如果需要精确统计，需要在 Subdomain 和 Endpoint 模型上进行
-            total_assets = Scan.objects.aggregate(  # type: ignore  # pylint: disable=no-member
-                total_subdomains=Count('subdomains'),
-                total_endpoints=Count('endpoints')
-            )
-            
-            total_subdomains = total_assets['total_subdomains'] or 0
-            total_endpoints = total_assets['total_endpoints'] or 0
+            # 使用 Service 层获取统计数据
+            scan_service = ScanService()
+            stats = scan_service.get_statistics()
             
             return Response({
-                'total': total_scans,
-                'running': running_scans,
-                'successful': successful_scans,
-                'failed': failed_scans,
-                'aborted': aborted_scans,
-                'initiated': initiated_scans,
-                'totalSubdomains': total_subdomains,
-                'totalEndpoints': total_endpoints,
-                'totalAssets': total_subdomains + total_endpoints
+                'total': stats['total'],
+                'running': stats['running'],
+                'successful': stats['successful'],
+                'failed': stats['failed'],
+                'aborted': stats['aborted'],
+                'initiated': stats['initiated'],
+                'totalSubdomains': stats['total_subdomains'],
+                'totalEndpoints': stats['total_endpoints'],
+                'totalAssets': stats['total_assets']
             })
         
         except (DatabaseError, OperationalError):
@@ -257,8 +240,8 @@ class ScanViewSet(viewsets.ModelViewSet):
             
             if not success:
                 # 检查是否是状态不允许的问题
-                scan = Scan.objects.get(id=pk)  # type: ignore  # pylint: disable=no-member
-                if scan.status not in [ScanStatus.RUNNING, ScanStatus.INITIATED]:
+                scan = scan_service.get_scan(scan_id=pk, prefetch_relations=False)
+                if scan and scan.status not in [ScanStatus.RUNNING, ScanStatus.INITIATED]:
                     return Response(
                         {
                             'error': f'无法停止扫描：当前状态为 {ScanStatus(scan.status).label}',
@@ -312,8 +295,15 @@ class ScanViewSet(viewsets.ModelViewSet):
         - total_pages: 总页数
         """
         try:
-            # 获取扫描对象
-            scan = Scan.objects.get(id=pk)  # type: ignore  # pylint: disable=no-member
+            # 使用 Service 层获取扫描对象
+            scan_service = ScanService()
+            scan = scan_service.get_scan(scan_id=pk, prefetch_relations=False)
+            
+            if not scan:
+                return Response(
+                    {'error': f'扫描 ID {pk} 不存在'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
             
             # 获取该扫描的所有子域名（按创建时间倒序）
             queryset = scan.subdomains.all().order_by('-created_at')
