@@ -26,9 +26,6 @@ from apps.engine.models import ScanEngine
 from apps.scan.flows import initiate_scan_flow  # 从 flows 导入
 from apps.common.definitions import ScanTaskStatus
 
-if TYPE_CHECKING:
-    from apps.scan.services.scan_task_service import ScanTaskService
-
 logger = logging.getLogger(__name__)
 
 
@@ -84,26 +81,15 @@ class ScanService:
     
     def __init__(
         self, 
-        scan_repository: ScanRepository | None = None,
-        task_service: 'ScanTaskService' | None = None
+        scan_repository: ScanRepository | None = None
     ):
         """
         初始化服务
         
         Args:
             scan_repository: ScanRepository 实例（用于依赖注入）
-            task_service: ScanTaskService 实例（用于检查任务完成状态）
         """
         self.scan_repo = scan_repository or ScanRepository()
-        self._task_service = task_service
-    
-    @property
-    def task_service(self) -> 'ScanTaskService':
-        """延迟加载 ScanTaskService（避免循环导入）"""
-        if self._task_service is None:
-            from apps.scan.services.scan_task_service import ScanTaskService
-            self._task_service = ScanTaskService()
-        return self._task_service
     
     def get_scan(self, scan_id: int, prefetch_relations: bool) -> Scan | None:
         """
@@ -392,89 +378,6 @@ class ScanService:
             logger.error("Scan 不存在 - Scan ID: %s", scan_id)
             return False
     
-    def get_scan_completion_status(self, scan_id: int) -> tuple[bool, Dict[str, int], ScanTaskStatus | None]:
-        """
-        获取扫描完成状态和建议的最终状态
-        
-        职责：
-        - 查询所有子任务的完成状态
-        - 提供状态统计信息
-        - **不做决策**，由调用方决定如何处理
-        
-        Args:
-            scan_id: 扫描任务 ID
-        
-        Returns:
-            (是否全部完成, 状态统计, 建议的最终状态)
-            - 是否全部完成: bool
-            - 状态统计: {'total': x, 'successful': x, 'failed': x, 'aborted': x, 'running': x}
-            - 建议的最终状态: SUCCESSFUL/FAILED/ABORTED/None (None 表示未完成)
-        """
-        try:
-            # 检查任务完成状态
-            all_completed, stats = self.task_service.check_all_tasks_completed(scan_id)
-            
-            if not stats.get('total', 0):
-                logger.debug("Scan %s 没有子任务记录", scan_id)
-                return False, stats, None
-            
-            if not all_completed:
-                logger.debug("Scan %s 还有 %d 个任务在执行中", scan_id, stats.get('running', 0))
-                return False, stats, None
-            
-            # 根据统计信息计算建议的最终状态
-            aborted_count = stats.get('aborted', 0)
-            failed_count = stats.get('failed', 0)
-            
-            if aborted_count > 0:
-                suggested_status = ScanTaskStatus.CANCELLED
-            elif failed_count > 0:
-                suggested_status = ScanTaskStatus.FAILED
-            else:
-                suggested_status = ScanTaskStatus.COMPLETED
-            
-            return True, stats, suggested_status
-                
-        except (DatabaseError, OperationalError) as e:
-            logger.exception("数据库错误：获取扫描完成状态失败 - Scan ID: %s", scan_id)
-            raise  # 数据库错误应该向上传播
-        except ObjectDoesNotExist:
-            logger.error("Scan 不存在 - Scan ID: %s", scan_id)
-            return False, {'total': 0}, None
-    
-    def complete_scan(self, scan_id: int, status: ScanTaskStatus) -> bool:
-        """
-        完成扫描（正常收尾流程）
-        
-        职责：
-        - 更新扫描状态
-        - 触发工作空间清理
-        
-        Args:
-            scan_id: 扫描任务 ID
-            status: 最终状态（来自 finalize_scan 的任务统计）
-        
-        Returns:
-            是否完成成功
-        
-        Note:
-            此方法专门用于 finalize_scan_task 的正常收尾流程
-            任务撤销场景请使用 abort_scan_on_revoked()
-        """
-        try:
-            # 更新状态
-            result = self.update_status(scan_id, status)
-            if not result:
-                return False
-            
-            return True
-                
-        except (DatabaseError, OperationalError) as e:
-            logger.exception("数据库错误：完成扫描失败 - Scan ID: %s", scan_id)
-            raise  # 数据库错误应该向上传播
-        except ObjectDoesNotExist:
-            logger.error("Scan 不存在 - Scan ID: %s", scan_id)
-            return False
     
     def stop_scan(self, scan_id: int) -> tuple[bool, int]:
         """
@@ -515,6 +418,7 @@ class ScanService:
             flow_run_ids = scan.flow_run_ids or []
             
             # 4. 取消所有 Prefect Flow Runs
+            cancelled_count = 0
             if flow_run_ids:
                 from prefect import get_client
                 from uuid import UUID
@@ -610,145 +514,6 @@ class ScanService:
             logger.error("Scan 不存在 - Scan ID: %s", scan_id)
             return False
     
-    def fail_scan_with_cascade(
-        self, 
-        scan_id: int,
-        failed_task_id: str | None = None
-    ) -> bool:
-        """
-        
-        标记扫描为失败并撤销所有可撤销的任务
-        
-        职责：
-        - 更新 Scan 状态为 FAILED
-        - 查询并撤销同一 Scan 下所有可撤销的任务（RUNNING + INITIATED）
-        
-        Args:
-            scan_id: 扫描任务 ID
-            failed_task_id: 已失败的任务 ID（用于排除，避免重复撤销）
-        
-        Returns:
-            是否处理成功
-        
-        Note:
-            此方法专门用于处理任务失败场景，与 complete_scan 职责分离
-            
-            撤销策略：
-            - RUNNING 任务: 强制终止（terminate=True）
-            - INITIATED 任务: 取消调度（terminate=False）
-            - SUCCESSFUL/FAILED/ABORTED: 不处理（保持原状态）
-        """
-        try:
-            # 1. 立即更新 Scan 状态为 FAILED
-            logger.warning("开始失败处理 - Scan ID: %s", scan_id)
-            result = self.update_status(scan_id, ScanTaskStatus.FAILED)
-            if not result:
-                logger.error("更新 Scan 状态为 FAILED 失败 - Scan ID: %s", scan_id)
-                return False
-            
-            # 2. 查询所有正在运行的任务
-            if not self.task_service:
-                logger.error("TaskService 未初始化，无法撤销任务")
-                return False
-            
-            cancellable_tasks = self.task_service.get_running_tasks(scan_id)
-            
-            if not cancellable_tasks:
-                logger.info("没有可撤销的任务 - Scan ID: %s", scan_id)
-                return True
-            
-            # 过滤掉已失败的任务（避免重复）
-            tasks_to_revoke = [
-                task for task in cancellable_tasks 
-                if task['task_id'] != failed_task_id
-            ]
-            
-            if not tasks_to_revoke:
-                logger.info("过滤后没有需要撤销的任务 - Scan ID: %s", scan_id)
-                return True
-            
-            # 3. 撤销所有可撤销的任务（RUNNING + INITIATED）
-            running_count = sum(1 for t in tasks_to_revoke if t.get('status') == ScanTaskStatus.RUNNING)
-            initiated_count = sum(1 for t in tasks_to_revoke if t.get('status') == ScanTaskStatus.INITIATED)
-            
-            logger.warning(
-                "检测到任务失败，开始撤销 %d 个任务 - Scan ID: %s (RUNNING: %d, INITIATED: %d)",
-                len(tasks_to_revoke), scan_id, running_count, initiated_count
-            )
-            
-            revoked_count = self._revoke_tasks(tasks_to_revoke, scan_id)
-            
-            logger.warning(
-                "✓ 成功撤销 %d/%d 个任务 - Scan ID: %s",
-                revoked_count, len(tasks_to_revoke), scan_id
-            )
-            
-            return True
-                
-        except (DatabaseError, OperationalError) as e:
-            logger.exception(
-                "数据库错误：失败处理时发生错误 - Scan ID: %s",
-                scan_id
-            )
-            raise  # 数据库错误应该向上传播
-        except ObjectDoesNotExist:
-            logger.error("Scan 不存在 - Scan ID: %s", scan_id)
-            return False
-    
-    def _revoke_tasks(
-        self, 
-        tasks: List[Dict[str, str]], 
-        scan_id: int
-    ) -> int:
-        """
-        
-        撤销任务列表（区分 RUNNING 和 INITIATED）
-        
-        Args:
-            tasks: 任务列表 [{'task_id': 'xxx', 'task_name': 'yyy', 'status': 'RUNNING'}, ...]
-            scan_id: 扫描 ID（用于日志）
-        
-        Returns:
-            成功撤销的任务数量
-        
-        Note:
-            - RUNNING 任务: terminate=True（强制终止正在执行的任务）
-            - INITIATED 任务: terminate=False（只取消调度，不发送终止信号）
-        """
-        app = current_app._get_current_object()
-        revoked_count = 0
-        
-        for task in tasks:
-            task_id = task['task_id']
-            task_name = task['task_name']
-            task_status = task.get('status', ScanTaskStatus.RUNNING)  # 默认 RUNNING
-            
-            try:
-                # 根据状态决定是否需要终止
-                # RUNNING: 需要强制终止（terminate=True）
-                # INITIATED: 只需取消调度（terminate=False）
-                should_terminate = (task_status == ScanTaskStatus.RUNNING)
-                
-                app.control.revoke(
-                    task_id, 
-                    terminate=should_terminate,
-                    signal='SIGTERM' if should_terminate else None
-                )
-                
-                action = "已终止" if should_terminate else "已取消"
-                logger.debug(
-                    "%s任务: %s [%s] (Task ID: %s) - Scan ID: %s",
-                    action, task_name, task_status, task_id, scan_id
-                )
-                revoked_count += 1
-                
-            except CeleryError as e:
-                logger.error(
-                    "Celery 错误：撤销任务失败: %s [%s] (Task ID: %s) - Scan ID: %s, 错误: %s",
-                    task_name, task_status, task_id, scan_id, e
-                )
-        
-        return revoked_count
     
     def append_task_to_scan(
         self,
