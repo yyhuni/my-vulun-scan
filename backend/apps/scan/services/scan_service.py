@@ -518,50 +518,50 @@ class ScanService:
     def append_task_to_scan(
         self,
         scan_id: int,
-        task_id: str,
-        task_name: str
+        flow_run_id: str,
+        flow_run_name: str
     ) -> bool:
         """
-        追加任务信息到 Scan
+        追加 Flow Run 信息到 Scan
         
-        用于工作任务通过信号追加自己的任务 ID 和名称到 Scan 记录
+        用于工作任务通过信号追加自己的 Flow Run ID 和名称到 Scan 记录
         
         Args:
             scan_id: 扫描 ID
-            task_id: Prefect Flow Run ID（不能为空）
-            task_name: 任务名称
+            flow_run_id: Prefect Flow Run ID（不能为空）
+            flow_run_name: Flow Run 名称
         
         Returns:
             是否追加成功
         """
         try:
             # 验证参数（业务规则）
-            if not task_id or not task_id.strip():
+            if not flow_run_id or not flow_run_id.strip():
                 logger.error(
-                    "task_id 为空或无效 - Scan ID: %s, Task: %s, task_id: '%s'",
-                    scan_id, task_name, task_id
+                    "flow_run_id 为空或无效 - Scan ID: %s, Flow Run: %s, flow_run_id: '%s'",
+                    scan_id, flow_run_name, flow_run_id
                 )
                 return False
             
-            if not task_name or not task_name.strip():
+            if not flow_run_name or not flow_run_name.strip():
                 logger.error(
-                    "task_name 为空或无效 - Scan ID: %s, task_id: %s",
-                    scan_id, task_id
+                    "flow_run_name 为空或无效 - Scan ID: %s, flow_run_id: %s",
+                    scan_id, flow_run_id
                 )
                 return False
             
             result = self.scan_repo.append_task(
                 scan_id=scan_id,
-                task_id=task_id,
-                task_name=task_name
+                flow_run_id=flow_run_id,
+                flow_run_name=flow_run_name
             )
             
             if result:
                 logger.debug(
-                    "追加任务到 Scan - Scan ID: %s, Task: %s, Task ID: %s",
+                    "追加 Flow Run 到 Scan - Scan ID: %s, Flow Run: %s, Flow Run ID: %s",
                     scan_id,
-                    task_name,
-                    task_id
+                    flow_run_name,
+                    flow_run_id
                 )
             
             return result

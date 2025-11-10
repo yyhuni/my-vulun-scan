@@ -362,18 +362,18 @@ class ScanRepository:
         logger.debug("更新 Scan 结束时间 - ID: %s, 时间: %s", scan_id, scan.stopped_at)
         return True
     
-    # ==================== 任务 ID 管理 ====================
+    # ==================== Flow Run ID 管理 ====================
     
     @staticmethod
     @transaction.atomic
-    def add_task(scan_id: int, task_id: str, task_name: str) -> bool:
+    def add_task(scan_id: int, flow_run_id: str, flow_run_name: str) -> bool:
         """
-        添加任务 ID 和任务名称
+        添加 Flow Run ID 和名称
         
         Args:
             scan_id: 扫描任务 ID
-            task_id: Prefect Flow Run ID
-            task_name: 任务名称
+            flow_run_id: Prefect Flow Run ID
+            flow_run_name: Flow Run 名称
         
         Returns:
             是否添加成功
@@ -383,24 +383,24 @@ class ScanRepository:
             return False
         
         # 避免重复添加
-        if task_id and task_id not in scan.flow_run_ids:
-            scan.flow_run_ids.append(task_id)
-            scan.flow_run_names.append(task_name)
+        if flow_run_id and flow_run_id not in scan.flow_run_ids:
+            scan.flow_run_ids.append(flow_run_id)
+            scan.flow_run_names.append(flow_run_name)
             scan.save()
-            logger.debug("添加任务 ID - Scan ID: %s, Task: %s", scan_id, task_name)
+            logger.debug("添加 Flow Run ID - Scan ID: %s, Flow Run: %s", scan_id, flow_run_name)
         
         return True
     
     @staticmethod
     @transaction.atomic
-    def initialize_task_lists(scan_id: int, task_id: str, task_name: str) -> bool:
+    def initialize_task_lists(scan_id: int, flow_run_id: str, flow_run_name: str) -> bool:
         """
-        初始化任务 ID 和任务名称列表
+        初始化 Flow Run ID 和名称列表
         
         Args:
             scan_id: 扫描任务 ID
-            task_id: Prefect Flow Run ID
-            task_name: 任务名称
+            flow_run_id: Prefect Flow Run ID
+            flow_run_name: Flow Run 名称
         
         Returns:
             是否初始化成功
@@ -409,10 +409,10 @@ class ScanRepository:
         if not scan:
             return False
         
-        scan.flow_run_ids = [task_id] if task_id else []
-        scan.flow_run_names = [task_name]
+        scan.flow_run_ids = [flow_run_id] if flow_run_id else []
+        scan.flow_run_names = [flow_run_name]
         scan.save()
-        logger.debug("初始化任务列表 - Scan ID: %s, Task: %s", scan_id, task_name)
+        logger.debug("初始化 Flow Run 列表 - Scan ID: %s, Flow Run: %s", scan_id, flow_run_name)
         return True
     
     # ==================== 组合更新操作 ====================
@@ -422,8 +422,8 @@ class ScanRepository:
     def start_scan(
         scan_id: int,
         status: ScanStatus,
-        task_id: str,
-        task_name: str,
+        flow_run_id: str,
+        flow_run_name: str,
         started_at: datetime | None = None
     ) -> bool:
         """
@@ -432,15 +432,15 @@ class ScanRepository:
         职责：
         - 更新状态（INITIATED → RUNNING）
         - 设置开始时间
-        - 初始化任务列表
+        - 初始化 Flow Run 列表
         
         注意：此方法不做状态检查，由调用方（Service）确保只在 INITIATED 状态调用
         
         Args:
             scan_id: 扫描任务 ID
             status: 新状态
-            task_id: Prefect Flow Run ID
-            task_name: 任务名称
+            flow_run_id: Prefect Flow Run ID
+            flow_run_name: Flow Run 名称
             started_at: 开始时间（默认为当前时间）
         
         Returns:
@@ -454,37 +454,37 @@ class ScanRepository:
         scan.status = status
         scan.started_at = started_at or timezone.now()
         
-        # 初始化任务列表
-        scan.flow_run_ids = [task_id] if task_id else []
-        scan.flow_run_names = [task_name]
+        # 初始化 Flow Run 列表
+        scan.flow_run_ids = [flow_run_id] if flow_run_id else []
+        scan.flow_run_names = [flow_run_name]
         
         scan.save()
         logger.debug(
-            "启动 Scan - ID: %s, 状态: %s, 任务: %s",
+            "启动 Scan - ID: %s, 状态: %s, Flow Run: %s",
             scan_id,
             ScanStatus(status).label,
-            task_name
+            flow_run_name
         )
         return True
     
     @staticmethod
     def append_task(
         scan_id: int,
-        task_id: str,
-        task_name: str
+        flow_run_id: str,
+        flow_run_name: str
     ) -> bool:
         """
-        追加任务到扫描（使用原子更新避免死锁）
+        追加 Flow Run 到扫描（使用原子更新避免死锁）
         
         职责：
-        - 添加任务 ID 和名称到列表
+        - 添加 Flow Run ID 和名称到列表
         - 不改变扫描状态
         - 使用 PostgreSQL 原子操作避免并发死锁
         
         Args:
             scan_id: 扫描任务 ID
-            task_id: Prefect Flow Run ID
-            task_name: 任务名称
+            flow_run_id: Prefect Flow Run ID
+            flow_run_name: Flow Run 名称
         
         Returns:
             是否追加成功
@@ -497,11 +497,11 @@ class ScanRepository:
         from django.db import connection
         
         try:
-            if not task_id:
+            if not flow_run_id:
                 logger.debug(
-                    "task_id 为空，跳过追加 - Scan ID: %s, Task: %s",
+                    "flow_run_id 为空，跳过追加 - Scan ID: %s, Flow Run: %s",
                     scan_id,
-                    task_name
+                    flow_run_name
                 )
                 return False
             
@@ -515,16 +515,16 @@ class ScanRepository:
                         flow_run_names = array_append(flow_run_names, %s)
                     WHERE id = %s
                     """,
-                    [task_id, task_name, scan_id]
+                    [flow_run_id, flow_run_name, scan_id]
                 )
                 updated_count = cursor.rowcount
             
             if updated_count > 0:
                 logger.debug(
-                    "追加任务成功（原子更新）- Scan ID: %s, Task: %s, Task ID: %s",
+                    "追加 Flow Run 成功（原子更新）- Scan ID: %s, Flow Run: %s, Flow Run ID: %s",
                     scan_id,
-                    task_name,
-                    task_id
+                    flow_run_name,
+                    flow_run_id
                 )
                 return True
             else:
