@@ -192,6 +192,9 @@ PREFECT_DATABASE_NAME = os.getenv('PREFECT_DATABASE_NAME', 'prefect')
 # Prefect 工作池名称
 PREFECT_DEFAULT_WORK_POOL_NAME = os.getenv('PREFECT_DEFAULT_WORK_POOL_NAME', 'default')
 
+# Prefect task超时配置
+PREFECT_TASK_DEFAULT_TIMEOUT_SECONDS = int(os.getenv('PREFECT_TASK_DEFAULT_TIMEOUT_SECONDS', '3600'))  # 默认超时：1小时
+
 # subprocess 默认超时配置（用于扫描工具命令）
 SUBPROCESS_DEFAULT_TIMEOUT_SECONDS = int(os.getenv('SUBPROCESS_DEFAULT_TIMEOUT_SECONDS', '3600'))  # 默认超时：1小时
 
@@ -252,7 +255,6 @@ SCAN_RESULTS_RETENTION_DAYS = int(os.getenv('SCAN_RETENTION_DAYS', '7'))
 # 3. 环境变量控制：
 #    - LOG_LEVEL: 全局日志级别（DEBUG/INFO/WARNING/ERROR/CRITICAL）
 #    - LOG_DIR: 日志文件目录（留空则不输出文件）
-#    - SCAN_LOG_LEVEL: 扫描模块日志级别（可选，单独控制）
 
 from config.logging_config import get_logging_config
 

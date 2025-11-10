@@ -6,7 +6,6 @@
 环境变量：
 - LOG_LEVEL: 全局日志级别 (DEBUG/INFO/WARNING/ERROR/CRITICAL)
 - LOG_DIR: 日志文件目录（留空则不输出文件）
-- SCAN_LOG_LEVEL: 扫描模块日志级别（可选）
 
 开发环境特性：
 - 默认 DEBUG 级别
@@ -17,6 +16,11 @@
 - 默认 INFO 级别
 - 控制台 + 文件输出（配置 LOG_DIR）
 - 文件自动轮转（10MB，保留5个备份）
+
+设计说明：
+- 直接从环境变量读取配置，避免与 settings.py 循环依赖
+- settings.py 在加载时会调用此模块，此时 settings 对象尚未完全初始化
+- 这是 Django 配置模块的常见模式
 """
 
 import os
@@ -36,9 +40,6 @@ def get_logging_config(debug: bool = False):
     # 获取日志配置
     log_level = os.getenv('LOG_LEVEL', 'DEBUG' if debug else 'INFO')
     log_dir = os.getenv('LOG_DIR', '')
-    
-    # 模块级别日志控制（可选）
-    scan_log_level = os.getenv('SCAN_LOG_LEVEL', log_level)
     
     # 构建 handlers 配置
     log_handlers = ['console']
@@ -129,7 +130,7 @@ def get_logging_config(debug: bool = False):
             # 应用日志 - 扫描模块
             'apps.scan': {
                 'handlers': log_handlers,
-                'level': scan_log_level,
+                'level': log_level,
                 'propagate': False,
             },
             

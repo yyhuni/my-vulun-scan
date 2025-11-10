@@ -46,7 +46,7 @@ class Scan(models.Model):
         help_text='Flow Run 名称列表'
     )
 
-    error_message = models.CharField(max_length=300, blank=True, default='', help_text='错误信息')
+    error_message = models.CharField(max_length=2000, blank=True, default='', help_text='错误信息')
 
     # 扫描发现的资产关联
     emails = models.ManyToManyField(

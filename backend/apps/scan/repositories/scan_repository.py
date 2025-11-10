@@ -303,7 +303,14 @@ class ScanRepository:
         scan.status = status
         
         if error_message:
-            scan.error_message = error_message[:300]
+            if len(error_message) > 2000:
+                scan.error_message = error_message[:1980] + "... (已截断)"
+                logger.warning(
+                    "错误信息过长（%d 字符），已截断 - Scan ID: %s",
+                    len(error_message), scan_id
+                )
+            else:
+                scan.error_message = error_message
         
         # 根据传递的参数更新时间戳（由调用方决定）
         if started_at is not None:
