@@ -55,8 +55,8 @@ class Subdomain(models.Model):
         ]
         constraints = [
             models.UniqueConstraint(
-                fields=['name', 'target_id'],
-                name='unique_subdomain_per_target'
+                fields=['name', 'target_id', 'scan_id'],
+                name='unique_subdomain_per_scan'
             )
         ]
 

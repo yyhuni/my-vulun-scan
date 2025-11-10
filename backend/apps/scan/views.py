@@ -223,15 +223,16 @@ class ScanViewSet(viewsets.ModelViewSet):
         
         功能:
         - 终止正在运行或初始化的扫描任务
-        - 更新扫描状态为 'cancelled'
+        - 通过 Prefect API 取消 Flow Run
+        - 更新扫描状态为 CANCELLED
         
         状态限制:
-        - 只能停止 'running' 或 'initiated' 状态的扫描
-        - 已完成、失败或中止的扫描无法停止
+        - 只能停止 RUNNING 或 INITIATED 状态的扫描
+        - 已完成、失败或取消的扫描无法停止
         
         返回:
         - message: 成功消息
-        - revokedTaskCount: 撤销的任务数量
+        - revokedTaskCount: 取消的 Flow Run 数量
         """
         try:
             # 使用 Service 层处理停止逻辑

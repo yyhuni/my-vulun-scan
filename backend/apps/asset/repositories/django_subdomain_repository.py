@@ -26,6 +26,8 @@ class DjangoSubdomainRepository(SubdomainRepository):
         ]
 
         with transaction.atomic():
+            # 使用 ignore_conflicts 忽略冲突（唯一约束是 name + target_id + scan_id）
+            # 每次扫描都会创建独立的子域名记录
             created = Subdomain.objects.bulk_create(  # type: ignore[attr-defined]
                 subdomain_objects,
                 ignore_conflicts=True,

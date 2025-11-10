@@ -326,6 +326,10 @@ class ScanService:
                     parameters=flow_kwargs
                 )
                 
+                # 保存 flow_run_id 到数据库，供后续停止操作使用
+                scan.flow_run_ids = [flow_run_id]
+                scan.save(update_fields=['flow_run_ids'])
+                
                 successful_scans.append(scan)
                 logger.info(
                     "✓ 异步提交扫描任务成功 - Scan ID: %s, Flow Run ID: %s",
@@ -506,27 +510,38 @@ class ScanService:
             # 3. 获取任务列表
             flow_run_ids = scan.flow_run_ids or []
             
-            # 4. 取消所有 Prefect Flow Runs
+            # 4. 取消所有 Prefect Flow Runs（使用异步客户端）
             cancelled_count = 0
             if flow_run_ids:
                 from prefect import get_client
                 from uuid import UUID
                 
+                async def _cancel_flows():
+                    """异步取消多个 Flow Run"""
+                    from prefect.states import Cancelled
+                    
+                    count = 0
+                    async with get_client() as client:
+                        for flow_run_id in flow_run_ids:
+                            try:
+                                # Prefect 3.x: 使用 set_flow_run_state 设置为 Cancelled 状态
+                                await client.set_flow_run_state(
+                                    flow_run_id=UUID(flow_run_id),
+                                    state=Cancelled(message="用户手动取消扫描"),
+                                    force=True
+                                )
+                                count += 1
+                                logger.debug("已取消 Flow Run: %s - Scan ID: %s", flow_run_id, scan_id)
+                            except Exception as e:
+                                logger.error(
+                                    "取消 Flow Run 失败: %s - Scan ID: %s, Error: %s",
+                                    flow_run_id, scan_id, e
+                                )
+                                # 继续处理其他任务
+                    return count
+                
                 try:
-                    client = get_client(sync_client=True)
-                    
-                    for flow_run_id in flow_run_ids:
-                        try:
-                            client.cancel_flow_run(UUID(flow_run_id))
-                            cancelled_count += 1
-                            logger.debug("已取消 Flow Run: %s - Scan ID: %s", flow_run_id, scan_id)
-                        except Exception as e:
-                            logger.error(
-                                "取消 Flow Run 失败: %s - Scan ID: %s, Error: %s",
-                                flow_run_id, scan_id, e
-                            )
-                            # 继续处理其他任务
-                    
+                    cancelled_count = asyncio.run(_cancel_flows())
                     logger.info(
                         "已取消 %d/%d 个 Flow Run - Scan ID: %s",
                         cancelled_count, len(flow_run_ids), scan_id
@@ -536,12 +551,27 @@ class ScanService:
             else:
                 logger.info("无关联 Flow Run 需要取消 - Scan ID: %s", scan_id)
             
-            # 5. 状态由 on_cancelled Handler 自动更新为 CANCELLED
+            # 5. 手动更新状态为 CANCELLED
+            # 注意：外部 API 调用 set_flow_run_state 不会触发 on_cancellation handler
+            # 因此需要手动更新数据库状态
+            if cancelled_count > 0:
+                from django.utils import timezone
+                self.update_status(
+                    scan_id,
+                    ScanStatus.CANCELLED,
+                    message="用户手动取消扫描",
+                    stopped_at=timezone.now()
+                )
+                logger.info(
+                    "✓ 已取消扫描 - Scan ID: %s, Flow Run: %d 个，状态已更新为 CANCELLED",
+                    scan_id, cancelled_count
+                )
+            else:
+                logger.warning(
+                    "未能取消任何 Flow Run - Scan ID: %s",
+                    scan_id
+                )
             
-            logger.info(
-                "✓ 已发送取消请求 - Scan ID: %s, Flow Run: %d 个 (状态将由 Handler 更新为 CANCELLED)",
-                scan_id, cancelled_count
-            )
             return True, cancelled_count
             
         except (DatabaseError, OperationalError) as e:
