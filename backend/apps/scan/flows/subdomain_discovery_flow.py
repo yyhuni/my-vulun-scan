@@ -12,6 +12,7 @@
 from prefect import flow
 from pathlib import Path
 import logging
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -29,11 +30,11 @@ logger = logging.getLogger(__name__)
 SCANNER_CONFIGS = {
     'amass': {
         'command': 'amass enum -passive -d {target} -o {output_file}',
-        'timeout': 3600
+        'timeout': settings.SUBPROCESS_DEFAULT_TIMEOUT_SECONDS  # 使用配置，默认 3600 秒
     },
     'subfinder': {
         'command': 'subfinder -d {target} -o {output_file}',
-        'timeout': 1800
+        'timeout': 1800  # subfinder 较快，使用更短的超时
     }
 }
 

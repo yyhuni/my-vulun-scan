@@ -22,7 +22,6 @@ logger = logging.getLogger(__name__)
     name='run_scanner',
     retries=2,
     retry_delay_seconds=10,
-    timeout_seconds=3600,
     log_prints=True
 )
 def run_scanner_task(
