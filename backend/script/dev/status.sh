@@ -54,6 +54,17 @@ check_service "Prefect Server" "prefect-server" "http://localhost:4200/api/healt
 echo ""
 check_service "Django" "django" "http://localhost:8888"
 echo ""
+
+# 检查 Prefect Worker（使用 pgrep）
+printf "%-25s" "Prefect Worker:"
+if pgrep -f "prefect worker" > /dev/null 2>&1; then
+    WORKER_PID=$(pgrep -f "prefect worker")
+    echo -e "${GREEN}运行中${NC} (PID: $WORKER_PID)"
+else
+    echo -e "${RED}已停止${NC}"
+fi
+echo ""
+
 check_service "扫描任务 Deployment" "scan-deployment"
 check_service "清理任务 Deployment" "cleanup-deployment"
 

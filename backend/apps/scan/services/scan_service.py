@@ -594,6 +594,30 @@ class ScanService:
                     "✓ 已更新状态为 CANCELLING - Scan ID: %s, 等待 Worker 终止 Flow",
                     scan_id
                 )
+                
+                # 6. 启动监控任务（兜底保障）
+                # 在后台监控 Flow Run 状态，确保最终同步到 CANCELLED
+                # 这是为了应对 on_cancellation handler 不触发的情况
+                try:
+                    from apps.scan.tasks.monitor_cancellation_task import monitor_cancellation_task
+                    
+                    # 使用 .submit() 在后台运行，不阻塞当前请求
+                    monitor_cancellation_task.submit(
+                        scan_id=scan_id,
+                        flow_run_id=flow_run_ids[0],  # 监控第一个 Flow Run
+                        timeout_seconds=300  # 5 分钟超时
+                    )
+                    
+                    logger.info(
+                        "🔍 已启动监控任务（兜底保障，5 分钟超时）- Scan ID: %s, Flow Run: %s",
+                        scan_id, flow_run_ids[0]
+                    )
+                except Exception as e:
+                    # 监控任务启动失败不影响主流程
+                    logger.warning(
+                        "⚠️ 启动监控任务失败（不影响取消操作）- Scan ID: %s, 错误: %s",
+                        scan_id, e
+                    )
             
             return True, cancelled_count
             

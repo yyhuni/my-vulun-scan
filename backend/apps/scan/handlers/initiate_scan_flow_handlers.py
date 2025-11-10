@@ -96,6 +96,10 @@ def on_initiate_scan_flow_completed(flow: Flow, flow_run: FlowRun, state: State)
     - Flow 成功完成 = 所有任务成功 → COMPLETED
     - Flow 执行失败 = 有任务失败 → FAILED (由 on_failed 处理)
     
+    竞态条件处理：
+    - 如果状态为 CANCELLING，说明用户已取消但 Flow 自然完成了
+    - 优先遵循用户意图，更新为 CANCELLED 而不是 COMPLETED
+    
     Args:
         flow: Prefect Flow 对象
         flow_run: Flow 运行实例
@@ -111,23 +115,53 @@ def on_initiate_scan_flow_completed(flow: Flow, flow_run: FlowRun, state: State)
         from django.utils import timezone
         
         service = ScanService()
-        success = service.update_status(
-            scan_id, 
-            ScanStatus.COMPLETED,
-            stopped_at=timezone.now()  # Handler 决定设置结束时间
-        )
+        scan = service.scan_repo.get_by_id(scan_id)
         
-        if success:
-            logger.info(
-                "✓ Flow 状态回调：扫描状态已更新为 COMPLETED - Scan ID: %s, Flow Run: %s",
-                scan_id,
-                flow_run.id
+        if not scan:
+            logger.error("Scan 不存在 - Scan ID: %s", scan_id)
+            return
+        
+        # 🔑 关键改动：检测 CANCELLING 状态（竞态条件兜底）
+        if scan.status == ScanStatus.CANCELLING:
+            # 用户已取消，但 Flow 自然完成了（竞态条件）
+            # 优先遵循用户意图：标记为 CANCELLED
+            success = service.update_status(
+                scan_id, 
+                ScanStatus.CANCELLED,
+                message="扫描在完成前被取消（竞态条件）",
+                stopped_at=timezone.now()
             )
+            
+            if success:
+                logger.warning(
+                    "⚠️ Flow 状态回调：检测到竞态条件，将 CANCELLING 更新为 CANCELLED - Scan ID: %s, Flow Run: %s",
+                    scan_id,
+                    flow_run.id
+                )
+            else:
+                logger.error(
+                    "✗ Flow 状态回调：更新扫描状态失败（CANCELLING → CANCELLED）- Scan ID: %s",
+                    scan_id
+                )
         else:
-            logger.error(
-                "✗ Flow 状态回调：更新扫描状态失败 - Scan ID: %s",
-                scan_id
+            # 正常完成流程
+            success = service.update_status(
+                scan_id, 
+                ScanStatus.COMPLETED,
+                stopped_at=timezone.now()  # Handler 决定设置结束时间
             )
+            
+            if success:
+                logger.info(
+                    "✓ Flow 状态回调：扫描状态已更新为 COMPLETED - Scan ID: %s, Flow Run: %s",
+                    scan_id,
+                    flow_run.id
+                )
+            else:
+                logger.error(
+                    "✗ Flow 状态回调：更新扫描状态失败 - Scan ID: %s",
+                    scan_id
+                )
     except Exception as e:
         logger.exception(
             "Flow 状态回调异常 - Scan ID: %s, 错误: %s",
@@ -146,6 +180,10 @@ def on_initiate_scan_flow_failed(flow: Flow, flow_run: FlowRun, state: State) ->
     - Prefect Flow 执行失败或抛出异常时自动触发
     - Flow 超时、任务失败等所有失败场景都会触发此回调
     
+    竞态条件处理：
+    - 如果状态为 CANCELLING，说明用户已取消但 Flow 失败了
+    - 优先遵循用户意图，更新为 CANCELLED 而不是 FAILED
+    
     Args:
         flow: Prefect Flow 对象
         flow_run: Flow 运行实例
@@ -160,24 +198,54 @@ def on_initiate_scan_flow_failed(flow: Flow, flow_run: FlowRun, state: State) ->
         from apps.common.definitions import ScanStatus
         from django.utils import timezone
         
-        # 提取错误信息
-        error_message = str(state.message) if state.message else "Flow 执行失败"
-        
         service = ScanService()
-        success = service.update_status(
-            scan_id, 
-            ScanStatus.FAILED,
-            message=error_message,
-            stopped_at=timezone.now()  # Handler 决定设置结束时间
-        )
+        scan = service.scan_repo.get_by_id(scan_id)
         
-        if success:
-            logger.error(
-                "✗ Flow 状态回调：扫描状态已更新为 FAILED - Scan ID: %s, Flow Run: %s, 错误: %s",
-                scan_id,
-                flow_run.id,
-                error_message
+        if not scan:
+            logger.error("Scan 不存在 - Scan ID: %s", scan_id)
+            return
+        
+        # 🔑 检测 CANCELLING 状态（竞态条件兜底）
+        if scan.status == ScanStatus.CANCELLING:
+            # 用户已取消，但 Flow 失败了（竞态条件）
+            # 优先遵循用户意图：标记为 CANCELLED
+            success = service.update_status(
+                scan_id, 
+                ScanStatus.CANCELLED,
+                message="扫描在失败前被取消（竞态条件）",
+                stopped_at=timezone.now()
             )
+            
+            if success:
+                logger.warning(
+                    "⚠️ Flow 状态回调：检测到竞态条件，将 CANCELLING 更新为 CANCELLED - Scan ID: %s, Flow Run: %s",
+                    scan_id,
+                    flow_run.id
+                )
+            else:
+                logger.error(
+                    "✗ Flow 状态回调：更新扫描状态失败（CANCELLING → CANCELLED）- Scan ID: %s",
+                    scan_id
+                )
+        else:
+            # 正常失败流程
+            # 提取错误信息
+            error_message = str(state.message) if state.message else "Flow 执行失败"
+            
+            success = service.update_status(
+                scan_id, 
+                ScanStatus.FAILED,
+                message=error_message,
+                stopped_at=timezone.now()  # Handler 决定设置结束时间
+            )
+            
+            if success:
+                logger.error(
+                    "✗ Flow 状态回调：扫描状态已更新为 FAILED - Scan ID: %s, Flow Run: %s, 错误: %s",
+                    scan_id,
+                    flow_run.id,
+                    error_message
+                )
     except Exception as e:
         logger.exception(
             "Flow 状态回调异常 - Scan ID: %s, 错误: %s",

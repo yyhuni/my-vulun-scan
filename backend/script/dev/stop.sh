@@ -71,7 +71,16 @@ echo ""
 echo "停止 Django 开发服务器..."
 stop_service "Django" "django"
 
-# 3. 停止 Prefect Server（可选）
+# 3. 停止 Prefect Worker
+echo ""
+echo "停止 Prefect Worker..."
+if pkill -f "prefect worker" 2>/dev/null; then
+    echo -e "${GREEN}✓ Prefect Worker 已停止${NC}"
+else
+    echo -e "${YELLOW}⚠ Prefect Worker 未运行${NC}"
+fi
+
+# 4. 停止 Prefect Server（可选）
 echo ""
 read -p "是否停止 Prefect Server? [y/N]: " stop_prefect
 
@@ -82,7 +91,7 @@ else
     echo -e "${YELLOW}⚠ Prefect Server 保持运行${NC}"
 fi
 
-# 4. 清理空的 PID 目录（如果所有服务都停止了）
+# 5. 清理空的 PID 目录（如果所有服务都停止了）
 if [ -z "$(ls -A $PID_DIR/*.pid 2>/dev/null)" ]; then
     echo ""
     echo "清理 PID 目录..."
