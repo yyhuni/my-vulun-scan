@@ -24,7 +24,7 @@ from apps.scan.repositories import ScanRepository
 from apps.targets.models import Target
 from apps.engine.models import ScanEngine
 from apps.scan.flows import initiate_scan_flow  # 从 flows 导入
-from apps.common.definitions import ScanTaskStatus
+from apps.common.definitions import ScanStatus
 
 logger = logging.getLogger(__name__)
 
@@ -74,9 +74,9 @@ class ScanService:
     
     # 终态集合：这些状态一旦设置，不应该被覆盖
     FINAL_STATUSES = {
-        ScanTaskStatus.COMPLETED,
-        ScanTaskStatus.FAILED,
-        ScanTaskStatus.CANCELLED
+        ScanStatus.COMPLETED,
+        ScanStatus.FAILED,
+        ScanStatus.CANCELLED
     }
     
     def __init__(
@@ -174,7 +174,7 @@ class ScanService:
                     target=target,
                     engine=engine,
                     results_dir=scan_workspace_dir,  # 保存到数据库字段
-                    status=ScanTaskStatus.INITIATED,  # 显式设置初始状态
+                    status=ScanStatus.INITIATED,  # 显式设置初始状态
                     flow_run_ids=[],  # 显式初始化为空列表
                     flow_run_names=[],  # 显式初始化为空列表
                 )
@@ -256,7 +256,7 @@ class ScanService:
                 try:
                     self.scan_repo.update_status(
                         scan.id,
-                        ScanTaskStatus.FAILED,
+                        ScanStatus.FAILED,
                         error_message='提交 Prefect 任务失败'
                     )
                 except (DatabaseError, OperationalError) as save_error:
@@ -280,7 +280,7 @@ class ScanService:
     def update_status(
         self, 
         scan_id: int, 
-        status: ScanTaskStatus, 
+        status: ScanStatus, 
         message: str | None = None
     ) -> bool:
         """
@@ -300,7 +300,7 @@ class ScanService:
                 logger.debug(
                     "更新 Scan 状态成功 - Scan ID: %s, 状态: %s", 
                     scan_id, 
-                    ScanTaskStatus(status).label
+                    ScanStatus(status).label
                 )
             return result
         except (DatabaseError, OperationalError) as e:
@@ -342,10 +342,10 @@ class ScanService:
                 return False
             
             # 步骤 2: 验证状态（业务规则）
-            if scan.status != ScanTaskStatus.INITIATED:
+            if scan.status != ScanStatus.INITIATED:
                 logger.error(
                     "Scan 状态异常 - 期望 INITIATED，实际 %s, Scan ID: %s",
-                    ScanTaskStatus(scan.status).label,
+                    ScanStatus(scan.status).label,
                     scan_id
                 )
                 return False
@@ -353,15 +353,15 @@ class ScanService:
             # 步骤 3: 委托 Repository 层进行数据更新
             result = self.scan_repo.update_status(
                 scan_id=scan_id,
-                status=ScanTaskStatus.RUNNING
+                status=ScanStatus.RUNNING
             )
             
             if result:
                 logger.info(
                     "扫描状态已更新 - Scan ID: %s, 状态: %s → %s",
                     scan_id,
-                    ScanTaskStatus.INITIATED.label,
-                    ScanTaskStatus.RUNNING.label
+                    ScanStatus.INITIATED.label,
+                    ScanStatus.RUNNING.label
                 )
             else:
                 logger.error(
@@ -406,10 +406,10 @@ class ScanService:
                 return False, 0
             
             # 2. 验证状态（只能停止 RUNNING/INITIATED）
-            if scan.status not in [ScanTaskStatus.RUNNING, ScanTaskStatus.INITIATED]:
+            if scan.status not in [ScanStatus.RUNNING, ScanStatus.INITIATED]:
                 logger.warning(
                     "无法停止扫描：当前状态为 %s - Scan ID: %s",
-                    ScanTaskStatus(scan.status).label,
+                    ScanStatus(scan.status).label,
                     scan_id
                 )
                 return False, 0
@@ -494,13 +494,13 @@ class ScanService:
             if scan.status in self.FINAL_STATUSES:
                 logger.info(
                     "Scan 已处于终态 %s，跳过 ABORTED 更新（终态保护） - Scan ID: %s",
-                    ScanTaskStatus(scan.status).label,
+                    ScanStatus(scan.status).label,
                     scan_id
                 )
                 return True
             
             # 更新为 ABORTED
-            result = self.update_status(scan_id, ScanTaskStatus.ABORTED)
+            result = self.update_status(scan_id, ScanStatus.ABORTED)
             if not result:
                 return False
             

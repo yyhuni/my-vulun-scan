@@ -9,7 +9,7 @@ from .serializers import ScanSerializer, ScanHistorySerializer
 from .services.scan_service import ScanService
 from apps.targets.models import Target, Organization
 from apps.engine.models import ScanEngine
-from apps.common.definitions import ScanTaskStatus
+from apps.common.definitions import ScanStatus
 from apps.asset.serializers import SubdomainListSerializer
 
 
@@ -308,10 +308,10 @@ class ScanViewSet(viewsets.ModelViewSet):
             if not success:
                 # 检查是否是状态不允许的问题
                 scan = Scan.objects.get(id=pk)  # type: ignore  # pylint: disable=no-member
-                if scan.status not in [ScanTaskStatus.RUNNING, ScanTaskStatus.INITIATED]:
+                if scan.status not in [ScanStatus.RUNNING, ScanStatus.INITIATED]:
                     return Response(
                         {
-                            'error': f'无法停止扫描：当前状态为 {ScanTaskStatus(scan.status).label}',
+                            'error': f'无法停止扫描：当前状态为 {ScanStatus(scan.status).label}',
                             'detail': '只能停止运行中或初始化状态的扫描'
                         },
                         status=status.HTTP_400_BAD_REQUEST

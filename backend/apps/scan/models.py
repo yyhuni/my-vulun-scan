@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.postgres.fields import ArrayField
 
-from ..common.definitions import ScanTaskStatus
+from ..common.definitions import ScanStatus
 from ..asset.models import Email, Employee, Dork, S3Bucket
 
 
@@ -24,8 +24,8 @@ class Scan(models.Model):
 
     status = models.CharField(
         max_length=20,
-        choices=ScanTaskStatus.choices,
-        default=ScanTaskStatus.INITIATED,
+        choices=ScanStatus.choices,
+        default=ScanStatus.INITIATED,
         db_index=True,
         help_text='任务状态'
     )

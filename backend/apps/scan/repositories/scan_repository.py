@@ -17,7 +17,7 @@ from django.utils import timezone
 from apps.scan.models import Scan
 from apps.targets.models import Target
 from apps.engine.models import ScanEngine
-from apps.common.definitions import ScanTaskStatus
+from apps.common.definitions import ScanStatus
 
 logger = logging.getLogger(__name__)
 
@@ -140,7 +140,7 @@ class ScanRepository:
         target: Target,
         engine: ScanEngine,
         results_dir: str,
-        status: ScanTaskStatus = ScanTaskStatus.INITIATED
+        status: ScanStatus = ScanStatus.INITIATED
     ) -> Scan:
         """
         创建扫描任务
@@ -234,7 +234,7 @@ class ScanRepository:
         return queryset
     
     @staticmethod
-    def filter_by_status(status: ScanTaskStatus, prefetch_relations: bool = True) -> QuerySet[Scan]:
+    def filter_by_status(status: ScanStatus, prefetch_relations: bool = True) -> QuerySet[Scan]:
         """
         根据状态筛选扫描任务
         
@@ -273,7 +273,7 @@ class ScanRepository:
     @transaction.atomic
     def update_status(
         scan_id: int,
-        status: ScanTaskStatus,
+        status: ScanStatus,
         error_message: str | None = None,
         started_at: datetime | None = None
     ) -> bool:
@@ -299,14 +299,14 @@ class ScanRepository:
             scan.error_message = error_message[:300]
         
         # 如果状态转为 RUNNING，设置开始时间
-        if status == ScanTaskStatus.RUNNING:
+        if status == ScanStatus.RUNNING:
             scan.started_at = started_at or timezone.now()
         
         # 如果任务完成，更新结束时间
         if status in [
-            ScanTaskStatus.COMPLETED,
-            ScanTaskStatus.FAILED,
-            ScanTaskStatus.CANCELLED
+            ScanStatus.COMPLETED,
+            ScanStatus.FAILED,
+            ScanStatus.CANCELLED
         ]:
             scan.stopped_at = timezone.now()
         
@@ -314,7 +314,7 @@ class ScanRepository:
         logger.debug(
             "更新 Scan 状态 - ID: %s, 状态: %s",
             scan_id,
-            ScanTaskStatus(status).label
+            ScanStatus(status).label
         )
         return True
     
@@ -421,7 +421,7 @@ class ScanRepository:
     @transaction.atomic
     def start_scan(
         scan_id: int,
-        status: ScanTaskStatus,
+        status: ScanStatus,
         task_id: str,
         task_name: str,
         started_at: datetime | None = None
@@ -462,7 +462,7 @@ class ScanRepository:
         logger.debug(
             "启动 Scan - ID: %s, 状态: %s, 任务: %s",
             scan_id,
-            ScanTaskStatus(status).label,
+            ScanStatus(status).label,
             task_name
         )
         return True

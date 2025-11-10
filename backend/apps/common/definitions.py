@@ -1,7 +1,7 @@
 from django.db import models
 
 
-class ScanTaskStatus(models.TextChoices):
+class ScanStatus(models.TextChoices):
     """扫描任务状态枚举（与 Prefect 状态对齐）"""
     CANCELLED = 'cancelled', '已取消'
     COMPLETED = 'completed', '已完成'
