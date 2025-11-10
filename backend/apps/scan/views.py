@@ -3,7 +3,6 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db.utils import DatabaseError, IntegrityError, OperationalError
-from celery.exceptions import CeleryError
 
 from .models import Scan
 from .serializers import ScanSerializer, ScanHistorySerializer
@@ -159,13 +158,6 @@ class ScanViewSet(viewsets.ModelViewSet):
                 {'error': '数据库错误，请稍后重试'},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
-        
-        except CeleryError as e:
-            # Celery 任务提交失败
-            return Response(
-                {'error': f'任务提交失败: {str(e)}'},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE
-            )
     
     @action(detail=False, methods=['post', 'delete'])
     def bulk_delete(self, request):
@@ -298,8 +290,7 @@ class ScanViewSet(viewsets.ModelViewSet):
         
         功能:
         - 终止正在运行或初始化的扫描任务
-        - 撤销所有关联的 Celery 任务
-        - 更新扫描状态为 'aborted'
+        - 更新扫描状态为 'cancelled'
         
         状态限制:
         - 只能停止 'running' 或 'initiated' 状态的扫描

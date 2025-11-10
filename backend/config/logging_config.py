@@ -7,7 +7,6 @@
 - LOG_LEVEL: 全局日志级别 (DEBUG/INFO/WARNING/ERROR/CRITICAL)
 - LOG_DIR: 日志文件目录（留空则不输出文件）
 - SCAN_LOG_LEVEL: 扫描模块日志级别（可选）
-- CELERY_LOG_LEVEL: Celery 日志级别（可选）
 
 开发环境特性：
 - 默认 DEBUG 级别
@@ -40,7 +39,6 @@ def get_logging_config(debug: bool = False):
     
     # 模块级别日志控制（可选）
     scan_log_level = os.getenv('SCAN_LOG_LEVEL', log_level)
-    celery_log_level = os.getenv('CELERY_LOG_LEVEL', log_level)
     
     # 构建 handlers 配置
     log_handlers = ['console']
@@ -126,12 +124,7 @@ def get_logging_config(debug: bool = False):
                 'propagate': False,
             },
             
-            # Celery 日志
-            'celery': {
-                'handlers': log_handlers,
-                'level': celery_log_level,
-                'propagate': False,
-            },
+
             
             # 应用日志 - 扫描模块
             'apps.scan': {

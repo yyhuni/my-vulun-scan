@@ -77,9 +77,9 @@ class ScanService:
     
     # 终态集合：这些状态一旦设置，不应该被覆盖
     FINAL_STATUSES = {
-        ScanTaskStatus.SUCCESSFUL,
+        ScanTaskStatus.COMPLETED,
         ScanTaskStatus.FAILED,
-        ScanTaskStatus.ABORTED
+        ScanTaskStatus.CANCELLED
     }
     
     def __init__(
@@ -189,8 +189,8 @@ class ScanService:
                     engine=engine,
                     results_dir=scan_workspace_dir,  # 保存到数据库字段
                     status=ScanTaskStatus.INITIATED,  # 显式设置初始状态
-                    task_ids=[],  # 显式初始化为空列表
-                    task_names=[],  # 显式初始化为空列表
+                    flow_run_ids=[],  # 显式初始化为空列表
+                    flow_run_names=[],  # 显式初始化为空列表
                 )
                 scans_to_create.append(scan)
             except (ValidationError, ValueError) as e:
@@ -427,11 +427,11 @@ class ScanService:
             failed_count = stats.get('failed', 0)
             
             if aborted_count > 0:
-                suggested_status = ScanTaskStatus.ABORTED
+                suggested_status = ScanTaskStatus.CANCELLED
             elif failed_count > 0:
                 suggested_status = ScanTaskStatus.FAILED
             else:
-                suggested_status = ScanTaskStatus.SUCCESSFUL
+                suggested_status = ScanTaskStatus.COMPLETED
             
             return True, stats, suggested_status
                 
@@ -482,18 +482,18 @@ class ScanService:
         
         职责：
         - 验证扫描状态（只能停止 RUNNING/INITIATED）
-        - 撤销所有 Celery 任务
-        - 更新状态为 ABORTED
+        - 取消所有 Prefect Flow Runs
+        - 状态由 on_cancelled Handler 自动更新为 CANCELLED
         
         Args:
             scan_id: 扫描任务 ID
         
         Returns:
-            (是否成功, 撤销的任务数量)
+            (是否成功, 取消的 Flow Run 数量)
         
         Note:
             此方法用于 API 主动停止场景
-            先更新状态,利用终态保护机制防止信号重复更新
+            状态更新完全由 Prefect Handler 管理
         """
         try:
             # 1. 获取扫描对象
@@ -512,55 +512,44 @@ class ScanService:
                 return False, 0
             
             # 3. 获取任务列表
-            task_ids = scan.task_ids or []
+            flow_run_ids = scan.flow_run_ids or []
             
-            # 4. 撤销所有 Celery 任务（先执行实际操作）
-            revoked_count = 0
-            if task_ids:
-                app = current_app._get_current_object()
+            # 4. 取消所有 Prefect Flow Runs
+            if flow_run_ids:
+                from prefect import get_client
+                from uuid import UUID
                 
-                for task_id in task_ids:
-                    try:
-                        app.control.revoke(
-                            task_id,
-                            terminate=True,
-                            signal='SIGTERM'
-                        )
-                        revoked_count += 1
-                        logger.debug("已撤销任务: %s - Scan ID: %s", task_id, scan_id)
-                    except CeleryError as e:
-                        logger.error(
-                            "撤销任务失败: %s - Scan ID: %s, Error: %s",
-                            task_id, scan_id, e
-                        )
-                        # 继续处理其他任务
-                
-                logger.info(
-                    "已撤销 %d/%d 个任务 - Scan ID: %s",
-                    revoked_count, len(task_ids), scan_id
-                )
+                try:
+                    client = get_client(sync_client=True)
+                    
+                    for flow_run_id in flow_run_ids:
+                        try:
+                            client.cancel_flow_run(UUID(flow_run_id))
+                            cancelled_count += 1
+                            logger.debug("已取消 Flow Run: %s - Scan ID: %s", flow_run_id, scan_id)
+                        except Exception as e:
+                            logger.error(
+                                "取消 Flow Run 失败: %s - Scan ID: %s, Error: %s",
+                                flow_run_id, scan_id, e
+                            )
+                            # 继续处理其他任务
+                    
+                    logger.info(
+                        "已取消 %d/%d 个 Flow Run - Scan ID: %s",
+                        cancelled_count, len(flow_run_ids), scan_id
+                    )
+                except Exception as e:
+                    logger.error("连接 Prefect Server 失败: %s", e)
             else:
-                logger.info("无关联任务需要撤销 - Scan ID: %s", scan_id)
+                logger.info("无关联 Flow Run 需要取消 - Scan ID: %s", scan_id)
             
-            # 5. 更新状态为 ABORTED（记录操作结果）
-            # 注意: 这个更新是必要的,原因:
-            # - 有任务时: task_revoked 信号会先更新状态,这里是幂等操作
-            # - 无任务时: 没有信号触发,必须由这里更新状态
-            # - 部分失败时: 确保状态最终正确
-            result = self.update_status(scan_id, ScanTaskStatus.ABORTED)
-            if not result:
-                logger.warning(
-                    "更新扫描状态为 ABORTED 失败 - Scan ID: %s (任务已撤销 %d 个)",
-                    scan_id, revoked_count
-                )
-                # 即使状态更新失败,任务已经撤销,返回成功
-                # 信号处理器可能已经更新了状态
+            # 5. 状态由 on_cancelled Handler 自动更新为 CANCELLED
             
             logger.info(
-                "扫描已停止 - Scan ID: %s, 撤销任务数: %d",
-                scan_id, revoked_count
+                "✓ 已发送取消请求 - Scan ID: %s, Flow Run: %d 个 (状态将由 Handler 更新为 CANCELLED)",
+                scan_id, cancelled_count
             )
-            return True, revoked_count
+            return True, cancelled_count
             
         except (DatabaseError, OperationalError) as e:
             logger.exception("数据库错误：停止扫描失败 - Scan ID: %s", scan_id)
@@ -627,6 +616,7 @@ class ScanService:
         failed_task_id: str | None = None
     ) -> bool:
         """
+        
         标记扫描为失败并撤销所有可撤销的任务
         
         职责：
@@ -711,6 +701,7 @@ class ScanService:
         scan_id: int
     ) -> int:
         """
+        
         撤销任务列表（区分 RUNNING 和 INITIATED）
         
         Args:
@@ -772,7 +763,7 @@ class ScanService:
         
         Args:
             scan_id: 扫描 ID
-            task_id: Celery 任务 ID（不能为空）
+            task_id: Prefect Flow Run ID（不能为空）
             task_name: 任务名称
         
         Returns:

@@ -32,18 +32,18 @@ class Scan(models.Model):
 
     results_dir = models.CharField(max_length=100, blank=True, default='', help_text='结果存储目录')
 
-    task_ids = ArrayField(
+    flow_run_ids = ArrayField(
         models.CharField(max_length=100),
         blank=True,
         default=list,
-        help_text='Celery 任务 ID 列表'
+        help_text='Prefect Flow Run ID 列表（第一个为主 Flow Run ID）'
     )
 
-    task_names = ArrayField(
+    flow_run_names = ArrayField(
         models.CharField(max_length=200),
         blank=True,
         default=list,
-        help_text='任务列表名称'
+        help_text='Flow Run 名称列表'
     )
 
     error_message = models.CharField(max_length=300, blank=True, default='', help_text='错误信息')
@@ -118,13 +118,13 @@ class ScanTask(models.Model):
     error_message = models.CharField(max_length=300, blank=True, default='', help_text='任务失败时的错误信息（限制300字符）')
     error_traceback = models.TextField(blank=True, default='', help_text='完整的错误堆栈信息（用于调试）')
 
-    # Celery 任务ID（用于追踪异步任务）
-    task_id = models.CharField(
+    # Prefect Flow Run ID（用于追踪异步任务）
+    flow_run_id = models.CharField(
         max_length=100,
         blank=True,
         default='',
         db_index=True,  # 添加索引，用于 update_or_create 查询优化
-        help_text='Celery 异步任务的唯一标识符'
+        help_text='Prefect Flow Run ID 或 Task Run ID'
     )
 
     class Meta:
@@ -134,7 +134,7 @@ class ScanTask(models.Model):
         ordering = ['-updated_at']
         indexes = [
             models.Index(fields=['-updated_at']),
-            models.Index(fields=['scan', 'task_id']),  # 组合索引：优化 update_or_create 查询
+            models.Index(fields=['scan', 'flow_run_id']),  # 组合索引：优化 update_or_create 查询
             models.Index(fields=['scan', 'status']),   # 组合索引：优化状态查询
         ]
 

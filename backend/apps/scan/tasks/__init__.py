@@ -12,7 +12,6 @@
 
 # Prefect Tasks（新架构）
 from .workspace_tasks import create_scan_workspace_task
-from .config_tasks import parse_engine_config_task
 
 # 子域名发现任务（已重构为多个子任务）
 from .subdomain_discovery import (
@@ -30,7 +29,6 @@ from .subdomain_discovery import (
 __all__ = [
     # Prefect Tasks
     'create_scan_workspace_task',
-    'parse_engine_config_task',
     # 子域名发现任务
     'run_scanner_task',
     'merge_and_validate_task',

@@ -159,8 +159,8 @@ class ScanRepository:
             engine=engine,
             results_dir=results_dir,
             status=status,
-            task_ids=[],
-            task_names=[]
+            flow_run_ids=[],
+            flow_run_names=[]
         )
         scan.save()
         logger.debug("创建 Scan - ID: %s, Target: %s", scan.id, target.name)
@@ -304,9 +304,9 @@ class ScanRepository:
         
         # 如果任务完成，更新结束时间
         if status in [
-            ScanTaskStatus.SUCCESSFUL,
+            ScanTaskStatus.COMPLETED,
             ScanTaskStatus.FAILED,
-            ScanTaskStatus.ABORTED
+            ScanTaskStatus.CANCELLED
         ]:
             scan.stopped_at = timezone.now()
         
@@ -372,7 +372,7 @@ class ScanRepository:
         
         Args:
             scan_id: 扫描任务 ID
-            task_id: Celery 任务 ID
+            task_id: Prefect Flow Run ID
             task_name: 任务名称
         
         Returns:
@@ -383,9 +383,9 @@ class ScanRepository:
             return False
         
         # 避免重复添加
-        if task_id and task_id not in scan.task_ids:
-            scan.task_ids.append(task_id)
-            scan.task_names.append(task_name)
+        if task_id and task_id not in scan.flow_run_ids:
+            scan.flow_run_ids.append(task_id)
+            scan.flow_run_names.append(task_name)
             scan.save()
             logger.debug("添加任务 ID - Scan ID: %s, Task: %s", scan_id, task_name)
         
@@ -399,7 +399,7 @@ class ScanRepository:
         
         Args:
             scan_id: 扫描任务 ID
-            task_id: Celery 任务 ID
+            task_id: Prefect Flow Run ID
             task_name: 任务名称
         
         Returns:
@@ -409,8 +409,8 @@ class ScanRepository:
         if not scan:
             return False
         
-        scan.task_ids = [task_id] if task_id else []
-        scan.task_names = [task_name]
+        scan.flow_run_ids = [task_id] if task_id else []
+        scan.flow_run_names = [task_name]
         scan.save()
         logger.debug("初始化任务列表 - Scan ID: %s, Task: %s", scan_id, task_name)
         return True
@@ -439,7 +439,7 @@ class ScanRepository:
         Args:
             scan_id: 扫描任务 ID
             status: 新状态
-            task_id: Celery 任务 ID
+            task_id: Prefect Flow Run ID
             task_name: 任务名称
             started_at: 开始时间（默认为当前时间）
         
@@ -455,8 +455,8 @@ class ScanRepository:
         scan.started_at = started_at or timezone.now()
         
         # 初始化任务列表
-        scan.task_ids = [task_id] if task_id else []
-        scan.task_names = [task_name]
+        scan.flow_run_ids = [task_id] if task_id else []
+        scan.flow_run_names = [task_name]
         
         scan.save()
         logger.debug(
@@ -483,7 +483,7 @@ class ScanRepository:
         
         Args:
             scan_id: 扫描任务 ID
-            task_id: Celery 任务 ID
+            task_id: Prefect Flow Run ID
             task_name: 任务名称
         
         Returns:
@@ -511,8 +511,8 @@ class ScanRepository:
                 cursor.execute(
                     """
                     UPDATE scan
-                    SET task_ids = array_append(task_ids, %s),
-                        task_names = array_append(task_names, %s)
+                    SET flow_run_ids = array_append(flow_run_ids, %s),
+                        flow_run_names = array_append(flow_run_names, %s)
                     WHERE id = %s
                     """,
                     [task_id, task_name, scan_id]

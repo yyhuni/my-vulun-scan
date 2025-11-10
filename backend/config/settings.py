@@ -253,7 +253,6 @@ SCAN_RESULTS_RETENTION_DAYS = int(os.getenv('SCAN_RETENTION_DAYS', '7'))
 #    - LOG_LEVEL: 全局日志级别（DEBUG/INFO/WARNING/ERROR/CRITICAL）
 #    - LOG_DIR: 日志文件目录（留空则不输出文件）
 #    - SCAN_LOG_LEVEL: 扫描模块日志级别（可选，单独控制）
-#    - CELERY_LOG_LEVEL: Celery 日志级别（可选，单独控制）
 
 from config.logging_config import get_logging_config
 

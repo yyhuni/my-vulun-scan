@@ -12,11 +12,11 @@ class ScanSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'target', 'target_name', 'engine', 'engine_name',
             'started_at', 'stopped_at', 'status', 'results_dir',
-            'task_ids', 'task_names', 'error_message'
+            'flow_run_ids', 'flow_run_names', 'error_message'
         ]
         read_only_fields = [
             'id', 'started_at', 'stopped_at', 'results_dir',
-            'task_ids', 'task_names', 'error_message', 'status'
+            'flow_run_ids', 'flow_run_names', 'error_message', 'status'
         ]
     
     def get_target_name(self, obj):
@@ -72,22 +72,31 @@ class ScanHistorySerializer(serializers.ModelSerializer):
         }
     
     def get_progress(self, obj):
-        """根据 task_names 计算实际进度百分比
+        """根据扫描状态和执行时间动态计算进度百分比
         
-        进度计算逻辑：
-        - successful: 100% (已成功完成)
-        - initiated: 0% (刚初始化)
-        - running: 根据已完成的任务数动态计算
-          * 0 个任务: 10% (刚开始)
-          * 1 个任务: 33% (完成初始化)
-          * 2 个任务: 66% (完成子域名发现)
-          * 3+ 个任务: 90% (接近完成)
-        - failed/aborted: 根据失败前完成的任务数计算
+        进度计算策略（基于 Prefect Flow 状态）：
         
-        假设标准扫描有 3 个任务阶段：
-        1. initiate_scan (初始化)
-        2. subdomain_discovery (子域名发现)
-        3. finalize_scan (完成扫描)
+        1. **已完成状态**：
+           - successful: 100% (扫描成功完成)
+           - failed/aborted: 根据执行时长估算进度
+        
+        2. **初始化状态**：
+           - initiated: 0% (刚创建，未开始执行)
+        
+        3. **运行中状态**：
+           - running: 根据已执行时长动态估算
+             * 0-30秒: 10-30% (创建工作空间 + 启动扫描工具)
+             * 30秒-2分钟: 30-70% (扫描工具执行中)
+             * 2分钟以上: 70-95% (合并数据 + 保存数据库)
+        
+        当前任务流程：
+        - Task 1: create_scan_workspace (创建工作空间)
+        - Task 2: subdomain_discovery_flow (子域名发现)
+          * Step 1: 并行运行扫描工具 (amass, subfinder 等)
+          * Step 2: 合并并去重域名
+          * Step 3: 流式保存到数据库
+        
+        注：状态更新由 Prefect Flow Handlers 自动管理，不再依赖 flow_run_names
         """
         if obj.status == 'successful':
             return 100
@@ -95,25 +104,32 @@ class ScanHistorySerializer(serializers.ModelSerializer):
         if obj.status == 'initiated':
             return 0
         
-        # 获取已完成的任务数
-        completed_tasks = len(obj.task_names) if obj.task_names else 0
-        expected_tasks = 3  # 标准扫描的任务数
-        
-        if obj.status in ['failed', 'aborted']:
-            # 失败或中止：根据已完成的任务数计算进度
-            if completed_tasks == 0:
-                return 0
-            return min(int((completed_tasks / expected_tasks) * 100), 100)
-        
-        if obj.status == 'running':
-            # 运行中：根据已记录的任务数估算进度
-            if completed_tasks == 0:
-                return 10  # 刚开始
-            elif completed_tasks == 1:
-                return 33  # 完成初始化
-            elif completed_tasks == 2:
-                return 66  # 完成子域名发现
+        # 对于运行中、失败或中止的任务，基于时间估算进度
+        if obj.status in ['running', 'failed', 'aborted']:
+            # 计算已执行时长（秒）
+            if obj.started_at:
+                from django.utils import timezone
+                elapsed_seconds = (timezone.now() - obj.started_at).total_seconds()
+                
+                # 基于时长估算进度
+                if elapsed_seconds < 30:
+                    # 前 30 秒：创建工作空间 + 启动工具 (10-30%)
+                    progress = min(10 + int(elapsed_seconds * 0.67), 30)
+                elif elapsed_seconds < 120:
+                    # 30秒 - 2分钟：扫描工具执行 (30-70%)
+                    progress = min(30 + int((elapsed_seconds - 30) * 0.44), 70)
+                else:
+                    # 2分钟以上：数据处理 (70-95%)
+                    progress = min(70 + int((elapsed_seconds - 120) * 0.1), 95)
+                
+                # 失败或中止时，返回当前进度（不到 100%）
+                if obj.status in ['failed', 'aborted']:
+                    return progress
+                
+                # 运行中时，返回估算进度
+                return progress
             else:
-                return 90  # 接近完成
+                # 没有开始时间，返回默认值
+                return 10 if obj.status == 'running' else 0
         
         return 0

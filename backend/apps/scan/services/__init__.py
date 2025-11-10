@@ -5,7 +5,6 @@
 """
 
 from .scan_task_service import ScanTaskService
-from .notification_service import NotificationService
 from .scan_service import ScanService
 
 __all__ = [

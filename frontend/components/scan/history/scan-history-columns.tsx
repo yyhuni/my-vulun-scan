@@ -126,11 +126,23 @@ function StatusBadge({ status }: { status: ScanStatus }) {
     variant: "secondary" | "default" | "outline" | "destructive"
     className?: string
   }> = {
-    aborted: {
+    cancelled: {
       icon: IconCircleX,
-      label: "Aborted",
+      label: "Cancelled",
       variant: "outline",
       className: "bg-chart-2/20 text-chart-2 border-chart-2/30 hover:bg-chart-2/30 transition-colors",
+    },
+    completed: {
+      icon: IconCircleCheck,
+      label: "Completed",
+      variant: "outline",
+      className: "bg-chart-1/20 text-chart-1 border-chart-1/30 hover:bg-chart-1/30 transition-colors",
+    },
+    crashed: {
+      icon: IconCircleX,
+      label: "Crashed",
+      variant: "destructive",
+      className: "bg-purple-500/20 text-purple-500 border-purple-500/30 hover:bg-purple-500/30 transition-colors",
     },
     failed: {
       icon: IconCircleX,
@@ -149,12 +161,6 @@ function StatusBadge({ status }: { status: ScanStatus }) {
       label: "Running",
       variant: "outline",
       className: "bg-chart-3/20 text-chart-3 border-chart-3/30 hover:bg-chart-3/30 transition-colors",
-    },
-    successful: {
-      icon: IconCircleCheck,
-      label: "Successful",
-      variant: "outline",
-      className: "bg-chart-1/20 text-chart-1 border-chart-1/30 hover:bg-chart-1/30 transition-colors",
     },
   }
 
@@ -484,18 +490,19 @@ export const createScanHistoryColumns = ({
       const progress = row.getValue("progress") as number
       const status = row.original.status
       
-      // 如果状态是successful，显示100%
-      const displayProgress = status === "successful" ? 100 : progress
+      // 如果状态是completed，显示100%
+      const displayProgress = status === "completed" ? 100 : progress
       
       return (
         <div className="flex items-center gap-2 min-w-[120px]">
           <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
             <div 
               className={`h-full transition-all ${
-                status === "successful" ? "bg-chart-1" : 
+                status === "completed" ? "bg-chart-1" : 
                 status === "failed" ? "bg-destructive" : 
                 status === "running" ? "bg-chart-3" : 
-                status === "aborted" ? "bg-chart-2" :
+                status === "cancelled" ? "bg-chart-2" :
+                status === "crashed" ? "bg-purple-500" :
                 status === "initiated" ? "bg-chart-4" :
                 "bg-muted-foreground"
               }`}

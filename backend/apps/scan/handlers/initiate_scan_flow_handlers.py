@@ -1,12 +1,12 @@
 """
 initiate_scan_flow 状态处理器
 
-负责 initiate_scan_flow 生命周期的状态同步：
+负责 initiate_scan_flow 生命周期的状态同步（Prefect 3.x 支持的 5 个 Hooks）：
 - on_running: Flow 开始运行时更新扫描状态为 RUNNING
-- on_completion: Flow 成功完成时更新扫描状态为 SUCCESSFUL
-- on_failure: Flow 失败时更新扫描状态为 FAILED
-- on_cancellation: Flow 被取消时更新扫描状态为 ABORTED
-- on_crashed: Flow 崩溃时更新扫描状态为 FAILED
+- on_completion: Flow 成功完成时更新扫描状态为 COMPLETED
+- on_failure: Flow 失败时更新扫描状态为 FAILED（包括超时、异常等所有失败场景）
+- on_cancellation: Flow 被取消时更新扫描状态为 CANCELLED
+- on_crashed: Flow 崩溃时更新扫描状态为 CRASHED
 
 策略：快速失败（Fail-Fast）
 - 任何子任务失败都会导致 Flow 失败
@@ -16,6 +16,7 @@ initiate_scan_flow 状态处理器
 职责分离：
 - Flow 层只负责工作流编排和执行
 - 状态管理由 Prefect State Hooks 统一处理
+- Handler 直接映射 Prefect 状态到业务状态
 - 解耦业务逻辑和工作流执行
 """
 
@@ -80,14 +81,14 @@ def on_initiate_scan_flow_completed(flow: Flow, flow_run: FlowRun, state: State)
     """
     initiate_scan_flow 成功完成时的回调
     
-    职责：更新 Scan 状态为 SUCCESSFUL
+    职责：更新 Scan 状态为 COMPLETED
     
     触发时机：
     - Prefect Flow 正常执行完成时自动触发
     - 在 Flow 函数体返回之后调用
     
     策略：快速失败（Fail-Fast）
-    - Flow 成功完成 = 所有任务成功 → SUCCESSFUL
+    - Flow 成功完成 = 所有任务成功 → COMPLETED
     - Flow 执行失败 = 有任务失败 → FAILED (由 on_failed 处理)
     
     Args:
@@ -104,11 +105,11 @@ def on_initiate_scan_flow_completed(flow: Flow, flow_run: FlowRun, state: State)
         from apps.common.definitions import ScanTaskStatus
         
         service = ScanService()
-        success = service.update_status(scan_id, ScanTaskStatus.SUCCESSFUL)
+        success = service.update_status(scan_id, ScanTaskStatus.COMPLETED)
         
         if success:
             logger.info(
-                "✓ Flow 状态回调：扫描状态已更新为 SUCCESSFUL - Scan ID: %s, Flow Run: %s",
+                "✓ Flow 状态回调：扫描状态已更新为 COMPLETED - Scan ID: %s, Flow Run: %s",
                 scan_id,
                 flow_run.id
             )
@@ -133,7 +134,7 @@ def on_initiate_scan_flow_failed(flow: Flow, flow_run: FlowRun, state: State) ->
     
     触发时机：
     - Prefect Flow 执行失败或抛出异常时自动触发
-    - 即使 Flow 中途崩溃也会被调用
+    - Flow 超时、任务失败等所有失败场景都会触发此回调
     
     Args:
         flow: Prefect Flow 对象
@@ -177,7 +178,7 @@ def on_initiate_scan_flow_cancelled(flow: Flow, flow_run: FlowRun, state: State)
     """
     initiate_scan_flow 被取消时的回调
     
-    职责：更新 Scan 状态为 ABORTED
+    职责：更新 Scan 状态为 CANCELLED
     
     触发时机：
     - 用户主动取消扫描任务
@@ -200,13 +201,13 @@ def on_initiate_scan_flow_cancelled(flow: Flow, flow_run: FlowRun, state: State)
         service = ScanService()
         success = service.update_status(
             scan_id, 
-            ScanTaskStatus.ABORTED,
+            ScanTaskStatus.CANCELLED,
             message="扫描任务已被取消"
         )
         
         if success:
             logger.warning(
-                "✗ Flow 状态回调：扫描状态已更新为 ABORTED - Scan ID: %s, Flow Run: %s",
+                "✗ Flow 状态回调：扫描状态已更新为 CANCELLED - Scan ID: %s, Flow Run: %s",
                 scan_id,
                 flow_run.id
             )
@@ -222,7 +223,7 @@ def on_initiate_scan_flow_crashed(flow: Flow, flow_run: FlowRun, state: State) -
     """
     initiate_scan_flow 崩溃时的回调
     
-    职责：更新 Scan 状态为 FAILED，并记录崩溃信息
+    职责：更新 Scan 状态为 CRASHED，并记录崩溃信息
     
     触发时机（系统级异常）：
     - Prefect Worker 进程被杀（OOM、手动 kill -9）
@@ -254,13 +255,13 @@ def on_initiate_scan_flow_crashed(flow: Flow, flow_run: FlowRun, state: State) -
         service = ScanService()
         success = service.update_status(
             scan_id, 
-            ScanTaskStatus.FAILED,
+            ScanTaskStatus.CRASHED,
             message=f"系统崩溃: {error_message}"
         )
         
         if success:
             logger.critical(
-                "✗ Flow 状态回调：扫描任务崩溃，状态已更新为 FAILED - Scan ID: %s, Flow Run: %s, 错误: %s",
+                "✗ Flow 状态回调：扫描任务崩溃，状态已更新为 CRASHED - Scan ID: %s, Flow Run: %s, 错误: %s",
                 scan_id,
                 flow_run.id,
                 error_message
