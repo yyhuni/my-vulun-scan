@@ -203,17 +203,18 @@ class ScanService:
         Returns:
             Scan 工作空间目录路径字符串
         
-        格式：{SCAN_RESULTS_DIR}/scan_{timestamp}_{uuid4}/
-        示例：/data/scans/scan_20231104_152030_a3f2/
+        格式：{SCAN_RESULTS_DIR}/scan_{timestamp}_{uuid8}/
+        示例：/data/scans/scan_20231104_152030_a3f2b7e9/
         
         Raises:
             ValueError: 如果 SCAN_RESULTS_DIR 未设置或为空
         
         Note:
-            使用秒级时间戳 + 4 位 UUID 确保路径唯一性，兼顾性能、可读性和防冲突
+            使用秒级时间戳 + 8 位 UUID 确保路径唯一性
+            冲突概率：同一秒内创建 1000 个扫描，冲突概率 < 0.01%
         """
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        unique_id = uuid.uuid4().hex[:4]  # 4 位十六进制UUID
+        unique_id = uuid.uuid4().hex[:8]  # 8 位十六进制UUID (4,294,967,296 种可能)
         
         # 从 settings 获取，保持配置统一
         base_dir = getattr(settings, 'SCAN_RESULTS_DIR', None)
@@ -372,7 +373,7 @@ class ScanService:
         self, 
         scan_id: int, 
         status: ScanStatus, 
-        message: str | None = None,
+        error_message: str | None = None,
         started_at: datetime | None = None,
         stopped_at: datetime | None = None
     ) -> bool:
@@ -382,7 +383,7 @@ class ScanService:
         Args:
             scan_id: 扫描任务 ID
             status: 新状态
-            message: 错误消息（可选）
+            error_message: 错误消息（可选）
             started_at: 开始时间（可选）
             stopped_at: 结束时间（可选）
         
@@ -397,7 +398,7 @@ class ScanService:
             result = self.scan_repo.update_status(
                 scan_id, 
                 status, 
-                message,
+                error_message,
                 started_at=started_at,
                 stopped_at=stopped_at
             )

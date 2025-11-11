@@ -121,7 +121,7 @@ def on_initiate_scan_flow_completed(flow: Flow, flow_run: FlowRun, state: State)
             status=ScanStatus.CANCELLING  # 条件：只有是 CANCELLING 才更新
         ).update(
             status=ScanStatus.CANCELLED,
-            message="扫描在完成前被取消（竞态条件）",
+            error_message="扫描在完成前被取消（竞态条件）",
             stopped_at=timezone.now()
         )  # type: ignore  # pylint: disable=no-member
         
@@ -207,7 +207,7 @@ def on_initiate_scan_flow_failed(flow: Flow, flow_run: FlowRun, state: State) ->
             status=ScanStatus.CANCELLING  # 条件：只有是 CANCELLING 才更新
         ).update(
             status=ScanStatus.CANCELLED,
-            message="扫描在失败前被取消（竞态条件）",
+            error_message="扫描在失败前被取消（竞态条件）",
             stopped_at=timezone.now()
         )  # type: ignore  # pylint: disable=no-member
         
@@ -227,7 +227,7 @@ def on_initiate_scan_flow_failed(flow: Flow, flow_run: FlowRun, state: State) ->
             status=ScanStatus.RUNNING  # 条件：只有是 RUNNING 才更新
         ).update(
             status=ScanStatus.FAILED,
-            message=error_message,
+            error_message=error_message,
             stopped_at=timezone.now()
         )  # type: ignore  # pylint: disable=no-member
         
@@ -286,7 +286,7 @@ def on_initiate_scan_flow_cancelled(flow: Flow, flow_run: FlowRun, state: State)
         success = service.update_status(
             scan_id, 
             ScanStatus.CANCELLED,
-            message="扫描任务已被取消",
+            error_message="扫描任务已被取消",
             stopped_at=timezone.now()  # Handler 决定设置结束时间
         )
         
@@ -342,7 +342,7 @@ def on_initiate_scan_flow_crashed(flow: Flow, flow_run: FlowRun, state: State) -
         success = service.update_status(
             scan_id, 
             ScanStatus.CRASHED,
-            message=f"系统崩溃: {error_message}",
+            error_message=f"系统崩溃: {error_message}",
             stopped_at=timezone.now()  # Handler 决定设置结束时间
         )
         

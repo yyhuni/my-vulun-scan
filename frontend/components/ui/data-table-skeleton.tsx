@@ -48,30 +48,43 @@ export function DataTableSkeleton({
       )}
 
       {toolbarNeeded && (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          {withSearch && <Skeleton className="h-9 w-full sm:max-w-sm" />}
-          {toolbarButtonCount > 0 && (
-            <div className="flex items-center gap-2">
-              {Array.from({ length: toolbarButtonCount }).map((_, index) => (
-                <Skeleton key={index} className="h-9 w-24" />
-              ))}
-            </div>
-          )}
-        </div>
+        <>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            {withSearch && <Skeleton className="h-9 w-full sm:max-w-sm" />}
+            {toolbarButtonCount > 0 && (
+              <div className="flex items-center gap-2">
+                {Array.from({ length: toolbarButtonCount }).map((_, index) => (
+                  <Skeleton key={index} className="h-9 w-24" />
+                ))}
+              </div>
+            )}
+          </div>
+          <div
+            className="border-b mt-4"
+            style={{ borderColor: "var(--sidebar-border)" }}
+          />
+        </>
       )}
 
-      <div className="rounded-lg border bg-card p-4 shadow-sm space-y-4">
-        <div className="hidden md:flex items-center gap-4">
+      <div className="overflow-x-auto">
+        <div
+          className="hidden md:flex items-center gap-4 border-b px-2 py-3"
+          style={{ borderColor: "var(--sidebar-border)" }}
+        >
           {Array.from({ length: columns }).map((_, index) => (
             <Skeleton key={index} className="h-5 flex-1" />
           ))}
         </div>
 
-        <div className="space-y-3">
+        <div>
           {Array.from({ length: rows }).map((_, rowIndex) => (
             <div
               key={rowIndex}
-              className="flex flex-col gap-3 rounded-md border px-4 py-3 md:flex-row md:items-center md:justify-between"
+              className={cn(
+                "flex flex-col gap-3 border-b px-2 py-3 md:flex-row md:items-center md:justify-between",
+                rowIndex === rows - 1 && "border-b-0"
+              )}
+              style={{ borderColor: rowIndex === rows - 1 ? "transparent" : "var(--sidebar)" }}
             >
               {Array.from({ length: Math.max(columns, 3) }).map((_, colIndex) => (
                 <Skeleton
@@ -82,14 +95,14 @@ export function DataTableSkeleton({
             </div>
           ))}
         </div>
+      </div>
 
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <Skeleton className="h-5 w-48" />
-          <div className="flex items-center gap-2">
-            {Array.from({ length: paginationButtonCount }).map((_, index) => (
-              <Skeleton key={index} className="h-8 w-10 rounded-full" />
-            ))}
-          </div>
+      <div className="border-t border-border pt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <Skeleton className="h-5 w-48" />
+        <div className="flex items-center gap-2">
+          {Array.from({ length: paginationButtonCount }).map((_, index) => (
+            <Skeleton key={index} className="h-8 w-10 rounded-full" />
+          ))}
         </div>
       </div>
     </div>

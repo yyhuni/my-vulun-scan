@@ -158,94 +158,104 @@ export function ScanHistoryDataTable({
   }, [rowSelection, onSelectionChange, table])
 
   return (
-    <div className="w-full space-y-4">
+    <div className="w-full">
       {!hideToolbar && (
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Input
-              placeholder={searchPlaceholder}
-              value={(table.getColumn(searchColumn)?.getFilterValue() as string) ?? ""}
-              onChange={(event) =>
-                table.getColumn(searchColumn)?.setFilterValue(event.target.value)
-              }
-              className="max-w-sm"
-            />
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <IconLayoutColumns />
-                  Columns
-                  <IconChevronDown />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {table
-                  .getAllColumns()
-                  .filter(
-                    (column) =>
-                      typeof column.accessorFn !== "undefined" && column.getCanHide()
-                  )
-                  .map((column) => {
-                    const columnNameMap: Record<string, string> = {
-                      domainName: "Domain Name",
-                      summary: "Summary",
-                      scanEngine: "Scan Engine Used",
-                      lastScan: "Last Scan",
-                      status: "Status",
-                      progress: "Progress",
-                    }
-
-                    return (
-                      <DropdownMenuCheckboxItem
-                        key={column.id}
-                        className="capitalize"
-                        checked={column.getIsVisible()}
-                        onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                      >
-                        {columnNameMap[column.id] || column.id}
-                      </DropdownMenuCheckboxItem>
-                    )
-                  })}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {onBulkDelete && (
-              <Button 
-                onClick={onBulkDelete}
-                size="sm"
-                variant="outline"
-                disabled={table.getFilteredSelectedRowModel().rows.length === 0}
-                className={
-                  table.getFilteredSelectedRowModel().rows.length === 0
-                    ? "text-muted-foreground"
-                    : "text-destructive hover:text-destructive hover:bg-destructive/10"
+        <>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Input
+                placeholder={searchPlaceholder}
+                value={(table.getColumn(searchColumn)?.getFilterValue() as string) ?? ""}
+                onChange={(event) =>
+                  table.getColumn(searchColumn)?.setFilterValue(event.target.value)
                 }
-              >
-                <IconTrash />
-                Delete
-              </Button>
-            )}
+                className="max-w-sm"
+              />
+            </div>
 
-            {onAddNew && (
-              <Button onClick={onAddNew} size="sm">
-                <IconPlus />
-                {addButtonText}
-              </Button>
-            )}
+            <div className="flex items-center space-x-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <IconLayoutColumns />
+                    Columns
+                    <IconChevronDown />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {table
+                    .getAllColumns()
+                    .filter(
+                      (column) =>
+                        typeof column.accessorFn !== "undefined" && column.getCanHide()
+                    )
+                    .map((column) => {
+                      const columnNameMap: Record<string, string> = {
+                        domainName: "Domain Name",
+                        summary: "Summary",
+                        scanEngine: "Scan Engine Used",
+                        lastScan: "Last Scan",
+                        status: "Status",
+                        progress: "Progress",
+                      }
+
+                      return (
+                        <DropdownMenuCheckboxItem
+                          key={column.id}
+                          className="capitalize"
+                          checked={column.getIsVisible()}
+                          onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                        >
+                          {columnNameMap[column.id] || column.id}
+                        </DropdownMenuCheckboxItem>
+                      )
+                    })}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {onBulkDelete && (
+                <Button 
+                  onClick={onBulkDelete}
+                  size="sm"
+                  variant="outline"
+                  disabled={table.getFilteredSelectedRowModel().rows.length === 0}
+                  className={
+                    table.getFilteredSelectedRowModel().rows.length === 0
+                      ? "text-muted-foreground"
+                      : "text-destructive hover:text-destructive hover:bg-destructive/10"
+                  }
+                >
+                  <IconTrash />
+                  Delete
+                </Button>
+              )}
+
+              {onAddNew && (
+                <Button onClick={onAddNew} size="sm">
+                  <IconPlus />
+                  {addButtonText}
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
+          <div
+            className="border-b mt-4"
+            style={{ borderColor: "var(--sidebar-border)" }}
+          />
+        </>
       )}
 
       {/* 表格容器 */}
-      <div className="rounded-md border">
-        <Table>
+      <div className="overflow-x-auto">
+        <Table className="w-full">
           {/* 表头 */}
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
+              <TableRow
+                key={headerGroup.id}
+                className="border-b"
+                style={{ borderColor: "var(--sidebar-border)" }}
+              >
                 {headerGroup.headers.map((header) => {
                   return (
                     <TableHead key={header.id} colSpan={header.colSpan}>
@@ -269,7 +279,8 @@ export function ScanHistoryDataTable({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
-                  className="group"
+                  className="group border-b [&>td]:py-2 last:border-b-0"
+                  style={{ borderColor: "var(--sidebar)" }}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
@@ -282,7 +293,10 @@ export function ScanHistoryDataTable({
                 </TableRow>
               ))
             ) : (
-              <TableRow>
+              <TableRow
+                className="border-b"
+                style={{ borderColor: "var(--sidebar)" }}
+              >
                 <TableCell
                   colSpan={columns.length}
                   className="h-24 text-center"
@@ -296,7 +310,7 @@ export function ScanHistoryDataTable({
       </div>
       
       {!hidePagination && (
-        <div className="flex items-center justify-between px-2">
+        <div className="border-t border-border pt-4 flex items-center justify-between px-2">
           <div className="flex-1 text-sm text-muted-foreground">
             {table.getFilteredSelectedRowModel().rows.length} of{" "}
             {paginationInfo ? paginationInfo.total : table.getFilteredRowModel().rows.length} row(s) selected

@@ -18,16 +18,25 @@ class ScanViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """优化查询集，预加载关联对象
         
-        使用 select_related 和 prefetch_related 优化查询性能：
-        - select_related: 预加载 target 和 engine（一对一/多对一关系）
-        - prefetch_related: 预加载 subdomains 和 endpoints（一对多关系）
+        查询优化策略：
+        - select_related: 预加载 target 和 engine（一对一/多对一关系，使用 JOIN）
+        - annotate: 使用数据库聚合计算子域名和端点数量（避免 N+1 查询）
+        - prefetch_related: 预加载 subdomains 和 endpoints（用于详情页面）
         
-        避免 N+1 查询问题，提升列表页面性能。
+        性能优势：
+        - 单次查询完成所有统计计数
+        - 避免 N+1 查询问题
+        - 列表页面性能显著提升
         """
+        from django.db.models import Count
+        
         return Scan.objects.select_related(
             'target', 'engine'
+        ).annotate(
+            subdomains_count=Count('subdomains', distinct=True),  # 子域名数量
+            endpoints_count=Count('endpoints', distinct=True)     # 端点数量
         ).prefetch_related(
-            'subdomains', 'endpoints'
+            'subdomains', 'endpoints'  # 用于详情页面
         ).all()  # type: ignore  # pylint: disable=no-member
     
     def get_serializer_class(self):
