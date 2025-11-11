@@ -98,8 +98,13 @@ DATABASES = {
         'HOST': os.getenv('DB_HOST', 'localhost'),
         'PORT': os.getenv('DB_PORT', '5432'),
         
-        # 连接池配置：保持连接 10 分钟
-        'CONN_MAX_AGE': 600,
+        # 连接池配置：保持连接 60 秒
+        # 说明：
+        # - 0: 每次请求后关闭（适合低流量，但性能差）
+        # - 60-120: 推荐值（平衡性能和资源占用）
+        # - 600+: 过长，可能导致连接池耗尽
+        # - None: 永久连接（仅适合专用连接池，不推荐）
+        'CONN_MAX_AGE': int(os.getenv('DB_CONN_MAX_AGE', '60')),
         
         # PostgreSQL 特定选项
         'OPTIONS': {
