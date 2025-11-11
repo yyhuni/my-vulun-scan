@@ -6,7 +6,8 @@ import { toast } from "sonner"
 import { TargetsDataTable } from "./targets-data-table"
 import { createTargetColumns } from "./targets-columns"
 import { AddTargetDialog } from "./add-target-dialog"
-import { LoadingState, LoadingSpinner } from "@/components/loading-spinner"
+import { LoadingSpinner } from "@/components/loading-spinner"
+import { DataTableSkeleton } from "@/components/ui/data-table-skeleton"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -185,7 +186,13 @@ export function OrganizationTargetsDetailView({
 
   // 加载状态
   if (isLoading) {
-    return <LoadingState message="加载目标数据中..." />
+    return (
+      <DataTableSkeleton
+        toolbarButtonCount={3}
+        rows={6}
+        columns={4}
+      />
+    )
   }
 
   if (!organization) {
@@ -284,4 +291,3 @@ export function OrganizationTargetsDetailView({
     </>
   )
 }
-

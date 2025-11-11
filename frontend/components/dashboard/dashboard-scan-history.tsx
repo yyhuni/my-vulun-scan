@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { ScanHistoryDataTable } from "@/components/scan/history/scan-history-data-table"
 import { createScanHistoryColumns } from "@/components/scan/history/scan-history-columns"
 import { useRunningScans } from "@/hooks/use-scans"
-import { LoadingState } from "@/components/loading-spinner"
+import { DataTableSkeleton } from "@/components/ui/data-table-skeleton"
 import type { ScanRecord } from "@/types/scan.types"
 import type { ColumnDef } from "@tanstack/react-table"
 
@@ -23,7 +23,16 @@ export function DashboardScanHistory() {
     [formatDate, navigate, handleDelete]
   )
 
-  if (isLoading) return <LoadingState message="加载扫描历史数据中..." />
+  if (isLoading) {
+    return (
+      <DataTableSkeleton
+        withPadding={false}
+        toolbarButtonCount={2}
+        rows={4}
+        columns={3}
+      />
+    )
+  }
 
   const paginationInfo = data
     ? { total: data.total, page: data.page, pageSize: data.pageSize, totalPages: data.totalPages }

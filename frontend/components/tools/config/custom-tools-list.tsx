@@ -16,7 +16,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { LoadingSpinner, LoadingState } from "@/components/loading-spinner"
+import { LoadingSpinner } from "@/components/loading-spinner"
+import { CardGridSkeleton } from "@/components/ui/card-grid-skeleton"
 import { CategoryNameMap, type Tool } from "@/types/tool.types"
 import { useTools, useDeleteTool } from "@/hooks/use-tools"
 
@@ -73,7 +74,7 @@ export function CustomToolsList() {
 
   // 加载状态
   if (isLoading) {
-    return <LoadingState message="加载自定义工具列表中..." />
+    return <CardGridSkeleton cards={4} />
   }
 
   // 错误状态

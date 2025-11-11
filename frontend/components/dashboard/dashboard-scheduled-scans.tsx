@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { ScheduledScanDataTable } from "@/components/scan/scheduled/scheduled-scan-data-table"
 import { createScheduledScanColumns } from "@/components/scan/scheduled/scheduled-scan-columns"
 import { useScheduledScans } from "@/hooks/use-scheduled-scans"
-import { LoadingState } from "@/components/loading-spinner"
+import { DataTableSkeleton } from "@/components/ui/data-table-skeleton"
 
 export function DashboardScheduledScans() {
   const [pagination] = React.useState({ pageIndex: 0, pageSize: 10 })
@@ -30,7 +30,16 @@ export function DashboardScheduledScans() {
     [formatDate, handleView, handleEdit]
   )
 
-  if (isLoading) return <LoadingState message="加载任务数据中..." />
+  if (isLoading) {
+    return (
+      <DataTableSkeleton
+        withPadding={false}
+        toolbarButtonCount={2}
+        rows={4}
+        columns={3}
+      />
+    )
+  }
 
   const list = data?.scheduled_scans ?? []
 

@@ -6,7 +6,8 @@ import { useTargetEndpoints } from "@/hooks/use-targets"
 import { useDeleteEndpoint } from "@/hooks/use-endpoints"
 import { EndpointsDataTable } from "./endpoints-data-table"
 import { createEndpointColumns } from "./endpoints-columns"
-import { LoadingState, LoadingSpinner } from "@/components/loading-spinner"
+import { LoadingSpinner } from "@/components/loading-spinner"
+import { DataTableSkeleton } from "@/components/ui/data-table-skeleton"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -125,7 +126,13 @@ export function EndpointsDetailView({
 
   // 加载状态
   if (isLoading) {
-    return <LoadingState message="加载端点数据中..." />
+    return (
+      <DataTableSkeleton
+        toolbarButtonCount={3}
+        rows={6}
+        columns={4}
+      />
+    )
   }
 
   return (

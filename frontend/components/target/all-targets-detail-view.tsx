@@ -6,7 +6,6 @@ import { createAllTargetsColumns } from "@/components/target/all-targets-columns
 import { TargetsDataTable } from "@/components/target/targets-data-table"
 import { AddTargetDialog } from "@/components/target/add-target-dialog"
 import { InitiateScanDialog } from "@/components/scan/initiate-scan-dialog"
-import { LoadingState } from "@/components/loading-spinner"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +18,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { formatDate } from "@/lib/utils"
 import { LoadingSpinner } from "@/components/loading-spinner"
+import { DataTableSkeleton } from "@/components/ui/data-table-skeleton"
 import { useTargets, useDeleteTarget, useBatchDeleteTargets } from "@/hooks/use-targets"
 import type { Target } from "@/types/target.types"
 import type { Organization } from "@/types/organization.types"
@@ -118,7 +118,13 @@ export function AllTargetsDetailView() {
 
   // 加载中
   if (isLoading) {
-    return <LoadingState message="加载目标数据中..." />
+    return (
+      <DataTableSkeleton
+        toolbarButtonCount={3}
+        rows={6}
+        columns={4}
+      />
+    )
   }
 
   // 错误处理

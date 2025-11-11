@@ -6,7 +6,7 @@ import { Building2, Target as TargetIcon, Globe, LinkIcon, TrendingUp } from "lu
 import { TargetsDataTable } from "./targets/targets-data-table"
 import { createTargetColumns } from "./targets/targets-columns"
 import { AddTargetDialog } from "./targets/add-target-dialog"
-import { LoadingState, LoadingSpinner } from "@/components/loading-spinner"
+import { LoadingSpinner } from "@/components/loading-spinner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"

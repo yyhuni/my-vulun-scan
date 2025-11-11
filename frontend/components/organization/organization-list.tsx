@@ -17,7 +17,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { LoadingSpinner } from "@/components/loading-spinner"
-import { Skeleton } from "@/components/ui/skeleton"
+import { DataTableSkeleton } from "@/components/ui/data-table-skeleton"
 
 // 导入数据表格组件
 import { OrganizationDataTable } from "./organization-data-table"
@@ -335,49 +335,6 @@ export function OrganizationList() {
 
 function OrganizationListSkeleton() {
   return (
-    <div className="space-y-4 px-4 lg:px-6">
-      {/* 顶部工具条骨架 */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Skeleton className="h-9 w-full sm:max-w-sm" />
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-9 w-24" />
-          <Skeleton className="h-9 w-24" />
-          <Skeleton className="h-9 w-24" />
-        </div>
-      </div>
-
-      {/* 表格骨架 */}
-      <div className="rounded-lg border bg-card p-4 shadow-sm">
-        <div className="hidden sm:grid sm:grid-cols-12 sm:gap-4">
-          <Skeleton className="h-6 w-full sm:col-span-3" />
-          <Skeleton className="h-6 w-full sm:col-span-4" />
-          <Skeleton className="h-6 w-full sm:col-span-2" />
-          <Skeleton className="h-6 w-full sm:col-span-3" />
-        </div>
-        <div className="mt-4 space-y-3">
-          {[...Array(5)].map((_, index) => (
-            <div
-              key={index}
-              className="flex flex-col gap-3 rounded-md border px-4 py-3 @lg/main:flex-row @lg/main:items-center @lg/main:justify-between"
-            >
-              <Skeleton className="h-5 w-40" />
-              <Skeleton className="h-4 w-52" />
-              <Skeleton className="h-5 w-24" />
-              <Skeleton className="h-8 w-full @lg/main:w-10/12" />
-            </div>
-          ))}
-        </div>
-
-        {/* 分页骨架 */}
-        <div className="mt-4 flex flex-col gap-3 @lg/main:flex-row @lg/main:items-center @lg/main:justify-between">
-          <Skeleton className="h-5 w-40" />
-          <div className="flex items-center gap-2">
-            <Skeleton className="h-8 w-24" />
-            <Skeleton className="h-8 w-24" />
-            <Skeleton className="h-8 w-24" />
-          </div>
-        </div>
-      </div>
-    </div>
+    <DataTableSkeleton toolbarButtonCount={3} rows={5} columns={4} />
   )
 }

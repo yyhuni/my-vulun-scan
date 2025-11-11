@@ -15,7 +15,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { LoadingSpinner, LoadingState } from "@/components/loading-spinner"
+import { LoadingSpinner } from "@/components/loading-spinner"
+import { CardGridSkeleton } from "@/components/ui/card-grid-skeleton"
 
 /**
  * 开源工具列表组件
@@ -93,7 +94,7 @@ export function OpensourceToolsList() {
 
   // 加载状态
   if (isLoading) {
-    return <LoadingState message="加载开源工具列表中..." />
+    return <CardGridSkeleton cards={4} />
   }
 
   // 错误状态

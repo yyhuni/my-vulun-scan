@@ -4,7 +4,7 @@ import { useState } from "react"
 import { CommandsDataTable } from "@/components/tools/commands/commands-data-table"
 import { commandColumns } from "@/components/tools/commands/commands-columns"
 import { useCommands, useBatchDeleteCommands } from "@/hooks/use-commands"
-import { LoadingState } from "@/components/loading-spinner"
+import { DataTableSkeleton } from "@/components/ui/data-table-skeleton"
 
 /**
  * 命令管理页面
@@ -42,7 +42,7 @@ export default function CommandManagementPage() {
 
   // 加载状态
   if (isLoading) {
-    return <LoadingState message="加载命令列表中..." />
+    return <DataTableSkeleton toolbarButtonCount={2} rows={5} columns={4} />
   }
 
   // 错误状态

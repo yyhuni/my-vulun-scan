@@ -11,7 +11,8 @@ import {
 } from "@/hooks/use-subdomains"
 import { SubdomainsDataTable } from "./subdomains-data-table"
 import { createSubdomainColumns } from "./subdomains-columns"
-import { LoadingState, LoadingSpinner } from "@/components/loading-spinner"
+import { LoadingSpinner } from "@/components/loading-spinner"
+import { DataTableSkeleton } from "@/components/ui/data-table-skeleton"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -234,7 +235,13 @@ export function SubdomainsDetailView({
 
   // 加载状态
   if (isLoading) {
-    return <LoadingState message="加载域名数据中..." />
+    return (
+      <DataTableSkeleton
+        toolbarButtonCount={4}
+        rows={6}
+        columns={4}
+      />
+    )
   }
 
   return (
@@ -330,4 +337,3 @@ export function SubdomainsDetailView({
     </>
   )
 }
-

@@ -4,7 +4,7 @@ import React, { useState, useMemo } from "react"
 import { VulnerabilitiesDataTable } from "./vulnerabilities-data-table"
 import { createVulnerabilityColumns } from "./vulnerabilities-columns"
 import { VulnerabilityDetailDialog } from "./vulnerability-detail-dialog"
-import { LoadingState } from "@/components/loading-spinner"
+import { DataTableSkeleton } from "@/components/ui/data-table-skeleton"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -133,7 +133,13 @@ export function VulnerabilitiesDetailView({
   )
 
   if (isLoading) {
-    return <LoadingState message="加载漏洞数据中..." />
+    return (
+      <DataTableSkeleton
+        toolbarButtonCount={3}
+        rows={6}
+        columns={4}
+      />
+    )
   }
 
   return (

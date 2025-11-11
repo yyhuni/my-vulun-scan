@@ -6,7 +6,7 @@ import { ScanHistoryDataTable } from "./scan-history-data-table"
 import { createScanHistoryColumns } from "./scan-history-columns"
 import type { ScanRecord } from "@/types/scan.types"
 import type { ColumnDef } from "@tanstack/react-table"
-import { LoadingState } from "@/components/loading-spinner"
+import { DataTableSkeleton } from "@/components/ui/data-table-skeleton"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   AlertDialog,
@@ -205,7 +205,14 @@ export function ScanHistoryList() {
 
   // 加载状态
   if (isLoading) {
-    return <LoadingState message="加载扫描历史数据中..." />
+    return (
+      <DataTableSkeleton
+        statsCount={4}
+        toolbarButtonCount={4}
+        rows={6}
+        columns={4}
+      />
+    )
   }
 
   // 计算统计数据
