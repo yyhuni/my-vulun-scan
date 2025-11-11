@@ -24,7 +24,7 @@ class Subdomain(models.Model):
         help_text='所属的扫描目标'
     )
     name = models.CharField(max_length=1000, help_text='子域名名称')
-    created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
+    created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间，也就是首次发现时间')
     cname = ArrayField(
         models.CharField(max_length=255),
         blank=True,
@@ -55,7 +55,7 @@ class Subdomain(models.Model):
         ]
         constraints = [
             models.UniqueConstraint(
-                fields=['name', 'target_id', 'scan_id'],
+                fields=['name', 'target_id'],
                 name='unique_subdomain_per_scan'
             )
         ]

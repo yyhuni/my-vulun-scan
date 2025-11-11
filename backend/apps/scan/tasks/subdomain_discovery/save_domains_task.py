@@ -27,7 +27,7 @@ def save_domains_task(
     domains_file: str,
     scan_id: int,
     target_id: int = None,
-    batch_size: int = 5000
+    batch_size: int = 1000
 ) -> int:
     """
     流式批量保存域名到数据库
@@ -50,9 +50,7 @@ def save_domains_task(
     Performance:
         - 流式读取文件，边读边保存
         - 内存占用恒定（只存储一个 batch）
-        - 使用 upsert_many 确保数据一致性（重复域名会更新）
-        - 默认batch_size=5000(平衡性能和内存)
-        - 支持千万级域名保存
+        - 默认batch_size=1000(平衡性能和内存)
         - 批次失败自动重试
     """
     logger.info("开始从文件流式保存域名到数据库: %s", domains_file)
@@ -68,7 +66,6 @@ def save_domains_task(
     if not file_path.is_file():
         raise ValueError(f"路径不是文件: {domains_file}")
     
-    repository = DjangoSubdomainRepository()
     saved_count = 0
     batch_num = 0
     failed_batches = []  # 记录失败的批次
@@ -90,7 +87,7 @@ def save_domains_task(
                 # 达到批次大小，执行保存
                 if len(batch) >= batch_size:
                     batch_num += 1
-                    result = _save_batch_with_retry(repository, batch, scan_id, target_id, batch_num)
+                    result = _save_batch_with_retry(batch, scan_id, target_id, batch_num)
                     if result['success']:
                         saved_count += result['count']
                     else:
@@ -106,7 +103,7 @@ def save_domains_task(
             # 保存最后一批（可能不足 batch_size）
             if batch:
                 batch_num += 1
-                result = _save_batch_with_retry(repository, batch, scan_id, target_id, batch_num)
+                result = _save_batch_with_retry(batch, scan_id, target_id, batch_num)
                 if result['success']:
                     saved_count += result['count']
                 else:
@@ -139,12 +136,11 @@ def save_domains_task(
         raise
 
 
-def _save_batch_with_retry(repository, batch: List[str], scan_id: int, target_id: int, batch_num: int, max_retries: int = 3) -> dict:
+def _save_batch_with_retry(batch: List[str], scan_id: int, target_id: int, batch_num: int, max_retries: int = 3) -> dict:
     """
     保存一个批次的域名（带重试机制）
     
     Args:
-        repository: 数据库仓库
         batch: 域名批次
         scan_id: 扫描ID
         target_id: 目标ID
@@ -160,6 +156,7 @@ def _save_batch_with_retry(repository, batch: List[str], scan_id: int, target_id
         - 重复域名：更新关联 (UPDATE scan_id, target_id)
         - 保证每次扫描的域名都正确关联到当前扫描
     """
+    repository = DjangoSubdomainRepository()
     items = [
         SubdomainDTO(
             name=domain,

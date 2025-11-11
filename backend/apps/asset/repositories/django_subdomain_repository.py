@@ -26,11 +26,15 @@ class DjangoSubdomainRepository(SubdomainRepository):
         ]
 
         with transaction.atomic():
-            # 使用 ignore_conflicts 忽略冲突（唯一约束是 name + target_id + scan_id）
-            # 每次扫描都会创建独立的子域名记录
+            # 使用 update_conflicts 策略：
+            # - 新子域名：INSERT 完整记录，scan_id = 当前扫描 ID
+            # - 已存在子域名：UPDATE 探测字段（cname, is_cdn, cdn_name），scan_id 保持不变
+            # 这样每次扫描只显示新增的资产，同时保持探测数据最新
             created = Subdomain.objects.bulk_create(  # type: ignore[attr-defined]
                 subdomain_objects,
-                ignore_conflicts=True,
+                update_conflicts=True,
+                update_fields=['cname', 'is_cdn', 'cdn_name'],  # 只更新探测字段，不更新 scan_id
+                unique_fields=['name', 'target_id'],  # 唯一约束：同一 Target 下子域名唯一
             )
 
         return len(created)
