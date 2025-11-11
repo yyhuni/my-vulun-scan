@@ -28,3 +28,4 @@ pytz==2024.1
 validators==0.22.0
 PyYAML==6.0.1
 colorlog==6.8.2  # 彩色日志输出
+python-json-logger==2.0.7  # JSON 结构化日志

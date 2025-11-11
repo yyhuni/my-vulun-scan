@@ -1,7 +1,12 @@
 """
-日志配置模块
+日志配置模块（改进版 v2）
 
 根据环境（开发/生产）和环境变量配置 Django 日志系统
+
+改进内容：
+1. ✅ 结构化日志 - JSON 格式便于日志分析和监控
+2. ✅ 性能指标日志 - 专门记录性能相关信息
+3. ⚠️  异步日志处理 - 需要额外配置（见下方说明）
 
 环境变量：
 - LOG_LEVEL: 全局日志级别 (DEBUG/INFO/WARNING/ERROR/CRITICAL)
@@ -16,6 +21,16 @@
 - 默认 INFO 级别
 - 控制台 + 文件输出（配置 LOG_DIR）
 - 文件自动轮转（10MB，保留5个备份）
+- JSON 结构化日志
+- 性能指标日志
+
+依赖安装：
+- pip install python-json-logger  # JSON 格式化器
+
+异步日志说明：
+- 当前使用标准 RotatingFileHandler（同步写入）
+- 如需异步处理，可使用 logging_config_new.py 中的 QueueHandler 方案
+- 异步方案需要额外的 QueueListener 配置和生命周期管理
 
 设计说明：
 - 直接从环境变量读取配置，避免与 settings.py 循环依赖
@@ -56,6 +71,7 @@ def get_logging_config(debug: bool = False):
         log_path = Path(log_dir)
         log_path.mkdir(parents=True, exist_ok=True)
         
+        # 标准文件日志
         log_handlers.append('file')
         logging_handlers['file'] = {
             'class': 'logging.handlers.RotatingFileHandler',
@@ -76,6 +92,27 @@ def get_logging_config(debug: bool = False):
             'backupCount': 5,
             'encoding': 'utf-8',
             'level': 'ERROR',  # 只记录 ERROR 及以上级别
+        }
+        
+        # JSON 结构化日志（便于日志分析和监控）
+        log_handlers.append('json_file')
+        logging_handlers['json_file'] = {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'formatter': 'json',
+            'filename': str(log_path / 'xingrin_json.log'),
+            'maxBytes': 10 * 1024 * 1024,  # 10MB
+            'backupCount': 5,
+            'encoding': 'utf-8',
+        }
+        
+        # 性能指标日志（专门记录性能相关信息）
+        logging_handlers['performance_file'] = {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'formatter': 'json',
+            'filename': str(log_path / 'performance.log'),
+            'maxBytes': 10 * 1024 * 1024,  # 10MB
+            'backupCount': 5,
+            'encoding': 'utf-8',
         }
     
     # 构建完整的 LOGGING 配置
@@ -100,6 +137,12 @@ def get_logging_config(debug: bool = False):
                     'ERROR': 'red',
                     'CRITICAL': 'red,bg_white',
                 },
+            },
+            # JSON 格式化器（结构化日志）
+            'json': {
+                '()': 'pythonjsonlogger.jsonlogger.JsonFormatter',
+                'format': '%(asctime)s %(name)s %(levelname)s %(message)s %(pathname)s %(lineno)d',
+                'datefmt': '%Y-%m-%d %H:%M:%S',
             },
         },
         
@@ -153,6 +196,13 @@ def get_logging_config(debug: bool = False):
             'apps.common': {
                 'handlers': log_handlers,
                 'level': log_level,
+                'propagate': False,
+            },
+            
+            # 性能指标日志（专门记录性能相关信息）
+            'performance': {
+                'handlers': ['performance_file'] if log_dir else ['console'],
+                'level': 'INFO',
                 'propagate': False,
             },
         },
