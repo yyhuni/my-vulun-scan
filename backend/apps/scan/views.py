@@ -22,6 +22,12 @@ class ScanViewSet(viewsets.ModelViewSet):
         - select_related: 预加载 target 和 engine（一对一/多对一关系，使用 JOIN）
         - annotate: 使用数据库聚合计算子域名和端点数量（避免 N+1 查询）
         - prefetch_related: 预加载 subdomains 和 endpoints（用于详情页面）
+        - order_by: 按 ID 降序排列（最新创建的任务排在最前面）
+        
+        排序说明：
+        - 使用 ID 降序而非 started_at，因为 started_at 在 INITIATED 状态时为 NULL
+        - ID 是自增的，代表创建顺序，且永远不为 NULL
+        - 确保最新创建的任务（包括未开始的）都排在最前面
         
         性能优势：
         - 单次查询完成所有统计计数
@@ -37,7 +43,7 @@ class ScanViewSet(viewsets.ModelViewSet):
             endpoints_count=Count('endpoints', distinct=True)     # 端点数量
         ).prefetch_related(
             'subdomains', 'endpoints'  # 用于详情页面
-        ).all()  # type: ignore  # pylint: disable=no-member
+        ).order_by('-id').all()  # type: ignore  # pylint: disable=no-member
     
     def get_serializer_class(self):
         """根据不同的 action 返回不同的序列化器
