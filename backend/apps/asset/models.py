@@ -19,8 +19,6 @@ class Subdomain(models.Model):
         'targets.Target',
         on_delete=models.CASCADE,
         related_name='subdomains',
-        null=True,
-        blank=True,
         help_text='所属的扫描目标'
     )
     name = models.CharField(max_length=1000, help_text='子域名名称')
@@ -72,8 +70,6 @@ class Endpoint(models.Model):
         'targets.Target',
         on_delete=models.CASCADE,
         related_name='endpoints',
-        null=True,
-        blank=True,
         help_text='所属的扫描目标'
     )
     scan = models.ForeignKey(
@@ -98,8 +94,7 @@ class Endpoint(models.Model):
         blank=True,
         help_text='所属的站点技术'
     )
-    url = models.CharField(
-        max_length=30000,
+    url = models.TextField(
         help_text='完整的HTTP URL（如 http://api.example.com/v1/users）'
     )
     created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
@@ -108,8 +103,7 @@ class Endpoint(models.Model):
         blank=True,
         help_text='HTTP响应体大小（字节），由httpx或ffuf探测获取'
     )
-    page_title = models.CharField(
-        max_length=30000,
+    page_title = models.TextField(
         default='',
         blank=True,
         help_text='网页标题（HTML title标签内容），由httpx探测获取'
