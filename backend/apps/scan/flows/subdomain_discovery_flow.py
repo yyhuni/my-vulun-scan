@@ -30,11 +30,23 @@ logger = logging.getLogger(__name__)
 SCANNER_CONFIGS = {
     'amass': {
         'command': 'amass enum -passive -d {target} -o {output_file}',
-        'timeout': settings.SUBPROCESS_DEFAULT_TIMEOUT_SECONDS  # 使用配置，默认 3600 秒
+        'timeout': 180
     },
     'subfinder': {
         'command': 'subfinder -d {target} -o {output_file}',
-        'timeout': 1800  # subfinder 较快，使用更短的超时
+        'timeout': 180
+    },
+    'test_tool_not_found': {
+        'command': 'echo1 "test" > {output_file}',  # 命令不存在，返回状态码127
+        'timeout': 60
+    },
+    'test_tool_timeout': {
+        'command': 'sleep 100',  # 睡眠100秒，触发超时异常
+        'timeout': 1  # 1秒后超时
+    },
+    'test_tool_syntax_error': {
+        'command': 'bash -c "syntax error',  # 语法错误的命令
+        'timeout': 60
     }
 }
 

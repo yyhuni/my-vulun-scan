@@ -19,8 +19,7 @@ logger = logging.getLogger(__name__)
 
 @task(
     name='save_domains',
-    retries=3,
-    retry_delay_seconds=5,
+    retries=0,
     log_prints=True
 )
 def save_domains_task(

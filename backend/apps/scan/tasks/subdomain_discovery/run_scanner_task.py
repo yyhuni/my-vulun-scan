@@ -20,8 +20,7 @@ logger = logging.getLogger(__name__)
 
 @task(
     name='run_scanner',
-    retries=2,
-    retry_delay_seconds=10,
+    retries=0,  # 显式禁用重试
     log_prints=True
 )
 def run_scanner_task(
