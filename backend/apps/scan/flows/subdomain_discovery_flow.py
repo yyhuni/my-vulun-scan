@@ -30,11 +30,11 @@ logger = logging.getLogger(__name__)
 SCANNER_CONFIGS = {
     'amass': {
         'command': 'amass enum -passive -d {target} -o {output_file}',
-        'timeout': 180
+        'timeout': 360
     },
     'subfinder': {
         'command': 'subfinder -d {target} -o {output_file}',
-        'timeout': 180
+        'timeout': 360
     },
     'test_tool_not_found': {
         'command': 'echo1 "test" > {output_file}',  # 命令不存在，返回状态码127
