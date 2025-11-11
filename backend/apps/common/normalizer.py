@@ -1,3 +1,9 @@
+import re
+
+# 预编译正则表达式，避免每次调用时重新编译
+IP_PATTERN = re.compile(r'^[\d.:]+$')
+
+
 def normalize_domain(domain: str) -> str:
     """
     规范化域名
@@ -82,8 +88,6 @@ def normalize_target(target: str) -> str:
     Raises:
         ValueError: 目标为空或只包含空格
     """
-    import re
-    
     if not target or not target.strip():
         raise ValueError("目标名称不能为空")
     
@@ -95,7 +99,7 @@ def normalize_target(target: str) -> str:
         return normalize_cidr(trimmed)
     
     # 如果是纯数字、点、冒号组成，按 IP 处理
-    if re.match(r'^[\d.:]+$', trimmed):
+    if IP_PATTERN.match(trimmed):
         return normalize_ip(trimmed)
     
     # 否则按域名处理
