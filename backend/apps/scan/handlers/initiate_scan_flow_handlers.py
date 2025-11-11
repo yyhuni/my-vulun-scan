@@ -278,24 +278,35 @@ def on_initiate_scan_flow_cancelled(flow: Flow, flow_run: FlowRun, state: State)
         return
     
     try:
-        from apps.scan.services import ScanService
+        from apps.scan.models import Scan
         from apps.common.definitions import ScanStatus
         from django.utils import timezone
         
-        service = ScanService()
-        success = service.update_status(
-            scan_id, 
-            ScanStatus.CANCELLED,
+        # 🔑 原子操作：将 CANCELLING 更新为 CANCELLED
+        # 只更新处于 CANCELLING 状态的任务（用户已请求取消）
+        updated = Scan.objects.filter(
+            id=scan_id,
+            status=ScanStatus.CANCELLING  # 只更新 CANCELLING 状态
+        ).update(
+            status=ScanStatus.CANCELLED,
             error_message="扫描任务已被取消",
-            stopped_at=timezone.now()  # Handler 决定设置结束时间
-        )
+            stopped_at=timezone.now()
+        )  # type: ignore  # pylint: disable=no-member
         
-        if success:
+        if updated > 0:
             logger.warning(
-                "✗ Flow 状态回调：扫描状态已更新为 CANCELLED - Scan ID: %s, Flow Run: %s",
+                "✗ Flow 状态回调：扫描状态已原子更新为 CANCELLED - Scan ID: %s, Flow Run: %s",
                 scan_id,
                 flow_run.id
             )
+        else:
+            # 可能状态不是 CANCELLING（已被其他 handler 处理）
+            logger.info(
+                "ℹ️ Flow 状态回调：Scan 状态不是 CANCELLING，跳过更新 - Scan ID: %s, Flow Run: %s",
+                scan_id,
+                flow_run.id
+            )
+            
     except Exception as e:
         logger.exception(
             "Flow 状态回调异常 - Scan ID: %s, 错误: %s",
@@ -331,28 +342,38 @@ def on_initiate_scan_flow_crashed(flow: Flow, flow_run: FlowRun, state: State) -
         return
     
     try:
-        from apps.scan.services import ScanService
+        from apps.scan.models import Scan
         from apps.common.definitions import ScanStatus
         from django.utils import timezone
         
         # 提取崩溃信息
         error_message = str(state.message) if state.message else "Flow 崩溃（系统异常）"
+        full_error = f"系统崩溃: {error_message}"
         
-        service = ScanService()
-        success = service.update_status(
-            scan_id, 
-            ScanStatus.CRASHED,
-            error_message=f"系统崩溃: {error_message}",
-            stopped_at=timezone.now()  # Handler 决定设置结束时间
-        )
+        # 🔑 原子操作：直接更新为 CRASHED
+        # Crashed 状态是终态，不需要检查当前状态
+        updated = Scan.objects.filter(
+            id=scan_id
+        ).update(
+            status=ScanStatus.CRASHED,
+            error_message=full_error[:2000],  # 截断到字段长度
+            stopped_at=timezone.now()
+        )  # type: ignore  # pylint: disable=no-member
         
-        if success:
+        if updated > 0:
             logger.critical(
-                "✗ Flow 状态回调：扫描任务崩溃，状态已更新为 CRASHED - Scan ID: %s, Flow Run: %s, 错误: %s",
+                "✗ Flow 状态回调：扫描任务崩溃，状态已原子更新为 CRASHED - Scan ID: %s, Flow Run: %s, 错误: %s",
                 scan_id,
                 flow_run.id,
                 error_message
             )
+        else:
+            logger.warning(
+                "⚠️ Flow 状态回调：Scan 不存在或已被删除 - Scan ID: %s, Flow Run: %s",
+                scan_id,
+                flow_run.id
+            )
+            
     except Exception as e:
         logger.exception(
             "Flow 状态回调异常 - Scan ID: %s, 错误: %s",
