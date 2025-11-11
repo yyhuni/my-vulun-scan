@@ -87,7 +87,7 @@ async def monitor_cancellation_task(
                         success = service.update_status(
                             scan_id, 
                             ScanStatus.CANCELLED,
-                            message="取消成功（监控任务同步）",
+                            error_message="取消成功（监控任务同步）",
                             stopped_at=timezone.now()
                         )
                         
@@ -145,7 +145,7 @@ async def monitor_cancellation_task(
             success = service.update_status(
                 scan_id, 
                 ScanStatus.CANCELLED,
-                message=f"取消超时（监控 {timeout_seconds} 秒后强制标记）",
+                error_message=f"取消超时（监控 {timeout_seconds} 秒后强制标记）",
                 stopped_at=timezone.now()
             )
             
