@@ -261,7 +261,7 @@ export function VulnerabilitiesDataTable({
               )}
               onValueChange={handlePageSizeChange}
             >
-              <SelectTrigger id="page-size" className="h-8 w-[70px]">
+              <SelectTrigger id="page-size" className="h-8 w-[90px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent side="top">

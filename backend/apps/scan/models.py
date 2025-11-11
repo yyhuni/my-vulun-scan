@@ -84,6 +84,7 @@ class Scan(models.Model):
         ordering = ['-started_at']
         indexes = [
             models.Index(fields=['-started_at']),
+            models.Index(fields=['target']),  # 优化按目标查询扫描任务
         ]
 
     def __str__(self):

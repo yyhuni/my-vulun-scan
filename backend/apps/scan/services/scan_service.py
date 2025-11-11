@@ -497,25 +497,44 @@ class ScanService:
         Note:
             使用 Cancelling 状态而不是直接 Cancelled，
             确保 Prefect Handler 被触发，实现状态管理的统一
+            
+        并发安全：
+            使用数据库行锁（select_for_update）防止并发修改，
+            避免用户重复点击导致的重复操作
         """
         try:
-            # 1. 获取扫描对象
-            scan = self.scan_repo.get_by_id(scan_id)
-            if not scan:
-                logger.error("Scan 不存在 - Scan ID: %s", scan_id)
-                return False, 0
+            # 1. 在事务内获取扫描对象、检查状态、更新状态（加锁，防止并发）
+            with transaction.atomic():
+                # 使用 select_for_update() 加行锁，防止并发修改
+                scan = self.scan_repo.get_by_id_for_update(scan_id)
+                if not scan:
+                    logger.error("Scan 不存在 - Scan ID: %s", scan_id)
+                    return False, 0
+                
+                # 2. 验证状态（只能停止 RUNNING/INITIATED）
+                if scan.status not in [ScanStatus.RUNNING, ScanStatus.INITIATED]:
+                    logger.warning(
+                        "无法停止扫描：当前状态为 %s - Scan ID: %s",
+                        ScanStatus(scan.status).label,
+                        scan_id
+                    )
+                    return False, 0
+                
+                # 3. 获取任务列表（在锁内读取，确保数据一致性）
+                flow_run_ids = scan.flow_run_ids or []
+                
+                # 4. 立即更新状态为 CANCELLING（在锁内，确保原子性）
+                # 这样第二个并发请求会看到 CANCELLING 状态，直接返回失败
+                if flow_run_ids:
+                    scan.status = ScanStatus.CANCELLING
+                    scan.save(update_fields=['status'])
+                    logger.info(
+                        "✓ 已更新状态为 CANCELLING（事务内）- Scan ID: %s",
+                        scan_id
+                    )
             
-            # 2. 验证状态（只能停止 RUNNING/INITIATED）
-            if scan.status not in [ScanStatus.RUNNING, ScanStatus.INITIATED]:
-                logger.warning(
-                    "无法停止扫描：当前状态为 %s - Scan ID: %s",
-                    ScanStatus(scan.status).label,
-                    scan_id
-                )
-                return False, 0
-            
-            # 3. 获取任务列表
-            flow_run_ids = scan.flow_run_ids or []
+            # 事务结束，锁释放
+            # 后续耗时操作在事务外执行，避免长时间持有锁
             
             # 4. 发送取消信号到 Prefect（使用 Cancelling 状态）
             # 策略：设置为 Cancelling → Worker 检测 → 终止 Flow → 触发 Handler → 自动更新 DB
@@ -526,45 +545,87 @@ class ScanService:
                 
                 async def _cancel_flows():
                     """
-                    发送取消信号到 Prefect Flow Runs
+                    发送取消信号到 Prefect Flow Runs（并行处理，带超时保护）
                     
                     工作流程：
-                    1. 设置 Flow Run 状态为 Cancelling（取消信号）
+                    1. 并行设置所有 Flow Run 状态为 Cancelling（取消信号）
                     2. Worker 检测到 Cancelling 状态后会主动终止 Flow 执行
                     3. Flow 自然进入 Cancelled 状态
                     4. 触发 on_initiate_scan_flow_cancelled handler
                     5. Handler 自动更新数据库状态为 CANCELLED
                     
                     优势：
-                    - 状态更新完全由 Handler 管理，架构统一
-                    - 无需手动调用 update_status()
-                    - 符合 Prefect 状态机设计
+                    - 并行处理，速度更快
+                    - 单个失败不影响其他
+                    - 超时保护（10秒）
+                    - 自动资源管理
                     """
-                    from prefect.states import Cancelling  # 使用 Cancelling 而不是 Cancelled
+                    from prefect.states import Cancelling
                     
-                    count = 0
-                    async with get_client() as client:
-                        for flow_run_id in flow_run_ids:
-                            try:
-                                # 设置为 Cancelling 状态（取消信号）
-                                # Worker 会检测此状态并终止 Flow，触发 on_cancellation handler
-                                await client.set_flow_run_state(
+                    async def _cancel_single_flow(client, flow_run_id: str) -> bool:
+                        """
+                        取消单个 Flow Run（带超时保护）
+                        
+                        Returns:
+                            True: 成功发送取消信号
+                            False: 失败（超时或异常）
+                        """
+                        try:
+                            # 添加 10 秒超时保护
+                            await asyncio.wait_for(
+                                client.set_flow_run_state(
                                     flow_run_id=UUID(flow_run_id),
                                     state=Cancelling(message="用户手动取消扫描"),
                                     force=True
-                                )
-                                count += 1
-                                logger.debug(
-                                    "已发送取消信号 (Cancelling) - Flow Run: %s, Scan ID: %s",
-                                    flow_run_id, scan_id
-                                )
-                            except Exception as e:
-                                logger.error(
-                                    "发送取消信号失败 - Flow Run: %s, Scan ID: %s, Error: %s",
-                                    flow_run_id, scan_id, e
-                                )
-                                # 继续处理其他任务
-                    return count
+                                ),
+                                timeout=10.0
+                            )
+                            logger.debug(
+                                "✓ 已发送取消信号 - Flow Run: %s, Scan ID: %s",
+                                flow_run_id, scan_id
+                            )
+                            return True
+                        except asyncio.TimeoutError:
+                            logger.error(
+                                "✗ 发送取消信号超时（10秒）- Flow Run: %s, Scan ID: %s",
+                                flow_run_id, scan_id
+                            )
+                            return False
+                        except Exception as e:
+                            logger.error(
+                                "✗ 发送取消信号失败 - Flow Run: %s, Scan ID: %s, Error: %s",
+                                flow_run_id, scan_id, e
+                            )
+                            return False
+                    
+                    try:
+                        async with get_client() as client:
+                            # 并行处理所有 Flow Run
+                            tasks = [
+                                _cancel_single_flow(client, flow_run_id)
+                                for flow_run_id in flow_run_ids
+                            ]
+                            
+                            # return_exceptions=True: 单个失败不影响其他
+                            results = await asyncio.gather(*tasks, return_exceptions=True)
+                            
+                            # 统计成功数量
+                            success_count = sum(1 for r in results if r is True)
+                            
+                            logger.info(
+                                "取消信号发送完成 - 成功: %d/%d, Scan ID: %s",
+                                success_count, len(flow_run_ids), scan_id
+                            )
+                            
+                            return success_count
+                    
+                    except Exception as e:
+                        # 捕获 get_client() 或其他意外错误
+                        logger.error(
+                            "连接 Prefect Server 失败 - Scan ID: %s, Error: %s",
+                            scan_id, e
+                        )
+                        return 0
                 
                 try:
                     cancelled_count = asyncio.run(_cancel_flows())
@@ -582,22 +643,10 @@ class ScanService:
             else:
                 logger.info("无关联 Flow Run 需要取消 - Scan ID: %s", scan_id)
             
-            # 5. 立即更新 UI 显示状态为 CANCELLING（可选的乐观更新）
-            # 实际的 CANCELLED 状态会由 Handler 在 Flow 终止后自动设置
-            if cancelled_count > 0:
-                self.update_status(
-                    scan_id,
-                    ScanStatus.CANCELLING,
-                    message="正在取消扫描任务..."
-                )
-                logger.info(
-                    "✓ 已更新状态为 CANCELLING - Scan ID: %s, 等待 Worker 终止 Flow",
-                    scan_id
-                )
-                
-                # 6. 启动监控任务（兜底保障）
-                # 在后台监控 Flow Run 状态，确保最终同步到 CANCELLED
-                # 这是为了应对 on_cancellation handler 不触发的情况
+            # 5. 启动监控任务（兜底保障）
+            # 在后台监控 Flow Run 状态，确保最终同步到 CANCELLED
+            # 这是为了应对 on_cancellation handler 不触发的情况
+            if cancelled_count > 0 and flow_run_ids:
                 try:
                     from apps.scan.tasks.monitor_cancellation_task import monitor_cancellation_task
                     

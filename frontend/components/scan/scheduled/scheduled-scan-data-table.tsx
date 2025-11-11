@@ -263,7 +263,7 @@ export function ScheduledScanDataTable({
                 table.setPageSize(Number(value))
               }}
             >
-              <SelectTrigger className="h-8 w-[70px]" id="rows-per-page">
+              <SelectTrigger className="h-8 w-[90px]" id="rows-per-page">
                 <SelectValue
                   placeholder={table.getState().pagination.pageSize}
                 />
