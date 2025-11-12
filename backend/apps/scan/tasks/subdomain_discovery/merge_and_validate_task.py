@@ -117,11 +117,21 @@ def merge_and_validate_task(
         if not merged_file.exists():
             raise RuntimeError("合并文件未被创建")
         
-        # 统计行数
-        unique_count = 0
-        with open(merged_file, 'r', encoding='utf-8') as f:
-            for _ in f:
-                unique_count += 1
+        # 统计行数（使用系统命令提升大文件性能）
+        try:
+            line_count_proc = subprocess.run(
+                ["wc", "-l", str(merged_file)],
+                check=True,
+                capture_output=True,
+                text=True
+            )
+            unique_count = int(line_count_proc.stdout.strip().split()[0])
+        except (subprocess.CalledProcessError, ValueError, IndexError) as e:
+            logger.warning("wc -l 统计失败，降级为 Python 逐行统计: %s", e)
+            unique_count = 0
+            with open(merged_file, 'r', encoding='utf-8') as file_obj:
+                for _ in file_obj:
+                    unique_count += 1
         
         if unique_count == 0:
             raise RuntimeError("未找到任何有效域名")
