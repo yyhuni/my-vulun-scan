@@ -260,7 +260,20 @@ class Technology(models.Model):
 
 
 class IPAddress(models.Model):
-    """IP地址模型"""
+    """
+    IP地址模型
+    
+    来源：
+        - 端口扫描的附带产物（主要来源）
+        - 其他 IP 发现工具
+    
+    关联关系：
+        - 属于 Subdomain（必需，层级关系）
+        - 属于 Target（冗余，但用于快速查询）
+    
+    注意：
+        target 字段是性能优化，避免通过 subdomain JOIN 查询
+    """
 
     id = models.AutoField(primary_key=True)
     scan = models.ForeignKey(
@@ -329,7 +342,23 @@ class IPAddress(models.Model):
 
 
 class Port(models.Model):
-    """端口模型"""
+    """
+    端口模型
+    
+    来源：
+        - 端口扫描工具（naabu, masscan, nmap等）
+    
+    关联关系：
+        - 属于 IPAddress（必需，端口属于IP）
+        - 属于 Subdomain（冗余，用于快速查询）
+    
+    数据层级：
+        Target → Subdomain → IPAddress → Port
+    
+    注意：
+        - subdomain 字段是性能优化，避免通过 ip 多次 JOIN
+        - 端口直接属于 IP，而不是域名（同一域名可能有多个IP）
+    """
 
     id = models.AutoField(primary_key=True)
     ip = models.ForeignKey(

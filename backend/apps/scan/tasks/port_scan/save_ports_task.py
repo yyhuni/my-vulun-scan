@@ -1,7 +1,22 @@
 """
 保存端口扫描结果任务
 
-负责将解析后的端口扫描结果批量保存到数据库
+主要功能：
+    1. 保存端口信息（Port）- 核心资产
+    2. 保存 IP 地址信息（IPAddress）- 附带资产
+    3. 建立数据关联：Subdomain → IPAddress → Port
+
+数据流向：
+    扫描结果 → 批量处理 → 数据库
+    
+    输入：{'host': 域名, 'ip': IP地址, 'port': 端口号}
+    输出：Port 和 IPAddress 记录
+
+优化策略：
+    - 使用 Repository 模式统一数据访问
+    - 批量操作减少数据库交互（500条/批次）
+    - 流式处理避免内存溢出
+    - 事务保证数据一致性
 """
 
 import logging
@@ -34,9 +49,14 @@ def save_ports_task(
     """
     流式批量保存端口扫描结果到数据库
     
+    保存内容：
+        - Port（主要资产）：开放的端口
+        - IPAddress（附带资产）：域名对应的 IP 地址
+        - 建立关联：Port → IPAddress → Subdomain → Target
+    
     Args:
-        data_generator: 解析后的数据生成器
-        scan_id: 扫描任务 ID
+        data_generator: 解析后的数据生成器，yield {'host', 'ip', 'port'}
+        scan_id: 扫描任务 ID（暂未使用，预留）
         target_id: 目标 ID
         batch_size: 批量保存大小（默认500，因为需要关联查询）
     
@@ -52,15 +72,19 @@ def save_ports_task(
     Performance:
         - 流式处理生成器，边读边保存
         - 内存占用恒定（只存储一个 batch）
-        - 批次失败自动重试
+        - 批次失败自动重试（最多3次，指数退避）
         - 使用事务确保数据一致性
     
-    Note:
-        保存逻辑：
-        1. 根据 host 查找 Subdomain
-        2. 创建/获取 IPAddress（关联 subdomain + target）
-        3. 创建 Port（关联 ip + target）
-        4. 忽略重复记录（由唯一约束处理）
+    保存逻辑（每批次4次数据库操作）：
+        1. 批量查询 Subdomain（根据域名）
+        2. 批量创建 IPAddress（subdomain_id + ip + target_id）
+        3. 批量查询 IPAddress（获取刚创建的记录）
+        4. 批量创建 Port（ip_id + subdomain_id + port）
+    
+    数据校验：
+        - 只处理数据库中已存在的域名
+        - 忽略重复的 IP 和端口（unique constraints）
+        - 跳过无法关联的记录并记录警告
     """
     logger.info("开始从生成器流式保存端口扫描结果到数据库")
     
@@ -181,12 +205,29 @@ def _save_batch(batch: list, target_id: int, batch_num: int):
     """
     保存一个批次的数据到数据库（使用 Repository 模式）
     
-    优化策略：
-        1. 批量查询 Subdomain（1 次查询）
-        2. 批量创建 IPAddress（1 次插入，Repository）
-        3. 批量查询 IPAddress（1 次查询）
-        4. 批量创建 Port（1 次插入，Repository）
-        总计只需 4 次数据库操作，性能提升 30-50 倍
+    数据关系链：
+        Subdomain (已存在) → IPAddress (待创建/已存在) → Port (待创建)
+    
+    处理流程（4次数据库操作）：
+        1. 查询 Subdomain：根据域名批量查询（Repository）
+        2. 创建 IPAddress：批量插入 IP 记录，ignore_conflicts（Repository）
+        3. 查询 IPAddress：获取刚创建的 IP 记录（Repository）
+        4. 创建 Port：批量插入端口记录，ignore_conflicts（Repository）
+    
+    数据校验：
+        - 跳过数据库中不存在的域名（防止外键错误）
+        - 跳过无法关联到 IP 的端口（数据完整性）
+    
+    性能优化：
+        - 使用 Repository 统一数据访问
+        - 批量操作减少数据库交互
+        - 使用 ignore_conflicts 处理重复数据
+        - 事务保证数据一致性
+    
+    Args:
+        batch: 数据批次，list of {'host', 'ip', 'port'}
+        target_id: 目标 ID
+        batch_num: 批次编号（用于日志）
     """
     # 初始化 Repository
     subdomain_repo = DjangoSubdomainRepository()

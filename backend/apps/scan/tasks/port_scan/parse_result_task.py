@@ -1,7 +1,19 @@
 """
-解析 naabu 扫描结果任务
+解析 naabu 端口扫描结果任务
 
-负责解析 naabu 的 JSONL 格式结果文件
+主要功能：
+    解析 naabu 输出的 JSONL 格式文件，提取端口和 IP 信息
+
+输入格式（naabu）：
+    {"host": "www.example.com", "ip": "1.1.1.1", "port": 80, ...}
+
+输出格式（标准化）：
+    {"host": "www.example.com", "ip": "1.1.1.1", "port": 80}
+
+特点：
+    - 使用生成器实现懒加载（边解析边 yield）
+    - 内存占用低，支持大文件解析
+    - 自动过滤无效记录
 """
 
 import logging

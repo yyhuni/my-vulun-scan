@@ -29,8 +29,21 @@ def port_scan_flow(
 ) -> dict:
     """
     端口扫描 Flow
-
-    负责编排端口扫描的完整流程
+    
+    主要功能：
+        1. 扫描目标域名的开放端口（核心目标）
+        2. 发现域名对应的 IP 地址（附带产物）
+        3. 保存 IP 和端口的关联关系
+    
+    输出资产：
+        - Port：开放的端口列表（主要资产）
+        - IPAddress：域名对应的 IP 地址（附带资产）
+    
+    工作流程：
+        Step 1: 导出域名列表到文件（供扫描工具使用）
+        Step 2: 并行运行端口扫描工具（naabu 等）
+        Step 3: 解析扫描结果（JSONL 格式）
+        Step 4: 流式保存到数据库（Subdomain → IPAddress → Port）
 
     Args:
         scan_id: 扫描任务 ID
@@ -45,13 +58,22 @@ def port_scan_flow(
             'scan_id': int,
             'target': str,
             'scan_workspace_dir': str,
-            'total': int,
+            'domains_file': str,
+            'domain_count': int,
+            'result_files': list,
+            'processed_records': int,
             'executed_tasks': list
         }
 
     Raises:
         ValueError: 配置错误
         RuntimeError: 执行失败
+    
+    Note:
+        端口扫描的输出必然包含 IP 信息，因为：
+        - 扫描工具需要解析域名 → IP
+        - 端口属于 IP，而不是直接属于域名
+        - 同一域名可能对应多个 IP（CDN、负载均衡）
     """
     try: 
         logger.info(
