@@ -1,27 +1,31 @@
 """
-保存端口扫描结果任务
+解析并保存端口扫描结果任务（合并版本）
 
 主要功能：
-    1. 保存端口信息（Port）- 核心资产
-    2. 保存 IP 地址信息（IPAddress）- 附带资产
-    3. 建立数据关联：Subdomain → IPAddress → Port
+    1. 解析 naabu 端口扫描结果文件（JSONL 格式）
+    2. 保存端口信息（Port）- 核心资产
+    3. 保存 IP 地址信息（IPAddress）- 附带资产
+    4. 建立数据关联：Subdomain → IPAddress → Port
 
 数据流向：
-    扫描结果 → 批量处理 → 数据库
+    扫描结果文件 → 解析生成器 → 批量处理 → 数据库
     
-    输入：{'host': 域名, 'ip': IP地址, 'port': 端口号}
+    输入：扫描结果文件列表
     输出：Port 和 IPAddress 记录
 
 优化策略：
-    - 使用 Repository 模式统一数据访问
-    - 批量操作减少数据库交互（500条/批次）
     - 流式处理避免内存溢出
+    - 批量操作减少数据库交互（500条/批次）
+    - 使用 Repository 模式统一数据访问
     - 优化事务粒度（短事务）+ 重试机制保证最终一致性
+    - 避免 Prefect 任务间传递生成器的序列化问题
 """
 
 import logging
 import time
 import sys
+import json
+from pathlib import Path
 from prefect import task
 from typing import Generator
 from django.db import IntegrityError, OperationalError, DatabaseError, transaction
@@ -67,20 +71,127 @@ def _maybe_trim_subdomain_cache(cache: dict) -> bool:
         return False
     return False
 
+def _parse_naabu_results(result_files: list) -> Generator[PortScanRecord, None, None]:
+    """
+    解析 naabu 扫描结果文件（JSONL 格式）
+    
+    使用生成器实现懒加载，边解析边 yield，不会一次性加载所有数据到内存
+    
+    Args:
+        result_files: naabu 结果文件路径列表
+    
+    Yields:
+        dict: 每次 yield 一条解析后的数据，格式：
+        {
+            'host': str,          # 域名
+            'ip': str,            # IP地址
+            'port': int,          # 端口号
+        }
+    """
+    logger.info("开始解析 naabu 扫描结果（生成器模式）- 文件数量: %d", len(result_files))
+    
+    total_lines = 0
+    error_lines = 0
+    valid_records = 0
+    
+    for result_file in result_files:
+        file_path = Path(result_file)
+        
+        if not file_path.exists():
+            logger.warning("结果文件不存在，跳过: %s", result_file)
+            continue
+        
+        if file_path.stat().st_size == 0:
+            logger.warning("结果文件为空，跳过: %s", result_file)
+            continue
+        
+        logger.info("解析文件: %s (%.2f KB)", file_path.name, file_path.stat().st_size / 1024)
+        
+        # 流式读取文件，逐行解析
+        with open(file_path, 'r', encoding='utf-8') as f:
+            for line_num, line in enumerate(f, 1):
+                total_lines += 1
+                
+                # 跳过空行
+                line = line.strip()
+                if not line:
+                    continue
+                
+                try:
+                    # 解析 JSON
+                    data = json.loads(line)
+                    
+                    # 提取必要字段
+                    host = data.get('host', '').strip()
+                    ip = data.get('ip', '').strip()
+                    port = data.get('port')
+                    
+                    # 验证必要字段
+                    if not host or not ip or port is None:
+                        logger.warning(
+                            "文件 %s 行 %d 缺少必要字段，跳过: %s",
+                            file_path.name, line_num, line[:100]
+                        )
+                        error_lines += 1
+                        continue
+                    
+                    # 确保端口是整数
+                    try:
+                        port = int(port)
+                        if port < 1 or port > 65535:
+                            logger.warning(
+                                "文件 %s 行 %d 端口号无效 (%d)，跳过",
+                                file_path.name, line_num, port
+                            )
+                            error_lines += 1
+                            continue
+                    except (ValueError, TypeError):
+                        logger.warning(
+                            "文件 %s 行 %d 端口号格式错误，跳过: %s",
+                            file_path.name, line_num, port
+                        )
+                        error_lines += 1
+                        continue
+                    
+                    # yield 一条记录（懒加载，不占用内存）
+                    valid_records += 1
+                    yield {
+                        'host': host,
+                        'ip': ip,
+                        'port': port,
+                    }
+                    
+                except json.JSONDecodeError as e:
+                    logger.warning(
+                        "文件 %s 行 %d JSON 解析失败: %s - 内容: %s",
+                        file_path.name, line_num, e, line[:100]
+                    )
+                    error_lines += 1
+                    continue
+                
+                except Exception as e:
+                    logger.warning(
+                        "文件 %s 行 %d 解析异常: %s - 内容: %s",
+                        file_path.name, line_num, e, line[:100]
+                    )
+                    error_lines += 1
+                    continue
+    
+    logger.info("解析完成 - 总行数: %d, 错误行数: %d, 有效记录: %d", total_lines, error_lines, valid_records)
 
 @task(
-    name='save_ports',
+    name='parse_and_save_ports',
     retries=0,
     log_prints=True
 )
-def save_ports_task(
-    data_generator: Generator[PortScanRecord, None, None],
+def parse_and_save_ports_task(
+    result_files: list,
     scan_id: int,
     target_id: int,
     batch_size: int = 500
 ) -> dict:
     """
-    流式批量保存端口扫描结果到数据库
+    解析并流式批量保存端口扫描结果到数据库
     
     保存内容：
         - Port（主要资产）：开放的端口
@@ -88,7 +199,7 @@ def save_ports_task(
         - 建立关联：Port → IPAddress → Subdomain → Target
     
     Args:
-        data_generator: 解析后的数据生成器，yield {'host', 'ip', 'port'}
+        result_files: 扫描结果文件列表
         scan_id: 扫描任务 ID（暂未使用，预留）
         target_id: 目标 ID
         batch_size: 批量保存大小（默认500，因为需要关联查询）
@@ -123,13 +234,14 @@ def save_ports_task(
         - 忽略重复的 IP 和端口（unique constraints）
         - 跳过无法关联的记录并记录警告
     """
-    logger.info("开始从生成器流式保存端口扫描结果到数据库")
-    logger.info("参数: scan_id=%s, target_id=%s, batch_size=%s", scan_id, target_id, batch_size)
-    logger.info("生成器类型: %s", type(data_generator))
+    logger.info("开始解析并保存端口扫描结果 - target_id=%s, 文件数量=%d", target_id, len(result_files))
     
     # 参数验证
     if target_id is None:
         raise ValueError("target_id 不能为 None，必须指定目标ID")
+    
+    # 创建内部生成器（避免 Prefect 序列化问题）
+    data_generator = _parse_naabu_results(result_files)
     
     total_records = 0
     batch_num = 0
@@ -146,19 +258,13 @@ def save_ports_task(
         batch = []
         
         # 流式读取生成器并分批保存
-        # 注意：生成器使用 with context manager，即使此处异常也会正确关闭文件
-        logger.info("开始遍历生成器...")
-        
         record_count = 0
         for record in data_generator:
             record_count += 1
-            if record_count <= 3:  # 只记录前3条记录
-                logger.info("记录 %d: %s", record_count, record)
-            elif record_count == 4:
-                logger.info("... (后续记录省略)")
             
-            if record_count % 100 == 0:  # 每100条记录输出一次进度
+            if record_count % 1000 == 0:  # 每1000条记录输出一次进度
                 logger.info("已读取 %d 条记录", record_count)
+            
             batch.append(record)
             total_records += 1
             
@@ -178,11 +284,10 @@ def save_ports_task(
                 
                 batch = []  # 清空批次
                 
-                # 每10个批次输出进度
-                if batch_num % 10 == 0:
+                # 每20个批次输出进度
+                if batch_num % 20 == 0:
                     logger.info("进度: 已处理 %d 批次，%d 条记录", batch_num, total_records)
         
-        logger.info("生成器遍历完成，总共读取 %d 条记录", record_count)
         
         # 保存最后一批
         if batch:
@@ -232,18 +337,9 @@ def save_ports_task(
         raise RuntimeError(error_msg) from e
     
     except Exception as e:
-        error_msg = f"保存端口扫描结果失败: {e}"
+        error_msg = f"解析并保存端口扫描结果失败: {e}"
         logger.error(error_msg, exc_info=True)
         raise
-    
-    finally:
-        # 确保生成器被正确清理（显式关闭生成器）
-        # Python 的垃圾回收会自动处理，但显式清理更安全
-        try:
-            data_generator.close()
-        except (AttributeError, GeneratorExit):
-            # 生成器可能已经耗尽或不支持 close()
-            pass
 
 
 def _save_batch_with_retry(
@@ -345,28 +441,6 @@ def _save_batch(batch: list, target_id: int, batch_num: int, subdomain_cache: di
         3. 查询 IPAddress：获取刚创建的 IP 记录（Repository）
         4. 创建 Port：批量插入端口记录，ignore_conflicts（Repository，独立短事务）
     
-    数据校验：
-        - 跳过数据库中不存在的域名（防止外键错误）
-        - 跳过无法关联到 IP 的端口（数据完整性）
-    
-    性能优化：
-        - 使用 Repository 统一数据访问
-        - 批量操作减少数据库交互
-        - 使用 ignore_conflicts 处理重复数据
-    
-    并发安全优化（方案3：短事务 + 重试机制）：
-        - 移除外层大事务，每个 bulk_create 使用独立的短事务
-        - 减少锁持有时间（90%+），降低死锁风险
-        - 查询操作无需事务保护
-        - 重试机制（最多3次）保证最终一致性
-        - ignore_conflicts 确保幂等性（重试时自动跳过已存在记录）
-    
-    原子性权衡：
-        - ❌ 失去跨步骤的强一致性（不再使用大事务）
-        - ✅ 通过重试机制实现最终一致性
-        - ✅ 幂等性保证：多次重试结果相同（ignore_conflicts）
-        - ✅ 失败场景：IPAddress 成功 + Port 失败 → 重试补全
-    
     Args:
         batch: 数据批次，list of {'host', 'ip', 'port'}
         target_id: 目标 ID
@@ -406,7 +480,6 @@ def _save_batch(batch: list, target_id: int, batch_num: int, subdomain_cache: di
                 subdomain = subdomain_map.get(host)
                 if not subdomain:
                     skipped_no_subdomain += 1
-                    logger.info("批次 %d: 域名 %s 不在数据库中，跳过", batch_num, host)
                     continue
                 
                 ip_key = (subdomain.id, ip_addr)
@@ -423,8 +496,6 @@ def _save_batch(batch: list, target_id: int, batch_num: int, subdomain_cache: di
             ]
             
             # 批量插入（忽略已存在的记录）
-            # Repository 内部已有 transaction.atomic()，这是一个独立的短事务
-            # 重试时，ignore_conflicts 会自动跳过已插入的记录（幂等性）
             if ip_items:
                 ip_repo.bulk_create_ignore_conflicts(ip_items)
             
@@ -436,12 +507,9 @@ def _save_batch(batch: list, target_id: int, batch_num: int, subdomain_cache: di
                 ip_addrs = {ip_addr for _, ip_addr in ip_set}
                 
                 # 使用 Repository 批量查询
-                # 注意：由于 ignore_conflicts 不返回已存在记录的 ID
-                # 我们需要从数据库重新查询所有 IP
                 ip_map = ip_repo.get_by_subdomain_and_ips(subdomain_ids, ip_addrs)
                 
                 # 验证查询结果的完整性
-                # 如果查询结果少于预期，说明可能有并发冲突或数据竞争
                 expected_count = len(ip_set)
                 actual_count = len(ip_map)
                 if actual_count < expected_count:
@@ -451,7 +519,7 @@ def _save_batch(batch: list, target_id: int, batch_num: int, subdomain_cache: di
                     )
                     
                     # 短暂延迟后重试查询（给数据库提交更多时间）
-                    time.sleep(10)
+                    time.sleep(1)
                     ip_map_retry = ip_repo.get_by_subdomain_and_ips(subdomain_ids, ip_addrs)
                     
                     if len(ip_map_retry) > actual_count:
@@ -500,14 +568,10 @@ def _save_batch(batch: list, target_id: int, batch_num: int, subdomain_cache: di
                 )
             
             # 批量插入 Port（忽略重复）
-            # Repository 内部已有 transaction.atomic()，这是一个独立的短事务
-            # 重试时，ignore_conflicts 会自动跳过已插入的记录（幂等性）
             if port_items:
                 port_repo.bulk_create_ignore_conflicts(port_items)
             
             # 🎉 成功完成，退出重试循环
-            logger.debug("批次 %d: 保存完成，IP项目: %d，端口项目: %d，跳过域名: %d，跳过IP: %d", 
-                        batch_num, len(ip_items), len(port_items), skipped_no_subdomain, skipped_no_ip)
             return {
                 'created_ips': len(ip_items),
                 'created_ports': len(port_items),

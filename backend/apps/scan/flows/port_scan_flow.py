@@ -5,8 +5,7 @@ from prefect import flow
 from apps.scan.tasks.port_scan import (
     export_domains_task,
     run_port_scanner_task,
-    parse_naabu_result_task,
-    save_ports_task
+    parse_and_save_ports_task
 )
 
 
@@ -187,20 +186,12 @@ def port_scan_flow(
             len(result_files), len(PORT_SCANNER_CONFIGS)
         )
         
-        # ==================== Step 3: 解析扫描结果 ====================
-        logger.info("Step 3: 解析扫描结果")
+        # ==================== Step 3: 解析并保存到数据库 ====================
+        logger.info("Step 3: 解析扫描结果并流式保存到数据库")
         
-        # 调用解析 Task，返回生成器
-        data_generator = parse_naabu_result_task(result_files=result_files)
-        
-        logger.info("✓ 解析 Task 已创建（生成器模式）")
-        
-        # ==================== Step 4: 保存到数据库 ====================
-        logger.info("Step 4: 流式保存到数据库")
-        
-        # 将生成器传递给保存 Task，实现流式处理
-        save_result = save_ports_task(
-            data_generator=data_generator,
+        # 使用合并任务，避免 Prefect 任务间传递生成器的序列化问题
+        save_result = parse_and_save_ports_task(
+            result_files=result_files,
             scan_id=scan_id,
             target_id=target_id,
             batch_size=500  # 每批 500 条，平衡性能和内存
