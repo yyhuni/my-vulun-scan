@@ -375,6 +375,7 @@ export const createScanHistoryColumns = ({
       const summary = row.getValue("summary") as { 
         subdomains: number
         endpoints: number
+        ips: number
         vulnerabilities: {
           total: number
           critical: number
@@ -397,6 +398,22 @@ export const createScanHistoryColumns = ({
               </TooltipTrigger>
               <TooltipContent side="top">
                 <p className="text-xs">Subdomains</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge 
+                  variant="outline"
+                  className="bg-chart-5/20 text-chart-5 border-chart-5/30 hover:bg-chart-5/30 transition-colors"
+                >
+                  {summary.ips}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p className="text-xs">IP Addresses</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

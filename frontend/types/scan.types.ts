@@ -11,6 +11,7 @@ export interface ScanRecord {
   summary: {
     subdomains: number
     endpoints: number
+    ips: number
     vulnerabilities: {
       total: number
       critical: number

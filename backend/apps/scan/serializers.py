@@ -66,6 +66,7 @@ class ScanHistorySerializer(serializers.ModelSerializer):
         return {
             'subdomains': getattr(obj, 'subdomains_count', obj.subdomains.count()),
             'endpoints': getattr(obj, 'endpoints_count', obj.endpoints.count()),
+            'ips': getattr(obj, 'ips_count', obj.ip_addresses.count()),
             'vulnerabilities': {
                 'total': 0,
                 'critical': 0,
