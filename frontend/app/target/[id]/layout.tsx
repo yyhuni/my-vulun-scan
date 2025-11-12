@@ -32,6 +32,7 @@ export default function TargetLayout({
     if (pathname.includes("/subdomain")) return "subdomain"
     if (pathname.includes("/endpoints")) return "endpoints"
     if (pathname.includes("/vulnerabilities")) return "vulnerabilities"
+    if (pathname.includes("/ip")) return "ip"
     return ""
   }
 
@@ -41,6 +42,7 @@ export default function TargetLayout({
     subdomain: `${basePath}/subdomain/`,
     endpoints: `${basePath}/endpoints/`,
     vulnerabilities: `${basePath}/vulnerabilities/`,
+    ip: `${basePath}/ip/`,
   }
 
   // 加载状态
@@ -128,6 +130,9 @@ export default function TargetLayout({
             <TabsTrigger value="vulnerabilities" asChild>
               <Link href={tabPaths.vulnerabilities}>Vulnerabilities</Link>
             </TabsTrigger>
+            <TabsTrigger value="ip" asChild>
+              <Link href={tabPaths.ip}>IPs</Link>
+            </TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -137,4 +142,3 @@ export default function TargetLayout({
     </div>
   )
 }
-

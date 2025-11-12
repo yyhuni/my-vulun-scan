@@ -11,8 +11,7 @@ from typing import List
 from datetime import datetime
 
 from django.db import transaction, DatabaseError
-from django.db.models import QuerySet, F
-from django.contrib.postgres.expressions import ArrayAppend
+from django.db.models import QuerySet, F, Value, Func
 from django.utils import timezone
 
 from apps.scan.models import Scan
@@ -299,8 +298,14 @@ class ScanRepository:
             - 适用于未来一个 Scan 可能启动多个 Flow 的场景
         """
         try:
+            flow_run_field = Scan._meta.get_field('flow_run_ids')
             updated_count = Scan.objects.filter(id=scan_id).update(  # type: ignore
-                flow_run_ids=ArrayAppend(F('flow_run_ids'), flow_run_id)
+                flow_run_ids=Func(
+                    F('flow_run_ids'),
+                    Value(flow_run_id),
+                    function='ARRAY_APPEND',
+                    output_field=flow_run_field
+                )
             )
             
             if updated_count > 0:
@@ -329,4 +334,3 @@ class ScanRepository:
 
 # 导出接口
 __all__ = ['ScanRepository']
-
