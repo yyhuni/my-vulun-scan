@@ -65,7 +65,7 @@ interface IPAddressesDataTableProps {
 export function IPAddressesDataTable({
   data = [],
   columns,
-  searchPlaceholder = "搜索 IP...",
+  searchPlaceholder = "搜索 IP 地址...",
   searchColumn = "ip",
   pagination,
   setPagination,

@@ -17,7 +17,7 @@ class IPAddressViewSet(viewsets.ModelViewSet):
     queryset = IPAddress.objects.all()
     serializer_class = IPAddressListSerializer
     
-    @action(detail=False, methods=['post', 'delete'])
+    @action(detail=False, methods=['post', 'delete'], url_path='bulk-delete')
     def bulk_delete(self, request):
         """
         批量删除 IP 地址记录

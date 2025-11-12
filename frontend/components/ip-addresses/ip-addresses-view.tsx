@@ -113,7 +113,7 @@ export function IPAddressesView({
         </div>
         <h3 className="text-lg font-semibold mb-2">加载失败</h3>
         <p className="text-muted-foreground text-center mb-4">
-          {error.message || "加载 IP 数据时出现错误，请重试"}
+          {error.message || "加载 IP 地址数据时出现错误，请重试"}
         </p>
         <Button onClick={() => refetch()}>重新加载</Button>
       </div>
@@ -134,7 +134,7 @@ export function IPAddressesView({
     <IPAddressesDataTable
       data={ipAddresses}
       columns={columns}
-      searchPlaceholder="搜索 IP 或子域名..."
+      searchPlaceholder="搜索 IP 地址或子域名..."
       searchColumn="ip"
       pagination={pagination}
       setPagination={setPagination}

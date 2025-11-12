@@ -70,7 +70,7 @@ export function createIPAddressColumns(params: {
   const handleCopy = async (value: string) => {
     try {
       await navigator.clipboard.writeText(value)
-      toast.success(`已复制 IP：${value}`)
+      toast.success(`已复制 IP 地址：${value}`)
     } catch (error) {
       toast.error("复制失败，请稍后再试")
       console.error("复制 IP 失败：", error)
@@ -113,7 +113,7 @@ export function createIPAddressColumns(params: {
             variant="ghost"
             size="icon"
             onClick={() => handleCopy(row.original.ip)}
-            title="复制 IP"
+            title="复制 IP 地址"
           >
             <Copy className="h-4 w-4" />
           </Button>

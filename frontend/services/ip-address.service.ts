@@ -29,7 +29,7 @@ export class IPAddressService {
   }
 
   static async bulkDeleteIPAddresses(ipIds: number[]): Promise<void> {
-    await api.post('/ip-addresses/bulk_delete/', {
+    await api.post('/ip-addresses/bulk-delete/', {
       ids: ipIds,
     })
   }
