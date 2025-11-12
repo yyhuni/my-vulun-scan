@@ -100,6 +100,7 @@ def save_ports_task(
         batch = []
         
         # 流式读取生成器并分批保存
+        # 注意：生成器使用 with context manager，即使此处异常也会正确关闭文件
         for record in data_generator:
             batch.append(record)
             total_records += 1
@@ -150,6 +151,15 @@ def save_ports_task(
         error_msg = f"保存端口扫描结果失败: {e}"
         logger.error(error_msg, exc_info=True)
         raise
+    
+    finally:
+        # 确保生成器被正确清理（显式关闭生成器）
+        # Python 的垃圾回收会自动处理，但显式清理更安全
+        try:
+            data_generator.close()
+        except (AttributeError, GeneratorExit):
+            # 生成器可能已经耗尽或不支持 close()
+            pass
 
 
 def _save_batch_with_retry(

@@ -63,6 +63,12 @@ def parse_naabu_result_task(result_files: list) -> Generator[PortScanRecord, Non
         - 跳过解析失败的行，记录警告日志
         - 不处理去重，由数据库唯一约束自动忽略重复记录
     
+    资源管理：
+        - ✅ 使用 with context manager 自动管理文件句柄
+        - ✅ 一次只打开一个文件（符合流式处理原则）
+        - ✅ 即使生成器未完全消费，当前文件也会被正确关闭
+        - ✅ 异常时 context manager 保证资源清理
+    
     Usage:
         data_gen = parse_naabu_result_task(result_files)
         for record in data_gen:
