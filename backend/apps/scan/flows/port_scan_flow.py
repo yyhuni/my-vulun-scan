@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 PORT_SCANNER_CONFIGS = {
     'naabu': {
-        'command': 'naabu -exclude-cdn -top-ports 100 -c 30 -rate 150 -timeout 50 -list {target_file} -o {output_file}',
+        'command': 'naabu -exclude-cdn -top-ports 100 -c 30 -rate 150 -timeout 50 -list {target_file} -o {output_file} -json',
         'timeout': 1200
     }
 }

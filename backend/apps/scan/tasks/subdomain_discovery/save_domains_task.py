@@ -110,12 +110,14 @@ def save_domains_task(
         
         # 输出最终统计
         if failed_batches:
-            logger.warning(
-                "⚠ 保存完成（部分失败）- 处理域名: %d，失败批次: %s",
-                total_domains, failed_batches
+            error_msg = (
+                f"保存域名时出现失败批次，处理域名: {total_domains}，"
+                f"失败批次: {failed_batches}"
             )
-        else:
-            logger.info("✓ 保存完成 - 处理域名: %d（%d 批次）", total_domains, batch_num)
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
+        
+        logger.info("✓ 保存完成 - 处理域名: %d（%d 批次）", total_domains, batch_num)
         
         return {
             'processed_records': total_domains
