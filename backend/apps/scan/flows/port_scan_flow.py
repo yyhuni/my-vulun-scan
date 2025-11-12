@@ -3,7 +3,6 @@ from pathlib import Path
 from prefect import flow
 from apps.scan.tasks.port_scan import (
     export_domains_task,
-    count_domains_task,
     run_port_scanner_task,
     parse_naabu_result_task,
     save_ports_task
@@ -14,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 PORT_SCANNER_CONFIGS = {
     'naabu': {
-        'command': 'naabu -json -exclude-cdn -top-ports 100 -c 30 -rate 150 -timeout 50 -list {target_file} -o {output_file} -json',
+        'command': 'naabu -json -exclude-cdn -top-ports 100 -c 30 -rate 150 -timeout 50 -list {target_file} -o {output_file}',
         'timeout': 1200
     }
 }
@@ -92,23 +91,7 @@ def port_scan_flow(
         # ==================== Step 1: 导出目标域名到 TXT 文件 ====================
         logger.info("Step 1: 导出目标域名列表")
         
-        # 统计域名数量
-        domain_count = count_domains_task(target_id=target_id)
-        logger.info("目标下共有 %d 个域名", domain_count)
-        
-        if domain_count == 0:
-            logger.warning("目标下没有域名，跳过端口扫描")
-            return {
-                'success': False,
-                'scan_id': scan_id,
-                'target': target_name,
-                'scan_workspace_dir': scan_workspace_dir,
-                'message': '目标下没有域名',
-                'total': 0,
-                'executed_tasks': []
-            }
-        
-        # 导出域名到文件
+        # 导出域名到文件（同时获取数量）
         domains_file = str(port_scan_dir / 'domains.txt')
         export_result = export_domains_task(
             target_id=target_id,
@@ -116,11 +99,19 @@ def port_scan_flow(
             batch_size=1000  # 每次读取 1000 条，优化内存占用
         )
         
+        # 从导出结果中获取域名数量
+        domain_count = export_result['total_count']
+        
         logger.info(
             "✓ 域名导出完成 - 文件: %s, 数量: %d",
             export_result['output_file'],
-            export_result['total_count']
+            domain_count
         )
+        
+        # 检查域名数量
+        if domain_count == 0:
+            logger.warning("目标下没有域名，无法执行端口扫描")
+            raise ValueError("目标下没有域名，无法执行端口扫描")
         
         # ==================== Step 2: 并行运行端口扫描工具 ====================
         logger.info(
@@ -145,6 +136,14 @@ def port_scan_flow(
         
         # 过滤掉失败的扫描结果（空字符串表示失败）
         result_files = [result for result in results.values() if result]
+        failed_tools = [tool for tool, result in results.items() if not result]
+        
+        # 记录失败的工具
+        if failed_tools:
+            logger.warning(
+                "以下扫描工具执行失败: %s",
+                ', '.join(failed_tools)
+            )
         
         if not result_files:
             tool_names = ', '.join(PORT_SCANNER_CONFIGS.keys())

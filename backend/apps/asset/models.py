@@ -47,7 +47,7 @@ class Subdomain(models.Model):
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['-created_at']),
-            models.Index(fields=['name']),
+            models.Index(fields=['name', 'target_id']),  # 复合索引，优化 get_by_names 批量查询
             models.Index(fields=['target_id']),
             models.Index(fields=['scan_id']),
         ]
