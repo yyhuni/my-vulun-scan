@@ -327,9 +327,17 @@ class ScanService:
                     parameters=flow_kwargs
                 )
                 
-                # 保存 flow_run_id 到数据库，供后续停止操作使用
-                scan.flow_run_ids = [flow_run_id]
-                scan.save(update_fields=['flow_run_ids'])
+                # 保存 flow_run_id 到数据库，供后续停止操作使用（使用仓储层以保证并发安全）
+                if self.scan_repo.append_flow_run_id(scan.id, flow_run_id):
+                    current_flow_ids = list(scan.flow_run_ids or [])
+                    current_flow_ids.append(flow_run_id)
+                    scan.flow_run_ids = current_flow_ids
+                else:
+                    logger.warning(
+                        "追加 Flow Run ID 失败 - Scan ID: %s, Flow Run ID: %s",
+                        scan.id,
+                        flow_run_id
+                    )
                 
                 successful_scans.append(scan)
                 logger.info(

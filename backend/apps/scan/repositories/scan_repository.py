@@ -11,7 +11,8 @@ from typing import List
 from datetime import datetime
 
 from django.db import transaction, DatabaseError
-from django.db.models import QuerySet
+from django.db.models import QuerySet, F
+from django.contrib.postgres.expressions import ArrayAppend
 from django.utils import timezone
 
 from apps.scan.models import Scan
@@ -243,7 +244,7 @@ class ScanRepository:
             是否更新成功
         
         Note:
-            Repository 层不判断业务状态，只负责数据更新
+            Repository 层不判断业务状态,只负责数据更新
             是否设置时间戳由调用方（Service/Handler）决定
         """
         scan = ScanRepository.get_by_id_for_update(scan_id)
@@ -276,6 +277,52 @@ class ScanRepository:
             ScanStatus(status).label
         )
         return True
+    
+    @staticmethod
+    def append_flow_run_id(scan_id: int, flow_run_id: str) -> bool:
+        """
+        追加 Flow Run ID 到 flow_run_ids 数组（并发安全）
+        
+        使用 PostgreSQL 的 array_append 函数在数据库层面进行原子操作，
+        避免并发场景下的 Race Condition。
+        
+        Args:
+            scan_id: 扫描任务 ID
+            flow_run_id: Prefect Flow Run ID
+        
+        Returns:
+            是否追加成功
+        
+        Note:
+            - 使用 F 表达式和 ArrayAppend 确保并发安全
+            - 生成的 SQL: UPDATE scan SET flow_run_ids = array_append(flow_run_ids, ?)
+            - 适用于未来一个 Scan 可能启动多个 Flow 的场景
+        """
+        try:
+            updated_count = Scan.objects.filter(id=scan_id).update(  # type: ignore
+                flow_run_ids=ArrayAppend(F('flow_run_ids'), flow_run_id)
+            )
+            
+            if updated_count > 0:
+                logger.debug(
+                    "追加 Flow Run ID - Scan ID: %s, Flow Run ID: %s",
+                    scan_id,
+                    flow_run_id
+                )
+                return True
+            else:
+                logger.warning(
+                    "Scan 不存在，无法追加 Flow Run ID - Scan ID: %s",
+                    scan_id
+                )
+                return False
+        except DatabaseError as e:
+            logger.error(
+                "追加 Flow Run ID 失败 - Scan ID: %s, 错误: %s",
+                scan_id,
+                e
+            )
+            return False
     
   
     
