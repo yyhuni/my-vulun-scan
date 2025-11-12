@@ -22,7 +22,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { MoreHorizontal, Star, Trash2, ChevronsUpDown, ChevronUp, ChevronDown, Copy, Check, Image } from "lucide-react"
+import { MoreHorizontal, Star, Trash2, ChevronsUpDown, ChevronUp, ChevronDown, Copy, Check } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import type { Subdomain } from "@/types/subdomain.types"
 import { toast } from "sonner"
@@ -232,50 +232,6 @@ export const createSubdomainColumns = ({
     },
   },
 
-  // 状态列
-  {
-    accessorKey: "status",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Status" />
-    ),
-    cell: ({ row }) => {
-      const status = row.getValue("status") as string | undefined
-      if (!status) {
-        return <span className="text-sm text-muted-foreground">-</span>
-      }
-      
-      // 根据状态码选择颜色
-      const getStatusVariant = (code: string) => {
-        const statusCode = parseInt(code)
-        if (statusCode >= 200 && statusCode < 300) return "default" // 成功 - 蓝色
-        if (statusCode >= 300 && statusCode < 400) return "secondary" // 重定向 - 灰色
-        if (statusCode >= 400 && statusCode < 500) return "destructive" // 客户端错误 - 红色
-        if (statusCode >= 500) return "destructive" // 服务器错误 - 红色
-        return "outline"
-      }
-      
-      return (
-        <Badge variant={getStatusVariant(status)} className="font-mono">
-          {status}
-        </Badge>
-      )
-    },
-  },
-
-  // 标题列
-  {
-    accessorKey: "title",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Title" />
-    ),
-    cell: ({ row }) => {
-      const title = row.getValue("title") as string | undefined
-      if (!title) {
-        return <span className="text-sm text-muted-foreground">-</span>
-      }
-      return <CopyableCell value={title} maxWidth="250px" truncateLength={35} successMessage="已复制标题" className="text-sm" />
-    },
-  },
 
   // IP地址列
   {
@@ -419,76 +375,6 @@ export const createSubdomainColumns = ({
     },
   },
 
-  // 内容长度列
-  {
-    accessorKey: "contentLength",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Content Length" />
-    ),
-    cell: ({ row }) => {
-      const contentLength = row.getValue("contentLength") as number | undefined
-      if (!contentLength) {
-        return <span className="text-sm text-muted-foreground">-</span>
-      }
-      return (
-        <div className="text-sm text-muted-foreground font-mono">
-          {contentLength.toLocaleString()}
-        </div>
-      )
-    },
-  },
-
-  // 截图列
-  {
-    accessorKey: "screenshot",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Screenshot" />
-    ),
-    cell: ({ row }) => {
-      const screenshot = row.getValue("screenshot") as string | undefined
-      if (!screenshot) {
-        return <span className="text-sm text-muted-foreground">-</span>
-      }
-      return (
-        <TooltipProvider delayDuration={300}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 px-2"
-                onClick={() => window.open(screenshot, '_blank')}
-              >
-                <Image className="h-4 w-4" aria-label="查看截图" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="top">
-              <p className="text-xs">点击查看截图</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      )
-    },
-  },
-
-  // 响应时间列
-  {
-    accessorKey: "responseTime",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Response Time" />
-    ),
-    cell: ({ row }) => {
-      const responseTime = row.getValue("responseTime") as number | undefined
-      if (!responseTime) {
-        return <span className="text-sm text-muted-foreground">-</span>
-      }
-      return (
-        <div className="text-sm text-muted-foreground">
-          {responseTime}ms
-        </div>
-      )
-    },
-  },
 
   // 操作列
   {
