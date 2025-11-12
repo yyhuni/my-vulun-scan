@@ -101,10 +101,6 @@ const data = {
           title: "工具配置", // 工具配置
           url: "/tools/config/",
         },
-        {
-          title: "命令管理", // 命令管理
-          url: "/tools/command/",
-        },
       ],
     },
     {

@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Wrench, PackageOpen, Settings, ArrowRight } from "lucide-react"
+import { PackageOpen, Settings, ArrowRight } from "lucide-react"
 import Link from "next/link"
 
 /**
@@ -120,12 +120,6 @@ export default function ToolsPage() {
                 <Button variant="outline" size="sm">
                   <Settings className="h-4 w-4" />
                   自定义工具
-                </Button>
-              </Link>
-              <Link href="/tools/command">
-                <Button variant="outline" size="sm">
-                  <Wrench className="h-4 w-4" />
-                  命令管理
                 </Button>
               </Link>
             </div>
