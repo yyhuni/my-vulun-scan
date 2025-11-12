@@ -316,6 +316,13 @@ class IPAddress(models.Model):
         indexes = [
             models.Index(fields=['-created_at']),
         ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['subdomain', 'ip'],
+                name='unique_ip_per_subdomain'
+            ),
+        ]
+
 
     def __str__(self):
         return str(self.ip or f'IPAddress {self.id}')
@@ -332,6 +339,14 @@ class Port(models.Model):
         null=True,
         blank=True,
         help_text='所属的IP地址'
+    )
+    target = models.ForeignKey(
+        'targets.Target',
+        on_delete=models.CASCADE,
+        related_name='ports',
+        null=True,
+        blank=True,
+        help_text='所属的扫描目标'
     )
     number = models.IntegerField(
         null=True,
@@ -363,6 +378,12 @@ class Port(models.Model):
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['-created_at']),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['ip', 'number'],
+                name='unique_port_per_ip'
+            ),
         ]
 
     def __str__(self):

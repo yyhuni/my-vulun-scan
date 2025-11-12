@@ -114,6 +114,9 @@ def initiate_scan_flow(
                 scan_workspace_dir=str(scan_workspace_path),
                 engine_config=engine_config
             )
+        elif engine_name == 'port scan':
+            from apps.scan.flows.port_scan_flow import port_scan_flow
+            
         # 未来扩展:
         # elif engine_name == 'port_scan':
         #     from apps.scan.flows.port_scan_flow import port_scan_flow
