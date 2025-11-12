@@ -137,9 +137,17 @@ def subdomain_discovery_flow(
         
         # 等待并行任务完成，获取结果
         # 注意：Task 资源由 Prefect 调度器管理，完成后自动释放，不受此处等待影响
-        results = {tool_name: future.result() for tool_name, future in futures.items()}
+        results = {}
+        for tool_name, future in futures.items():
+            try:
+                result = future.result()
+                results[tool_name] = result
+                logger.info("✓ 扫描工具 %s 执行成功", tool_name)
+            except Exception as e:
+                logger.warning("⚠️ 扫描工具 %s 执行失败: %s", tool_name, str(e))
+                results[tool_name] = None  # 标记为失败
         
-        # 过滤掉失败的扫描结果（空字符串表示失败）
+        # 过滤掉失败的扫描结果（None表示失败）
         result_files = [result for result in results.values() if result]
         
         if not result_files:

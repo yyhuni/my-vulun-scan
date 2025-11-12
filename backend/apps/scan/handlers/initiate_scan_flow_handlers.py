@@ -27,6 +27,56 @@ from prefect.client.schemas import FlowRun, State
 logger = logging.getLogger(__name__)
 
 
+def _retry_database_operation(scan_id: int, operation_func, operation_name: str):
+    """
+    数据库操作容错重试函数
+    
+    Args:
+        scan_id: 扫描ID
+        operation_func: 要执行的数据库操作函数
+        operation_name: 操作名称（用于日志）
+    
+    Returns:
+        bool: 操作是否成功
+    """
+    try:
+        return operation_func()
+    except Exception as e:
+        # 检查是否是数据库连接问题
+        if "server closed the connection unexpectedly" in str(e) or "connection" in str(e).lower():
+            logger.warning(
+                "检测到数据库连接问题，尝试重新连接并重试%s - Scan ID: %s",
+                operation_name,
+                scan_id
+            )
+            
+            try:
+                # 强制关闭当前连接，让Django重新建立连接
+                from django.db import connection
+                connection.close()
+                
+                # 重试操作
+                result = operation_func()
+                logger.info(
+                    "✓ 重试成功：%s - Scan ID: %s",
+                    operation_name,
+                    scan_id
+                )
+                return result
+                
+            except Exception as retry_error:
+                logger.error(
+                    "重试%s失败 - Scan ID: %s, 错误: %s",
+                    operation_name,
+                    scan_id,
+                    retry_error
+                )
+                return False
+        else:
+            # 非连接问题，直接抛出
+            raise e
+
+
 def on_initiate_scan_flow_running(flow: Flow, flow_run: FlowRun, state: State) -> None:
     """
     initiate_scan_flow 开始运行时的回调
@@ -50,7 +100,7 @@ def on_initiate_scan_flow_running(flow: Flow, flow_run: FlowRun, state: State) -
         )
         return
     
-    try:
+    def _update_running_status():
         from apps.scan.services import ScanService
         from apps.common.definitions import ScanStatus
         from django.utils import timezone
@@ -73,13 +123,10 @@ def on_initiate_scan_flow_running(flow: Flow, flow_run: FlowRun, state: State) -
                 "✗ Flow 状态回调：更新扫描状态失败 - Scan ID: %s",
                 scan_id
             )
-    except Exception as e:
-        # 状态更新失败不应该中断 Flow 执行
-        logger.exception(
-            "Flow 状态回调异常 - Scan ID: %s, 错误: %s",
-            scan_id,
-            e
-        )
+        return success
+    
+    # 使用容错机制执行状态更新
+    _retry_database_operation(scan_id, _update_running_status, "状态更新为RUNNING")
 
 
 def on_initiate_scan_flow_completed(flow: Flow, flow_run: FlowRun, state: State) -> None:
@@ -109,7 +156,7 @@ def on_initiate_scan_flow_completed(flow: Flow, flow_run: FlowRun, state: State)
     if not scan_id:
         return
     
-    try:
+    def _update_completed_status():
         from apps.scan.models import Scan
         from apps.common.definitions import ScanStatus
         from django.utils import timezone
@@ -132,7 +179,7 @@ def on_initiate_scan_flow_completed(flow: Flow, flow_run: FlowRun, state: State)
                 scan_id,
                 flow_run.id
             )
-            return
+            return True
         
         # 🔑 原子操作 2：尝试将 RUNNING 更新为 COMPLETED（正常完成）
         # 只有状态是 RUNNING 时才更新（避免覆盖其他状态）
@@ -160,13 +207,10 @@ def on_initiate_scan_flow_completed(flow: Flow, flow_run: FlowRun, state: State)
                 scan_id,
                 flow_run.id
             )
-            
-    except Exception as e:
-        logger.exception(
-            "Flow 状态回调异常 - Scan ID: %s, 错误: %s",
-            scan_id,
-            e
-        )
+        return True
+    
+    # 使用容错机制执行状态更新
+    _retry_database_operation(scan_id, _update_completed_status, "状态更新为COMPLETED")
 
 
 def on_initiate_scan_flow_failed(flow: Flow, flow_run: FlowRun, state: State) -> None:
@@ -192,7 +236,7 @@ def on_initiate_scan_flow_failed(flow: Flow, flow_run: FlowRun, state: State) ->
     if not scan_id:
         return
     
-    try:
+    def _update_failed_status():
         from apps.scan.models import Scan
         from apps.common.definitions import ScanStatus
         from django.utils import timezone
@@ -218,7 +262,7 @@ def on_initiate_scan_flow_failed(flow: Flow, flow_run: FlowRun, state: State) ->
                 scan_id,
                 flow_run.id
             )
-            return
+            return True
         
         # 🔑 原子操作 2：尝试将 RUNNING 更新为 FAILED（正常失败）
         # 只有状态是 RUNNING 时才更新（避免覆盖其他状态）
@@ -248,13 +292,10 @@ def on_initiate_scan_flow_failed(flow: Flow, flow_run: FlowRun, state: State) ->
                 scan_id,
                 flow_run.id
             )
-            
-    except Exception as e:
-        logger.exception(
-            "Flow 状态回调异常 - Scan ID: %s, 错误: %s",
-            scan_id,
-            e
-        )
+        return True
+    
+    # 使用容错机制执行状态更新
+    _retry_database_operation(scan_id, _update_failed_status, "状态更新为FAILED")
 
 
 def on_initiate_scan_flow_cancelled(flow: Flow, flow_run: FlowRun, state: State) -> None:
@@ -277,7 +318,7 @@ def on_initiate_scan_flow_cancelled(flow: Flow, flow_run: FlowRun, state: State)
     if not scan_id:
         return
     
-    try:
+    def _update_cancelled_status():
         from apps.scan.models import Scan
         from apps.common.definitions import ScanStatus
         from django.utils import timezone
@@ -306,13 +347,10 @@ def on_initiate_scan_flow_cancelled(flow: Flow, flow_run: FlowRun, state: State)
                 scan_id,
                 flow_run.id
             )
-            
-    except Exception as e:
-        logger.exception(
-            "Flow 状态回调异常 - Scan ID: %s, 错误: %s",
-            scan_id,
-            e
-        )
+        return True
+    
+    # 使用容错机制执行状态更新
+    _retry_database_operation(scan_id, _update_cancelled_status, "状态更新为CANCELLED")
 
 
 def on_initiate_scan_flow_crashed(flow: Flow, flow_run: FlowRun, state: State) -> None:
@@ -341,7 +379,7 @@ def on_initiate_scan_flow_crashed(flow: Flow, flow_run: FlowRun, state: State) -
     if not scan_id:
         return
     
-    try:
+    def _update_crashed_status():
         from apps.scan.models import Scan
         from apps.common.definitions import ScanStatus
         from django.utils import timezone
@@ -369,14 +407,11 @@ def on_initiate_scan_flow_crashed(flow: Flow, flow_run: FlowRun, state: State) -
             )
         else:
             logger.warning(
-                "⚠️ Flow 状态回调：Scan 不存在或已被删除 - Scan ID: %s, Flow Run: %s",
+                "⚠️ Flow 状态回调：未找到要更新的 Scan 记录 - Scan ID: %s, Flow Run: %s",
                 scan_id,
                 flow_run.id
             )
-            
-    except Exception as e:
-        logger.exception(
-            "Flow 状态回调异常 - Scan ID: %s, 错误: %s",
-            scan_id,
-            e
-        )
+        return True
+    
+    # 使用容错机制执行状态更新
+    _retry_database_operation(scan_id, _update_crashed_status, "状态更新为CRASHED")

@@ -98,18 +98,24 @@ DATABASES = {
         'HOST': os.getenv('DB_HOST', 'localhost'),
         'PORT': os.getenv('DB_PORT', '5432'),
         
-        # 连接池配置：保持连接 60 秒
+        # 连接池配置：针对远程数据库优化
         # 说明：
-        # - 0: 每次请求后关闭（适合低流量，但性能差）
+        # - 0: 每次请求后关闭（适合不稳定的远程连接）
         # - 60-120: 推荐值（平衡性能和资源占用）
         # - 600+: 过长，可能导致连接池耗尽
         # - None: 永久连接（仅适合专用连接池，不推荐）
-        'CONN_MAX_AGE': int(os.getenv('DB_CONN_MAX_AGE', '60')),
+        'CONN_MAX_AGE': int(os.getenv('DB_CONN_MAX_AGE', '30')),  # 远程数据库使用 30秒，平衡性能和稳定性
         
-        # PostgreSQL 特定选项
+        # PostgreSQL 特定选项 - 针对远程数据库优化
         'OPTIONS': {
-            'connect_timeout': 10,  # 连接超时 10 秒
-            'options': '-c statement_timeout=30000'  # SQL 语句超时 30 秒
+            'connect_timeout': 30,  # 连接超时 30 秒（远程数据库需要更长时间）
+            'options': '-c statement_timeout=60000 -c idle_in_transaction_session_timeout=300000',  # SQL 语句超时 60 秒，事务空闲超时 5 分钟
+            'keepalives_idle': 600,  # TCP keepalive 空闲时间 10 分钟
+            'keepalives_interval': 30,  # TCP keepalive 间隔 30 秒
+            'keepalives_count': 3,  # TCP keepalive 重试次数
+            # 性能优化参数
+            'sslmode': 'disable',  # 禁用SSL以减少连接延迟（如果网络安全可控）
+            'application_name': 'xingrin_scanner',  # 标识应用名称，便于监控
         }
     }
 }
