@@ -7,6 +7,7 @@ from .models import Organization, Target
 from .serializers import OrganizationSerializer, TargetSerializer, BatchCreateTargetSerializer
 from apps.common.normalizer import normalize_target
 from apps.common.validators import detect_target_type
+from apps.asset.models import Subdomain
 
 
 class OrganizationViewSet(viewsets.ModelViewSet):
@@ -197,6 +198,12 @@ class TargetViewSet(viewsets.ModelViewSet):
                 # 如果指定了组织，关联目标到组织
                 if organization:
                     organization.targets.add(target)
+                
+                if target_type == Target.TargetType.DOMAIN:
+                    Subdomain.objects.get_or_create(
+                        name=normalized_name,
+                        target=target,
+                    )
                 
                 # 记录创建或复用的目标
                 if created:

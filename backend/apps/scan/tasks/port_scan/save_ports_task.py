@@ -304,7 +304,35 @@ def _save_batch(batch: list, target_id: int, batch_num: int, max_retries: int = 
                 ip_addrs = {ip_addr for _, ip_addr in ip_set}
                 
                 # 使用 Repository 批量查询
+                # 注意：由于 ignore_conflicts 不返回已存在记录的 ID
+                # 我们需要从数据库重新查询所有 IP
                 ip_map = ip_repo.get_by_subdomain_and_ips(subdomain_ids, ip_addrs)
+                
+                # 验证查询结果的完整性
+                # 如果查询结果少于预期，说明可能有并发冲突或数据竞争
+                expected_count = len(ip_set)
+                actual_count = len(ip_map)
+                if actual_count < expected_count:
+                    logger.warning(
+                        "批次 %d: IPAddress 查询结果不完整 - 预期 %d，实际 %d",
+                        batch_num, expected_count, actual_count
+                    )
+                    
+                    # 短暂延迟后重试查询（给数据库提交更多时间）
+                    time.sleep(0.1)
+                    ip_map_retry = ip_repo.get_by_subdomain_and_ips(subdomain_ids, ip_addrs)
+                    
+                    if len(ip_map_retry) > actual_count:
+                        logger.info(
+                            "批次 %d: 重试查询成功 - 找到 %d 条记录",
+                            batch_num, len(ip_map_retry)
+                        )
+                        ip_map = ip_map_retry
+                    else:
+                        logger.debug(
+                            "批次 %d: 重试查询无改善，可能是域名不存在或数据不一致",
+                            batch_num
+                        )
             
             # ========== Step 5: 批量创建 Port（Repository 内部独立短事务）==========
             port_items = []
