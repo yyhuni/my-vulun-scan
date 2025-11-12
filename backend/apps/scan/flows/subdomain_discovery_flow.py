@@ -165,11 +165,12 @@ def subdomain_discovery_flow(
         # ==================== Step 3: 流式保存到数据库 ====================
         logger.info("Step 3: 流式保存到数据库")
         
-        saved_count = save_domains_task(
+        save_result = save_domains_task(
             domains_file=merged_file,
             scan_id=scan_id,
             target_id=target_id
         )
+        processed_domains = save_result.get('processed_records', 0)
         
         logger.info("="*60 + "\n✓ 子域名发现扫描完成\n" + "="*60)
         
@@ -185,7 +186,7 @@ def subdomain_discovery_flow(
             'scan_id': scan_id,
             'target': target_name,
             'scan_workspace_dir': scan_workspace_dir,
-            'total': saved_count,
+            'total': processed_domains,
             'executed_tasks': executed_tasks
         }
         

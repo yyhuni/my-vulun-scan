@@ -103,7 +103,7 @@ def run_port_scanner_task(
         logger.debug("结果文件: %s", output_file)
         
         # 执行扫描 - 只记录 stderr，stdout 直接丢弃（节省 I/O）
-        with open(log_file, 'w', encoding='utf-8') as log_f:
+        with open(log_file, 'w', encoding='utf-8', buffering=1) as log_f:
             result = subprocess.run(
                 actual_command,
                 shell=True,

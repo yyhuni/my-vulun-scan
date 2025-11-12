@@ -27,7 +27,7 @@ def save_domains_task(
     scan_id: int,
     target_id: int = None,
     batch_size: int = 1000
-) -> int:
+) -> dict:
     """
     流式批量保存域名到数据库
     
@@ -38,7 +38,9 @@ def save_domains_task(
         batch_size: 批量保存大小
     
     Returns:
-        int: 处理的域名总数（不是实际创建数）
+        dict: {
+            'processed_records': int  # 处理的域名总数（不是实际创建数）
+        }
     
     Raises:
         ValueError: 参数验证失败（target_id为None或路径不是文件）
@@ -115,7 +117,9 @@ def save_domains_task(
         else:
             logger.info("✓ 保存完成 - 处理域名: %d（%d 批次）", total_domains, batch_num)
         
-        return total_domains
+        return {
+            'processed_records': total_domains
+        }
         
     except (IntegrityError, OperationalError, DatabaseError) as e:
         error_msg = f"数据库操作失败: {e}"
