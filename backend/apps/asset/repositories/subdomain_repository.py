@@ -13,15 +13,17 @@ class SubdomainDTO:
 class SubdomainRepository(Protocol):
     """子域名仓储抽象接口。"""
 
-    def upsert_many(self, items: List[SubdomainDTO]) -> int:
+    def bulk_create_ignore_conflicts(self, items: List[SubdomainDTO]) -> None:
         """
-        批量插入（忽略已存在的记录）。
-
+        批量创建子域名，忽略冲突
+        
         Args:
             items: 子域名 DTO 列表
-
-        Returns:
-            实际新建的记录数量
+            
+        Raises:
+            IntegrityError: 数据完整性错误
+            OperationalError: 数据库操作错误
+            DatabaseError: 数据库错误
         """
         raise NotImplementedError
 

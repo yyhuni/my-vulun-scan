@@ -164,7 +164,7 @@ def _save_batch_with_retry(batch: List[str], scan_id: int, target_id: int, batch
     
     for attempt in range(max_retries):
         try:
-            repository.upsert_many(items)
+            repository.bulk_create_ignore_conflicts(items)
             logger.debug("批次 %d: 已处理 %d 个域名", batch_num, len(batch))
             return {'success': True}
         

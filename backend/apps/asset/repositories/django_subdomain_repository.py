@@ -12,15 +12,12 @@ logger = logging.getLogger(__name__)
 class DjangoSubdomainRepository(SubdomainRepository):
     """基于 Django ORM 的子域名仓储实现。"""
 
-    def upsert_many(self, items: List[SubdomainDTO]) -> int:
+    def bulk_create_ignore_conflicts(self, items: List[SubdomainDTO]) -> None:
         """
-        批量插入或更新子域名
+        批量创建子域名，忽略冲突
         
         Args:
             items: 子域名 DTO 列表
-            
-        Returns:
-            int: 成功处理的记录数
             
         Raises:
             IntegrityError: 数据完整性错误（如唯一约束冲突）
@@ -28,7 +25,7 @@ class DjangoSubdomainRepository(SubdomainRepository):
             DatabaseError: 其他数据库错误
         """
         if not items:
-            return 0
+            return
 
         try:
             subdomain_objects = [
@@ -54,9 +51,7 @@ class DjangoSubdomainRepository(SubdomainRepository):
                     unique_fields=['name', 'target_id'],  # 唯一约束：同一 Target 下子域名唯一
                 )
 
-            logger.debug(f"成功处理 {len(items)} 条子域名记录（提交数，不是实际创建数）")
-            # 返回 0 表示无法准确统计
-            return 0
+            logger.debug(f"成功处理 {len(items)} 条子域名记录")
 
         except IntegrityError as e:
             logger.error(
