@@ -106,8 +106,6 @@ def merge_and_validate_task(
             cmd,
             shell=True,
             check=True,
-            capture_output=True,
-            text=True,
             timeout=3600  # 60分钟超时
         )
         
