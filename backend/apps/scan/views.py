@@ -125,7 +125,7 @@ class ScanViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
     
-    @action(detail=False, methods=['post', 'delete'])
+    @action(detail=False, methods=['post', 'delete'], url_path='bulk-delete')
     def bulk_delete(self, request):
         """
         批量删除扫描记录
@@ -134,7 +134,7 @@ class ScanViewSet(viewsets.ModelViewSet):
         - ids: 扫描ID列表 (list[int], 必填)
         
         示例请求:
-        POST /api/scans/bulk_delete/
+        POST /api/scans/bulk-delete/
         {
             "ids": [1, 2, 3]
         }

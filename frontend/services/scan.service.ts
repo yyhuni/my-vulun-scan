@@ -38,7 +38,7 @@ export async function deleteScan(id: number): Promise<void> {
  * @returns 删除结果
  */
 export async function bulkDeleteScans(ids: number[]): Promise<{ message: string; deletedCount: number }> {
-  const res = await api.post<{ message: string; deletedCount: number }>('/scans/bulk_delete/', { ids })
+  const res = await api.post<{ message: string; deletedCount: number }>('/scans/bulk-delete/', { ids })
   return res.data
 }
 
