@@ -286,3 +286,42 @@ class TargetViewSet(viewsets.ModelViewSet):
                 {'error': '数据库错误，请稍后重试'},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
+
+    @action(detail=True, methods=['get'], url_path='ip-addresses')
+    def ip_addresses(self, request, pk=None):
+        """
+        获取目标关联的所有 IP 地址（支持分页）
+
+        URL: GET /api/targets/{id}/ip-addresses/?page=1&pageSize=10
+        """
+        from apps.asset.serializers import IPAddressListSerializer
+        from django.core.exceptions import ObjectDoesNotExist
+        from django.db import DatabaseError, OperationalError
+
+        try:
+            target = self.get_object()
+            queryset = target.ip_addresses.select_related('subdomain').prefetch_related('ports').order_by('-created_at')
+
+            paginator = self.paginator
+            page = paginator.paginate_queryset(queryset, request, view=self)
+
+            if page is not None:
+                serializer = IPAddressListSerializer(page, many=True)
+                return paginator.get_paginated_response(serializer.data)
+
+            return Response(
+                {'error': '必须提供分页参数 page 和 pageSize'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        except ObjectDoesNotExist:
+            return Response(
+                {'error': f'目标 ID {pk} 不存在'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        except (DatabaseError, OperationalError):
+            return Response(
+                {'error': '数据库错误，请稍后重试'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )

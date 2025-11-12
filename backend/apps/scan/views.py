@@ -8,7 +8,7 @@ from .models import Scan
 from .serializers import ScanSerializer, ScanHistorySerializer
 from .services.scan_service import ScanService
 from apps.common.definitions import ScanStatus
-from apps.asset.serializers import SubdomainListSerializer
+from apps.asset.serializers import SubdomainListSerializer, IPAddressListSerializer
 
 
 class ScanViewSet(viewsets.ModelViewSet):
@@ -344,6 +344,47 @@ class ScanViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         
+        except (DatabaseError, OperationalError):
+            return Response(
+                {'error': '数据库错误，请稍后重试'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+
+    @action(detail=True, methods=['get'], url_path='ip-addresses')
+    def ip_addresses(self, request, pk=None):  # pylint: disable=unused-argument
+        """
+        获取扫描关联的所有 IP 地址（支持分页）
+        """
+        try:
+            scan_service = ScanService()
+            scan = scan_service.get_scan(scan_id=pk, prefetch_relations=False)
+
+            if not scan:
+                return Response(
+                    {'error': f'扫描 ID {pk} 不存在'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            queryset = scan.ip_addresses.select_related('subdomain').prefetch_related('ports').order_by('-created_at')
+
+            paginator = self.paginator
+            page = paginator.paginate_queryset(queryset, request, view=self)
+
+            if page is not None:
+                serializer = IPAddressListSerializer(page, many=True)
+                return paginator.get_paginated_response(serializer.data)
+
+            return Response(
+                {'error': '必须提供分页参数 page 和 pageSize'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        except ObjectDoesNotExist:
+            return Response(
+                {'error': f'扫描 ID {pk} 不存在'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
         except (DatabaseError, OperationalError):
             return Response(
                 {'error': '数据库错误，请稍后重试'},

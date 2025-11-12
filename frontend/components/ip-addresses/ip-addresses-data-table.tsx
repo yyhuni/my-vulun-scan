@@ -46,12 +46,17 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import type { IPAddress } from "@/types/ip-address.types"
+import type { PaginationInfo } from "@/types/common.types"
 
 interface IPAddressesDataTableProps {
   data: IPAddress[]
   columns: ColumnDef<IPAddress>[]
   searchPlaceholder?: string
   searchColumn?: string
+  pagination?: { pageIndex: number; pageSize: number }
+  setPagination?: React.Dispatch<React.SetStateAction<{ pageIndex: number; pageSize: number }>>
+  paginationInfo?: PaginationInfo
+  onPaginationChange?: (pagination: { pageIndex: number; pageSize: number }) => void
 }
 
 export function IPAddressesDataTable({
@@ -59,15 +64,23 @@ export function IPAddressesDataTable({
   columns,
   searchPlaceholder = "搜索 IP...",
   searchColumn = "ip",
+  pagination,
+  setPagination,
+  paginationInfo,
+  onPaginationChange,
 }: IPAddressesDataTableProps) {
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({})
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [sorting, setSorting] = React.useState<SortingState>([])
-  const [pagination, setPagination] = React.useState({
+  const [internalPagination, setInternalPagination] = React.useState({
     pageIndex: 0,
     pageSize: 10,
   })
+
+  const useServerPagination = !!paginationInfo && !!pagination && !!setPagination
+  const tablePagination = useServerPagination ? pagination : internalPagination
+  const setTablePagination = useServerPagination ? setPagination : setInternalPagination
 
   const table = useReactTable({
     data,
@@ -77,7 +90,7 @@ export function IPAddressesDataTable({
       columnVisibility,
       rowSelection,
       columnFilters,
-      pagination,
+      pagination: tablePagination,
     },
     getRowId: (row) => row.id.toString(),
     enableRowSelection: true,
@@ -85,14 +98,25 @@ export function IPAddressesDataTable({
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
-    onPaginationChange: setPagination,
+    onPaginationChange: (updater) => {
+      const nextPagination =
+        typeof updater === "function" ? updater(tablePagination) : updater
+      setTablePagination?.(nextPagination as { pageIndex: number; pageSize: number })
+      onPaginationChange?.(nextPagination)
+    },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    manualPagination: false,
-    pageCount: Math.ceil(data.length / pagination.pageSize) || 1,
+    manualPagination: useServerPagination,
+    pageCount: useServerPagination
+      ? paginationInfo?.totalPages ?? -1
+      : Math.ceil(data.length / tablePagination.pageSize) || 1,
   })
+
+  const totalItems = useServerPagination
+    ? paginationInfo?.total ?? data.length
+    : table.getFilteredRowModel().rows.length
 
   return (
     <div className="w-full space-y-4">
@@ -177,9 +201,7 @@ export function IPAddressesDataTable({
       </div>
 
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex-1 text-sm text-muted-foreground">
-          共 {table.getFilteredRowModel().rows.length} 条记录
-        </div>
+        <div className="flex-1 text-sm text-muted-foreground">共 {totalItems} 条记录</div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
           <div className="flex items-center space-x-2">
             <Label className="text-sm font-medium">每页显示</Label>
