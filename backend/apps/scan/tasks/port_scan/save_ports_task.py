@@ -21,6 +21,7 @@
 
 import logging
 import time
+import sys
 from prefect import task
 from typing import Generator
 from django.db import IntegrityError, OperationalError, DatabaseError, transaction
@@ -33,6 +34,38 @@ from apps.asset.repositories.port_repository import PortDTO
 from .types import PortScanRecord
 
 logger = logging.getLogger(__name__)
+
+MAX_SUBDOMAIN_CACHE_BYTES = 100 * 1024 * 1024
+
+def _approx_size_bytes(obj) -> int:
+    try:
+        return sys.getsizeof(obj)
+    except Exception:
+        return 0
+
+def _estimate_subdomain_cache_size(cache: dict) -> int:
+    size = _approx_size_bytes(cache)
+    for k, v in cache.items():
+        size += _approx_size_bytes(k)
+        # 仅估算关键字段，避免对 ORM 实例做深度遍历
+        if v is None:
+            continue
+        size += _approx_size_bytes(getattr(v, 'id', None))
+        size += _approx_size_bytes(getattr(v, 'name', None))
+        size += _approx_size_bytes(getattr(v, 'subdomain', None))
+        if not getattr(v, 'id', None) and not getattr(v, 'name', None):
+            size += _approx_size_bytes(str(v))
+    return size
+
+def _maybe_trim_subdomain_cache(cache: dict) -> bool:
+    try:
+        if _estimate_subdomain_cache_size(cache) > MAX_SUBDOMAIN_CACHE_BYTES:
+            cache.clear()
+            return True
+    except Exception:
+        # 估算失败时不影响主流程
+        return False
+    return False
 
 
 @task(
@@ -95,6 +128,7 @@ def save_ports_task(
     total_records = 0
     batch_num = 0
     failed_batches = []
+    subdomain_cache = {}
     
     try:
         batch = []
@@ -108,7 +142,7 @@ def save_ports_task(
             # 达到批次大小，执行保存
             if len(batch) >= batch_size:
                 batch_num += 1
-                result = _save_batch_with_retry(batch, target_id, batch_num)
+                result = _save_batch_with_retry(batch, target_id, batch_num, subdomain_cache)
                 if not result['success']:
                     failed_batches.append(batch_num)
                     logger.warning("批次 %d 保存失败，已记录", batch_num)
@@ -122,7 +156,7 @@ def save_ports_task(
         # 保存最后一批
         if batch:
             batch_num += 1
-            result = _save_batch_with_retry(batch, target_id, batch_num)
+            result = _save_batch_with_retry(batch, target_id, batch_num, subdomain_cache)
             if not result['success']:
                 failed_batches.append(batch_num)
         
@@ -166,6 +200,7 @@ def _save_batch_with_retry(
     batch: list,
     target_id: int,
     batch_num: int,
+    subdomain_cache: dict,
     max_retries: int = 3
 ) -> dict:
     """
@@ -182,7 +217,7 @@ def _save_batch_with_retry(
     """
     for attempt in range(max_retries):
         try:
-            _save_batch(batch, target_id, batch_num)
+            _save_batch(batch, target_id, batch_num, subdomain_cache)
             return {'success': True}
         
         except (OperationalError, DatabaseError) as e:
@@ -211,7 +246,7 @@ def _save_batch_with_retry(
     return {'success': False}
 
 
-def _save_batch(batch: list, target_id: int, batch_num: int, max_retries: int = 3):
+def _save_batch(batch: list, target_id: int, batch_num: int, subdomain_cache: dict, max_retries: int = 3):
     """
     保存一个批次的数据到数据库（使用 Repository 模式）
     
@@ -262,7 +297,13 @@ def _save_batch(batch: list, target_id: int, batch_num: int, max_retries: int = 
         try:
             # ========== Step 1: 批量查询 Subdomain（读操作，无需事务）==========
             hosts = {record['host'] for record in batch}
-            subdomain_map = subdomain_repo.get_by_names(hosts, target_id)
+            uncached = hosts - set(subdomain_cache.keys())
+            if uncached:
+                new_data = subdomain_repo.get_by_names(uncached, target_id)
+                subdomain_cache.update(new_data)
+                if _maybe_trim_subdomain_cache(subdomain_cache):
+                    logger.warning("Subdomain 缓存超过上限，已清空以避免 OOM")
+            subdomain_map = {h: subdomain_cache[h] for h in hosts if h in subdomain_cache}
             
             # ========== Step 2: 准备 IPAddress 数据（内存操作，无需事务）==========
             # 提取所有唯一的 (subdomain_id, ip) 组合
@@ -319,7 +360,7 @@ def _save_batch(batch: list, target_id: int, batch_num: int, max_retries: int = 
                     )
                     
                     # 短暂延迟后重试查询（给数据库提交更多时间）
-                    time.sleep(0.1)
+                    time.sleep(10)
                     ip_map_retry = ip_repo.get_by_subdomain_and_ips(subdomain_ids, ip_addrs)
                     
                     if len(ip_map_retry) > actual_count:

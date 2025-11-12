@@ -18,6 +18,21 @@ PORT_SCANNER_CONFIGS = {
     }
 }
 
+def calculate_timeout(domain_count: int) -> int:
+    """
+    根据域名数量动态计算扫描超时时间。
+
+    规则：
+    - 基础时间 base = 300 秒（5 分钟）
+    - 每个域名额外增加 per_domain = 1 秒
+    - 不设置最大上限（大量域名情况下允许更长超时，由外层流程兜底）
+
+    返回值为上述规则计算结果。
+    """
+    base = 300
+    per_domain = 1
+    return base + int(domain_count * per_domain)
+
 @flow(name="port_scan", log_prints=True)
 def port_scan_flow(
     scan_id: int,
@@ -108,6 +123,10 @@ def port_scan_flow(
             domain_count
         )
         
+        # 动态计算端口扫描超时时间（根据域名数量）
+        dynamic_timeout = calculate_timeout(domain_count)
+        logger.info("动态计算超时时间: %d 秒（基于域名数量 %d）", dynamic_timeout, domain_count)
+        
         # 检查域名数量
         if domain_count == 0:
             logger.warning("目标下没有域名，无法执行端口扫描")
@@ -127,7 +146,7 @@ def port_scan_flow(
                 target_file=domains_file,
                 result_dir=str(port_scan_dir),
                 command=config['command'],
-                timeout=config['timeout']
+                timeout=dynamic_timeout
             )
             futures[tool_name] = future
         
@@ -147,9 +166,14 @@ def port_scan_flow(
         
         if not result_files:
             tool_names = ', '.join(PORT_SCANNER_CONFIGS.keys())
+            error_details = "\n".join([
+                f"  - {tool}: {results.get(tool, 'unknown error')}"
+                for tool in failed_tools
+            ])
             raise RuntimeError(
-                f"所有端口扫描工具均失败 - 目标: {target_name}. "
-                f"请检查扫描工具是否正确安装（{tool_names}）"
+                f"所有端口扫描工具均失败 - 目标: {target_name}\n"
+                f"失败工具:\n{error_details}\n"
+                f"请检查: 1) 工具是否安装（{tool_names}） 2) 网络连接 3) 目标是否可达"
             )
         
         logger.info(
