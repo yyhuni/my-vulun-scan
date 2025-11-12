@@ -2,6 +2,7 @@ import { ColumnDef } from "@tanstack/react-table"
 import { PaginationParams, PaginationInfo } from "./common.types"
 import type { Organization } from "./organization.types"
 import type { BatchCreateResponse } from "./api-response.types"
+import type { Port } from "./ip-address.types"
 
 // 子域名相关类型定义（由原 domain.types.ts 重命名而来）
 
@@ -19,8 +20,8 @@ export interface Subdomain {
   // 新增字段
   status?: string    // 状态
   title?: string     // 页面标题
-  ip?: string        // IP地址
-  ports?: number[]   // 端口列表
+  ipAddresses?: string[]  // IP地址列表
+  ports?: Port[]     // 端口列表
   contentLength?: number  // 内容长度
   screenshot?: string     // 截图URL
   responseTime?: number   // 响应时间（毫秒）

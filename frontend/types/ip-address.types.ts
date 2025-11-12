@@ -1,14 +1,21 @@
+export interface Port {
+  number: number
+  serviceName: string
+  description: string
+  isUncommon: boolean
+}
+
 export interface IPAddress {
   id: number
   ip: string
   subdomain?: string
   createdAt?: string
   reversePointer?: string
+  ports?: Port[]
   // 兼容后端额外字段（无需前端展示）
   protocolVersion?: string
   isPrivate?: boolean
   riskLevel?: string
-  ports?: Array<{ port: number; service: string }>
   lastSeen?: string
 }
 

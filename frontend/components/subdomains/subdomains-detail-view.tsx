@@ -209,6 +209,8 @@ export function SubdomainsDetailView({
       cname: item.cname || [],
       isCdn: item.isCdn || false,     // 后端已转换为 camelCase
       cdnName: item.cdnName || '',    // 后端已转换为 camelCase
+      ports: item.ports || [],        // 端口数据
+      ipAddresses: item.ipAddresses || [],  // IP地址列表
     }))
   }, [subdomainsData])
 

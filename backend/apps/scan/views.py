@@ -323,7 +323,7 @@ class ScanViewSet(viewsets.ModelViewSet):
                 )
             
             # 获取该扫描的所有子域名（按创建时间倒序）
-            queryset = scan.subdomains.all().order_by('-created_at')
+            queryset = scan.subdomains.prefetch_related('ports', 'ip_addresses').order_by('-created_at')
             
             # 使用分页器
             paginator = self.paginator

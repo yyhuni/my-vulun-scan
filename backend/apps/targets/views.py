@@ -259,7 +259,7 @@ class TargetViewSet(viewsets.ModelViewSet):
             target = self.get_object()
             
             # 获取该目标的所有子域名（按创建时间倒序）
-            queryset = Subdomain.objects.filter(target=target).order_by('-created_at')
+            queryset = Subdomain.objects.filter(target=target).prefetch_related('ports', 'ip_addresses').order_by('-created_at')
             
             # 使用分页器
             paginator = self.paginator

@@ -131,6 +131,13 @@ export class SubdomainService {
       cname: string[]
       isCdn: boolean     // 后端自动转换为 camelCase
       cdnName: string    // 后端自动转换为 camelCase
+      ports: Array<{
+        number: number
+        serviceName: string
+        description: string
+        isUncommon: boolean
+      }>
+      ipAddresses: string[]  // IP地址列表
     }>
     total: number
     page: number
@@ -143,7 +150,7 @@ export class SubdomainService {
         pageSize: params?.pageSize || 10,
       }
     })
-    return response.data
+    return response.data as any
   }
 
   /** 获取扫描的子域名列表（支持分页） */
@@ -161,6 +168,13 @@ export class SubdomainService {
       cname: string[]
       isCdn: boolean     // 后端自动转换为 camelCase
       cdnName: string    // 后端自动转换为 camelCase
+      ports: Array<{
+        number: number
+        serviceName: string
+        description: string
+        isUncommon: boolean
+      }>
+      ipAddresses: string[]  // IP地址列表
     }>
     total: number
     page: number
@@ -173,6 +187,6 @@ export class SubdomainService {
         pageSize: params?.pageSize || 10,
       }
     })
-    return response.data
+    return response.data as any
   }
 }
