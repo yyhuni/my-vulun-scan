@@ -235,6 +235,16 @@ def get_logging_config(debug: bool = False):
                 'level': 'INFO',  # Prefect 框架日志保持 INFO 级别
                 'propagate': False,
             },
+            'graphviz': {
+                'handlers': log_handlers,
+                'level': 'WARNING',  # 关闭 graphviz 的 DEBUG 日志
+                'propagate': False,
+            },
+            'graphviz._tools': {
+                'handlers': log_handlers,
+                'level': 'WARNING',  # 关闭 graphviz._tools 的 DEBUG 日志
+                'propagate': False,
+            },
             
             # 性能指标日志（专门记录性能相关信息）
             'performance': {

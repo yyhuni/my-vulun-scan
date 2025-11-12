@@ -124,6 +124,8 @@ def save_ports_task(
         - 跳过无法关联的记录并记录警告
     """
     logger.info("开始从生成器流式保存端口扫描结果到数据库")
+    logger.info("参数: scan_id=%s, target_id=%s, batch_size=%s", scan_id, target_id, batch_size)
+    logger.info("生成器类型: %s", type(data_generator))
     
     # 参数验证
     if target_id is None:
@@ -145,7 +147,18 @@ def save_ports_task(
         
         # 流式读取生成器并分批保存
         # 注意：生成器使用 with context manager，即使此处异常也会正确关闭文件
+        logger.info("开始遍历生成器...")
+        
+        record_count = 0
         for record in data_generator:
+            record_count += 1
+            if record_count <= 3:  # 只记录前3条记录
+                logger.info("记录 %d: %s", record_count, record)
+            elif record_count == 4:
+                logger.info("... (后续记录省略)")
+            
+            if record_count % 100 == 0:  # 每100条记录输出一次进度
+                logger.info("已读取 %d 条记录", record_count)
             batch.append(record)
             total_records += 1
             
@@ -168,6 +181,8 @@ def save_ports_task(
                 # 每10个批次输出进度
                 if batch_num % 10 == 0:
                     logger.info("进度: 已处理 %d 批次，%d 条记录", batch_num, total_records)
+        
+        logger.info("生成器遍历完成，总共读取 %d 条记录", record_count)
         
         # 保存最后一批
         if batch:
