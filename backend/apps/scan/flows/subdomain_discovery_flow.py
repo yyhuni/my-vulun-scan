@@ -12,6 +12,7 @@
 from prefect import flow
 from pathlib import Path
 import logging
+import os
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
@@ -107,8 +108,15 @@ def subdomain_discovery_flow(
         )
         
         # 准备结果目录（集中管理路径）
-        result_dir = str(Path(scan_workspace_dir) / 'subdomain_discovery')
-        Path(result_dir).mkdir(parents=True, exist_ok=True)
+        result_path = Path(scan_workspace_dir) / 'subdomain_discovery'
+        result_path.mkdir(parents=True, exist_ok=True)
+
+        if not result_path.is_dir():
+            raise RuntimeError(f"子域名扫描目录创建失败: {result_path}")
+        if not os.access(result_path, os.W_OK):
+            raise RuntimeError(f"子域名扫描目录不可写: {result_path}")
+
+        result_dir = str(result_path)
         
         logger.info(
             "Step 1: 并行运行扫描工具（%s）",

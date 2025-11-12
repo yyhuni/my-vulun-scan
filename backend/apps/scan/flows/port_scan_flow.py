@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 from prefect import flow
 from apps.scan.tasks.port_scan import (
@@ -102,6 +103,11 @@ def port_scan_flow(
         # 创建端口扫描工作目录
         port_scan_dir = Path(scan_workspace_dir) / 'port_scan'
         port_scan_dir.mkdir(parents=True, exist_ok=True)
+
+        if not port_scan_dir.is_dir():
+            raise RuntimeError(f"端口扫描目录创建失败: {port_scan_dir}")
+        if not os.access(port_scan_dir, os.W_OK):
+            raise RuntimeError(f"端口扫描目录不可写: {port_scan_dir}")
         
         # ==================== Step 1: 导出目标域名到 TXT 文件 ====================
         logger.info("Step 1: 导出目标域名列表")

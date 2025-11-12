@@ -85,7 +85,7 @@ def run_scanner_task(
     # 3. 验证结果目录
     result_path = Path(result_dir)
     if not result_path.exists():
-        raise ValueError(f"结果目录不存在: {result_dir}")
+        raise RuntimeError(f"结果目录不存在: {result_dir}")
     
     # 4. 验证目录是否可写
     if not result_path.is_dir() or not os.access(result_path, os.W_OK):
