@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, Iterator
 
 from django.db import transaction, IntegrityError, OperationalError, DatabaseError
 
@@ -83,5 +83,55 @@ class DjangoSubdomainRepository(SubdomainRepository):
                 exc_info=True
             )
             raise
+    
+    def get_domains_for_export(self, target_id: int, batch_size: int = 1000) -> Iterator[str]:
+        """
+        流式导出域名（用于生成扫描工具输入文件）
+        
+        使用 iterator() 进行流式查询，避免一次性加载所有数据到内存
+        
+        Args:
+            target_id: 目标 ID
+            batch_size: 每次从数据库读取的行数
+            
+        Yields:
+            str: 域名
+        """
+        queryset = Subdomain.objects.filter(
+            target_id=target_id
+        ).only('name').iterator(chunk_size=batch_size)
+        
+        for subdomain in queryset:
+            yield subdomain.name
+    
+    def count_by_target(self, target_id: int) -> int:
+        """
+        统计目标下的域名数量
+        
+        Args:
+            target_id: 目标 ID
+            
+        Returns:
+            int: 域名数量
+        """
+        return Subdomain.objects.filter(target_id=target_id).count()
+    
+    def get_by_names(self, names: set, target_id: int) -> dict:
+        """
+        根据域名列表批量查询 Subdomain
+        
+        Args:
+            names: 域名集合
+            target_id: 目标 ID
+            
+        Returns:
+            dict: {domain_name: Subdomain对象}
+        """
+        subdomains = Subdomain.objects.filter(
+            name__in=names,
+            target_id=target_id
+        ).only('id', 'name')
+        
+        return {sd.name: sd for sd in subdomains}
 
 

@@ -7,14 +7,15 @@
 import logging
 import time
 from prefect import task
-from typing import Generator, Dict, Any
+from typing import Generator
 from django.db import IntegrityError, OperationalError, DatabaseError, transaction
 
-from apps.asset.models import Subdomain, IPAddress
+from apps.asset.repositories.django_subdomain_repository import DjangoSubdomainRepository
 from apps.asset.repositories.django_ip_address_repository import DjangoIPAddressRepository
 from apps.asset.repositories.django_port_repository import DjangoPortRepository
 from apps.asset.repositories.ip_address_repository import IPAddressDTO
 from apps.asset.repositories.port_repository import PortDTO
+from .types import PortScanRecord
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ logger = logging.getLogger(__name__)
     log_prints=True
 )
 def save_ports_task(
-    data_generator: Generator[Dict[str, Any], None, None],
+    data_generator: Generator[PortScanRecord, None, None],
     scan_id: int,
     target_id: int,
     batch_size: int = 500
@@ -82,7 +83,7 @@ def save_ports_task(
             # 达到批次大小，执行保存
             if len(batch) >= batch_size:
                 batch_num += 1
-                result = _save_batch_with_retry(batch, scan_id, target_id, batch_num)
+                result = _save_batch_with_retry(batch, target_id, batch_num)
                 if not result['success']:
                     failed_batches.append(batch_num)
                     logger.warning("批次 %d 保存失败，已记录", batch_num)
@@ -96,7 +97,7 @@ def save_ports_task(
         # 保存最后一批
         if batch:
             batch_num += 1
-            result = _save_batch_with_retry(batch, scan_id, target_id, batch_num)
+            result = _save_batch_with_retry(batch, target_id, batch_num)
             if not result['success']:
                 failed_batches.append(batch_num)
         
@@ -129,7 +130,6 @@ def save_ports_task(
 
 def _save_batch_with_retry(
     batch: list,
-    scan_id: int,
     target_id: int,
     batch_num: int,
     max_retries: int = 3
@@ -139,7 +139,6 @@ def _save_batch_with_retry(
     
     Args:
         batch: 数据批次
-        scan_id: 扫描ID
         target_id: 目标ID
         batch_num: 批次编号
         max_retries: 最大重试次数
@@ -149,7 +148,7 @@ def _save_batch_with_retry(
     """
     for attempt in range(max_retries):
         try:
-            _save_batch(batch, scan_id, target_id, batch_num)
+            _save_batch(batch, target_id, batch_num)
             return {'success': True}
         
         except (OperationalError, DatabaseError) as e:
@@ -178,7 +177,7 @@ def _save_batch_with_retry(
     return {'success': False}
 
 
-def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int):
+def _save_batch(batch: list, target_id: int, batch_num: int):
     """
     保存一个批次的数据到数据库（使用 Repository 模式）
     
@@ -190,26 +189,19 @@ def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int):
         总计只需 4 次数据库操作，性能提升 30-50 倍
     """
     # 初始化 Repository
+    subdomain_repo = DjangoSubdomainRepository()
     ip_repo = DjangoIPAddressRepository()
     port_repo = DjangoPortRepository()
     
     # 使用事务确保数据一致性
     with transaction.atomic():
-        # ========== Step 1: 批量查询 Subdomain ==========
+        # ========== Step 1: 批量查询 Subdomain（使用 Repository）==========
         hosts = {record['host'] for record in batch}
-        subdomain_map = {
-            sd.name: sd
-            for sd in Subdomain.objects.filter(
-                name__in=hosts,
-                target_id=target_id
-            ).only('id', 'name')
-        }
+        subdomain_map = subdomain_repo.get_by_names(hosts, target_id)
         
         # ========== Step 2: 准备 IPAddress 数据 ==========
         # 提取所有唯一的 (subdomain_id, ip) 组合
         ip_set = set()
-        subdomain_id_list = []
-        ip_addr_list = []
         
         for record in batch:
             host = record['host']
@@ -221,10 +213,7 @@ def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int):
                 continue
             
             ip_key = (subdomain.id, ip_addr)
-            if ip_key not in ip_set:
-                ip_set.add(ip_key)
-                subdomain_id_list.append(subdomain.id)
-                ip_addr_list.append(ip_addr)
+            ip_set.add(ip_key)
         
         # ========== Step 3: 批量创建 IPAddress（使用 Repository）==========
         ip_items = [
@@ -240,18 +229,15 @@ def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int):
         if ip_items:
             ip_repo.bulk_create_ignore_conflicts(ip_items)
         
-        # ========== Step 4: 批量查询所有 IPAddress（构建映射）==========
+        # ========== Step 4: 批量查询所有 IPAddress（使用 Repository）==========
         ip_map = {}
-        if subdomain_id_list:
-            ip_objects = IPAddress.objects.filter(
-                subdomain_id__in=subdomain_id_list,
-                ip__in=ip_addr_list
-            ).only('id', 'subdomain_id', 'ip')
+        if ip_set:
+            # 从 ip_set 中提取查询条件
+            subdomain_ids = {subdomain_id for subdomain_id, _ in ip_set}
+            ip_addrs = {ip_addr for _, ip_addr in ip_set}
             
-            ip_map = {
-                (ip_obj.subdomain_id, ip_obj.ip): ip_obj
-                for ip_obj in ip_objects
-            }
+            # 使用 Repository 批量查询
+            ip_map = ip_repo.get_by_subdomain_and_ips(subdomain_ids, ip_addrs)
         
         # ========== Step 5: 批量创建 Port（使用 Repository）==========
         port_items = []
@@ -279,7 +265,7 @@ def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int):
             port_items.append(
                 PortDTO(
                     ip_id=ip_obj.id,
-                    target_id=target_id,
+                    subdomain_id=subdomain.id,
                     number=port_num,
                     service_name=''  # 可以后续添加服务识别
                 )

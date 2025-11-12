@@ -6,7 +6,8 @@
 import logging
 from pathlib import Path
 from prefect import task
-from django.db import transaction
+
+from apps.asset.repositories.django_subdomain_repository import DjangoSubdomainRepository
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +40,8 @@ def export_domains_task(
         IOError: 文件写入失败
     """
     try:
-        # 延迟导入 Django 模型（避免启动时循环依赖）
-        from apps.asset.models import Subdomain
+        # 初始化 Repository
+        repository = DjangoSubdomainRepository()
 
         logger.info("开始导出域名 - Target ID: %d, 输出文件: %s", target_id, output_file)
 
@@ -48,18 +49,18 @@ def export_domains_task(
         output_path = Path(output_file)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # 使用 iterator() 进行流式查询，chunk_size 控制每次从数据库读取的行数
-        # only('name') 只查询 name 字段，减少内存占用
-        queryset = Subdomain.objects.filter(
-            target_id=target_id
-        ).only('name').iterator(chunk_size=batch_size)
+        # 使用 Repository 流式查询域名
+        domain_iterator = repository.get_domains_for_export(
+            target_id=target_id,
+            batch_size=batch_size
+        )
 
         # 流式写入文件
         total_count = 0
         with open(output_path, 'w', encoding='utf-8', buffering=8192) as f:
-            for subdomain in queryset:
+            for domain_name in domain_iterator:
                 # 每次只处理一个域名，边读边写
-                f.write(f"{subdomain.name}\n")
+                f.write(f"{domain_name}\n")
                 total_count += 1
 
                 # 每写入 10000 条记录打印一次进度
@@ -102,9 +103,10 @@ def count_domains_task(target_id: int) -> int:
         int: 域名总数
     """
     try:
-        from apps.asset.models import Subdomain
+        # 初始化 Repository
+        repository = DjangoSubdomainRepository()
 
-        count = Subdomain.objects.filter(target_id=target_id).count()
+        count = repository.count_by_target(target_id)
         logger.info("Target %d 的域名总数: %d", target_id, count)
         return count
 

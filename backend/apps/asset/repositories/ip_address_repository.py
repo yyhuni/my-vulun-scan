@@ -30,3 +30,20 @@ class IPAddressRepository(Protocol):
             DatabaseError: 数据库错误
         """
         ...
+    
+    def get_by_subdomain_and_ips(
+        self, 
+        subdomain_ids: set, 
+        ip_addrs: set
+    ) -> dict:
+        """
+        根据 subdomain_id 和 ip 批量查询 IPAddress
+        
+        Args:
+            subdomain_ids: subdomain ID 集合
+            ip_addrs: IP 地址集合
+            
+        Returns:
+            dict: {(subdomain_id, ip): IPAddress对象}
+        """
+        ...

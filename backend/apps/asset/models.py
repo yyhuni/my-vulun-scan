@@ -340,13 +340,13 @@ class Port(models.Model):
         blank=True,
         help_text='所属的IP地址'
     )
-    target = models.ForeignKey(
-        'targets.Target',
+    subdomain = models.ForeignKey(
+        'Subdomain',
         on_delete=models.CASCADE,
         related_name='ports',
         null=True,
         blank=True,
-        help_text='所属的扫描目标'
+        help_text='所属的子域名'
     )
     number = models.IntegerField(
         null=True,

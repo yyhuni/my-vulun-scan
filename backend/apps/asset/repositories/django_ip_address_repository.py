@@ -80,3 +80,28 @@ class DjangoIPAddressRepository(IPAddressRepository):
                 exc_info=True
             )
             raise
+    
+    def get_by_subdomain_and_ips(
+        self, 
+        subdomain_ids: set, 
+        ip_addrs: set
+    ) -> dict:
+        """
+        根据 subdomain_id 和 ip 批量查询 IPAddress
+        
+        Args:
+            subdomain_ids: subdomain ID 集合
+            ip_addrs: IP 地址集合
+            
+        Returns:
+            dict: {(subdomain_id, ip): IPAddress对象}
+        """
+        ip_objects = IPAddress.objects.filter(
+            subdomain_id__in=subdomain_ids,
+            ip__in=ip_addrs
+        ).only('id', 'subdomain_id', 'ip')
+        
+        return {
+            (ip_obj.subdomain_id, ip_obj.ip): ip_obj
+            for ip_obj in ip_objects
+        }

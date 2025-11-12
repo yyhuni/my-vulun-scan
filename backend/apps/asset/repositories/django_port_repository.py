@@ -35,7 +35,7 @@ class DjangoPortRepository(PortRepository):
             port_objects = [
                 Port(
                     ip_id=item.ip_id,
-                    target_id=item.target_id,
+                    subdomain_id=item.subdomain_id,
                     number=item.number,
                     service_name=item.service_name
                 )

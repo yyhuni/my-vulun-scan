@@ -7,14 +7,16 @@
 import logging
 import json
 from pathlib import Path
-from typing import Generator, Dict, Any
+from typing import Generator
 from prefect import task
+
+from .types import PortScanRecord
 
 logger = logging.getLogger(__name__)
 
 
 @task(name="parse_naabu_result")
-def parse_naabu_result_task(result_files: list) -> Generator[Dict[str, Any], None, None]:
+def parse_naabu_result_task(result_files: list) -> Generator[PortScanRecord, None, None]:
     """
     解析 naabu 扫描结果文件（JSONL 格式）
     
