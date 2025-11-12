@@ -199,6 +199,43 @@ def get_logging_config(debug: bool = False):
                 'propagate': False,
             },
             
+            # 第三方库日志控制
+            'websockets': {
+                'handlers': log_handlers,
+                'level': 'WARNING',  # 关闭 WebSocket 的 DEBUG/INFO 日志
+                'propagate': False,
+            },
+            'websockets.client': {
+                'handlers': log_handlers,
+                'level': 'WARNING',  # 关闭 WebSocket 客户端的调试日志
+                'propagate': False,
+            },
+            'httpx': {
+                'handlers': log_handlers,
+                'level': 'WARNING',  # 关闭 HTTP 客户端的详细日志
+                'propagate': False,
+            },
+            'httpcore': {
+                'handlers': log_handlers,
+                'level': 'WARNING',  # 关闭 HTTP 核心库的调试日志
+                'propagate': False,
+            },
+            'httpcore.connection': {
+                'handlers': log_handlers,
+                'level': 'WARNING',  # 关闭 HTTP 连接的调试日志
+                'propagate': False,
+            },
+            'httpcore.http11': {
+                'handlers': log_handlers,
+                'level': 'WARNING',  # 关闭 HTTP/1.1 协议的调试日志
+                'propagate': False,
+            },
+            'prefect': {
+                'handlers': log_handlers,
+                'level': 'INFO',  # Prefect 框架日志保持 INFO 级别
+                'propagate': False,
+            },
+            
             # 性能指标日志（专门记录性能相关信息）
             'performance': {
                 'handlers': ['performance_file'] if log_dir else ['console'],

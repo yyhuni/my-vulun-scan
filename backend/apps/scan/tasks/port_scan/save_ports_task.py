@@ -95,7 +95,11 @@ def save_ports_task(
     
     Returns:
         dict: {
-            'processed_records': int  # 处理的记录总数
+            'processed_records': int,  # 处理的记录总数
+            'created_ips': int,        # 创建的IP记录数
+            'created_ports': int,      # 创建的端口记录数
+            'skipped_no_subdomain': int,  # 因域名不存在跳过的记录数
+            'skipped_no_ip': int,      # 因IP不存在跳过的记录数
         }
     
     Raises:
@@ -130,6 +134,12 @@ def save_ports_task(
     failed_batches = []
     subdomain_cache = {}
     
+    # 统计信息
+    total_created_ips = 0
+    total_created_ports = 0
+    total_skipped_no_subdomain = 0
+    total_skipped_no_ip = 0
+    
     try:
         batch = []
         
@@ -146,6 +156,12 @@ def save_ports_task(
                 if not result['success']:
                     failed_batches.append(batch_num)
                     logger.warning("批次 %d 保存失败，已记录", batch_num)
+                else:
+                    # 累计统计信息
+                    total_created_ips += result.get('created_ips', 0)
+                    total_created_ports += result.get('created_ports', 0)
+                    total_skipped_no_subdomain += result.get('skipped_no_subdomain', 0)
+                    total_skipped_no_ip += result.get('skipped_no_ip', 0)
                 
                 batch = []  # 清空批次
                 
@@ -159,6 +175,12 @@ def save_ports_task(
             result = _save_batch_with_retry(batch, target_id, batch_num, subdomain_cache)
             if not result['success']:
                 failed_batches.append(batch_num)
+            else:
+                # 累计统计信息
+                total_created_ips += result.get('created_ips', 0)
+                total_created_ports += result.get('created_ports', 0)
+                total_skipped_no_subdomain += result.get('skipped_no_subdomain', 0)
+                total_skipped_no_ip += result.get('skipped_no_ip', 0)
         
         # 输出最终统计
         if failed_batches:
@@ -170,12 +192,23 @@ def save_ports_task(
             raise RuntimeError(error_msg)
         
         logger.info(
-            "✓ 保存完成 - 处理记录: %d（%d 批次）",
-            total_records, batch_num
+            "✓ 保存完成 - 处理记录: %d（%d 批次），创建IP: %d，创建端口: %d，跳过（无域名）: %d，跳过（无IP）: %d",
+            total_records, batch_num, total_created_ips, total_created_ports, 
+            total_skipped_no_subdomain, total_skipped_no_ip
         )
         
+        # 如果没有创建任何记录，给出明确提示
+        if total_created_ips == 0 and total_created_ports == 0:
+            logger.warning(
+                "⚠️  没有创建任何记录！可能原因：1) 域名不在数据库中 2) 数据格式问题 3) 重复数据被忽略"
+            )
+        
         return {
-            'processed_records': total_records
+            'processed_records': total_records,
+            'created_ips': total_created_ips,
+            'created_ports': total_created_ports,
+            'skipped_no_subdomain': total_skipped_no_subdomain,
+            'skipped_no_ip': total_skipped_no_ip
         }
         
     except (IntegrityError, OperationalError, DatabaseError) as e:
@@ -215,12 +248,24 @@ def _save_batch_with_retry(
         max_retries: 最大重试次数
     
     Returns:
-        dict: {'success': bool}
+        dict: {
+            'success': bool,
+            'created_ips': int,
+            'created_ports': int, 
+            'skipped_no_subdomain': int,
+            'skipped_no_ip': int
+        }
     """
     for attempt in range(max_retries):
         try:
-            _save_batch(batch, target_id, batch_num, subdomain_cache)
-            return {'success': True}
+            stats = _save_batch(batch, target_id, batch_num, subdomain_cache)
+            return {
+                'success': True,
+                'created_ips': stats.get('created_ips', 0),
+                'created_ports': stats.get('created_ports', 0),
+                'skipped_no_subdomain': stats.get('skipped_no_subdomain', 0),
+                'skipped_no_ip': stats.get('skipped_no_ip', 0)
+            }
         
         except (OperationalError, DatabaseError) as e:
             # 数据库连接/操作错误，可重试
@@ -233,22 +278,46 @@ def _save_batch_with_retry(
                 time.sleep(wait_time)
             else:
                 logger.error("批次 %d 保存失败（已重试 %d 次）: %s", batch_num, max_retries, e)
-                return {'success': False}
+                return {
+                    'success': False,
+                    'created_ips': 0,
+                    'created_ports': 0,
+                    'skipped_no_subdomain': 0,
+                    'skipped_no_ip': 0
+                }
         
         except IntegrityError as e:
             # 数据完整性错误，不应重试
             logger.error("批次 %d 数据完整性错误，跳过: %s", batch_num, str(e)[:100])
-            return {'success': False}
+            return {
+                'success': False,
+                'created_ips': 0,
+                'created_ports': 0,
+                'skipped_no_subdomain': 0,
+                'skipped_no_ip': 0
+            }
         
         except Exception as e:
             # 其他未知错误
             logger.error("批次 %d 未知错误: %s", batch_num, e, exc_info=True)
-            return {'success': False}
+            return {
+                'success': False,
+                'created_ips': 0,
+                'created_ports': 0,
+                'skipped_no_subdomain': 0,
+                'skipped_no_ip': 0
+            }
     
-    return {'success': False}
+    return {
+        'success': False,
+        'created_ips': 0,
+        'created_ports': 0,
+        'skipped_no_subdomain': 0,
+        'skipped_no_ip': 0
+    }
 
 
-def _save_batch(batch: list, target_id: int, batch_num: int, subdomain_cache: dict, max_retries: int = 3):
+def _save_batch(batch: list, target_id: int, batch_num: int, subdomain_cache: dict, max_retries: int = 3) -> dict:
     """
     保存一个批次的数据到数据库（使用 Repository 模式）
     
@@ -294,6 +363,10 @@ def _save_batch(batch: list, target_id: int, batch_num: int, subdomain_cache: di
     ip_repo = DjangoIPAddressRepository()
     port_repo = DjangoPortRepository()
     
+    # 统计变量
+    skipped_no_subdomain = 0
+    skipped_no_ip = 0
+    
     # 重试机制：确保数据最终一致性
     for attempt in range(max_retries):
         try:
@@ -317,7 +390,8 @@ def _save_batch(batch: list, target_id: int, batch_num: int, subdomain_cache: di
                 
                 subdomain = subdomain_map.get(host)
                 if not subdomain:
-                    logger.debug("未找到域名 %s 对应的 Subdomain，跳过", host)
+                    skipped_no_subdomain += 1
+                    logger.info("批次 %d: 域名 %s 不在数据库中，跳过", batch_num, host)
                     continue
                 
                 ip_key = (subdomain.id, ip_addr)
@@ -394,6 +468,7 @@ def _save_batch(batch: list, target_id: int, batch_num: int, subdomain_cache: di
                 ip_obj = ip_map.get(ip_key)
                 
                 if not ip_obj:
+                    skipped_no_ip += 1
                     logger.warning(
                         "批次 %d: 未找到 IP (%s, %s)，跳过端口 %d",
                         batch_num, host, ip_addr, port_num
@@ -416,8 +491,14 @@ def _save_batch(batch: list, target_id: int, batch_num: int, subdomain_cache: di
                 port_repo.bulk_create_ignore_conflicts(port_items)
             
             # 🎉 成功完成，退出重试循环
-            logger.debug("批次 %d: 保存完成", batch_num)
-            return
+            logger.debug("批次 %d: 保存完成，IP项目: %d，端口项目: %d，跳过域名: %d，跳过IP: %d", 
+                        batch_num, len(ip_items), len(port_items), skipped_no_subdomain, skipped_no_ip)
+            return {
+                'created_ips': len(ip_items),
+                'created_ports': len(port_items),
+                'skipped_no_subdomain': skipped_no_subdomain,
+                'skipped_no_ip': skipped_no_ip
+            }
             
         except (OperationalError, DatabaseError) as e:
             # 数据库操作错误（连接断开、超时等）

@@ -113,24 +113,11 @@ if [ ! -f "$PID_DIR/django.pid" ]; then
     fi
 fi
 
-# 6. 选择运行模式
+# 6. 设置运行模式
 echo ""
-echo "选择 Prefect Worker 运行模式:"
-echo "  1) 本地开发模式（推荐，修改代码立即生效）"
-echo "  2) Docker 模式（需要先构建镜像）"
-echo ""
-read -p "请选择 [1/2] (默认: 1): " mode
-
-if [ "$mode" = "2" ]; then
-    export WORKER_MODE=docker
-    echo ""
-    echo -e "${GREEN}使用 Docker 模式${NC}"
-    echo "提示: 确保已构建镜像: docker build -t xingrin-backend:local -f docker/worker/Dockerfile ."
-else
-    export WORKER_MODE=local
-    echo ""
-    echo -e "${GREEN}使用本地开发模式${NC}"
-fi
+echo "使用本地开发模式（修改代码立即生效）"
+export WORKER_MODE=local
+echo -e "${GREEN}✓ 本地开发模式已启用${NC}"
 
 # 7. 启动 Prefect Deployments
 echo ""

@@ -164,8 +164,6 @@ def parse_naabu_result_task(result_files: list) -> Generator[PortScanRecord, Non
                     error_lines += 1
                     continue
     
-    # 生成器执行完毕后记录统计信息
-    logger.info(
-        "✓ naabu 结果解析完成 - 总行数: %d, 错误行数: %d, 有效记录: %d",
-        total_lines, error_lines, valid_records
-    )
+    # 注意：生成器函数不应该在这里记录统计信息
+    # 因为这段代码只有在生成器被完全消费后才会执行
+    # 统计信息现在在 save_ports_task 中处理
