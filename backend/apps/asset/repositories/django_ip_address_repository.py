@@ -36,7 +36,8 @@ class DjangoIPAddressRepository(IPAddressRepository):
                 IPAddress(
                     subdomain_id=item.subdomain_id,
                     ip=item.ip,
-                    target_id=item.target_id
+                    target_id=item.target_id,
+                    scan_id=item.scan_id
                 )
                 for item in items
             ]

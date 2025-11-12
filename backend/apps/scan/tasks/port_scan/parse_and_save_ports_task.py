@@ -271,7 +271,7 @@ def parse_and_save_ports_task(
             # 达到批次大小，执行保存
             if len(batch) >= batch_size:
                 batch_num += 1
-                result = _save_batch_with_retry(batch, target_id, batch_num, subdomain_cache)
+                result = _save_batch_with_retry(batch, scan_id, target_id, batch_num, subdomain_cache)
                 if not result['success']:
                     failed_batches.append(batch_num)
                     logger.warning("批次 %d 保存失败，已记录", batch_num)
@@ -292,7 +292,7 @@ def parse_and_save_ports_task(
         # 保存最后一批
         if batch:
             batch_num += 1
-            result = _save_batch_with_retry(batch, target_id, batch_num, subdomain_cache)
+            result = _save_batch_with_retry(batch, scan_id, target_id, batch_num, subdomain_cache)
             if not result['success']:
                 failed_batches.append(batch_num)
             else:
@@ -344,6 +344,7 @@ def parse_and_save_ports_task(
 
 def _save_batch_with_retry(
     batch: list,
+    scan_id: int,
     target_id: int,
     batch_num: int,
     subdomain_cache: dict,
@@ -354,6 +355,7 @@ def _save_batch_with_retry(
     
     Args:
         batch: 数据批次
+        scan_id: 扫描任务ID
         target_id: 目标ID
         batch_num: 批次编号
         max_retries: 最大重试次数
@@ -369,7 +371,7 @@ def _save_batch_with_retry(
     """
     for attempt in range(max_retries):
         try:
-            stats = _save_batch(batch, target_id, batch_num, subdomain_cache)
+            stats = _save_batch(batch, scan_id, target_id, batch_num, subdomain_cache)
             return {
                 'success': True,
                 'created_ips': stats.get('created_ips', 0),
@@ -428,7 +430,7 @@ def _save_batch_with_retry(
     }
 
 
-def _save_batch(batch: list, target_id: int, batch_num: int, subdomain_cache: dict, max_retries: int = 3) -> dict:
+def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int, subdomain_cache: dict, max_retries: int = 3) -> dict:
     """
     保存一个批次的数据到数据库（使用 Repository 模式）
     
@@ -443,6 +445,7 @@ def _save_batch(batch: list, target_id: int, batch_num: int, subdomain_cache: di
     
     Args:
         batch: 数据批次，list of {'host', 'ip', 'port'}
+        scan_id: 扫描任务 ID
         target_id: 目标 ID
         batch_num: 批次编号（用于日志）
         max_retries: 最大重试次数（默认3次）
@@ -490,7 +493,8 @@ def _save_batch(batch: list, target_id: int, batch_num: int, subdomain_cache: di
                 IPAddressDTO(
                     subdomain_id=subdomain_id,
                     ip=ip_addr,
-                    target_id=target_id
+                    target_id=target_id,
+                    scan_id=scan_id
                 )
                 for subdomain_id, ip_addr in ip_set
             ]

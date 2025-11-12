@@ -47,5 +47,8 @@ urlpatterns = [
     
     # 引擎 API
     path('api/engines/', include('apps.engine.urls')),
+    
+    # 资产 API
+    path('api/', include('apps.asset.urls')),
 
 ]

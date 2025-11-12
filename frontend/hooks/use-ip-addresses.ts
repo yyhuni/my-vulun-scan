@@ -1,6 +1,6 @@
 "use client"
 
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { IPAddressService } from "@/services/ip-address.service"
 import type { GetIPAddressesParams, GetIPAddressesResponse } from "@/types/ip-address.types"
 
@@ -46,5 +46,17 @@ export function useScanIPAddresses(
     queryFn: () => IPAddressService.getScanIPAddresses(scanId, normalizedParams),
     enabled: options?.enabled ?? !!scanId,
     select: (response: GetIPAddressesResponse) => response,
+  })
+}
+
+export function useBulkDeleteIPAddresses() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (ipIds: number[]) => IPAddressService.bulkDeleteIPAddresses(ipIds),
+    onSuccess: () => {
+      // 刷新所有 IP 地址相关的查询
+      queryClient.invalidateQueries({ queryKey: ipAddressKeys.all })
+    },
   })
 }

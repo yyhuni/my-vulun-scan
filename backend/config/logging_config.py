@@ -246,6 +246,50 @@ def get_logging_config(debug: bool = False):
                 'propagate': False,
             },
             
+            # Django 框架日志控制
+            'django.db.backends': {
+                'handlers': log_handlers,
+                'level': 'INFO',  # 关闭数据库查询的 DEBUG 日志
+                'propagate': False,
+            },
+            'django.db.backends.schema': {
+                'handlers': log_handlers,
+                'level': 'WARNING',  # 关闭数据库模式的 DEBUG 日志
+                'propagate': False,
+            },
+            'django.utils.autoreload': {
+                'handlers': log_handlers,
+                'level': 'WARNING',  # 关闭自动重载的 DEBUG 日志
+                'propagate': False,
+            },
+            'django.request': {
+                'handlers': log_handlers,
+                'level': 'WARNING',  # 只记录 WARNING 以上的请求日志（错误请求）
+                'propagate': False,
+            },
+            'django.server': {
+                'handlers': log_handlers,
+                'level': 'WARNING',  # 关闭服务器的 INFO 日志（如访问日志）
+                'propagate': False,
+            },
+            
+            # 其他第三方库日志控制
+            'asyncio': {
+                'handlers': log_handlers,
+                'level': 'WARNING',  # 关闭 asyncio 的 DEBUG 日志
+                'propagate': False,
+            },
+            'urllib3': {
+                'handlers': log_handlers,
+                'level': 'WARNING',  # 关闭 urllib3 的详细日志
+                'propagate': False,
+            },
+            'urllib3.connectionpool': {
+                'handlers': log_handlers,
+                'level': 'WARNING',  # 关闭连接池的详细日志
+                'propagate': False,
+            },
+            
             # 性能指标日志（专门记录性能相关信息）
             'performance': {
                 'handlers': ['performance_file'] if log_dir else ['console'],

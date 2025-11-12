@@ -5,8 +5,9 @@ import { IPAddressesDataTable } from "./ip-addresses-data-table"
 import { createIPAddressColumns } from "./ip-addresses-columns"
 import { DataTableSkeleton } from "@/components/ui/data-table-skeleton"
 import { Button } from "@/components/ui/button"
-import { useTargetIPAddresses, useScanIPAddresses } from "@/hooks/use-ip-addresses"
+import { useTargetIPAddresses, useScanIPAddresses, useBulkDeleteIPAddresses } from "@/hooks/use-ip-addresses"
 import type { IPAddress } from "@/types/ip-address.types"
+import { toast } from "sonner"
 
 export function IPAddressesView({
   targetId,
@@ -19,6 +20,9 @@ export function IPAddressesView({
     pageIndex: 0,
     pageSize: 10,
   })
+  const [selectedIPAddresses, setSelectedIPAddresses] = useState<IPAddress[]>([])
+
+  const bulkDeleteMutation = useBulkDeleteIPAddresses()
 
   const targetQuery = useTargetIPAddresses(
     targetId || 0,
@@ -80,6 +84,27 @@ export function IPAddressesView({
       }
     : undefined
 
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedIPAddresses.length === 0) {
+      toast.error("请选择要删除的 IP 地址")
+      return
+    }
+
+    try {
+      const ipIds = selectedIPAddresses.map(ip => ip.id)
+      await bulkDeleteMutation.mutateAsync(ipIds)
+      toast.success(`成功删除 ${selectedIPAddresses.length} 个 IP 地址`)
+      setSelectedIPAddresses([]) // 清空选择
+    } catch (error) {
+      console.error("批量删除失败:", error)
+      toast.error("删除失败，请重试")
+    }
+  }, [selectedIPAddresses, bulkDeleteMutation])
+
+  const handleSelectionChange = useCallback((selectedRows: IPAddress[]) => {
+    setSelectedIPAddresses(selectedRows)
+  }, [])
+
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
@@ -114,6 +139,8 @@ export function IPAddressesView({
       pagination={pagination}
       setPagination={setPagination}
       paginationInfo={paginationInfo}
+      onBulkDelete={handleBulkDelete}
+      onSelectionChange={handleSelectionChange}
     />
   )
 }

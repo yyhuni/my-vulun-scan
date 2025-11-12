@@ -20,6 +20,7 @@ import {
   IconChevronsLeft,
   IconChevronsRight,
   IconLayoutColumns,
+  IconTrash,
 } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -57,6 +58,8 @@ interface IPAddressesDataTableProps {
   setPagination?: React.Dispatch<React.SetStateAction<{ pageIndex: number; pageSize: number }>>
   paginationInfo?: PaginationInfo
   onPaginationChange?: (pagination: { pageIndex: number; pageSize: number }) => void
+  onBulkDelete?: () => void                      // 批量删除回调函数
+  onSelectionChange?: (selectedRows: IPAddress[]) => void  // 选中行变化回调
 }
 
 export function IPAddressesDataTable({
@@ -68,6 +71,8 @@ export function IPAddressesDataTable({
   setPagination,
   paginationInfo,
   onPaginationChange,
+  onBulkDelete,
+  onSelectionChange,
 }: IPAddressesDataTableProps) {
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({})
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
@@ -118,6 +123,14 @@ export function IPAddressesDataTable({
     ? paginationInfo?.total ?? data.length
     : table.getFilteredRowModel().rows.length
 
+  // 处理选中行变化
+  React.useEffect(() => {
+    if (onSelectionChange) {
+      const selectedRows = table.getFilteredSelectedRowModel().rows.map(row => row.original)
+      onSelectionChange(selectedRows)
+    }
+  }, [rowSelection, onSelectionChange, table])
+
   return (
     <div className="w-full space-y-4">
       <div className="flex items-center justify-between">
@@ -133,6 +146,24 @@ export function IPAddressesDataTable({
         </div>
 
         <div className="flex items-center space-x-2">
+          {/* 批量删除按钮 */}
+          {onBulkDelete && (
+            <Button 
+              onClick={onBulkDelete}
+              size="sm"
+              variant="outline"
+              disabled={table.getFilteredSelectedRowModel().rows.length === 0}
+              className={
+                table.getFilteredSelectedRowModel().rows.length === 0
+                  ? "text-muted-foreground"
+                  : "text-destructive hover:text-destructive hover:bg-destructive/10"
+              }
+            >
+              <IconTrash className="mr-2 h-4 w-4" />
+              Delete
+            </Button>
+          )}
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">

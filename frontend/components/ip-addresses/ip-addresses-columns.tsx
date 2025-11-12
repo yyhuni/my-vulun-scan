@@ -5,6 +5,7 @@ import { Column, ColumnDef } from "@tanstack/react-table"
 import { CaretSortIcon } from "@radix-ui/react-icons"
 import { Copy } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -77,6 +78,29 @@ export function createIPAddressColumns(params: {
   }
 
   const columns: ColumnDef<IPAddress>[] = [
+    // 选择列
+    {
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && "indeterminate")
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
     {
       accessorKey: "ip",
       header: ({ column }) => (

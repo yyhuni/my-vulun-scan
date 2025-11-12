@@ -12,6 +12,7 @@ class IPAddressDTO:
     subdomain_id: int
     ip: str
     target_id: int
+    scan_id: int = None  # 扫描任务ID（可选）
 
 
 class IPAddressRepository(Protocol):
