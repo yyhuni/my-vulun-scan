@@ -7,10 +7,12 @@
 from .export_domains_task import export_domains_task, count_domains_task
 from .run_port_scanner_task import run_port_scanner_task
 from .parse_result_task import parse_naabu_result_task
+from .save_ports_task import save_ports_task
 
 __all__ = [
     'export_domains_task',
     'count_domains_task',
     'run_port_scanner_task',
     'parse_naabu_result_task',
+    'save_ports_task',
 ]

@@ -44,20 +44,19 @@ class DjangoSubdomainRepository(SubdomainRepository):
             ]
 
             with transaction.atomic():
-                # 使用 update_conflicts 策略：
-                # - 新子域名：INSERT 完整记录，scan_id = 当前扫描 ID
-                # - 已存在子域名：UPDATE 探测字段（cname, is_cdn, cdn_name），scan_id 保持不变
-                # 这样每次扫描只显示新增的资产，同时保持探测数据最新
-                created = Subdomain.objects.bulk_create(  # type: ignore[attr-defined]
+                # 使用 ignore_conflicts 策略：
+                # - 新子域名：INSERT 完整记录
+                # - 已存在子域名：忽略（不更新，因为没有探测字段数据）
+                # 注意：ignore_conflicts 无法返回实际创建的数量
+                Subdomain.objects.bulk_create(  # type: ignore[attr-defined]
                     subdomain_objects,
-                    update_conflicts=True,
-                    update_fields=['cname', 'is_cdn', 'cdn_name'],  # 只更新探测字段，不更新 scan_id
+                    ignore_conflicts=True,  # 忽略重复记录
                     unique_fields=['name', 'target_id'],  # 唯一约束：同一 Target 下子域名唯一
                 )
 
-            count = len(created)
-            logger.debug(f"成功处理 {count}/{len(items)} 条子域名记录")
-            return count
+            logger.debug(f"成功处理 {len(items)} 条子域名记录（提交数，不是实际创建数）")
+            # 返回 0 表示无法准确统计
+            return 0
 
         except IntegrityError as e:
             logger.error(

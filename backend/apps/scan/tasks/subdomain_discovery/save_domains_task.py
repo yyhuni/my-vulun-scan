@@ -38,7 +38,7 @@ def save_domains_task(
         batch_size: 批量保存大小
     
     Returns:
-        int: 成功保存的域名数量
+        int: 处理的域名总数（不是实际创建数）
     
     Raises:
         ValueError: 参数验证失败（target_id为None或路径不是文件）
@@ -51,6 +51,9 @@ def save_domains_task(
         - 内存占用恒定（只存储一个 batch）
         - 默认batch_size=1000(平衡性能和内存)
         - 批次失败自动重试
+    
+    Note:
+        由于使用 ignore_conflicts，无法返回实际创建的数量
     """
     logger.info("开始从文件流式保存域名到数据库: %s", domains_file)
     
@@ -65,7 +68,6 @@ def save_domains_task(
     if not file_path.is_file():
         raise ValueError(f"路径不是文件: {domains_file}")
     
-    saved_count = 0
     batch_num = 0
     failed_batches = []  # 记录失败的批次
     total_domains = 0  # 总域名数
@@ -87,9 +89,7 @@ def save_domains_task(
                 if len(batch) >= batch_size:
                     batch_num += 1
                     result = _save_batch_with_retry(batch, scan_id, target_id, batch_num)
-                    if result['success']:
-                        saved_count += result['count']
-                    else:
+                    if not result['success']:
                         failed_batches.append(batch_num)
                         logger.warning("批次 %d 保存失败，已记录", batch_num)
                     
@@ -97,27 +97,25 @@ def save_domains_task(
                     
                     # 每20个批次输出进度(减少日志开销)
                     if batch_num % 20 == 0:
-                        logger.info("进度: 已处理 %d 批次，成功保存 %d 个域名", batch_num, saved_count)
+                        logger.info("进度: 已处理 %d 批次，%d 个域名", batch_num, total_domains)
             
             # 保存最后一批（可能不足 batch_size）
             if batch:
                 batch_num += 1
                 result = _save_batch_with_retry(batch, scan_id, target_id, batch_num)
-                if result['success']:
-                    saved_count += result['count']
-                else:
+                if not result['success']:
                     failed_batches.append(batch_num)
         
         # 输出最终统计
         if failed_batches:
             logger.warning(
-                "⚠ 保存完成（部分失败）- 总计: %d 个域名，成功: %d，失败批次: %s",
-                total_domains, saved_count, failed_batches
+                "⚠ 保存完成（部分失败）- 处理域名: %d，失败批次: %s",
+                total_domains, failed_batches
             )
         else:
-            logger.info("✓ 保存完成 - 成功保存 %d 个域名（%d 批次）", saved_count, batch_num)
+            logger.info("✓ 保存完成 - 处理域名: %d（%d 批次）", total_domains, batch_num)
         
-        return saved_count
+        return total_domains
         
     except (IntegrityError, OperationalError, DatabaseError) as e:
         error_msg = f"数据库操作失败: {e}"
@@ -147,13 +145,12 @@ def _save_batch_with_retry(batch: List[str], scan_id: int, target_id: int, batch
         max_retries: 最大重试次数
     
     Returns:
-        dict: {'success': bool, 'count': int}
+        dict: {'success': bool}
     
     Strategy:
-        使用 upsert_many 确保数据一致性
+        使用 bulk_create + ignore_conflicts
         - 新域名：插入 (INSERT)
-        - 重复域名：更新关联 (UPDATE scan_id, target_id)
-        - 保证每次扫描的域名都正确关联到当前扫描
+        - 重复域名：忽略（不更新，因为没有探测数据）
     """
     repository = DjangoSubdomainRepository()
     items = [
@@ -167,12 +164,9 @@ def _save_batch_with_retry(batch: List[str], scan_id: int, target_id: int, batch
     
     for attempt in range(max_retries):
         try:
-            # 直接使用 upsert_many（确保重复域名也会更新）
-            # 虽然比 bulk_create 慢，但保证数据一致性
-            created_count = repository.upsert_many(items)
-            logger.debug("批次 %d: 已保存/更新 %d/%d 个域名", 
-                       batch_num, created_count, len(batch))
-            return {'success': True, 'count': created_count}
+            repository.upsert_many(items)
+            logger.debug("批次 %d: 已处理 %d 个域名", batch_num, len(batch))
+            return {'success': True}
         
         except (OperationalError, DatabaseError) as e:
             # 数据库连接/操作错误，可重试
@@ -183,16 +177,16 @@ def _save_batch_with_retry(batch: List[str], scan_id: int, target_id: int, batch
                 time.sleep(wait_time)
             else:
                 logger.error("批次 %d 保存失败（已重试 %d 次）: %s", batch_num, max_retries, e)
-                return {'success': False, 'count': 0}
+                return {'success': False}
         
         except IntegrityError as e:
             # 数据完整性错误，不应重试
             logger.error("批次 %d 数据完整性错误，跳过: %s", batch_num, str(e)[:100])
-            return {'success': False, 'count': 0}
+            return {'success': False}
         
         except Exception as e:
             # 其他未知错误
             logger.error("批次 %d 未知错误: %s", batch_num, e, exc_info=True)
-            return {'success': False, 'count': 0}
+            return {'success': False}
     
-    return {'success': False, 'count': 0}
+    return {'success': False}

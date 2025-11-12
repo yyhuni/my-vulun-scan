@@ -39,9 +39,6 @@ def parse_naabu_result_task(result_files: list) -> Generator[Dict[str, Any], Non
             'host': str,          # 域名
             'ip': str,            # IP地址
             'port': int,          # 端口号
-            'protocol': str,      # 协议（tcp/udp）
-            'tls': bool,          # 是否使用TLS
-            'timestamp': str      # 时间戳
         }
     
     Returns:
@@ -95,9 +92,6 @@ def parse_naabu_result_task(result_files: list) -> Generator[Dict[str, Any], Non
                     host = data.get('host', '').strip()
                     ip = data.get('ip', '').strip()
                     port = data.get('port')
-                    protocol = data.get('protocol', 'tcp').lower()
-                    tls = data.get('tls', False)
-                    timestamp = data.get('timestamp', '')
                     
                     # 验证必要字段
                     if not host or not ip or port is None:
@@ -132,9 +126,6 @@ def parse_naabu_result_task(result_files: list) -> Generator[Dict[str, Any], Non
                         'host': host,
                         'ip': ip,
                         'port': port,
-                        'protocol': protocol,
-                        'tls': tls,
-                        'timestamp': timestamp
                     }
                     
                 except json.JSONDecodeError as e:

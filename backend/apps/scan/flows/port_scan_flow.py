@@ -4,7 +4,9 @@ from prefect import flow
 from apps.scan.tasks.port_scan import (
     export_domains_task,
     count_domains_task,
-    run_port_scanner_task
+    run_port_scanner_task,
+    parse_naabu_result_task,
+    save_ports_task
 )
 
 
@@ -134,16 +136,36 @@ def port_scan_flow(
             len(result_files), len(PORT_SCANNER_CONFIGS)
         )
         
-        # ==================== Step 3: 解析 ====================
-        logger.info("Step 3: 解析")
+        # ==================== Step 3: 解析扫描结果 ====================
+        logger.info("Step 3: 解析扫描结果")
+        
+        # 调用解析 Task，返回生成器
+        data_generator = parse_naabu_result_task(result_files=result_files)
+        
+        logger.info("✓ 解析 Task 已创建（生成器模式）")
         
         # ==================== Step 4: 保存到数据库 ====================
-        logger.info("Step 4: 保存到数据库")
+        logger.info("Step 4: 流式保存到数据库")
         
+        # 将生成器传递给保存 Task，实现流式处理
+        save_result = save_ports_task(
+            data_generator=data_generator,
+            scan_id=scan_id,
+            target_id=target_id,
+            batch_size=500  # 每批 500 条，平衡性能和内存
+        )
+        
+        logger.info(
+            "✓ 保存完成 - 处理记录: %d",
+            save_result['processed_records']
+        )
+        
+        logger.info("="*60 + "\n✓ 端口扫描完成\n" + "="*60)
         
         # 动态生成已执行的任务列表
         executed_tasks = ['export_domains']
         executed_tasks.extend([f'run_port_scanner ({tool})' for tool in PORT_SCANNER_CONFIGS.keys()])
+        executed_tasks.extend(['parse_naabu_result', 'save_ports'])
         
         return {
             'success': True,
@@ -153,7 +175,7 @@ def port_scan_flow(
             'domains_file': export_result['output_file'],
             'domain_count': export_result['total_count'],
             'result_files': result_files,
-            'total': len(result_files),
+            'processed_records': save_result['processed_records'],
             'executed_tasks': executed_tasks
         }
 
