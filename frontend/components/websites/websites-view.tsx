@@ -96,13 +96,7 @@ export function WebSitesView({
 
   const websites: WebSite[] = useMemo(() => {
     if (!data?.results) return []
-    return data.results.map((item: WebSite) => ({
-      ...item,
-      title: item.title || "",
-      screenshot_path: item.screenshot_path || "",
-      content_type: item.content_type || "",
-      webserver: item.webserver || "",
-    }))
+    return data.results
   }, [data])
 
   const paginationInfo = data

@@ -6,17 +6,18 @@ export interface WebSite {
   id: number
   scan?: number
   target?: number
-  subdomain?: number
   url: string
-  screenshot_path: string
-  created_at: string
+  location: string
   title: string
-  status_code?: number
-  content_length?: number
-  response_time?: number
-  content_type: string
   webserver: string
-  technologies?: Technology[]
+  contentType: string
+  statusCode: number
+  contentLength: number
+  bodyPreview: string
+  tech: string[]
+  vhost: boolean | null
+  subdomain: string
+  createdAt: string | null
 }
 
 export interface Technology {
@@ -29,9 +30,9 @@ export interface Technology {
 export interface WebSiteFilters {
   url?: string
   title?: string
-  status_code?: number
+  statusCode?: number
   webserver?: string
-  content_type?: string
+  contentType?: string
 }
 
 export interface WebSiteListResponse {

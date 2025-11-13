@@ -54,6 +54,15 @@ def create_notification(
     创建通知记录并实时推送
     """
     try:
+        # 数据库连接健康检查
+        from django.db import connection
+        try:
+            connection.ensure_connection()
+        except Exception as conn_e:
+            logger.warning(f"数据库连接检查失败，重新建立连接: {conn_e}")
+            connection.close()
+            connection.ensure_connection()
+        
         # 1. 写入数据库
         notification = Notification.objects.create(
             level=level,
@@ -68,7 +77,11 @@ def create_notification(
         return notification
         
     except Exception as e:
-        logger.error(f"创建通知失败 - {title}: {e}")
+        error_str = str(e).lower()
+        if 'connection' in error_str:
+            logger.error(f"创建通知失败 - 数据库连接问题 - {title}: {e}")
+        else:
+            logger.error(f"创建通知失败 - {title}: {e}")
         raise
 
 

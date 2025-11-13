@@ -26,7 +26,8 @@ from pathlib import Path
 from prefect import task
 from typing import Generator, Dict, Any
 from collections import OrderedDict
-from django.db import IntegrityError, OperationalError, DatabaseError
+from django.db import IntegrityError, OperationalError, DatabaseError, connection
+from psycopg2 import InterfaceError
 from urllib.parse import urlparse
 
 from apps.asset.repositories.django_subdomain_repository import DjangoSubdomainRepository
@@ -37,6 +38,21 @@ logger = logging.getLogger(__name__)
 
 MAX_SUBDOMAIN_CACHE_BYTES = 100 * 1024 * 1024
 MAX_SUBDOMAIN_CACHE_SIZE = 10000  # 最大缓存条目数
+
+
+def _ensure_db_connection():
+    """确保数据库连接健康"""
+    try:
+        # 检查连接是否存活
+        connection.ensure_connection()
+        # 执行一个简单的查询测试连接
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+    except Exception as e:
+        logger.warning("数据库连接检查失败，重新建立连接: %s", str(e))
+        connection.close()
+        connection.ensure_connection()
 
 
 class LRUSubdomainCache:
@@ -319,6 +335,9 @@ def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int, subdo
     # 重试机制：确保数据最终一致性
     for attempt in range(max_retries):
         try:
+            # ========== 连接健康检查 ==========
+            _ensure_db_connection()
+            
             # ========== Step 1: 批量查询 Subdomain（读操作，无需事务）==========
             hosts = {record.host for record in batch}
             uncached = hosts - set(subdomain_cache.keys())
@@ -371,15 +390,20 @@ def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int, subdo
                 'skipped_no_subdomain': skipped_no_subdomain
             }
             
-        except (OperationalError, DatabaseError) as e:
+        except (OperationalError, DatabaseError, InterfaceError) as e:
             # 数据库操作错误（连接断开、超时等）
             if attempt < max_retries - 1:
                 # 还有重试机会
                 logger.warning(
-                    "批次 %d 保存失败（尝试 %d/%d）: %s，将在 1 秒后重试",
+                    "批次 %d 保存失败（尝试 %d/%d）: %s，将在 2 秒后重试",
                     batch_num, attempt + 1, max_retries, str(e)
                 )
-                time.sleep(1)  # 短暂延迟后重试
+                
+                # 强制关闭数据库连接，让Django重新建立连接
+                from django.db import connection
+                connection.close()
+                
+                time.sleep(2)  # 延长延迟时间，等待连接稳定
             else:
                 # 已达最大重试次数
                 logger.error(
@@ -400,12 +424,23 @@ def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int, subdo
             }
         
         except Exception as e:
-            # 其他未知错误
-            logger.error("批次 %d 未知错误: %s", batch_num, e, exc_info=True)
-            return {
-                'created_websites': 0,
-                'skipped_no_subdomain': 0
-            }
+            # 其他未知错误 - 检查是否为连接问题
+            error_str = str(e).lower()
+            if 'connection' in error_str and attempt < max_retries - 1:
+                logger.warning(
+                    "批次 %d 连接相关错误（尝试 %d/%d）: %s，将重新连接后重试",
+                    batch_num, attempt + 1, max_retries, str(e)
+                )
+                # 强制关闭数据库连接
+                from django.db import connection
+                connection.close()
+                time.sleep(2)
+            else:
+                logger.error("批次 %d 未知错误: %s", batch_num, e, exc_info=True)
+                return {
+                    'created_websites': 0,
+                    'skipped_no_subdomain': 0
+                }
     
     return {
         'created_websites': 0,

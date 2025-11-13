@@ -84,10 +84,10 @@ export function createWebSiteColumns({
       },
     },
     {
-      accessorKey: "status_code",
+      accessorKey: "statusCode",
       header: "Status",
       cell: ({ row }) => {
-        const statusCode = row.getValue("status_code") as number
+        const statusCode = row.getValue("statusCode") as number
         if (!statusCode) return "-"
         
         let variant: "default" | "secondary" | "destructive" | "outline" = "default"
@@ -103,10 +103,10 @@ export function createWebSiteColumns({
       },
     },
     {
-      accessorKey: "content_length",
+      accessorKey: "contentLength",
       header: "Size",
       cell: ({ row }) => {
-        const contentLength = row.getValue("content_length") as number
+        const contentLength = row.getValue("contentLength") as number
         if (!contentLength) return "-"
         
         const formatBytes = (bytes: number) => {
@@ -121,12 +121,15 @@ export function createWebSiteColumns({
       },
     },
     {
-      accessorKey: "response_time",
-      header: "Response Time",
+      accessorKey: "location",
+      header: "Location",
       cell: ({ row }) => {
-        const responseTime = row.getValue("response_time") as number
-        if (!responseTime) return "-"
-        return `${responseTime}ms`
+        const location = row.getValue("location") as string
+        return (
+          <div className="max-w-[200px] truncate" title={location}>
+            {location || "-"}
+          </div>
+        )
       },
     },
     {
@@ -142,10 +145,10 @@ export function createWebSiteColumns({
       },
     },
     {
-      accessorKey: "content_type",
+      accessorKey: "contentType",
       header: "Content Type",
       cell: ({ row }) => {
-        const contentType = row.getValue("content_type") as string
+        const contentType = row.getValue("contentType") as string
         return (
           <div className="max-w-[150px] truncate" title={contentType}>
             {contentType || "-"}
@@ -154,11 +157,33 @@ export function createWebSiteColumns({
       },
     },
     {
-      accessorKey: "created_at",
+      accessorKey: "tech",
+      header: "Technologies",
+      cell: ({ row }) => {
+        const tech = row.getValue("tech") as string[]
+        if (!tech || tech.length === 0) return "-"
+        return (
+          <div className="flex flex-wrap gap-1 max-w-[200px]">
+            {tech.slice(0, 2).map((technology, index) => (
+              <Badge key={index} variant="outline" className="text-xs">
+                {technology}
+              </Badge>
+            ))}
+            {tech.length > 2 && (
+              <Badge variant="secondary" className="text-xs">
+                +{tech.length - 2}
+              </Badge>
+            )}
+          </div>
+        )
+      },
+    },
+    {
+      accessorKey: "createdAt",
       header: "Created At",
       cell: ({ row }) => {
-        const createdAt = row.getValue("created_at") as string
-        return <div className="text-sm">{formatDate(createdAt)}</div>
+        const createdAt = row.getValue("createdAt") as string
+        return <div className="text-sm">{createdAt ? formatDate(createdAt) : "-"}</div>
       },
     },
     {

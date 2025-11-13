@@ -98,13 +98,13 @@ DATABASES = {
         'HOST': os.getenv('DB_HOST', 'localhost'),
         'PORT': os.getenv('DB_PORT', '5432'),
         
-        # 连接池配置：针对远程数据库优化
+        # 连接池配置：针对长时间扫描任务优化
         # 说明：
         # - 0: 每次请求后关闭（适合不稳定的远程连接）
         # - 60-120: 推荐值（平衡性能和资源占用）
-        # - 600+: 过长，可能导致连接池耗尽
+        # - 300+: 适合长时间任务（减少连接重建开销）
         # - None: 永久连接（仅适合专用连接池，不推荐）
-        'CONN_MAX_AGE': int(os.getenv('DB_CONN_MAX_AGE', '30')),  # 远程数据库使用 30秒，平衡性能和稳定性
+        'CONN_MAX_AGE': int(os.getenv('DB_CONN_MAX_AGE', '0')),  # 长时间任务使用 0，确保连接稳定性
         
         # PostgreSQL 特定选项 - 针对远程数据库优化
         'OPTIONS': {

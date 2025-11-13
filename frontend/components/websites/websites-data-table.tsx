@@ -190,14 +190,15 @@ export function WebSitesDataTable({
                     {column.id === "select" && "Select"}
                     {column.id === "url" && "URL"}
                     {column.id === "title" && "Title"}
-                    {column.id === "status_code" && "Status"}
-                    {column.id === "content_length" && "Size"}
-                    {column.id === "response_time" && "Response Time"}
+                    {column.id === "statusCode" && "Status"}
+                    {column.id === "contentLength" && "Size"}
+                    {column.id === "location" && "Location"}
                     {column.id === "webserver" && "Web Server"}
-                    {column.id === "content_type" && "Content Type"}
-                    {column.id === "created_at" && "Created At"}
+                    {column.id === "contentType" && "Content Type"}
+                    {column.id === "tech" && "Technologies"}
+                    {column.id === "createdAt" && "Created At"}
                     {column.id === "actions" && "Actions"}
-                    {!["select", "url", "title", "status_code", "content_length", "response_time", "webserver", "content_type", "created_at", "actions"].includes(column.id) && column.id}
+                    {!["select", "url", "title", "statusCode", "contentLength", "location", "webserver", "contentType", "tech", "createdAt", "actions"].includes(column.id) && column.id}
                   </DropdownMenuCheckboxItem>
                 ))}
             </DropdownMenuContent>

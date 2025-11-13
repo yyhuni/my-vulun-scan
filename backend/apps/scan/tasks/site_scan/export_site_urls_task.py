@@ -25,7 +25,7 @@ def export_site_urls_task(
     功能：
     1. 从target获取所有子域名
     2. 获取每个子域名对应的端口号
-    3. 拼接成 http://<子域名>:<端口> 和 https://<子域名>:<端口> 格式
+    3. 拼接成URL格式（标准端口80/443将省略端口号）
     4. 写入到指定文件中
     
     Args:
@@ -82,9 +82,16 @@ def export_site_urls_task(
                     # 如果没有端口，使用默认端口80和443
                     default_ports = [80, 443]
                     for port_num in default_ports:
-                        # 写入HTTP和HTTPS URL
-                        http_url = f"http://{subdomain_name}:{port_num}"
-                        https_url = f"https://{subdomain_name}:{port_num}"
+                        # 写入HTTP和HTTPS URL，默认端口不显示端口号
+                        if port_num == 80:
+                            http_url = f"http://{subdomain_name}"
+                        else:
+                            http_url = f"http://{subdomain_name}:{port_num}"
+                            
+                        if port_num == 443:
+                            https_url = f"https://{subdomain_name}"
+                        else:
+                            https_url = f"https://{subdomain_name}:{port_num}"
                         
                         f.write(f"{http_url}\n")
                         f.write(f"{https_url}\n")
@@ -101,9 +108,18 @@ def export_site_urls_task(
                             logger.warning("子域名 %s 的端口号无效: %s，跳过", subdomain_name, port_num)
                             continue
                         
-                        # 写入HTTP和HTTPS URL
-                        http_url = f"http://{subdomain_name}:{port_num}"
-                        https_url = f"https://{subdomain_name}:{port_num}"
+                        # 写入HTTP和HTTPS URL，标准端口不显示端口号
+                        # HTTP协议：80端口为标准端口，不显示
+                        if port_num == 80:
+                            http_url = f"http://{subdomain_name}"
+                        else:
+                            http_url = f"http://{subdomain_name}:{port_num}"
+                            
+                        # HTTPS协议：443端口为标准端口，不显示
+                        if port_num == 443:
+                            https_url = f"https://{subdomain_name}"
+                        else:
+                            https_url = f"https://{subdomain_name}:{port_num}"
                         
                         f.write(f"{http_url}\n")
                         f.write(f"{https_url}\n")
