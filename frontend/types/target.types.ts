@@ -25,6 +25,25 @@ export interface Target {
 }
 
 /**
+ * 目标详情信息（包含统计数据）
+ */
+export interface TargetDetail extends Target {
+  summary: {
+    subdomains: number
+    websites: number
+    endpoints: number
+    ips: number
+    vulnerabilities: {
+      total: number
+      critical: number
+      high: number
+      medium: number
+      low: number
+    }
+  }
+}
+
+/**
  * 目标列表响应类型
  */
 export interface TargetsResponse {

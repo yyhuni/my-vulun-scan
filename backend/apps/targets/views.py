@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from django.db import transaction
 from django.db.models import Count
 from .models import Organization, Target
-from .serializers import OrganizationSerializer, TargetSerializer, BatchCreateTargetSerializer
+from .serializers import OrganizationSerializer, TargetSerializer, TargetDetailSerializer, BatchCreateTargetSerializer
 from apps.common.normalizer import normalize_target
 from apps.common.validators import detect_target_type
 from apps.common.pagination import BasePagination
@@ -117,10 +117,38 @@ class TargetViewSet(viewsets.ModelViewSet):
     ⚠️ 重要：如果在其他地方使用 TargetSerializer，必须确保查询时使用了
     prefetch_related('organizations')，否则仍会产生 N+1 查询
     """
-    # 优化：使用 prefetch_related 预加载 organizations，避免 N+1 查询
-    queryset = Target.objects.prefetch_related('organizations').all()
     serializer_class = TargetSerializer
     pagination_class = BasePagination
+    
+    def get_queryset(self):
+        """优化查询集，预加载关联对象
+        
+        查询优化策略：
+        - select_related: 预加载一对一/多对一关系
+        - annotate: 使用数据库聚合计算资产数量（避免 N+1 查询）
+        - prefetch_related: 预加载多对多关系（organizations）
+        """
+        if self.action == 'retrieve':
+            # 单个目标详情：添加统计数据
+            return Target.objects.select_related().annotate(
+                subdomains_count=Count('subdomains', distinct=True),
+                websites_count=Count('websites', distinct=True),
+                endpoints_count=Count('endpoints', distinct=True),
+                ips_count=Count('ip_addresses', distinct=True)
+            ).prefetch_related('organizations')
+        else:
+            # 列表查询：只预加载 organizations
+            return Target.objects.prefetch_related('organizations').all()
+    
+    def get_serializer_class(self):
+        """根据不同的 action 返回不同的序列化器
+        
+        - retrieve action: 使用 TargetDetailSerializer（包含 summary 统计数据）
+        - 其他 action: 使用标准的 TargetSerializer
+        """
+        if self.action == 'retrieve':
+            return TargetDetailSerializer
+        return TargetSerializer
     
     @action(detail=False, methods=['post'])
     def batch_create(self, request):

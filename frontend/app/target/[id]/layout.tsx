@@ -6,6 +6,7 @@ import Link from "next/link"
 import { Target } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
 import { useTarget } from "@/hooks/use-targets"
 
 /**
@@ -45,6 +46,15 @@ export default function TargetLayout({
     websites: `${basePath}/websites/`,
     vulnerabilities: `${basePath}/vulnerabilities/`,
     "ip-addresses": `${basePath}/ip-addresses/`,
+  }
+
+  // 从目标数据中获取各个tab的数量
+  const counts = {
+    subdomain: (target as any)?.summary?.subdomains || 0,
+    endpoints: (target as any)?.summary?.endpoints || 0,
+    websites: (target as any)?.summary?.websites || 0,
+    vulnerabilities: (target as any)?.summary?.vulnerabilities?.total || 0,
+    "ip-addresses": (target as any)?.summary?.ips || 0,
   }
 
   // 加载状态
@@ -124,19 +134,44 @@ export default function TargetLayout({
         <Tabs value={getActiveTab()} className="w-full">
           <TabsList>
             <TabsTrigger value="subdomain" asChild>
-              <Link href={tabPaths.subdomain}>Subdomains</Link>
+              <Link href={tabPaths.subdomain} className="flex items-center gap-0.5">
+                Subdomains
+                <Badge className="text-xs bg-chart-5 text-white border-0">
+                  {counts.subdomain}
+                </Badge>
+              </Link>
             </TabsTrigger>
             <TabsTrigger value="endpoints" asChild>
-              <Link href={tabPaths.endpoints}>URLs</Link>
+              <Link href={tabPaths.endpoints} className="flex items-center gap-0.5">
+                URLs
+                <Badge className="text-xs bg-chart-5 text-white border-0">
+                  {counts.endpoints}
+                </Badge>
+              </Link>
             </TabsTrigger>
             <TabsTrigger value="websites" asChild>
-              <Link href={tabPaths.websites}>Websites</Link>
+              <Link href={tabPaths.websites} className="flex items-center gap-0.5">
+                Websites
+                <Badge className="text-xs bg-chart-5 text-white border-0">
+                  {counts.websites}
+                </Badge>
+              </Link>
             </TabsTrigger>
             <TabsTrigger value="vulnerabilities" asChild>
-              <Link href={tabPaths.vulnerabilities}>Vulnerabilities</Link>
+              <Link href={tabPaths.vulnerabilities} className="flex items-center gap-0.5">
+                Vulnerabilities
+                <Badge className="text-xs bg-chart-5 text-white border-0">
+                  {counts.vulnerabilities}
+                </Badge>
+              </Link>
             </TabsTrigger>
             <TabsTrigger value="ip-addresses" asChild>
-              <Link href={tabPaths["ip-addresses"]}>IP Addresses</Link>
+              <Link href={tabPaths["ip-addresses"]} className="flex items-center gap-0.5">
+                IP Addresses
+                <Badge className="text-xs bg-chart-5 text-white border-0">
+                  {counts["ip-addresses"]}
+                </Badge>
+              </Link>
             </TabsTrigger>
           </TabsList>
         </Tabs>

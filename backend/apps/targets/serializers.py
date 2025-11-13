@@ -43,6 +43,49 @@ class TargetSerializer(serializers.ModelSerializer):
         model = Target
         fields = ['id', 'name', 'type', 'created_at', 'last_scanned_at', 'organizations']
         read_only_fields = ['id', 'created_at', 'type']
+
+
+class TargetDetailSerializer(serializers.ModelSerializer):
+    """
+    目标详情序列化器 - 包含统计数据
+    
+    用于单个目标详情页面，包含各类资产的统计数量
+    """
+    organizations = SimpleOrganizationSerializer(many=True, read_only=True)
+    summary = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Target
+        fields = ['id', 'name', 'type', 'created_at', 'last_scanned_at', 'organizations', 'summary']
+        read_only_fields = ['id', 'created_at', 'type', 'summary']
+    
+    def get_summary(self, obj):
+        """计算目标资产统计数据
+        
+        统计该目标下的资产数量：
+        - subdomains: 子域名数量（使用 annotate 的计数字段，避免 N+1 查询）
+        - websites: 网站数量（使用 annotate 的计数字段，避免 N+1 查询）
+        - endpoints: 端点数量（使用 annotate 的计数字段，避免 N+1 查询）
+        - ips: IP地址数量（使用 annotate 的计数字段，避免 N+1 查询）
+        - vulnerabilities: 漏洞统计（暂时返回 0，待后续实现）
+        
+        性能优化：
+        - 优先使用 ViewSet 中 annotate 的计数字段（subdomains_count, websites_count, endpoints_count, ips_count）
+        - 如果注解字段不存在（单个对象查询），降级使用 .count()
+        """
+        return {
+            'subdomains': getattr(obj, 'subdomains_count', obj.subdomains.count()),
+            'websites': getattr(obj, 'websites_count', obj.websites.count()),
+            'endpoints': getattr(obj, 'endpoints_count', obj.endpoints.count()),
+            'ips': getattr(obj, 'ips_count', obj.ip_addresses.count()),
+            'vulnerabilities': {
+                'total': 0,
+                'critical': 0,
+                'high': 0,
+                'medium': 0,
+                'low': 0
+            }
+        }
     
     def create(self, validated_data):
         """创建目标时自动规范化、检测目标类型"""
