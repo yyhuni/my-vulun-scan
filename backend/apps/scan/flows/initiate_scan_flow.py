@@ -54,8 +54,9 @@ def initiate_scan_flow(
     初始化扫描任务（Flow：只负责编排）
     
     基于 engine_name 选择对应的预定义 flow 执行：
-    - subdomain_discovery -> subdomain_discovery_flow
-    - port_scan -> port_scan_flow (未来扩展)
+    - subdomain discovery -> subdomain_discovery_flow
+    - port scan -> port_scan_flow
+    - site scan -> site_scan_flow
     - vuln_scan -> vuln_scan_flow (未来扩展)
     
     Args:
@@ -123,18 +124,24 @@ def initiate_scan_flow(
                 scan_workspace_dir=str(scan_workspace_path),
                 engine_config=engine_config
             )
+        elif engine_name == 'site scan':
+            from apps.scan.flows.site_scan_flow import site_scan_flow
+            result = site_scan_flow(
+                scan_id=scan_id,
+                target_name=target_name,
+                target_id=target_id,
+                scan_workspace_dir=str(scan_workspace_path),
+                engine_config=engine_config
+            )
             
         # 未来扩展:
-        # elif engine_name == 'port_scan':
-        #     from apps.scan.flows.port_scan_flow import port_scan_flow
-        #     result = port_scan_flow(...)
         # elif engine_name == 'vuln_scan':
         #     from apps.scan.flows.vuln_scan_flow import vuln_scan_flow
         #     result = vuln_scan_flow(...)
         else:
             raise ValueError(
                 f"未知的引擎: '{engine_name}'. "
-                f"可用引擎: subdomain discovery, port scan"
+                f"可用引擎: subdomain discovery, port scan, site scan"
             )
         
         # ==================== 完成 ====================

@@ -27,13 +27,13 @@ def calculate_timeout(url_count: int) -> int:
 
     规则：
     - 基础时间 base = 600 秒（10 分钟）
-    - 每个URL额外增加 per_url = 2 秒
+    - 每个URL额外增加 per_url = 1 秒
     - 不设置最大上限（大量URL情况下允许更长超时，由外层流程兜底）
 
     返回值为上述规则计算结果。
     """
     base = 600
-    per_url = 2
+    per_url = 1
     return base + int(url_count * per_url)
 
 
