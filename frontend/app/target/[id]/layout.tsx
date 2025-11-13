@@ -31,6 +31,7 @@ export default function TargetLayout({
   const getActiveTab = () => {
     if (pathname.includes("/subdomain")) return "subdomain"
     if (pathname.includes("/endpoints")) return "endpoints"
+    if (pathname.includes("/websites")) return "websites"
     if (pathname.includes("/vulnerabilities")) return "vulnerabilities"
     if (pathname.includes("/ip-addresses")) return "ip-addresses"
     return ""
@@ -41,6 +42,7 @@ export default function TargetLayout({
   const tabPaths = {
     subdomain: `${basePath}/subdomain/`,
     endpoints: `${basePath}/endpoints/`,
+    websites: `${basePath}/websites/`,
     vulnerabilities: `${basePath}/vulnerabilities/`,
     "ip-addresses": `${basePath}/ip-addresses/`,
   }
@@ -126,6 +128,9 @@ export default function TargetLayout({
             </TabsTrigger>
             <TabsTrigger value="endpoints" asChild>
               <Link href={tabPaths.endpoints}>URLs</Link>
+            </TabsTrigger>
+            <TabsTrigger value="websites" asChild>
+              <Link href={tabPaths.websites}>Websites</Link>
             </TabsTrigger>
             <TabsTrigger value="vulnerabilities" asChild>
               <Link href={tabPaths.vulnerabilities}>Vulnerabilities</Link>

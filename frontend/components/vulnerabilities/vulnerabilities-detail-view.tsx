@@ -121,6 +121,21 @@ export function VulnerabilitiesDetailView({
     setPagination(newPagination)
   }
 
+  // 处理下载所有漏洞
+  const handleDownloadAll = () => {
+    // TODO: 实现下载所有漏洞功能
+    console.log('下载所有漏洞')
+  }
+
+  // 处理下载选中的漏洞
+  const handleDownloadSelected = () => {
+    // TODO: 实现下载选中的漏洞功能
+    console.log('下载选中的漏洞:', selectedVulnerabilities)
+    if (selectedVulnerabilities.length === 0) {
+      return
+    }
+  }
+
   const vulnerabilityColumns = useMemo(
     () =>
       createVulnerabilityColumns({
@@ -153,8 +168,6 @@ export function VulnerabilitiesDetailView({
       <VulnerabilitiesDataTable
         data={paginationInfo.data}
         columns={vulnerabilityColumns}
-        onBulkDelete={handleBulkDelete}
-        onSelectionChange={setSelectedVulnerabilities}
         searchPlaceholder="搜索漏洞..."
         searchColumn="title"
         pagination={pagination}
@@ -166,6 +179,10 @@ export function VulnerabilitiesDetailView({
           totalPages: paginationInfo.totalPages,
         }}
         onPaginationChange={handlePaginationChange}
+        onBulkDelete={handleBulkDelete}
+        onSelectionChange={setSelectedVulnerabilities}
+        onDownloadAll={handleDownloadAll}
+        onDownloadSelected={handleDownloadSelected}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

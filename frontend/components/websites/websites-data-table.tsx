@@ -6,6 +6,8 @@ import {
   ColumnFiltersState,
   flexRender,
   getCoreRowModel,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
@@ -23,6 +25,7 @@ import {
   IconTrash,
   IconDownload,
 } from "@tabler/icons-react"
+
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -50,12 +53,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import type { IPAddress } from "@/types/ip-address.types"
+
+import type { WebSite } from "@/types/website.types"
 import type { PaginationInfo } from "@/types/common.types"
 
-interface IPAddressesDataTableProps {
-  data: IPAddress[]
-  columns: ColumnDef<IPAddress>[]
+interface WebSitesDataTableProps {
+  data: WebSite[]
+  columns: ColumnDef<WebSite>[]
   searchPlaceholder?: string
   searchColumn?: string
   pagination?: { pageIndex: number; pageSize: number }
@@ -63,17 +67,17 @@ interface IPAddressesDataTableProps {
   paginationInfo?: PaginationInfo
   onPaginationChange?: (pagination: { pageIndex: number; pageSize: number }) => void
   onBulkDelete?: () => void                      // 批量删除回调函数
-  onSelectionChange?: (selectedRows: IPAddress[]) => void  // 选中行变化回调
+  onSelectionChange?: (selectedRows: WebSite[]) => void  // 选中行变化回调
   // 下载回调函数
-  onDownloadAll?: () => void                     // 下载所有 IP 地址
-  onDownloadSelected?: () => void                // 下载选中的 IP 地址
+  onDownloadAll?: () => void                     // 下载所有网站
+  onDownloadSelected?: () => void                // 下载选中的网站
 }
 
-export function IPAddressesDataTable({
+export function WebSitesDataTable({
   data = [],
   columns,
-  searchPlaceholder = "搜索 IP 地址...",
-  searchColumn = "ip",
+  searchPlaceholder = "搜索网站...",
+  searchColumn = "url",
   pagination,
   setPagination,
   paginationInfo,
@@ -82,11 +86,11 @@ export function IPAddressesDataTable({
   onSelectionChange,
   onDownloadAll,
   onDownloadSelected,
-}: IPAddressesDataTableProps) {
-  const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({})
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
+}: WebSitesDataTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([])
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
+  const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({})
   const [internalPagination, setInternalPagination] = React.useState({
     pageIndex: 0,
     pageSize: 10,
@@ -122,6 +126,8 @@ export function IPAddressesDataTable({
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getFacetedRowModel: getFacetedRowModel(),
+    getFacetedUniqueValues: getFacetedUniqueValues(),
     manualPagination: useServerPagination,
     pageCount: useServerPagination
       ? paginationInfo?.totalPages ?? -1
@@ -182,13 +188,16 @@ export function IPAddressesDataTable({
                     onCheckedChange={(value) => column.toggleVisibility(!!value)}
                   >
                     {column.id === "select" && "Select"}
-                    {column.id === "ip" && "IP Address"}
-                    {column.id === "subdomain" && "Subdomain"}
-                    {column.id === "createdAt" && "Created At"}
-                    {column.id === "ports" && "Ports"}
-                    {column.id === "reversePointer" && "Reverse Pointer"}
+                    {column.id === "url" && "URL"}
+                    {column.id === "title" && "Title"}
+                    {column.id === "status_code" && "Status"}
+                    {column.id === "content_length" && "Size"}
+                    {column.id === "response_time" && "Response Time"}
+                    {column.id === "webserver" && "Web Server"}
+                    {column.id === "content_type" && "Content Type"}
+                    {column.id === "created_at" && "Created At"}
                     {column.id === "actions" && "Actions"}
-                    {!["select", "ip", "subdomain", "createdAt", "ports", "reversePointer", "actions"].includes(column.id) && column.id}
+                    {!["select", "url", "title", "status_code", "content_length", "response_time", "webserver", "content_type", "created_at", "actions"].includes(column.id) && column.id}
                   </DropdownMenuCheckboxItem>
                 ))}
             </DropdownMenuContent>
@@ -210,7 +219,7 @@ export function IPAddressesDataTable({
                 {onDownloadAll && (
                   <DropdownMenuItem onClick={onDownloadAll}>
                     <IconDownload className="h-4 w-4" />
-                    Download All IP Addresses
+                    Download All Websites
                   </DropdownMenuItem>
                 )}
                 {onDownloadSelected && (
@@ -219,7 +228,7 @@ export function IPAddressesDataTable({
                     disabled={table.getFilteredSelectedRowModel().rows.length === 0}
                   >
                     <IconDownload className="h-4 w-4" />
-                    Download Selected IP Addresses
+                    Download Selected Websites
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>

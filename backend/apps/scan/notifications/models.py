@@ -4,7 +4,9 @@ from django.db import models
 
 from .types import NotificationLevel
 
-
+"""
+通知系统数据模型
+"""
 class Notification(models.Model):
     """通知模型"""
     

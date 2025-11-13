@@ -1,12 +1,12 @@
 "use client"
 
 import React, { useCallback, useMemo, useState } from "react"
-import { IPAddressesDataTable } from "./ip-addresses-data-table"
-import { createIPAddressColumns } from "./ip-addresses-columns"
+import { WebSitesDataTable } from "./websites-data-table"
+import { createWebSiteColumns } from "./websites-columns"
 import { DataTableSkeleton } from "@/components/ui/data-table-skeleton"
 import { Button } from "@/components/ui/button"
-import { useTargetIPAddresses, useScanIPAddresses, useDeleteIPAddress, useBulkDeleteIPAddresses } from "@/hooks/use-ip-addresses"
-import type { IPAddress } from "@/types/ip-address.types"
+import { useTargetWebSites, useScanWebSites, useDeleteWebSite, useBulkDeleteWebSites } from "@/hooks/use-websites"
+import type { WebSite } from "@/types/website.types"
 import { toast } from "sonner"
 import {
   AlertDialog,
@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { LoadingSpinner } from "@/components/loading-spinner"
 
-export function IPAddressesView({
+export function WebSitesView({
   targetId,
   scanId,
 }: {
@@ -31,14 +31,14 @@ export function IPAddressesView({
     pageIndex: 0,
     pageSize: 10,
   })
-  const [selectedIPAddresses, setSelectedIPAddresses] = useState<IPAddress[]>([])
+  const [selectedWebSites, setSelectedWebSites] = useState<WebSite[]>([])
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [ipToDelete, setIPToDelete] = useState<IPAddress | null>(null)
+  const [websiteToDelete, setWebsiteToDelete] = useState<WebSite | null>(null)
 
-  const deleteIPMutation = useDeleteIPAddress()
-  const bulkDeleteMutation = useBulkDeleteIPAddresses()
+  const deleteWebSiteMutation = useDeleteWebSite()
+  const bulkDeleteMutation = useBulkDeleteWebSites()
 
-  const targetQuery = useTargetIPAddresses(
+  const targetQuery = useTargetWebSites(
     targetId || 0,
     {
       page: pagination.pageIndex + 1,
@@ -47,7 +47,7 @@ export function IPAddressesView({
     { enabled: !!targetId }
   )
 
-  const scanQuery = useScanIPAddresses(
+  const scanQuery = useScanWebSites(
     scanId || 0,
     {
       page: pagination.pageIndex + 1,
@@ -71,36 +71,37 @@ export function IPAddressesView({
     })
   }, [])
 
-  const handleDeleteIP = (ipAddress: IPAddress) => {
-    setIPToDelete(ipAddress)
+  const handleDeleteWebSite = (website: WebSite) => {
+    setWebsiteToDelete(website)
     setDeleteDialogOpen(true)
   }
 
   const confirmDelete = async () => {
-    if (!ipToDelete) return
+    if (!websiteToDelete) return
 
     setDeleteDialogOpen(false)
-    setIPToDelete(null)
+    setWebsiteToDelete(null)
 
-    deleteIPMutation.mutate(ipToDelete.id)
+    deleteWebSiteMutation.mutate(websiteToDelete.id)
   }
 
   const columns = useMemo(
     () =>
-      createIPAddressColumns({
+      createWebSiteColumns({
         formatDate,
-        onDelete: handleDeleteIP,
+        onDelete: handleDeleteWebSite,
       }),
     [formatDate]
   )
 
-  const ipAddresses: IPAddress[] = useMemo(() => {
+  const websites: WebSite[] = useMemo(() => {
     if (!data?.results) return []
-    return data.results.map((item) => ({
+    return data.results.map((item: WebSite) => ({
       ...item,
-      subdomain: item.subdomain || "",
-      createdAt: item.createdAt || item.lastSeen,
-      reversePointer: item.reversePointer || "",
+      title: item.title || "",
+      screenshot_path: item.screenshot_path || "",
+      content_type: item.content_type || "",
+      webserver: item.webserver || "",
     }))
   }, [data])
 
@@ -114,39 +115,42 @@ export function IPAddressesView({
     : undefined
 
   const handleBulkDelete = useCallback(async () => {
-    if (selectedIPAddresses.length === 0) {
-      toast.error("请选择要删除的 IP 地址")
+    if (selectedWebSites.length === 0) {
+      toast.error("请选择要删除的网站")
       return
     }
 
     try {
-      const ipIds = selectedIPAddresses.map(ip => ip.id)
-      await bulkDeleteMutation.mutateAsync(ipIds)
-      toast.success(`成功删除 ${selectedIPAddresses.length} 个 IP 地址`)
-      setSelectedIPAddresses([]) // 清空选择
+      const websiteIds = selectedWebSites.map(website => website.id)
+      await bulkDeleteMutation.mutateAsync(websiteIds)
+      toast.success(`成功删除 ${selectedWebSites.length} 个网站`)
+      setSelectedWebSites([]) // 清空选择
     } catch (error) {
       console.error("批量删除失败:", error)
       toast.error("删除失败，请重试")
     }
-  }, [selectedIPAddresses, bulkDeleteMutation])
+  }, [selectedWebSites, bulkDeleteMutation])
 
-  const handleSelectionChange = useCallback((selectedRows: IPAddress[]) => {
-    setSelectedIPAddresses(selectedRows)
+  const handleSelectionChange = useCallback((selectedRows: WebSite[]) => {
+    setSelectedWebSites(selectedRows)
   }, [])
 
-  // 处理下载所有 IP 地址
+  // 处理下载所有网站
   const handleDownloadAll = () => {
-    // TODO: 实现下载所有 IP 地址功能
-    console.log('下载所有 IP 地址')
+    // TODO: 实现下载所有网站功能
+    console.log('下载所有网站')
+    toast.info("下载功能开发中...")
   }
 
-  // 处理下载选中的 IP 地址
+  // 处理下载选中的网站
   const handleDownloadSelected = () => {
-    // TODO: 实现下载选中的 IP 地址功能
-    console.log('下载选中的 IP 地址:', selectedIPAddresses)
-    if (selectedIPAddresses.length === 0) {
+    // TODO: 实现下载选中的网站功能
+    console.log('下载选中的网站:', selectedWebSites)
+    if (selectedWebSites.length === 0) {
+      toast.error("请选择要下载的网站")
       return
     }
+    toast.info("下载功能开发中...")
   }
 
   if (error) {
@@ -157,7 +161,7 @@ export function IPAddressesView({
         </div>
         <h3 className="text-lg font-semibold mb-2">加载失败</h3>
         <p className="text-muted-foreground text-center mb-4">
-          {error.message || "加载 IP 地址数据时出现错误，请重试"}
+          加载网站数据时出现错误，请重试
         </p>
         <Button onClick={() => refetch()}>重新加载</Button>
       </div>
@@ -167,23 +171,24 @@ export function IPAddressesView({
   if (isLoading) {
     return (
       <DataTableSkeleton
-        toolbarButtonCount={1}
+        toolbarButtonCount={3}
         rows={6}
-        columns={4}
+        columns={6}
       />
     )
   }
 
   return (
     <>
-      <IPAddressesDataTable
-        data={ipAddresses}
+      <WebSitesDataTable
+        data={websites}
         columns={columns}
-        searchPlaceholder="搜索 IP 地址或子域名..."
-        searchColumn="ip"
+        searchPlaceholder="搜索网站 URL 或标题..."
+        searchColumn="url"
         pagination={pagination}
         setPagination={setPagination}
         paginationInfo={paginationInfo}
+        onPaginationChange={setPagination}
         onBulkDelete={handleBulkDelete}
         onSelectionChange={handleSelectionChange}
         onDownloadAll={handleDownloadAll}
@@ -196,7 +201,7 @@ export function IPAddressesView({
           <AlertDialogHeader>
             <AlertDialogTitle>确认删除</AlertDialogTitle>
             <AlertDialogDescription>
-              此操作无法撤销。这将永久删除 IP 地址 &quot;{ipToDelete?.ip}&quot; 及其相关数据。
+              此操作无法撤销。这将永久删除网站 &quot;{websiteToDelete?.url}&quot; 及其相关数据。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -204,16 +209,8 @@ export function IPAddressesView({
             <AlertDialogAction
               onClick={confirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={deleteIPMutation.isPending}
             >
-              {deleteIPMutation.isPending ? (
-                <>
-                  <LoadingSpinner/>
-                  删除中...
-                </>
-              ) : (
-                "删除"
-              )}
+              删除
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

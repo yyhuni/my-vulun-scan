@@ -1,9 +1,8 @@
 "use client"
 
-import * as React from "react"
+import React from "react"
 import { Column, ColumnDef } from "@tanstack/react-table"
-import { CaretSortIcon } from "@radix-ui/react-icons"
-import { Copy } from "lucide-react"
+import { ChevronUp, ChevronDown, ChevronsUpDown, Copy, Check, MoreHorizontal, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
@@ -18,8 +17,91 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import type { IPAddress } from "@/types/ip-address.types"
 import { toast } from "sonner"
+
+/**
+ * 可复制单元格组件
+ */
+function CopyableCell({ 
+  value, 
+  maxWidth = "400px", 
+  truncateLength = 50,
+  successMessage = "已复制",
+  className = "font-medium"
+}: { 
+  value: string
+  maxWidth?: string
+  truncateLength?: number
+  successMessage?: string
+  className?: string
+}) {
+  const [copied, setCopied] = React.useState(false)
+  const isLong = value.length > truncateLength
+  
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(value)
+      setCopied(true)
+      toast.success(successMessage)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      toast.error('复制失败')
+    }
+  }
+  
+  return (
+    <div className="group inline-flex items-center gap-1" style={{ maxWidth }}>
+      <TooltipProvider delayDuration={500} skipDelayDuration={0}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className={`text-sm truncate cursor-default ${className}`}>
+              {value}
+            </div>
+          </TooltipTrigger>
+          <TooltipContent 
+            side="top" 
+            align="start"
+            sideOffset={5}
+            className={`text-xs ${isLong ? 'max-w-[500px] break-all' : 'whitespace-nowrap'}`}
+          >
+            {value}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      
+      <TooltipProvider delayDuration={500} skipDelayDuration={0}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`h-6 w-6 flex-shrink-0 hover:bg-accent transition-opacity ${
+                copied ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+              }`}
+              onClick={handleCopy}
+            >
+              {copied ? (
+                <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+              ) : (
+                <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            <p className="text-xs">{copied ? '已复制!' : '点击复制'}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </div>
+  )
+}
 
 interface DataTableColumnHeaderProps<TData, TValue> {
   column: Column<TData, TValue>
@@ -31,57 +113,68 @@ function DataTableColumnHeader<TData, TValue>({
   title,
 }: DataTableColumnHeaderProps<TData, TValue>) {
   if (!column?.getCanSort()) {
-    return <div className="text-left font-medium">{title}</div>
+    return <div className="-ml-3 font-medium">{title}</div>
   }
 
+  const isSorted = column.getIsSorted()
+
   return (
-    <div className="flex items-center gap-2">
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-8 p-0"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-      >
-        <span>{title}</span>
-        <CaretSortIcon className="ml-2 h-4 w-4" />
-      </Button>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-            <span className="sr-only">列操作</span>
-            ...
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
-          <DropdownMenuItem onClick={() => column.toggleSorting(false)}>
-            升序
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => column.toggleSorting(true)}>
-            降序
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => column.clearSorting()}>
-            取消排序
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+    <Button
+      variant="ghost"
+      onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      className="-ml-3 h-8 data-[state=open]:bg-accent hover:bg-muted"
+    >
+      {title}
+      {isSorted === "asc" ? (
+        <ChevronUp />
+      ) : isSorted === "desc" ? (
+        <ChevronDown />
+      ) : (
+        <ChevronsUpDown />
+      )}
+    </Button>
+  )
+}
+
+/**
+ * IP 地址行操作组件
+ */
+function IPAddressRowActions({
+  ipAddress,
+  onDelete,
+}: {
+  ipAddress: IPAddress
+  onDelete: () => void
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          className="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
+        >
+          <MoreHorizontal />
+          <span className="sr-only">打开菜单</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52">
+        <DropdownMenuItem
+          onClick={onDelete}
+          className="text-destructive focus:text-destructive"
+        >
+          <Trash2 />
+          Delete IP Address
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
 export function createIPAddressColumns(params: {
   formatDate: (value: string) => string
+  onDelete?: (ipAddress: IPAddress) => void
 }) {
-  const { formatDate } = params
-
-  const handleCopy = async (value: string) => {
-    try {
-      await navigator.clipboard.writeText(value)
-      toast.success(`已复制 IP 地址：${value}`)
-    } catch (error) {
-      toast.error("复制失败，请稍后再试")
-      console.error("复制 IP 失败：", error)
-    }
-  }
+  const { formatDate, onDelete } = params
 
   const columns: ColumnDef<IPAddress>[] = [
     // 选择列
@@ -107,25 +200,23 @@ export function createIPAddressColumns(params: {
       enableSorting: false,
       enableHiding: false,
     },
+    // IP 地址列
     {
       accessorKey: "ip",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="IP 地址" />
       ),
       cell: ({ row }) => (
-        <div className="flex items-center gap-2 font-mono text-sm">
-          <span>{row.original.ip}</span>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleCopy(row.original.ip)}
-            title="复制 IP 地址"
-          >
-            <Copy className="h-4 w-4" />
-          </Button>
-        </div>
+        <CopyableCell 
+          value={row.original.ip} 
+          maxWidth="300px" 
+          truncateLength={40} 
+          successMessage="已复制 IP 地址"
+          className="font-mono"
+        />
       ),
     },
+    // 所属子域名列
     {
       accessorKey: "subdomain",
       header: ({ column }) => (
@@ -140,6 +231,7 @@ export function createIPAddressColumns(params: {
         )
       },
     },
+    // 发现时间列
     {
       accessorKey: "createdAt",
       header: ({ column }) => (
@@ -150,6 +242,7 @@ export function createIPAddressColumns(params: {
         return value ? formatDate(value) : "-"
       },
     },
+    // 开放端口列
     {
       accessorKey: "ports",
       header: ({ column }) => (
@@ -233,6 +326,7 @@ export function createIPAddressColumns(params: {
         )
       },
     },
+    // 反向解析列
     {
       accessorKey: "reversePointer",
       header: ({ column }) => (
@@ -246,6 +340,18 @@ export function createIPAddressColumns(params: {
           <span className="text-muted-foreground">-</span>
         )
       },
+    },
+    // 操作列
+    {
+      id: "actions",
+      cell: ({ row }) => (
+        <IPAddressRowActions
+          ipAddress={row.original}
+          onDelete={() => onDelete?.(row.original)}
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
     },
   ]
 

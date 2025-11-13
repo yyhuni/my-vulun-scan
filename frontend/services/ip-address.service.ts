@@ -28,6 +28,10 @@ export class IPAddressService {
     return response.data
   }
 
+  static async deleteIPAddress(ipId: number): Promise<void> {
+    await api.delete(`/ip-addresses/${ipId}/`)
+  }
+
   static async bulkDeleteIPAddresses(ipIds: number[]): Promise<void> {
     await api.post('/ip-addresses/bulk-delete/', {
       ids: ipIds,

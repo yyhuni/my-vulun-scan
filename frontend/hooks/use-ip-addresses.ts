@@ -49,6 +49,18 @@ export function useScanIPAddresses(
   })
 }
 
+export function useDeleteIPAddress() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (ipId: number) => IPAddressService.deleteIPAddress(ipId),
+    onSuccess: () => {
+      // 刷新所有 IP 地址相关的查询
+      queryClient.invalidateQueries({ queryKey: ipAddressKeys.all })
+    },
+  })
+}
+
 export function useBulkDeleteIPAddresses() {
   const queryClient = useQueryClient()
 
