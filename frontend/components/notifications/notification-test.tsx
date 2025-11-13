@@ -8,14 +8,16 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useNotificationSSE } from "@/hooks/use-notification-sse"
+import { buildBackendUrl } from "@/lib/env"
+import type { BackendNotificationLevel } from "@/types/notification.types"
 
 export function NotificationTest() {
   const { isConnected, notifications, connect, disconnect, clearNotifications } = useNotificationSSE()
 
   // 发送测试通知
-  const sendTestNotification = async () => {
+  const sendTestNotification = async (level: BackendNotificationLevel) => {
     try {
-      const response = await fetch('/api/notifications/test/', {
+      const response = await fetch(buildBackendUrl(`/api/notifications/test/?level=${level}`), {
         method: 'GET',
       })
       const result = await response.json()
@@ -24,6 +26,12 @@ export function NotificationTest() {
       console.error('发送测试通知失败:', error)
     }
   }
+
+  const levelButtons: Array<{ level: BackendNotificationLevel; label: string; variant: "default" | "secondary" | "destructive" }> = [
+    { level: 'info', label: '发送信息通知', variant: 'secondary' },
+    { level: 'warning', label: '发送警告通知', variant: 'default' },
+    { level: 'important', label: '发送重要通知', variant: 'destructive' },
+  ]
 
   return (
     <Card className="w-full max-w-2xl">
@@ -44,9 +52,11 @@ export function NotificationTest() {
           <Button onClick={disconnect} disabled={!isConnected} variant="outline">
             断开连接
           </Button>
-          <Button onClick={sendTestNotification} variant="secondary">
-            发送测试通知
-          </Button>
+          {levelButtons.map(({ level, label, variant }) => (
+            <Button key={level} onClick={() => sendTestNotification(level)} variant={variant}>
+              {label}
+            </Button>
+          ))}
           <Button onClick={clearNotifications} variant="destructive">
             清空通知
           </Button>
@@ -80,8 +90,8 @@ export function NotificationTest() {
                       {notification.severity && (
                         <Badge 
                           variant={
-                            notification.severity === 'high' ? 'destructive' :
-                            notification.severity === 'medium' ? 'default' : 'secondary'
+                            notification.severity === 'important' ? 'destructive' :
+                            notification.severity === 'warning' ? 'default' : 'secondary'
                           }
                           className="text-xs"
                         >

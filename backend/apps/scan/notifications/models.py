@@ -15,7 +15,7 @@ class Notification(models.Model):
     level = models.CharField(
         max_length=20,
         choices=NotificationLevel.choices,
-        default=NotificationLevel.LOW,
+        default=NotificationLevel.INFO,
         db_index=True,
         help_text='通知级别'
     )

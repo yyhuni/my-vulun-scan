@@ -33,7 +33,7 @@ def on_scan_flow_running(flow: Flow, flow_run: FlowRun, state: State) -> None:
         create_notification(
             title="扫描开始",
             message=f"目标：{target_name}，任务：{flow.name}，状态：running",
-            level=NotificationLevel.LOW
+            level=NotificationLevel.INFO
         )
         
         logger.info(f"✓ 扫描开始通知已发送 - Target: {target_name}, Flow: {flow.name}")
@@ -64,7 +64,7 @@ def on_scan_flow_completed(flow: Flow, flow_run: FlowRun, state: State) -> None:
         create_notification(
             title="扫描完成",
             message=f"目标：{target_name}，任务：{flow.name}，状态：completed",
-            level=NotificationLevel.LOW
+            level=NotificationLevel.INFO
         )
         
         logger.info(f"✓ 扫描完成通知已发送 - Target: {target_name}, Flow: {flow.name}")
@@ -98,7 +98,7 @@ def on_scan_flow_failed(flow: Flow, flow_run: FlowRun, state: State) -> None:
         create_notification(
             title="扫描失败",
             message=f"目标：{target_name}，任务：{flow.name}，状态：failed，错误：{error_message}",
-            level=NotificationLevel.HIGH
+            level=NotificationLevel.IMPORTANT
         )
         
         logger.error(f"✓ 扫描失败通知已发送 - Target: {target_name}, Flow: {flow.name}, Error: {error_message}")
@@ -129,7 +129,7 @@ def on_scan_flow_cancelled(flow: Flow, flow_run: FlowRun, state: State) -> None:
         create_notification(
             title="扫描取消",
             message=f"目标：{target_name}，任务：{flow.name}，状态：cancelled",
-            level=NotificationLevel.MEDIUM
+            level=NotificationLevel.WARNING
         )
         
         logger.info(f"✓ 扫描取消通知已发送 - Target: {target_name}, Flow: {flow.name}")
@@ -163,7 +163,7 @@ def on_scan_flow_crashed(flow: Flow, flow_run: FlowRun, state: State) -> None:
         create_notification(
             title="扫描崩溃",
             message=f"目标：{target_name}，任务：{flow.name}，状态：crashed，错误：{crash_message}",
-            level=NotificationLevel.HIGH
+            level=NotificationLevel.IMPORTANT
         )
         
         logger.critical(f"✓ 扫描崩溃通知已发送 - Target: {target_name}, Flow: {flow.name}, Crash: {crash_message}")

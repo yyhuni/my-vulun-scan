@@ -136,7 +136,7 @@ def on_initiate_scan_flow_running(flow: Flow, flow_run: FlowRun, state: State) -
         create_notification(
             title="扫描开始",
             message=f"扫描任务 #{scan_id} 已开始执行",
-            level=NotificationLevel.LOW
+            level=NotificationLevel.INFO
         )
     except Exception as e:
         logger.error(f"发送扫描开始通知失败 - Scan ID: {scan_id}: {e}")
@@ -233,7 +233,7 @@ def on_initiate_scan_flow_completed(flow: Flow, flow_run: FlowRun, state: State)
         create_notification(
             title="扫描完成",
             message=f"扫描任务 #{scan_id} 已成功完成",
-            level=NotificationLevel.LOW
+            level=NotificationLevel.INFO
         )
     except Exception as e:
         logger.error(f"发送扫描完成通知失败 - Scan ID: {scan_id}: {e}")
@@ -332,7 +332,7 @@ def on_initiate_scan_flow_failed(flow: Flow, flow_run: FlowRun, state: State) ->
         create_notification(
             title="扫描失败",
             message=f"扫描任务 #{scan_id} 执行失败: {error_message}",
-            level=NotificationLevel.HIGH
+            level=NotificationLevel.IMPORTANT
         )
     except Exception as e:
         logger.error(f"发送扫描失败通知失败 - Scan ID: {scan_id}: {e}")
@@ -400,7 +400,7 @@ def on_initiate_scan_flow_cancelled(flow: Flow, flow_run: FlowRun, state: State)
         create_notification(
             title="扫描取消",
             message=f"扫描任务 #{scan_id} 已被取消",
-            level=NotificationLevel.MEDIUM
+            level=NotificationLevel.WARNING
         )
     except Exception as e:
         logger.error(f"发送扫描取消通知失败 - Scan ID: {scan_id}: {e}")
@@ -478,7 +478,7 @@ def on_initiate_scan_flow_crashed(flow: Flow, flow_run: FlowRun, state: State) -
         create_notification(
             title="扫描崩溃",
             message=f"扫描任务 #{scan_id} 发生严重错误并崩溃: {crash_message}",
-            level=NotificationLevel.HIGH
+            level=NotificationLevel.IMPORTANT
         )
     except Exception as e:
         logger.error(f"发送扫描崩溃通知失败 - Scan ID: {scan_id}: {e}")

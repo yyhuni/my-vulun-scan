@@ -1,21 +1,20 @@
 "use client"
 
 import * as React from "react"
-import { Bell, Trash2, AlertTriangle, Activity, Info } from "lucide-react"
+import { Bell, AlertTriangle, Activity, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
-import { useNotificationSSE } from "@/hooks/use-notification-sse"
-import { useNotifications } from "@/hooks/use-notifications"
+import { transformBackendNotification, useNotificationSSE } from "@/hooks/use-notification-sse"
+import { useMarkAllAsRead, useNotifications } from "@/hooks/use-notifications"
 import type { Notification, NotificationType } from "@/types/notification.types"
 
 /**
@@ -24,28 +23,69 @@ import type { Notification, NotificationType } from "@/types/notification.types"
  */
 export function NotificationDrawer() {
   const [open, setOpen] = React.useState(false)
+  const queryParams = React.useMemo(() => ({ pageSize: 20 }), [])
+  const { data: notificationResponse, isLoading: isHistoryLoading } = useNotifications(queryParams)
 
   // SSE 实时通知
-  const { notifications: sseNotifications } = useNotificationSSE()
-  
+  const { notifications: sseNotifications, markNotificationsAsRead } = useNotificationSSE()
+  const { mutate: markAllAsRead } = useMarkAllAsRead()
+
+  const [historyNotifications, setHistoryNotifications] = React.useState<Notification[]>([])
+
+  React.useEffect(() => {
+    if (!notificationResponse?.data) return
+    const backendNotifications = notificationResponse.data.results ?? []
+    setHistoryNotifications(backendNotifications.map(transformBackendNotification))
+  }, [notificationResponse])
 
   // 合并 SSE 和 API 通知，SSE 优先
   const allNotifications = React.useMemo(() => {
-    const sseIds = new Set(sseNotifications.map(n => n.id))
+    const seen = new Set<number>()
+    const merged: Notification[] = []
 
-    return [...sseNotifications]
-  }, [sseNotifications])
+    for (const notification of sseNotifications) {
+      if (!seen.has(notification.id)) {
+        merged.push(notification)
+        seen.add(notification.id)
+      }
+    }
+
+    for (const notification of historyNotifications) {
+      if (!seen.has(notification.id)) {
+        merged.push(notification)
+        seen.add(notification.id)
+      }
+    }
+
+    return merged.sort((a, b) => {
+      const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0
+      const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0
+      return bTime - aTime
+    })
+  }, [historyNotifications, sseNotifications])
 
   // 未读通知数量
   const unreadCount = allNotifications.filter(n => n.unread).length
+
+  React.useEffect(() => {
+    if (open && unreadCount > 0) {
+      markNotificationsAsRead()
+      setHistoryNotifications(prev => prev.map(notification => ({ ...notification, unread: false })))
+      markAllAsRead(undefined, {
+        onError: () => {
+          // 忽略错误，后续关闭/打开时会再次尝试
+        },
+      })
+    }
+  }, [open, unreadCount, markNotificationsAsRead, markAllAsRead])
 
   // 获取通知图标
   const getNotificationIcon = (type: NotificationType, severity?: string) => {
     if (type === "vulnerability") {
       return <AlertTriangle className={cn("h-5 w-5", 
-        severity === "high" && "text-red-500",
-        severity === "medium" && "text-orange-500",
-        severity === "low" && "text-yellow-500"
+        severity === "important" && "text-red-500",
+        severity === "warning" && "text-orange-500",
+        severity === "info" && "text-yellow-500"
       )} />
     }
     if (type === "scan") {
@@ -59,9 +99,9 @@ export function NotificationDrawer() {
     if (!severity) return null
     
     const severityConfig = {
-      high: { label: "高危", variant: "destructive" as const },
-      medium: { label: "中危", variant: "default" as const },
-      low: { label: "低危", variant: "secondary" as const },
+      important: { label: "重要", variant: "destructive" as const },
+      warning: { label: "警告", variant: "default" as const },
+      info: { label: "信息", variant: "secondary" as const },
     }
     
     const config = severityConfig[severity as keyof typeof severityConfig]
@@ -102,21 +142,8 @@ export function NotificationDrawer() {
                       {notification.description}
                     </p>
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <span className="text-xs text-muted-foreground">
-                      {notification.time}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => {
-                        // TODO: 删除通知
-                        console.log("删除:", notification.id)
-                      }}
-                    >
-                      <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
-                    </Button>
+                  <div className="flex items-center gap-1 shrink-0 text-xs text-muted-foreground">
+                    <span>{notification.time}</span>
                   </div>
                 </div>
               </div>
@@ -150,7 +177,13 @@ export function NotificationDrawer() {
 
         <ScrollArea className="h-[calc(100vh-4rem)]">
           <div className="p-4">
-            {renderNotificationList(allNotifications)}
+            {isHistoryLoading && allNotifications.length === 0 ? (
+              <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
+                通知加载中...
+              </div>
+            ) : (
+              renderNotificationList(allNotifications)
+            )}
           </div>
         </ScrollArea>
       </SheetContent>

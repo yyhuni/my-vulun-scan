@@ -355,6 +355,20 @@ class ScanViewSet(viewsets.ModelViewSet):
     def ip_addresses(self, request, pk=None):  # pylint: disable=unused-argument
         """
         获取扫描关联的所有 IP 地址（支持分页）
+        
+        URL: GET /api/scans/{id}/ip-addresses/?page=1&pageSize=10
+        
+        功能:
+        - 返回指定扫描任务发现的所有 IP 地址
+        - 包含 IP 地址的详细信息（地址、关联子域名、端口等）
+        - 支持分页查询
+        
+        返回:
+        - results: IP 地址列表
+        - total: 总记录数
+        - page: 当前页码
+        - page_size: 每页大小
+        - total_pages: 总页数
         """
         try:
             scan_service = ScanService()
