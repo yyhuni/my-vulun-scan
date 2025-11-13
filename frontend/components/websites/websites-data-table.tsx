@@ -191,14 +191,16 @@ export function WebSitesDataTable({
                     {column.id === "url" && "URL"}
                     {column.id === "title" && "Title"}
                     {column.id === "statusCode" && "Status"}
-                    {column.id === "contentLength" && "Size"}
+                    {column.id === "contentLength" && "Content Length"}
                     {column.id === "location" && "Location"}
                     {column.id === "webserver" && "Web Server"}
                     {column.id === "contentType" && "Content Type"}
                     {column.id === "tech" && "Technologies"}
+                    {column.id === "bodyPreview" && "Body Preview"}
+                    {column.id === "vhost" && "VHost"}
                     {column.id === "createdAt" && "Created At"}
                     {column.id === "actions" && "Actions"}
-                    {!["select", "url", "title", "statusCode", "contentLength", "location", "webserver", "contentType", "tech", "createdAt", "actions"].includes(column.id) && column.id}
+                    {!["select", "url", "title", "statusCode", "contentLength", "location", "webserver", "contentType", "tech", "bodyPreview", "vhost", "createdAt", "actions"].includes(column.id) && column.id}
                   </DropdownMenuCheckboxItem>
                 ))}
             </DropdownMenuContent>

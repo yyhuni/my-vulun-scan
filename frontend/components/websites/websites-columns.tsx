@@ -1,5 +1,6 @@
 "use client"
 
+import React from "react"
 import { ColumnDef } from "@tanstack/react-table"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
@@ -12,8 +13,132 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { IconDots, IconEye, IconTrash, IconExternalLink } from "@tabler/icons-react"
+import { Copy, Check, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react"
+import { toast } from "sonner"
 import type { WebSite } from "@/types/website.types"
+
+/**
+ * 可复制单元格组件
+ */
+function CopyableCell({ 
+  value, 
+  maxWidth = "400px", 
+  truncateLength = 50,
+  successMessage = "已复制",
+  className = "font-medium"
+}: { 
+  value: string
+  maxWidth?: string
+  truncateLength?: number
+  successMessage?: string
+  className?: string
+}) {
+  const [copied, setCopied] = React.useState(false)
+  const isLong = value.length > truncateLength
+  
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(value)
+      setCopied(true)
+      toast.success(successMessage)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      toast.error('复制失败')
+    }
+  }
+  
+  return (
+    <div className="group inline-flex items-center gap-1" style={{ maxWidth }}>
+      <TooltipProvider delayDuration={500} skipDelayDuration={0}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className={`text-sm truncate cursor-default ${className}`}>
+              {value}
+            </div>
+          </TooltipTrigger>
+          <TooltipContent 
+            side="top" 
+            align="start"
+            sideOffset={5}
+            className={`text-xs ${isLong ? 'max-w-[500px] break-all' : 'whitespace-nowrap'}`}
+          >
+            {value}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      
+      <TooltipProvider delayDuration={500} skipDelayDuration={0}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`h-6 w-6 flex-shrink-0 hover:bg-accent transition-opacity ${
+                copied ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+              }`}
+              onClick={handleCopy}
+            >
+              {copied ? (
+                <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+              ) : (
+                <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            <p className="text-xs">{copied ? '已复制!' : '点击复制'}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </div>
+  )
+}
+
+/**
+ * 数据表格列头组件 - 支持排序
+ */
+function DataTableColumnHeader({
+  column,
+  title,
+}: {
+  column: { getCanSort: () => boolean; getIsSorted: () => false | "asc" | "desc"; toggleSorting: (desc?: boolean) => void }
+  title: string
+}) {
+  if (!column.getCanSort()) {
+    return <div className="-ml-3 font-medium">{title}</div>
+  }
+
+  const isSorted = column.getIsSorted()
+
+  return (
+    <Button
+      variant="ghost"
+      onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      className="-ml-3 h-8 data-[state=open]:bg-accent hover:bg-muted"
+    >
+      {title}
+      {isSorted === "asc" ? (
+        <ChevronUp className="h-4 w-4" />
+      ) : isSorted === "desc" ? (
+        <ChevronDown className="h-4 w-4" />
+      ) : (
+        <ChevronsUpDown className="h-4 w-4" />
+      )}
+    </Button>
+  )
+}
 
 interface CreateWebSiteColumnsProps {
   formatDate: (dateString: string) => string
@@ -51,29 +176,19 @@ export function createWebSiteColumns({
     },
     {
       accessorKey: "url",
-      header: "URL",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="URL" />
+      ),
       cell: ({ row }) => {
         const url = row.getValue("url") as string
-        return (
-          <div className="flex items-center space-x-2">
-            <span className="max-w-[300px] truncate font-medium" title={url}>
-              {url}
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0"
-              onClick={() => window.open(url, '_blank')}
-            >
-              <IconExternalLink className="h-3 w-3" />
-            </Button>
-          </div>
-        )
+        return <CopyableCell value={url} maxWidth="300px" truncateLength={40} successMessage="已复制 URL" />
       },
     },
     {
       accessorKey: "title",
-      header: "Title",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Title" />
+      ),
       cell: ({ row }) => {
         const title = row.getValue("title") as string
         return (
@@ -85,7 +200,9 @@ export function createWebSiteColumns({
     },
     {
       accessorKey: "statusCode",
-      header: "Status",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Status" />
+      ),
       cell: ({ row }) => {
         const statusCode = row.getValue("statusCode") as number
         if (!statusCode) return "-"
@@ -104,37 +221,59 @@ export function createWebSiteColumns({
     },
     {
       accessorKey: "contentLength",
-      header: "Size",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Content Length" />
+      ),
       cell: ({ row }) => {
         const contentLength = row.getValue("contentLength") as number
         if (!contentLength) return "-"
-        
-        const formatBytes = (bytes: number) => {
-          if (bytes === 0) return "0 B"
-          const k = 1024
-          const sizes = ["B", "KB", "MB", "GB"]
-          const i = Math.floor(Math.log(bytes) / Math.log(k))
-          return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i]
-        }
-        
-        return formatBytes(contentLength)
+        return contentLength.toString()
       },
     },
     {
       accessorKey: "location",
-      header: "Location",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Location" />
+      ),
       cell: ({ row }) => {
         const location = row.getValue("location") as string
+        if (!location) return "-"
+        
+        const maxLength = 50
+        const isLong = location.length > maxLength
+        const displayText = isLong ? location.substring(0, maxLength) : location
+        
+        if (!isLong) {
+          return <span className="text-sm">{location}</span>
+        }
+        
         return (
-          <div className="max-w-[200px] truncate" title={location}>
-            {location || "-"}
+          <div className="flex items-center gap-1">
+            <span className="text-sm">{displayText}</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted flex-shrink-0">
+                  ...
+                </Badge>
+              </PopoverTrigger>
+              <PopoverContent className="w-96 p-3">
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm">完整 Location</h4>
+                  <div className="text-sm break-all bg-muted p-2 rounded max-h-32 overflow-y-auto">
+                    {location}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         )
       },
     },
     {
       accessorKey: "webserver",
-      header: "Web Server",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Web Server" />
+      ),
       cell: ({ row }) => {
         const webserver = row.getValue("webserver") as string
         return (
@@ -146,7 +285,9 @@ export function createWebSiteColumns({
     },
     {
       accessorKey: "contentType",
-      header: "Content Type",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Content Type" />
+      ),
       cell: ({ row }) => {
         const contentType = row.getValue("contentType") as string
         return (
@@ -158,29 +299,107 @@ export function createWebSiteColumns({
     },
     {
       accessorKey: "tech",
-      header: "Technologies",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Technologies" />
+      ),
       cell: ({ row }) => {
         const tech = row.getValue("tech") as string[]
         if (!tech || tech.length === 0) return "-"
+        
+        // 显示前2个技术，如果有更多就显示省略
+        const displayTech = tech.slice(0, 2)
+        const hasMore = tech.length > 2
+
         return (
           <div className="flex flex-wrap gap-1 max-w-[200px]">
-            {tech.slice(0, 2).map((technology, index) => (
+            {displayTech.map((technology, index) => (
               <Badge key={index} variant="outline" className="text-xs">
                 {technology}
               </Badge>
             ))}
-            {tech.length > 2 && (
-              <Badge variant="secondary" className="text-xs">
-                +{tech.length - 2}
-              </Badge>
+            {hasMore && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Badge variant="secondary" className="text-xs cursor-pointer hover:bg-muted">
+                    +{tech.length - 2}
+                  </Badge>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-3">
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm">所有技术栈 ({tech.length})</h4>
+                    <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto">
+                      {tech.map((technology, index) => (
+                        <Badge 
+                          key={index} 
+                          variant="outline" 
+                          className="text-xs"
+                        >
+                          {technology}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
             )}
           </div>
         )
       },
     },
     {
+      accessorKey: "bodyPreview",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Body Preview" />
+      ),
+      cell: ({ row }) => {
+        const bodyPreview = row.getValue("bodyPreview") as string
+        if (!bodyPreview) return "-"
+        
+        if (bodyPreview.length <= 20) {
+          return <span className="text-sm">{bodyPreview}</span>
+        }
+        
+        return (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" className="h-auto p-0 text-left justify-start">
+                <span className="max-w-[150px] truncate text-sm cursor-pointer hover:text-primary">
+                  {bodyPreview}...
+                </span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-96 p-3">
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm">完整响应体预览</h4>
+                <div className="text-sm break-all bg-muted p-2 rounded max-h-32 overflow-y-auto">
+                  {bodyPreview}
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        )
+      },
+    },
+    {
+      accessorKey: "vhost",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="VHost" />
+      ),
+      cell: ({ row }) => {
+        const vhost = row.getValue("vhost") as boolean | null
+        if (vhost === null) return "-"
+        return (
+          <Badge variant={vhost ? "default" : "secondary"} className="text-xs">
+            {vhost ? "true" : "false"}
+          </Badge>
+        )
+      },
+    },
+    {
       accessorKey: "createdAt",
-      header: "Created At",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Created At" />
+      ),
       cell: ({ row }) => {
         const createdAt = row.getValue("createdAt") as string
         return <div className="text-sm">{createdAt ? formatDate(createdAt) : "-"}</div>
