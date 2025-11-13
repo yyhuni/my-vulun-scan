@@ -75,6 +75,12 @@ export function useNotificationSSE() {
           return
         }
 
+        if (data.type === 'heartbeat') {
+          // 心跳包仅用于保活连接
+          setIsConnected(true)
+          return
+        }
+
         if (data.type === 'error') {
           console.error('SSE 错误:', data.message)
           toast.error(`通知连接错误: ${data.message}`)
@@ -82,6 +88,20 @@ export function useNotificationSSE() {
         }
 
         // 处理通知消息
+        if (data.type === 'notification') {
+          const payload = (data.data ?? data) as BackendNotification
+
+          if (payload.id && payload.title && payload.message) {
+            const notification = transformNotification(payload)
+            setNotifications(prev => [notification, ...prev.slice(0, 49)])
+            toast.info(notification.title, {
+              description: notification.description,
+            })
+            queryClient.invalidateQueries({ queryKey: ['notifications'] })
+          }
+          return
+        }
+
         if (data.id && data.title && data.message) {
           const notification = transformNotification(data as BackendNotification)
           

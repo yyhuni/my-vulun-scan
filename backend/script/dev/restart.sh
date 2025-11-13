@@ -15,7 +15,10 @@ NC='\033[0m' # No Color
 
 # 获取脚本所在目录
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+BACKEND_DIR="$( cd "$SCRIPT_DIR/../.." && pwd )"
+PROJECT_ROOT="$( cd "$BACKEND_DIR/.." && pwd )"
 PID_DIR="$SCRIPT_DIR/.pids"
+LOG_DIR="${LOG_DIR:-$PROJECT_ROOT/logs}"
 
 echo -e "${BLUE}=============================="
 echo -e "  XingRin 测试环境重启"
@@ -53,6 +56,12 @@ pkill -f "cleanup_deployment" 2>/dev/null || true
 if [ -d "$PID_DIR" ]; then
     rm -rf "$PID_DIR"
     echo -e "${GREEN}✓ PID 文件已清理${NC}"
+fi
+
+# 清理历史日志，避免旧日志干扰排查
+if [ -d "$LOG_DIR" ]; then
+    find "$LOG_DIR" -type f -name "*.log" -delete 2>/dev/null || true
+    echo -e "${GREEN}✓ 历史日志已清理 ($LOG_DIR)${NC}"
 fi
 
 # 清理 Python 缓存（可选，但有助于确保代码更新）

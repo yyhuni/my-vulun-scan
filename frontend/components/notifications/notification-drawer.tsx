@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Bell, Trash2, AlertTriangle, Activity, Info, Wifi, WifiOff } from "lucide-react"
+import { Bell, Trash2, AlertTriangle, Activity, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -26,7 +26,7 @@ export function NotificationDrawer() {
   const [open, setOpen] = React.useState(false)
 
   // SSE 实时通知
-  const { isConnected, notifications: sseNotifications } = useNotificationSSE()
+  const { notifications: sseNotifications } = useNotificationSSE()
   
 
   // 合并 SSE 和 API 通知，SSE 优先
@@ -140,14 +140,6 @@ export function NotificationDrawer() {
               {unreadCount > 99 ? '99+' : unreadCount}
             </Badge>
           )}
-          {/* 连接状态指示器 */}
-          <div className="absolute -bottom-1 -right-1">
-            {isConnected ? (
-              <Wifi className="h-3 w-3 text-green-500" />
-            ) : (
-              <WifiOff className="h-3 w-3 text-red-500" />
-            )}
-          </div>
           <span className="sr-only">通知</span>
         </Button>
       </SheetTrigger>

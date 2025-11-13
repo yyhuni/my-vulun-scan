@@ -4,6 +4,7 @@
 
 import json
 import logging
+import time
 from django.http import StreamingHttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -56,27 +57,50 @@ def notifications_sse(request):
             logger.info("已订阅通知频道")
             
             # 监听消息
-            for message in pubsub.listen():
-                if message['type'] == 'message':
-                    try:
-                        # 解析通知数据
-                        notification_data = json.loads(message['data'])
-                        
-                        # 构造 SSE 消息
-                        sse_data = {
-                            'type': 'notification',
-                            'data': notification_data
-                        }
-                        
-                        yield f"data: {json.dumps(sse_data, ensure_ascii=False)}\n\n"
-                        logger.info(f"已推送通知 - ID: {notification_data.get('id')}")
-                        
-                    except json.JSONDecodeError as e:
-                        logger.error(f"解析通知数据失败: {e}")
-                        continue
-                        
-                elif message['type'] == 'subscribe':
-                    logger.info(f"订阅成功 - 频道: {message['channel']}")
+            heartbeat_interval = getattr(settings, 'SSE_HEARTBEAT_INTERVAL', 15)
+            last_heartbeat = time.monotonic()
+            logger.debug(f"SSE 心跳间隔: {heartbeat_interval}s")
+
+            while True:
+                try:
+                    message = pubsub.get_message(timeout=1)
+                except redis.exceptions.TimeoutError:
+                    # Redis 会在 socket_timeout 到期时抛出超时，忽略并继续
+                    message = None
+                
+                if message:
+                    if message['type'] == 'message':
+                        try:
+                            # 解析通知数据
+                            notification_data = json.loads(message['data'])
+                            
+                            # 构造 SSE 消息（保留通知字段在顶层，便于前端解析）
+                            sse_data = {
+                                'type': 'notification',
+                                **notification_data
+                            }
+                            
+                            yield f"data: {json.dumps(sse_data, ensure_ascii=False)}\n\n"
+                            logger.info(f"已推送通知 - ID: {notification_data.get('id')}")
+                            last_heartbeat = time.monotonic()
+                            
+                        except json.JSONDecodeError as e:
+                            logger.error(f"解析通知数据失败: {e}")
+                            continue
+                            
+                    elif message['type'] == 'subscribe':
+                        logger.info(f"订阅成功 - 频道: {message['channel']}")
+                        last_heartbeat = time.monotonic()
+
+                # 无论是否收到通知，周期性发送心跳，避免客户端超时
+                now = time.monotonic()
+                if now - last_heartbeat >= heartbeat_interval:
+                    heartbeat_payload = {
+                        'type': 'heartbeat',
+                        'message': '保持连接'
+                    }
+                    yield f"data: {json.dumps(heartbeat_payload, ensure_ascii=False)}\n\n"
+                    last_heartbeat = now
                     
         except ImportError:
             logger.error("Redis 模块未安装")
