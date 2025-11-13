@@ -183,19 +183,42 @@ class WebSite(models.Model):
         help_text='所属的子域名'
     )
 
-    url = models.CharField(max_length=1000, help_text='站点url')
-    screenshot_path = models.CharField(
+    url = models.CharField(max_length=1000, help_text='最终访问的完整URL')
+    location = models.CharField(
         max_length=1000,
         blank=True,
         default='',
-        help_text='截图路径'
+        help_text='重定向地址（HTTP 3xx 响应头 Location）'
     )
-    created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
+    created_at = models.DateTimeField(null=True, blank=True, help_text='扫描或探测时间')
     title = models.CharField(
         max_length=1000,
         blank=True,
         default='',
-        help_text='页面标题'
+        help_text='网页标题（HTML <title> 标签内容）'
+    )
+    webserver = models.CharField(
+        max_length=200,
+        blank=True,
+        default='',
+        help_text='服务器类型（HTTP 响应头 Server 值）'
+    )
+    body_preview = models.TextField(
+        blank=True,
+        default='',
+        help_text='响应正文前N个字符（默认100个字符）'
+    )
+    content_type = models.CharField(
+        max_length=200,
+        blank=True,
+        default='',
+        help_text='响应类型（HTTP Content-Type 响应头）'
+    )
+    tech = ArrayField(
+        models.CharField(max_length=100),
+        blank=True,
+        default=list,
+        help_text='技术栈（服务器/框架/语言等）'
     )
     status_code = models.IntegerField(
         null=True,
@@ -205,30 +228,12 @@ class WebSite(models.Model):
     content_length = models.IntegerField(
         null=True,
         blank=True,
-        help_text='内容长度（字节）'
+        help_text='响应体大小（单位字节）'
     )
-    response_time = models.IntegerField(
+    vhost = models.BooleanField(
         null=True,
         blank=True,
-        help_text='响应时间（毫秒）'
-    )
-    content_type = models.CharField(
-        max_length=200,
-        blank=True,
-        default='',
-        help_text='HTTP响应的Content-Type（如text/html, application/json等）'
-    )
-    webserver = models.CharField(
-        max_length=200,
-        blank=True,
-        default='',
-        help_text='Web服务器（如nginx, apache等）'
-    )
-    technologies = models.ManyToManyField(
-        'Technology',
-        related_name='websites',
-        blank=True,
-        help_text='所属的站点技术'
+        help_text='是否支持虚拟主机'
     )
 
     class Meta:
@@ -238,6 +243,13 @@ class WebSite(models.Model):
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['-created_at']),
+            models.Index(fields=['url']),  # URL索引，优化查询性能
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['url'],
+                name='unique_website_url'
+            )
         ]
 
     def __str__(self):
