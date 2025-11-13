@@ -17,11 +17,22 @@ export class NotificationService {
    */
   static async getNotifications(
     params: GetNotificationsRequest = {}
-  ): Promise<ApiResponse<GetNotificationsResponse>> {
-    const response = await api.get<ApiResponse<GetNotificationsResponse>>('/notifications/', {
+  ): Promise<GetNotificationsResponse> {
+    const response = await api.get<GetNotificationsResponse | ApiResponse<GetNotificationsResponse>>('/notifications/', {
       params,
     })
-    return response.data
+    const payload = response.data
+
+    if (
+      payload &&
+      typeof payload === 'object' &&
+      'data' in payload &&
+      (payload as ApiResponse<GetNotificationsResponse>).data
+    ) {
+      return (payload as ApiResponse<GetNotificationsResponse>).data as GetNotificationsResponse
+    }
+
+    return payload as GetNotificationsResponse
   }
 
   /**

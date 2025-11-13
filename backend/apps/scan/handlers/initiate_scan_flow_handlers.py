@@ -140,7 +140,7 @@ def on_initiate_scan_flow_running(flow: Flow, flow_run: FlowRun, state: State) -
         create_notification(
             title="扫描流程",
             message=message,
-            level=NotificationLevel.INFO
+            level=NotificationLevel.WARNING
         )
     except Exception as e:
         logger.error(f"发送扫描开始通知失败 - Scan ID: {scan_id}: {e}")
@@ -241,7 +241,7 @@ def on_initiate_scan_flow_completed(flow: Flow, flow_run: FlowRun, state: State)
         create_notification(
             title="扫描流程",
             message=message,
-            level=NotificationLevel.INFO
+            level=NotificationLevel.WARNING
         )
     except Exception as e:
         logger.error(f"发送扫描完成通知失败 - Scan ID: {scan_id}: {e}")

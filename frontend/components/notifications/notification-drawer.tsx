@@ -33,8 +33,8 @@ export function NotificationDrawer() {
   const [historyNotifications, setHistoryNotifications] = React.useState<Notification[]>([])
 
   React.useEffect(() => {
-    if (!notificationResponse?.data) return
-    const backendNotifications = notificationResponse.data.results ?? []
+    if (!notificationResponse?.results) return
+    const backendNotifications = notificationResponse.results ?? []
     setHistoryNotifications(backendNotifications.map(transformBackendNotification))
   }, [notificationResponse])
 
