@@ -25,6 +25,7 @@ import json
 from pathlib import Path
 from prefect import task
 from typing import Generator, Dict, Any
+from collections import OrderedDict
 from django.db import IntegrityError, OperationalError, DatabaseError
 from urllib.parse import urlparse
 
@@ -35,27 +36,61 @@ from apps.asset.repositories.website_repository import WebSiteDTO
 logger = logging.getLogger(__name__)
 
 MAX_SUBDOMAIN_CACHE_BYTES = 100 * 1024 * 1024
+MAX_SUBDOMAIN_CACHE_SIZE = 10000  # 最大缓存条目数
+
+
+class LRUSubdomainCache:
+    """LRU子域名缓存，防止内存泄漏"""
+    
+    def __init__(self, max_size: int = MAX_SUBDOMAIN_CACHE_SIZE):
+        self.max_size = max_size
+        self.cache = OrderedDict()
+    
+    def get(self, key: str):
+        """获取缓存项，同时更新LRU顺序"""
+        if key in self.cache:
+            # 移动到末尾（最近使用）
+            self.cache.move_to_end(key)
+            return self.cache[key]
+        return None
+    
+    def put(self, key: str, value):
+        """添加缓存项，自动淘汰最旧的项"""
+        if key in self.cache:
+            # 更新现有项
+            self.cache.move_to_end(key)
+        else:
+            # 添加新项
+            if len(self.cache) >= self.max_size:
+                # 移除最旧的项（FIFO）
+                oldest_key, _ = self.cache.popitem(last=False)
+                logger.debug("LRU缓存已满，淘汰最旧项: %s", oldest_key)
+        
+        self.cache[key] = value
+    
+    def update(self, mapping: dict):
+        """批量更新缓存"""
+        for key, value in mapping.items():
+            self.put(key, value)
+    
+    def keys(self):
+        """获取所有缓存键"""
+        return self.cache.keys()
+    
+    def __contains__(self, key):
+        """支持 'in' 操作符"""
+        return key in self.cache
+    
+    def size(self):
+        """获取当前缓存大小"""
+        return len(self.cache)
+
 
 def _approx_size_bytes(obj) -> int:
     try:
         return sys.getsizeof(obj)
     except Exception:
         return 0
-
-def _estimate_subdomain_cache_size(cache: dict) -> int:
-    """估算 subdomain 缓存的内存占用"""
-    total_size = 0
-    for key, value in cache.items():
-        total_size += _approx_size_bytes(key)
-        total_size += _approx_size_bytes(value)
-    return total_size
-
-def _maybe_trim_subdomain_cache(cache: dict) -> bool:
-    """如果缓存过大，清空缓存避免 OOM"""
-    if _estimate_subdomain_cache_size(cache) > MAX_SUBDOMAIN_CACHE_BYTES:
-        cache.clear()
-        return True
-    return False
 
 
 class HttpxRecord:
@@ -78,9 +113,20 @@ class HttpxRecord:
         # 从URL中提取主机名
         try:
             parsed = urlparse(self.url)
-            self.host = parsed.hostname or self.input
+            if parsed.hostname:
+                self.host = parsed.hostname
+            elif self.input:
+                # 如果URL解析失败但input存在，尝试清理input作为hostname
+                self.host = self.input.strip().lower()
+                # 移除可能的协议前缀
+                if self.host.startswith(('http://', 'https://')):
+                    self.host = self.host.split('//', 1)[1].split('/')[0]
+            else:
+                # 如果都失败了，使用URL去除协议部分作为fallback
+                self.host = self.url.replace('http://', '').replace('https://', '').split('/')[0]
         except Exception:
-            self.host = self.input
+            # 最后的兜底：使用input或URL的清理版本
+            self.host = self.input or self.url.replace('http://', '').replace('https://', '').split('/')[0]
 
 
 def _parse_httpx_file(file_path: str) -> Generator[HttpxRecord, None, None]:
@@ -185,8 +231,8 @@ def parse_and_save_websites_task(
     skipped_no_subdomain = 0
     skipped_failed = 0
     
-    # Subdomain 缓存（避免重复查询）
-    subdomain_cache = {}
+    # Subdomain 缓存（避免重复查询）- 使用LRU缓存防止内存泄漏
+    subdomain_cache = LRUSubdomainCache()
     
     try:
         # 解析文件并批量处理
@@ -244,7 +290,7 @@ def parse_and_save_websites_task(
         raise
 
 
-def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int, subdomain_cache: dict, max_retries: int = 3) -> dict:
+def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int, subdomain_cache: LRUSubdomainCache, max_retries: int = 3) -> dict:
     """
     保存一个批次的数据到数据库
     
@@ -279,9 +325,13 @@ def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int, subdo
             if uncached:
                 new_data = subdomain_repo.get_by_names(uncached, target_id)
                 subdomain_cache.update(new_data)
-                if _maybe_trim_subdomain_cache(subdomain_cache):
-                    logger.warning("Subdomain 缓存超过上限，已清空以避免 OOM")
-            subdomain_map = {h: subdomain_cache[h] for h in hosts if h in subdomain_cache}
+                logger.debug("LRU缓存更新：新增 %d 项，当前大小 %d", len(new_data), subdomain_cache.size())
+            
+            # 从缓存中获取子域名映射
+            subdomain_map = {}
+            for h in hosts:
+                if h in subdomain_cache:
+                    subdomain_map[h] = subdomain_cache.get(h)  # 使用get方法更新LRU顺序
             
             # ========== Step 2: 准备 WebSite 数据（内存操作，无需事务）==========
             website_items = []

@@ -98,12 +98,15 @@ def run_httpx_scanner_task(
         output_file=str(output_file)
     )
     
+    log_f = None
     try:
         logger.debug("执行命令: %s", actual_command)
         logger.debug("结果文件: %s", output_file)
         
         # 执行扫描 - 只记录 stderr，stdout 直接丢弃（节省 I/O）
-        with open(log_file, 'w', encoding='utf-8', buffering=1) as log_f:
+        # 使用显式文件句柄管理确保资源安全
+        try:
+            log_f = open(log_file, 'w', encoding='utf-8', buffering=1)
             result = subprocess.run(
                 actual_command,
                 shell=True,
@@ -112,6 +115,13 @@ def run_httpx_scanner_task(
                 timeout=timeout,
                 check=False  # 不自动抛异常，手动处理
             )
+        finally:
+            # 确保文件句柄在任何情况下都能关闭
+            if log_f is not None:
+                try:
+                    log_f.close()
+                except Exception as close_error:
+                    logger.warning("关闭日志文件失败: %s", close_error)
         
         # 检查执行结果
         if result.returncode != 0:

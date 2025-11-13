@@ -54,12 +54,15 @@ def export_site_urls_task(
         output_path.parent.mkdir(parents=True, exist_ok=True)
         
         # 查询目标下所有子域名及其关联的端口
-        # 使用prefetch_related优化查询性能
+        # 使用prefetch_related优化查询性能，确保预加载所有端口信息
         subdomains = Subdomain.objects.filter(
             target_id=target_id
         ).prefetch_related(
             'ports'  # 预加载端口信息
         ).order_by('name')
+        
+        # 强制执行查询并预加载所有关联数据，避免N+1问题
+        subdomains = list(subdomains)
         
         total_urls = 0
         subdomain_count = 0
@@ -71,10 +74,11 @@ def export_site_urls_task(
                 subdomain_count += 1
                 subdomain_name = subdomain.name
                 
-                # 获取该子域名的所有端口
-                ports = subdomain.ports.all()
+                # 直接访问预加载的端口数据，避免N+1查询
+                # 使用 .all() 访问已经预加载的关系数据
+                ports_list = list(subdomain.ports.all())
                 
-                if not ports:
+                if not ports_list:
                     # 如果没有端口，使用默认端口80和443
                     default_ports = [80, 443]
                     for port_num in default_ports:
@@ -87,9 +91,15 @@ def export_site_urls_task(
                         total_urls += 2
                 else:
                     # 如果有端口，使用实际端口
-                    for port in ports:
+                    for port in ports_list:
                         port_count += 1
                         port_num = port.number
+                        
+                        # 验证端口号有效性，避免无效端口
+                        # 端口0在实际应用中是无效的，应该被排除
+                        if port_num is None or port_num <= 0 or port_num > 65535:
+                            logger.warning("子域名 %s 的端口号无效: %s，跳过", subdomain_name, port_num)
+                            continue
                         
                         # 写入HTTP和HTTPS URL
                         http_url = f"http://{subdomain_name}:{port_num}"

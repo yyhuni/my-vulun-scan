@@ -80,12 +80,15 @@ def site_scan_flow(
             'target': str,
             'scan_workspace_dir': str,
             'urls_file': str,
+            'httpx_result_file': str,
             'total_urls': int,
+            'subdomain_count': int,
+            'port_count': int,
+            'processed_records': int,
+            'created_websites': int,
             'executed_tasks': list
         }
     """
-    logger = logging.getLogger(__name__)
-    
     try:
         logger.info(
             "="*60 + "\n" +
