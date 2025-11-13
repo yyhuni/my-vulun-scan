@@ -29,6 +29,8 @@ from collections import OrderedDict
 from django.db import IntegrityError, OperationalError, DatabaseError, connection
 from psycopg2 import InterfaceError
 from urllib.parse import urlparse
+from datetime import datetime
+from dateutil.parser import parse as parse_datetime
 
 from apps.asset.repositories.django_subdomain_repository import DjangoSubdomainRepository
 from apps.asset.repositories.django_website_repository import DjangoWebSiteRepository
@@ -361,6 +363,14 @@ def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int, subdo
                     skipped_no_subdomain += 1
                     continue
                 
+                # 解析时间戳
+                created_at = None
+                if hasattr(record, 'timestamp') and record.timestamp:
+                    try:
+                        created_at = parse_datetime(record.timestamp)
+                    except (ValueError, TypeError) as e:
+                        logger.warning(f"无法解析时间戳 {record.timestamp}: {e}")
+                
                 # 创建 WebSite DTO
                 website_dto = WebSiteDTO(
                     scan_id=scan_id,
@@ -375,7 +385,8 @@ def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int, subdo
                     tech=record.tech if isinstance(record.tech, list) else [],
                     status_code=record.status_code,
                     content_length=record.content_length,
-                    vhost=record.vhost
+                    vhost=record.vhost,
+                    created_at=created_at
                 )
                 
                 website_items.append(website_dto)

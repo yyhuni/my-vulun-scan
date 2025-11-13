@@ -4,6 +4,7 @@ WebSite Repository 接口定义
 
 from dataclasses import dataclass
 from typing import Protocol, List, Optional
+from datetime import datetime
 
 
 @dataclass
@@ -22,6 +23,7 @@ class WebSiteDTO:
     status_code: Optional[int] = None
     content_length: Optional[int] = None
     vhost: Optional[bool] = None
+    created_at: Optional[datetime] = None
 
     def __post_init__(self):
         if self.tech is None:
