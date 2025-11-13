@@ -113,12 +113,12 @@ const data = {
           url: "/test/skeleton/",
         },
         {
-          title: "SSE 执行", // SSE 执行
-          url: "/test/sse-execution/",
-        },
-        {
           title: "组件展示", // 组件展示
           url: "/test/components-showcase/",
+        },
+        {
+          title: "通知系统测试", // 通知系统测试
+          url: "/test/notifications/",
         },
       ],
     },

@@ -252,6 +252,12 @@ SCAN_RESULTS_DIR = os.getenv('SCAN_RESULTS_DIR')
 SCAN_RESULTS_RETENTION_DAYS = int(os.getenv('SCAN_RETENTION_DAYS', '7'))
 
 
+# ==================== Redis 配置 ====================
+# Redis 配置（用于 SSE 实时通知）
+REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
+REDIS_PORT = int(os.getenv('REDIS_PORT', 6379))
+REDIS_DB = int(os.getenv('REDIS_DB', 0))
+
 # ==================== 日志配置 ====================
 # 日志配置说明：
 # 1. 开发环境（DEBUG=True）：

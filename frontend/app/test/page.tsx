@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { IconFlask, IconLoader, IconComponents, IconPlayerPlay } from "@tabler/icons-react"
+import { IconFlask, IconLoader, IconComponents, IconBell } from "@tabler/icons-react"
 
 export default function TestCenterPage() {
   const testPages = [
@@ -16,20 +16,20 @@ export default function TestCenterPage() {
       bgColor: "bg-blue-50 dark:bg-blue-950",
     },
     {
-      title: "SSE 执行",
-      description: "测试服务器推送事件（Server-Sent Events）的实时数据流",
-      icon: IconPlayerPlay,
-      href: "/test/sse-execution/",
-      color: "text-green-500",
-      bgColor: "bg-green-50 dark:bg-green-950",
-    },
-    {
       title: "组件展示",
       description: "展示项目中所有 shadcn/ui 组件的完整样式和交互",
       icon: IconComponents,
       href: "/test/components-showcase/",
       color: "text-purple-500",
       bgColor: "bg-purple-50 dark:bg-purple-950",
+    },
+    {
+      title: "通知系统测试",
+      description: "测试 SSE 实时通知功能，包括连接状态和消息接收",
+      icon: IconBell,
+      href: "/test/notifications/",
+      color: "text-orange-500",
+      bgColor: "bg-orange-50 dark:bg-orange-950",
     },
   ]
 

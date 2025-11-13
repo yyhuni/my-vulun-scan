@@ -3,3 +3,4 @@
  */
 
 export { NotificationDrawer } from './notification-drawer'
+export { NotificationTest } from './notification-test'

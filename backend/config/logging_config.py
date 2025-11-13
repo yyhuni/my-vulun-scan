@@ -162,6 +162,11 @@ def get_logging_config(debug: bool = False):
                 'level': 'WARNING',  # 请求错误日志
                 'propagate': False,
             },
+            'django.server': {
+                'handlers': log_handlers,
+                'level': 'WARNING',  # Django 开发服务器日志
+                'propagate': False,
+            },
             'django.db.backends': {
                 'handlers': log_handlers,
                 'level': 'WARNING' if not debug else 'DEBUG',  # SQL 查询日志（开发环境可启用）

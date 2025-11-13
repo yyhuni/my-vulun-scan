@@ -14,6 +14,13 @@ from pathlib import Path
 import logging
 import os
 from django.conf import settings
+from apps.scan.handlers.scan_flow_handlers import (
+    on_scan_flow_running,
+    on_scan_flow_completed,
+    on_scan_flow_failed,
+    on_scan_flow_cancelled,
+    on_scan_flow_crashed
+)
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +59,15 @@ SCANNER_CONFIGS = {
 }
 
 
-@flow(name="subdomain_discovery", log_prints=True)
+@flow(
+    name="subdomain_discovery", 
+    log_prints=True,
+    on_running=[on_scan_flow_running],
+    on_completion=[on_scan_flow_completed],
+    on_failure=[on_scan_flow_failed],
+    on_cancellation=[on_scan_flow_cancelled],
+    on_crashed=[on_scan_flow_crashed]
+)
 def subdomain_discovery_flow(
     scan_id: int,
     target_name: str,

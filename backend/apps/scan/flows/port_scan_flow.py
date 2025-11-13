@@ -7,6 +7,13 @@ from apps.scan.tasks.port_scan import (
     run_port_scanner_task,
     parse_and_save_ports_task
 )
+from apps.scan.handlers.scan_flow_handlers import (
+    on_scan_flow_running,
+    on_scan_flow_completed,
+    on_scan_flow_failed,
+    on_scan_flow_cancelled,
+    on_scan_flow_crashed
+)
 
 
 logger = logging.getLogger(__name__)
@@ -33,7 +40,15 @@ def calculate_timeout(domain_count: int) -> int:
     per_domain = 1
     return base + int(domain_count * per_domain)
 
-@flow(name="port_scan", log_prints=True)
+@flow(
+    name="port_scan", 
+    log_prints=True,
+    on_running=[on_scan_flow_running],
+    on_completion=[on_scan_flow_completed],
+    on_failure=[on_scan_flow_failed],
+    on_cancellation=[on_scan_flow_cancelled],
+    on_crashed=[on_scan_flow_crashed]
+)
 def port_scan_flow(
     scan_id: int,
     target_name: str,

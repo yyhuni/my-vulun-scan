@@ -8,6 +8,18 @@ export type NotificationType = "vulnerability" | "scan" | "system"
 // 严重等级
 export type NotificationSeverity = "high" | "medium" | "low"
 
+// 后端通知级别（与后端保持一致）
+export type BackendNotificationLevel = "low" | "medium" | "high"
+
+// 后端通知数据格式
+export interface BackendNotification {
+  id: number
+  title: string
+  message: string
+  level: BackendNotificationLevel
+  created_at: string
+}
+
 // 通知接口
 export interface Notification {
   id: number

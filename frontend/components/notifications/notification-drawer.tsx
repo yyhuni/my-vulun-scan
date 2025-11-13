@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Bell, Trash2, AlertTriangle, Activity, Info } from "lucide-react"
+import { Bell, Trash2, AlertTriangle, Activity, Info, Wifi, WifiOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -14,6 +14,8 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
+import { useNotificationSSE } from "@/hooks/use-notification-sse"
+import { useNotifications } from "@/hooks/use-notifications"
 import type { Notification, NotificationType } from "@/types/notification.types"
 
 /**
@@ -23,66 +25,19 @@ import type { Notification, NotificationType } from "@/types/notification.types"
 export function NotificationDrawer() {
   const [open, setOpen] = React.useState(false)
 
-  // TODO: 从 API 获取实际的通知数据
-  const notifications: Notification[] = [
-    {
-      id: 1,
-      type: "vulnerability",
-      title: "发现高危漏洞",
-      description: "在 example.com 上发现 SQL 注入漏洞",
-      detail: "检测到未过滤的用户输入直接拼接到 SQL 查询中，可能导致数据库信息泄露。建议立即修复。",
-      time: "5 分钟前",
-      unread: true,
-      severity: "high",
-    },
-    {
-      id: 2,
-      type: "vulnerability",
-      title: "发现中危漏洞",
-      description: "test.com 存在 XSS 跨站脚本漏洞",
-      detail: "在评论功能中发现反射型 XSS 漏洞，攻击者可以注入恶意脚本。",
-      time: "15 分钟前",
-      unread: true,
-      severity: "medium",
-    },
-    {
-      id: 3,
-      type: "scan",
-      title: "扫描任务完成",
-      description: "域名 test.com 的安全扫描已完成",
-      detail: "本次扫描发现 2 个高危漏洞，5 个中危漏洞，12 个低危漏洞。共扫描 156 个端点。",
-      time: "1 小时前",
-      unread: true,
-    },
-    {
-      id: 4,
-      type: "scan",
-      title: "定时扫描启动",
-      description: "已启动对 example.com 的定时扫描",
-      detail: "预计需要 30 分钟完成，将扫描所有子域名和端点。",
-      time: "2 小时前",
-      unread: false,
-    },
-    {
-      id: 5,
-      type: "system",
-      title: "系统更新",
-      description: "系统已更新至 v2.0.1",
-      detail: "本次更新包含：新增漏洞检测引擎、优化扫描性能、修复已知问题。",
-      time: "3 小时前",
-      unread: false,
-    },
-    {
-      id: 6,
-      type: "vulnerability",
-      title: "发现低危漏洞",
-      description: "api.example.com 信息泄露",
-      detail: "服务器响应头泄露了详细的版本信息，建议配置服务器隐藏版本信息。",
-      time: "5 小时前",
-      unread: false,
-      severity: "low",
-    },
-  ]
+  // SSE 实时通知
+  const { isConnected, notifications: sseNotifications } = useNotificationSSE()
+  
+
+  // 合并 SSE 和 API 通知，SSE 优先
+  const allNotifications = React.useMemo(() => {
+    const sseIds = new Set(sseNotifications.map(n => n.id))
+
+    return [...sseNotifications]
+  }, [sseNotifications])
+
+  // 未读通知数量
+  const unreadCount = allNotifications.filter(n => n.unread).length
 
   // 获取通知图标
   const getNotificationIcon = (type: NotificationType, severity?: string) => {
@@ -177,6 +132,22 @@ export function NotificationDrawer() {
       <SheetTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
+          {unreadCount > 0 && (
+            <Badge 
+              variant="destructive" 
+              className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
+            >
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </Badge>
+          )}
+          {/* 连接状态指示器 */}
+          <div className="absolute -bottom-1 -right-1">
+            {isConnected ? (
+              <Wifi className="h-3 w-3 text-green-500" />
+            ) : (
+              <WifiOff className="h-3 w-3 text-red-500" />
+            )}
+          </div>
           <span className="sr-only">通知</span>
         </Button>
       </SheetTrigger>
@@ -187,7 +158,7 @@ export function NotificationDrawer() {
 
         <ScrollArea className="h-[calc(100vh-4rem)]">
           <div className="p-4">
-            {renderNotificationList(notifications)}
+            {renderNotificationList(allNotifications)}
           </div>
         </ScrollArea>
       </SheetContent>

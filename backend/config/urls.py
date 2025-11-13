@@ -50,5 +50,8 @@ urlpatterns = [
     
     # 资产 API
     path('api/', include('apps.asset.urls')),
+    
+    # 通知 API
+    path('api/notifications/', include('apps.scan.notifications.urls')),
 
 ]
