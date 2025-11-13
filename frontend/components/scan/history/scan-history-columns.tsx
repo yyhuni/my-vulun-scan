@@ -19,6 +19,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { 
   MoreHorizontal, 
   Eye, 
@@ -333,21 +338,43 @@ export const createScanHistoryColumns = ({
         }
       }
       
+      const maxLength = 30
+      const isLong = targetName.length > maxLength
+      const displayText = isLong ? targetName.substring(0, maxLength) : targetName
+      
       return (
         <div className="group inline-flex items-center gap-1 max-w-[250px]">
-          {targetId ? (
-            <button
-              onClick={() => navigate(`/target/${targetId}/details`)}
-              className="text-sm font-medium hover:text-primary hover:underline transition-colors cursor-pointer truncate"
-              title={targetName}
-            >
-              {targetName}
-            </button>
-          ) : (
-            <span className="text-sm font-medium truncate" title={targetName}>
-              {targetName}
-            </span>
-          )}
+          <div className="flex items-center gap-1">
+            {targetId ? (
+              <button
+                onClick={() => navigate(`/target/${targetId}/details`)}
+                className="text-sm font-medium hover:text-primary hover:underline transition-colors cursor-pointer"
+              >
+                {displayText}
+              </button>
+            ) : (
+              <span className="text-sm font-medium">
+                {displayText}
+              </span>
+            )}
+            {isLong && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted flex-shrink-0">
+                    ...
+                  </Badge>
+                </PopoverTrigger>
+                <PopoverContent className="w-96 p-3">
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm">完整目标名称</h4>
+                    <div className="text-sm break-all bg-muted p-2 rounded max-h-32 overflow-y-auto">
+                      {targetName}
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
+          </div>
           <Button
             variant="ghost"
             size="icon"

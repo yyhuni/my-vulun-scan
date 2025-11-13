@@ -191,9 +191,34 @@ export function createWebSiteColumns({
       ),
       cell: ({ row }) => {
         const title = row.getValue("title") as string
+        if (!title) return "-"
+        
+        const maxLength = 30
+        const isLong = title.length > maxLength
+        const displayText = isLong ? title.substring(0, maxLength) : title
+        
+        if (!isLong) {
+          return <span className="text-sm">{title}</span>
+        }
+        
         return (
-          <div className="max-w-[200px] truncate" title={title}>
-            {title || "-"}
+          <div className="flex items-center gap-1">
+            <span className="text-sm">{displayText}</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted flex-shrink-0">
+                  ...
+                </Badge>
+              </PopoverTrigger>
+              <PopoverContent className="w-96 p-3">
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm">完整标题</h4>
+                  <div className="text-sm break-all bg-muted p-2 rounded max-h-32 overflow-y-auto">
+                    {title}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         )
       },
@@ -276,9 +301,34 @@ export function createWebSiteColumns({
       ),
       cell: ({ row }) => {
         const webserver = row.getValue("webserver") as string
+        if (!webserver) return "-"
+        
+        const maxLength = 20
+        const isLong = webserver.length > maxLength
+        const displayText = isLong ? webserver.substring(0, maxLength) : webserver
+        
+        if (!isLong) {
+          return <span className="text-sm">{webserver}</span>
+        }
+        
         return (
-          <div className="max-w-[120px] truncate" title={webserver}>
-            {webserver || "-"}
+          <div className="flex items-center gap-1">
+            <span className="text-sm">{displayText}</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted flex-shrink-0">
+                  ...
+                </Badge>
+              </PopoverTrigger>
+              <PopoverContent className="w-96 p-3">
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm">完整 Web Server</h4>
+                  <div className="text-sm break-all bg-muted p-2 rounded max-h-32 overflow-y-auto">
+                    {webserver}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         )
       },
@@ -290,9 +340,34 @@ export function createWebSiteColumns({
       ),
       cell: ({ row }) => {
         const contentType = row.getValue("contentType") as string
+        if (!contentType) return "-"
+        
+        const maxLength = 25
+        const isLong = contentType.length > maxLength
+        const displayText = isLong ? contentType.substring(0, maxLength) : contentType
+        
+        if (!isLong) {
+          return <span className="text-sm">{contentType}</span>
+        }
+        
         return (
-          <div className="max-w-[150px] truncate" title={contentType}>
-            {contentType || "-"}
+          <div className="flex items-center gap-1">
+            <span className="text-sm">{displayText}</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted flex-shrink-0">
+                  ...
+                </Badge>
+              </PopoverTrigger>
+              <PopoverContent className="w-96 p-3">
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm">完整 Content Type</h4>
+                  <div className="text-sm break-all bg-muted p-2 rounded max-h-32 overflow-y-auto">
+                    {contentType}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         )
       },

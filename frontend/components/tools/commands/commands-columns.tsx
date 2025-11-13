@@ -18,6 +18,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { MoreHorizontal, Eye, Trash2, ChevronsUpDown, ChevronUp, ChevronDown, Copy, Check } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { formatDate } from "@/lib/utils"
@@ -183,8 +188,25 @@ export const commandColumns: ColumnDef<Command>[] = [
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
-          {displayName && (
-            <span className="text-xs text-muted-foreground font-mono truncate" title={name}>{name}</span>
+          {displayName && name && name.length > 20 && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted flex-shrink-0">
+                  ...
+                </Badge>
+              </PopoverTrigger>
+              <PopoverContent className="w-96 p-3">
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm">完整命令名称</h4>
+                  <div className="text-sm break-all bg-muted p-2 rounded max-h-32 overflow-y-auto font-mono">
+                    {name}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
+          {displayName && name && name.length <= 20 && (
+            <span className="text-xs text-muted-foreground font-mono">{name}</span>
           )}
         </div>
       )
