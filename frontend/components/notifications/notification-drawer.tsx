@@ -15,7 +15,7 @@ import {
 import { cn } from "@/lib/utils"
 import { transformBackendNotification, useNotificationSSE } from "@/hooks/use-notification-sse"
 import { useMarkAllAsRead, useNotifications } from "@/hooks/use-notifications"
-import type { Notification, NotificationType } from "@/types/notification.types"
+import type { Notification, NotificationType, NotificationSeverity } from "@/types/notification.types"
 
 /**
  * 通知抽屉组件
@@ -80,34 +80,35 @@ export function NotificationDrawer() {
   }, [open, unreadCount, markNotificationsAsRead, markAllAsRead])
 
   // 获取通知图标
-  const getNotificationIcon = (type: NotificationType, severity?: string) => {
-    if (type === "vulnerability") {
-      return <AlertTriangle className={cn("h-5 w-5", 
-        severity === "important" && "text-red-500",
-        severity === "warning" && "text-orange-500",
-        severity === "info" && "text-yellow-500"
-      )} />
-    }
-    if (type === "scan") {
-      return <Activity className="text-blue-500" />
-    }
-    return <Info className="text-gray-500" />
+  const severityIconClassMap: Record<NotificationSeverity, string> = {
+    high: "text-red-500",
+    medium: "text-amber-500",
+    low: "text-emerald-500",
   }
 
-  // 获取严重等级徽章
-  const getSeverityBadge = (severity?: string) => {
-    if (!severity) return null
-    
-    const severityConfig = {
-      important: { label: "重要", variant: "destructive" as const },
-      warning: { label: "警告", variant: "default" as const },
-      info: { label: "信息", variant: "secondary" as const },
+  const getNotificationIcon = (type: NotificationType, severity?: NotificationSeverity) => {
+    const severityClass = severity ? severityIconClassMap[severity] : "text-gray-500"
+
+    if (type === "vulnerability") {
+      return <AlertTriangle className={cn("h-5 w-5", severityClass)} />
     }
-    
-    const config = severityConfig[severity as keyof typeof severityConfig]
-    if (!config) return null
-    
-    return <Badge variant={config.variant} className="ml-2">{config.label}</Badge>
+    if (type === "scan") {
+      return <Activity className={cn("h-5 w-5", severityClass)} />
+    }
+    return <Info className={cn("h-5 w-5", severityClass)} />
+  }
+
+  const severityCardClassMap: Record<NotificationSeverity, string> = {
+    high: "border-red-300 bg-red-50 hover:bg-red-100 dark:border-red-500/60 dark:bg-red-500/10 dark:hover:bg-red-500/20",
+    medium: "border-amber-300 bg-amber-50 hover:bg-amber-100 dark:border-amber-500/60 dark:bg-amber-500/10 dark:hover:bg-amber-500/20",
+    low: "border-emerald-300 bg-emerald-50 hover:bg-emerald-100 dark:border-emerald-500/60 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20",
+  }
+
+  const getNotificationCardClasses = (severity?: NotificationSeverity) => {
+    if (!severity) {
+      return "border-border bg-card hover:bg-accent/50"
+    }
+    return cn("border-border", severityCardClassMap[severity] ?? "")
   }
 
   // 渲染通知列表
@@ -125,7 +126,10 @@ export function NotificationDrawer() {
         {notificationList.map((notification) => (
           <div
             key={notification.id}
-            className="group relative rounded-md border p-3 transition-colors hover:bg-accent"
+            className={cn(
+              "group relative rounded-md border p-3 transition-colors",
+              getNotificationCardClasses(notification.severity)
+            )}
           >
             <div className="flex items-start gap-2.5">
               <div className="mt-0.5">
@@ -136,7 +140,6 @@ export function NotificationDrawer() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium leading-none">
                       {notification.title}
-                      {getSeverityBadge(notification.severity)}
                     </p>
                     <div className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap break-words">
                       {notification.description}

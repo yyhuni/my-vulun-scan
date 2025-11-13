@@ -131,11 +131,11 @@ def notifications_test(request):
         from .services import create_notification
         from django.http import JsonResponse
 
-        level_param = request.GET.get('level', NotificationLevel.INFO)
+        level_param = request.GET.get('level', NotificationLevel.LOW)
         try:
             level_choice = NotificationLevel(level_param)
         except ValueError:
-            level_choice = NotificationLevel.INFO
+            level_choice = NotificationLevel.LOW
 
         title = request.GET.get('title') or "测试通知"
         message = request.GET.get('message') or "这是一条测试通知消息"
@@ -228,7 +228,7 @@ class NotificationCollectionView(APIView):
         查询参数:
         - page: 页码（默认 1）
         - pageSize: 每页数量（默认 10，最大 1000）
-        - level: 通知级别过滤（info/warning/important）
+        - level: 通知级别过滤（low/medium/high）
         - unread: 是否未读（true/false）
         
         返回:

@@ -7,6 +7,6 @@ from django.db import models
 
 class NotificationLevel(models.TextChoices):
     """通知级别"""
-    INFO = 'info', '信息'
-    WARNING = 'warning', '警告'
-    IMPORTANT = 'important', '重要'
+    LOW = 'low', '低'
+    MEDIUM = 'medium', '中'
+    HIGH = 'high', '高'

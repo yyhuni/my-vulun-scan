@@ -6,7 +6,7 @@
 export type NotificationType = "vulnerability" | "scan" | "system"
 
 // 严重等级
-export type NotificationSeverity = "important" | "warning" | "info"
+export type NotificationSeverity = "low" | "medium" | "high"
 
 // 后端通知级别（与后端保持一致）
 export type BackendNotificationLevel = NotificationSeverity
@@ -54,4 +54,3 @@ export interface GetNotificationsResponse {
   page_size: number
   total_pages: number
 }
-

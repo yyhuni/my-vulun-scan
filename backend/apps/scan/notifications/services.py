@@ -48,7 +48,7 @@ def get_redis_client():
 def create_notification(
     title: str,
     message: str,
-    level: NotificationLevel = NotificationLevel.INFO
+    level: NotificationLevel = NotificationLevel.LOW
 ) -> Notification:
     """
     创建通知记录并实时推送

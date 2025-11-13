@@ -28,10 +28,16 @@ export function NotificationTest() {
   }
 
   const levelButtons: Array<{ level: BackendNotificationLevel; label: string; variant: "default" | "secondary" | "destructive" }> = [
-    { level: 'info', label: '发送信息通知', variant: 'secondary' },
-    { level: 'warning', label: '发送警告通知', variant: 'default' },
-    { level: 'important', label: '发送重要通知', variant: 'destructive' },
+    { level: 'low', label: '发送低级通知', variant: 'secondary' },
+    { level: 'medium', label: '发送中级通知', variant: 'default' },
+    { level: 'high', label: '发送高级通知', variant: 'destructive' },
   ]
+
+  const severityLabelMap: Record<BackendNotificationLevel, string> = {
+    low: '低',
+    medium: '中',
+    high: '高',
+  }
 
   return (
     <Card className="w-full max-w-2xl">
@@ -88,15 +94,9 @@ export function NotificationTest() {
                         {notification.type}
                       </Badge>
                       {notification.severity && (
-                        <Badge 
-                          variant={
-                            notification.severity === 'important' ? 'destructive' :
-                            notification.severity === 'warning' ? 'default' : 'secondary'
-                          }
-                          className="text-xs"
-                        >
-                          {notification.severity}
-                        </Badge>
+                        <span className="text-xs font-medium text-muted-foreground">
+                          等级：{severityLabelMap[notification.severity] ?? notification.severity}
+                        </span>
                       )}
                       <span className="text-xs text-muted-foreground">
                         {notification.time}

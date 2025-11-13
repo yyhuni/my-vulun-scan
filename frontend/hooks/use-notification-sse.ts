@@ -9,9 +9,9 @@ import type { BackendNotification, Notification, BackendNotificationLevel, Notif
 import { buildBackendUrl } from '@/lib/env'
 
 const severityMap: Record<BackendNotificationLevel, NotificationSeverity> = {
-  important: 'important',
-  warning: 'warning',
-  info: 'info',
+  high: 'high',
+  medium: 'medium',
+  low: 'low',
 }
 
 const inferNotificationType = (message: string) => {

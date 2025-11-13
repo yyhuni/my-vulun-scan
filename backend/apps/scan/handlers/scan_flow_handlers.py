@@ -34,7 +34,7 @@ def on_scan_flow_running(flow: Flow, flow_run: FlowRun, state: State) -> None:
         create_notification(
             title="扫描进度",
             message=message,
-            level=NotificationLevel.INFO
+            level=NotificationLevel.LOW
         )
         
         logger.info(f"✓ 扫描开始通知已发送 - Target: {target_name}, Flow: {flow.name}")
@@ -66,7 +66,7 @@ def on_scan_flow_completed(flow: Flow, flow_run: FlowRun, state: State) -> None:
         create_notification(
             title="扫描进度",
             message=message,
-            level=NotificationLevel.INFO
+            level=NotificationLevel.LOW
         )
         
         logger.info(f"✓ 扫描完成通知已发送 - Target: {target_name}, Flow: {flow.name}")
@@ -101,7 +101,7 @@ def on_scan_flow_failed(flow: Flow, flow_run: FlowRun, state: State) -> None:
         create_notification(
             title="扫描进度",
             message=message,
-            level=NotificationLevel.IMPORTANT
+            level=NotificationLevel.HIGH
         )
         
         logger.error(f"✓ 扫描失败通知已发送 - Target: {target_name}, Flow: {flow.name}, Error: {error_message}")
@@ -133,7 +133,7 @@ def on_scan_flow_cancelled(flow: Flow, flow_run: FlowRun, state: State) -> None:
         create_notification(
             title="扫描进度",
             message=message,
-            level=NotificationLevel.WARNING
+            level=NotificationLevel.MEDIUM
         )
         
         logger.info(f"✓ 扫描取消通知已发送 - Target: {target_name}, Flow: {flow.name}")
@@ -168,7 +168,7 @@ def on_scan_flow_crashed(flow: Flow, flow_run: FlowRun, state: State) -> None:
         create_notification(
             title="扫描进度",
             message=message,
-            level=NotificationLevel.IMPORTANT
+            level=NotificationLevel.HIGH
         )
         
         logger.critical(f"✓ 扫描崩溃通知已发送 - Target: {target_name}, Flow: {flow.name}, Crash: {crash_message}")
