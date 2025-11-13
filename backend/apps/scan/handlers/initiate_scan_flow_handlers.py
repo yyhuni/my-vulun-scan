@@ -95,6 +95,9 @@ def on_initiate_scan_flow_running(flow: Flow, flow_run: FlowRun, state: State) -
     logger.info("🚀 initiate_scan_flow_running 回调开始运行 - Flow Run: %s", flow_run.id)
     
     scan_id = flow_run.parameters.get('scan_id')
+    target_name = flow_run.parameters.get('target_name')
+    engine_name = flow_run.parameters.get('engine_name')
+    
     if not scan_id:
         logger.warning(
             "Flow 参数中缺少 scan_id，跳过状态更新 - Flow Run: %s",
@@ -133,9 +136,10 @@ def on_initiate_scan_flow_running(flow: Flow, flow_run: FlowRun, state: State) -
     # 发送通知
     try:
         from apps.scan.notifications import create_notification, NotificationLevel
+        message = f"目标：{target_name}\n扫描引擎：{engine_name}\n状态：已开始执行"
         create_notification(
-            title="扫描开始",
-            message=f"扫描任务 #{scan_id} 已开始执行",
+            title="扫描流程",
+            message=message,
             level=NotificationLevel.INFO
         )
     except Exception as e:
@@ -168,6 +172,9 @@ def on_initiate_scan_flow_completed(flow: Flow, flow_run: FlowRun, state: State)
     logger.info("✅ initiate_scan_flow_completed 回调开始运行 - Flow Run: %s", flow_run.id)
     
     scan_id = flow_run.parameters.get('scan_id')
+    target_name = flow_run.parameters.get('target_name')
+    engine_name = flow_run.parameters.get('engine_name')
+    
     if not scan_id:
         return
     
@@ -230,9 +237,10 @@ def on_initiate_scan_flow_completed(flow: Flow, flow_run: FlowRun, state: State)
     # 发送通知
     try:
         from apps.scan.notifications import create_notification, NotificationLevel
+        message = f"目标：{target_name}\n扫描引擎：{engine_name}\n状态：已成功完成"
         create_notification(
-            title="扫描完成",
-            message=f"扫描任务 #{scan_id} 已成功完成",
+            title="扫描流程",
+            message=message,
             level=NotificationLevel.INFO
         )
     except Exception as e:
@@ -261,6 +269,9 @@ def on_initiate_scan_flow_failed(flow: Flow, flow_run: FlowRun, state: State) ->
     logger.info("❌ initiate_scan_flow_failed 回调开始运行 - Flow Run: %s", flow_run.id)
     
     scan_id = flow_run.parameters.get('scan_id')
+    target_name = flow_run.parameters.get('target_name')
+    engine_name = flow_run.parameters.get('engine_name')
+    
     if not scan_id:
         return
     
@@ -329,9 +340,10 @@ def on_initiate_scan_flow_failed(flow: Flow, flow_run: FlowRun, state: State) ->
     try:
         from apps.scan.notifications import create_notification, NotificationLevel
         error_message = str(state.message) if state.message else "未知错误"
+        message = f"目标：{target_name}\n扫描引擎：{engine_name}\n状态：执行失败\n错误：{error_message}"
         create_notification(
-            title="扫描失败",
-            message=f"扫描任务 #{scan_id} 执行失败: {error_message}",
+            title="扫描流程",
+            message=message,
             level=NotificationLevel.IMPORTANT
         )
     except Exception as e:
@@ -357,6 +369,9 @@ def on_initiate_scan_flow_cancelled(flow: Flow, flow_run: FlowRun, state: State)
     logger.info("⚠️ initiate_scan_flow_cancelled 回调开始运行 - Flow Run: %s", flow_run.id)
     
     scan_id = flow_run.parameters.get('scan_id')
+    target_name = flow_run.parameters.get('target_name')
+    engine_name = flow_run.parameters.get('engine_name')
+    
     if not scan_id:
         return
     
@@ -397,9 +412,10 @@ def on_initiate_scan_flow_cancelled(flow: Flow, flow_run: FlowRun, state: State)
     # 发送通知
     try:
         from apps.scan.notifications import create_notification, NotificationLevel
+        message = f"目标：{target_name}\n扫描引擎：{engine_name}\n状态：已被取消"
         create_notification(
-            title="扫描取消",
-            message=f"扫描任务 #{scan_id} 已被取消",
+            title="扫描流程",
+            message=message,
             level=NotificationLevel.WARNING
         )
     except Exception as e:
@@ -431,6 +447,9 @@ def on_initiate_scan_flow_crashed(flow: Flow, flow_run: FlowRun, state: State) -
     logger.info("💥 initiate_scan_flow_crashed 回调开始运行 - Flow Run: %s", flow_run.id)
     
     scan_id = flow_run.parameters.get('scan_id')
+    target_name = flow_run.parameters.get('target_name')
+    engine_name = flow_run.parameters.get('engine_name')
+    
     if not scan_id:
         return
     
@@ -475,9 +494,10 @@ def on_initiate_scan_flow_crashed(flow: Flow, flow_run: FlowRun, state: State) -
     try:
         from apps.scan.notifications import create_notification, NotificationLevel
         crash_message = str(state.message) if state.message else "系统崩溃"
+        message = f"目标：{target_name}\n扫描引擎：{engine_name}\n状态：发生严重错误并崩溃\n错误：{crash_message}"
         create_notification(
-            title="扫描崩溃",
-            message=f"扫描任务 #{scan_id} 发生严重错误并崩溃: {crash_message}",
+            title="扫描流程",
+            message=message,
             level=NotificationLevel.IMPORTANT
         )
     except Exception as e:

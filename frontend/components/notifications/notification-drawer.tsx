@@ -138,9 +138,9 @@ export function NotificationDrawer() {
                       {notification.title}
                       {getSeverityBadge(notification.severity)}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <div className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap break-words">
                       {notification.description}
-                    </p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0 text-xs text-muted-foreground">
                     <span>{notification.time}</span>

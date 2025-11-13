@@ -39,14 +39,14 @@ const formatTimeAgo = (date: Date): string => {
 export const transformBackendNotification = (backendNotification: BackendNotification): Notification => {
   const createdAtRaw = backendNotification.createdAt ?? backendNotification.created_at
   const createdDate = createdAtRaw ? new Date(createdAtRaw) : new Date()
-  const unreadFlag = backendNotification.isRead ?? backendNotification.is_read
+  const isRead = backendNotification.isRead ?? backendNotification.is_read
   const notification: Notification = {
     id: backendNotification.id,
     type: inferNotificationType(backendNotification.message),
     title: backendNotification.title,
     description: backendNotification.message,
     time: formatTimeAgo(createdDate),
-    unread: unreadFlag === undefined ? true : !unreadFlag,
+    unread: isRead === true ? false : true,
     severity: severityMap[backendNotification.level] ?? undefined,
     createdAt: createdDate.toISOString(),
   }

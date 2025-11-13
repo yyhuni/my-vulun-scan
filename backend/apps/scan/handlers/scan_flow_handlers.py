@@ -30,9 +30,10 @@ def on_scan_flow_running(flow: Flow, flow_run: FlowRun, state: State) -> None:
         target_name = flow_params.get('target_name', 'unknown')
         
         from apps.scan.notifications import create_notification, NotificationLevel
+        message = f"目标：{target_name}\n当前任务：{flow.name}\n状态：已开始执行"
         create_notification(
-            title="扫描开始",
-            message=f"目标：{target_name}，任务：{flow.name}，状态：running",
+            title="扫描进度",
+            message=message,
             level=NotificationLevel.INFO
         )
         
@@ -61,9 +62,10 @@ def on_scan_flow_completed(flow: Flow, flow_run: FlowRun, state: State) -> None:
         target_name = flow_params.get('target_name', 'unknown')
         
         from apps.scan.notifications import create_notification, NotificationLevel
+        message = f"目标：{target_name}\n当前任务：{flow.name}\n状态：已成功完成"
         create_notification(
-            title="扫描完成",
-            message=f"目标：{target_name}，任务：{flow.name}，状态：completed",
+            title="扫描进度",
+            message=message,
             level=NotificationLevel.INFO
         )
         
@@ -95,9 +97,10 @@ def on_scan_flow_failed(flow: Flow, flow_run: FlowRun, state: State) -> None:
         error_message = str(state.message) if state.message else "未知错误"
         
         from apps.scan.notifications import create_notification, NotificationLevel
+        message = f"目标：{target_name}\n当前任务：{flow.name}\n状态：执行失败\n错误：{error_message}"
         create_notification(
-            title="扫描失败",
-            message=f"目标：{target_name}，任务：{flow.name}，状态：failed，错误：{error_message}",
+            title="扫描进度",
+            message=message,
             level=NotificationLevel.IMPORTANT
         )
         
@@ -126,9 +129,10 @@ def on_scan_flow_cancelled(flow: Flow, flow_run: FlowRun, state: State) -> None:
         target_name = flow_params.get('target_name', 'unknown')
         
         from apps.scan.notifications import create_notification, NotificationLevel
+        message = f"目标：{target_name}\n当前任务：{flow.name}\n状态：已被取消"
         create_notification(
-            title="扫描取消",
-            message=f"目标：{target_name}，任务：{flow.name}，状态：cancelled",
+            title="扫描进度",
+            message=message,
             level=NotificationLevel.WARNING
         )
         
@@ -160,9 +164,10 @@ def on_scan_flow_crashed(flow: Flow, flow_run: FlowRun, state: State) -> None:
         crash_message = str(state.message) if state.message else "系统崩溃"
         
         from apps.scan.notifications import create_notification, NotificationLevel
+        message = f"目标：{target_name}\n当前任务：{flow.name}\n状态：发生严重错误并崩溃\n错误：{crash_message}"
         create_notification(
-            title="扫描崩溃",
-            message=f"目标：{target_name}，任务：{flow.name}，状态：crashed，错误：{crash_message}",
+            title="扫描进度",
+            message=message,
             level=NotificationLevel.IMPORTANT
         )
         
