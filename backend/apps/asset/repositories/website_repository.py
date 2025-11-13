@@ -46,3 +46,28 @@ class WebSiteRepository(Protocol):
             DatabaseError: 数据库错误
         """
         ...
+
+    def get_urls_for_export(self, target_id: int, batch_size: int = 1000):
+        """
+        流式导出目标下的所有站点 URL
+        
+        Args:
+            target_id: 目标 ID
+            batch_size: 批次大小
+            
+        Yields:
+            str: 站点 URL
+        """
+        ...
+
+    def count_by_target(self, target_id: int) -> int:
+        """
+        统计目标下的站点总数
+        
+        Args:
+            target_id: 目标 ID
+            
+        Returns:
+            int: 站点总数
+        """
+        ...

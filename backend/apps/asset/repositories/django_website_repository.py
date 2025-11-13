@@ -3,7 +3,7 @@ Django ORM 实现的 WebSite Repository
 """
 
 import logging
-from typing import List
+from typing import List, Generator
 from django.db import transaction, IntegrityError, OperationalError, DatabaseError
 
 from apps.asset.models import WebSite
@@ -90,4 +90,47 @@ class DjangoWebSiteRepository(WebSiteRepository):
                 f"错误类型: {type(e).__name__}",
                 exc_info=True
             )
+            raise
+
+    def get_urls_for_export(self, target_id: int, batch_size: int = 1000) -> Generator[str, None, None]:
+        """
+        流式导出目标下的所有站点 URL
+        
+        Args:
+            target_id: 目标 ID  
+            batch_size: 批次大小
+            
+        Yields:
+            str: 站点 URL
+        """
+        try:
+            # 查询目标下的站点，只选择 URL 字段，避免不必要的数据传输
+            queryset = WebSite.objects.filter(
+                target_id=target_id
+            ).values_list('url', flat=True).iterator(chunk_size=batch_size)
+            
+            for url in queryset:
+                yield url
+                
+        except Exception as e:
+            logger.error(f"流式导出站点 URL 失败 - Target ID: {target_id}, 错误: {e}")
+            raise
+
+    def count_by_target(self, target_id: int) -> int:
+        """
+        统计目标下的站点总数
+        
+        Args:
+            target_id: 目标 ID
+            
+        Returns:
+            int: 站点总数
+        """
+        try:
+            count = WebSite.objects.filter(target_id=target_id).count()
+            logger.debug(f"Target {target_id} 的站点总数: {count}")
+            return count
+            
+        except Exception as e:
+            logger.error(f"统计站点数量失败 - Target ID: {target_id}, 错误: {e}")
             raise
