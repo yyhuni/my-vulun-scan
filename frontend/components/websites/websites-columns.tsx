@@ -430,28 +430,33 @@ export function createWebSiteColumns({
         const bodyPreview = row.getValue("bodyPreview") as string
         if (!bodyPreview) return "-"
         
-        if (bodyPreview.length <= 20) {
+        const maxLength = 30
+        const isLong = bodyPreview.length > maxLength
+        const displayText = isLong ? bodyPreview.substring(0, maxLength) : bodyPreview
+        
+        if (!isLong) {
           return <span className="text-sm">{bodyPreview}</span>
         }
         
         return (
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" className="h-auto p-0 text-left justify-start">
-                <span className="max-w-[150px] truncate text-sm cursor-pointer hover:text-primary">
-                  {bodyPreview}...
-                </span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-96 p-3">
-              <div className="space-y-2">
-                <h4 className="font-medium text-sm">完整响应体预览</h4>
-                <div className="text-sm break-all bg-muted p-2 rounded max-h-32 overflow-y-auto">
-                  {bodyPreview}
+          <div className="flex items-center gap-1">
+            <span className="text-sm">{displayText}</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted flex-shrink-0">
+                  ...
+                </Badge>
+              </PopoverTrigger>
+              <PopoverContent className="w-96 p-3">
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm">完整响应体预览</h4>
+                  <div className="text-sm break-all bg-muted p-2 rounded max-h-32 overflow-y-auto">
+                    {bodyPreview}
+                  </div>
                 </div>
-              </div>
-            </PopoverContent>
-          </Popover>
+              </PopoverContent>
+            </Popover>
+          </div>
         )
       },
     },

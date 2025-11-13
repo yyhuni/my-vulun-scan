@@ -3,7 +3,8 @@ import type {
   GetScansParams, 
   GetScansResponse,
   InitiateScanRequest,
-  InitiateScanResponse
+  InitiateScanResponse,
+  ScanRecord
 } from '@/types/scan.types'
 
 /**
@@ -11,6 +12,16 @@ import type {
  */
 export async function getScans(params?: GetScansParams): Promise<GetScansResponse> {
   const res = await api.get<GetScansResponse>('/scans/', { params })
+  return res.data
+}
+
+/**
+ * 获取单个扫描详情
+ * @param id - 扫描ID
+ * @returns 扫描详情
+ */
+export async function getScan(id: number): Promise<ScanRecord> {
+  const res = await api.get<ScanRecord>(`/scans/${id}/`)
   return res.data
 }
 

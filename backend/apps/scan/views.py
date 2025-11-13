@@ -53,9 +53,10 @@ class ScanViewSet(viewsets.ModelViewSet):
         """根据不同的 action 返回不同的序列化器
         
         - list action: 使用 ScanHistorySerializer（包含 summary 和 progress）
+        - retrieve action: 使用 ScanHistorySerializer（包含 summary 和 progress）
         - 其他 action: 使用标准的 ScanSerializer
         """
-        if self.action == 'list':
+        if self.action in ['list', 'retrieve']:
             return ScanHistorySerializer
         return ScanSerializer
     
