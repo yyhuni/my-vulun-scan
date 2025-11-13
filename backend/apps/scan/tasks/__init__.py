@@ -15,7 +15,7 @@ from .workspace_tasks import create_scan_workspace_task
 
 # 子域名发现任务（已重构为多个子任务）
 from .subdomain_discovery import (
-    run_scanner_task,
+    run_subdomain_discovery_task,
     merge_and_validate_task,
     save_domains_task,
 )
@@ -30,7 +30,7 @@ __all__ = [
     # Prefect Tasks
     'create_scan_workspace_task',
     # 子域名发现任务
-    'run_scanner_task',
+    'run_subdomain_discovery_task',
     'merge_and_validate_task',
     'save_domains_task',
 ]

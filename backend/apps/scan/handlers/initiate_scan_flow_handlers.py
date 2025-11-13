@@ -81,7 +81,7 @@ def on_initiate_scan_flow_running(flow: Flow, flow_run: FlowRun, state: State) -
     """
     initiate_scan_flow 开始运行时的回调
     
-    职责：更新 Scan 状态为 RUNNING
+    职责：更新 Scan 状态为 RUNNING + 发送通知
     
     触发时机：
     - Prefect Flow 状态变为 Running 时自动触发
@@ -92,6 +92,8 @@ def on_initiate_scan_flow_running(flow: Flow, flow_run: FlowRun, state: State) -
         flow_run: Flow 运行实例
         state: Flow 当前状态
     """
+    logger.info("🚀 initiate_scan_flow_running 回调开始运行 - Flow Run: %s", flow_run.id)
+    
     scan_id = flow_run.parameters.get('scan_id')
     if not scan_id:
         logger.warning(
@@ -127,6 +129,17 @@ def on_initiate_scan_flow_running(flow: Flow, flow_run: FlowRun, state: State) -
     
     # 使用容错机制执行状态更新
     _retry_database_operation(scan_id, _update_running_status, "状态更新为RUNNING")
+    
+    # 发送通知
+    try:
+        from apps.scan.notifications import create_notification, NotificationLevel
+        create_notification(
+            title="扫描开始",
+            message=f"扫描任务 #{scan_id} 已开始执行",
+            level=NotificationLevel.INFO
+        )
+    except Exception as e:
+        logger.error(f"发送扫描开始通知失败 - Scan ID: {scan_id}: {e}")
 
 
 def on_initiate_scan_flow_completed(flow: Flow, flow_run: FlowRun, state: State) -> None:
@@ -152,6 +165,8 @@ def on_initiate_scan_flow_completed(flow: Flow, flow_run: FlowRun, state: State)
         flow_run: Flow 运行实例
         state: Flow 当前状态
     """
+    logger.info("✅ initiate_scan_flow_completed 回调开始运行 - Flow Run: %s", flow_run.id)
+    
     scan_id = flow_run.parameters.get('scan_id')
     if not scan_id:
         return
@@ -211,6 +226,17 @@ def on_initiate_scan_flow_completed(flow: Flow, flow_run: FlowRun, state: State)
     
     # 使用容错机制执行状态更新
     _retry_database_operation(scan_id, _update_completed_status, "状态更新为COMPLETED")
+    
+    # 发送通知
+    try:
+        from apps.scan.notifications import create_notification, NotificationLevel
+        create_notification(
+            title="扫描完成",
+            message=f"扫描任务 #{scan_id} 已成功完成",
+            level=NotificationLevel.SUCCESS
+        )
+    except Exception as e:
+        logger.error(f"发送扫描完成通知失败 - Scan ID: {scan_id}: {e}")
 
 
 def on_initiate_scan_flow_failed(flow: Flow, flow_run: FlowRun, state: State) -> None:
@@ -232,6 +258,8 @@ def on_initiate_scan_flow_failed(flow: Flow, flow_run: FlowRun, state: State) ->
         flow_run: Flow 运行实例
         state: Flow 当前状态（包含错误信息）
     """
+    logger.info("❌ initiate_scan_flow_failed 回调开始运行 - Flow Run: %s", flow_run.id)
+    
     scan_id = flow_run.parameters.get('scan_id')
     if not scan_id:
         return
@@ -296,6 +324,18 @@ def on_initiate_scan_flow_failed(flow: Flow, flow_run: FlowRun, state: State) ->
     
     # 使用容错机制执行状态更新
     _retry_database_operation(scan_id, _update_failed_status, "状态更新为FAILED")
+    
+    # 发送通知
+    try:
+        from apps.scan.notifications import create_notification, NotificationLevel
+        error_message = str(state.message) if state.message else "未知错误"
+        create_notification(
+            title="扫描失败",
+            message=f"扫描任务 #{scan_id} 执行失败: {error_message}",
+            level=NotificationLevel.ERROR
+        )
+    except Exception as e:
+        logger.error(f"发送扫描失败通知失败 - Scan ID: {scan_id}: {e}")
 
 
 def on_initiate_scan_flow_cancelled(flow: Flow, flow_run: FlowRun, state: State) -> None:
@@ -314,6 +354,8 @@ def on_initiate_scan_flow_cancelled(flow: Flow, flow_run: FlowRun, state: State)
         flow_run: Flow 运行实例
         state: Flow 当前状态
     """
+    logger.info("⚠️ initiate_scan_flow_cancelled 回调开始运行 - Flow Run: %s", flow_run.id)
+    
     scan_id = flow_run.parameters.get('scan_id')
     if not scan_id:
         return
@@ -351,6 +393,17 @@ def on_initiate_scan_flow_cancelled(flow: Flow, flow_run: FlowRun, state: State)
     
     # 使用容错机制执行状态更新
     _retry_database_operation(scan_id, _update_cancelled_status, "状态更新为CANCELLED")
+    
+    # 发送通知
+    try:
+        from apps.scan.notifications import create_notification, NotificationLevel
+        create_notification(
+            title="扫描取消",
+            message=f"扫描任务 #{scan_id} 已被取消",
+            level=NotificationLevel.WARNING
+        )
+    except Exception as e:
+        logger.error(f"发送扫描取消通知失败 - Scan ID: {scan_id}: {e}")
 
 
 def on_initiate_scan_flow_crashed(flow: Flow, flow_run: FlowRun, state: State) -> None:
@@ -375,6 +428,8 @@ def on_initiate_scan_flow_crashed(flow: Flow, flow_run: FlowRun, state: State) -
         flow_run: Flow 运行实例
         state: Flow 当前状态（包含崩溃信息）
     """
+    logger.info("💥 initiate_scan_flow_crashed 回调开始运行 - Flow Run: %s", flow_run.id)
+    
     scan_id = flow_run.parameters.get('scan_id')
     if not scan_id:
         return
@@ -415,3 +470,15 @@ def on_initiate_scan_flow_crashed(flow: Flow, flow_run: FlowRun, state: State) -
     
     # 使用容错机制执行状态更新
     _retry_database_operation(scan_id, _update_crashed_status, "状态更新为CRASHED")
+    
+    # 发送通知
+    try:
+        from apps.scan.notifications import create_notification, NotificationLevel
+        crash_message = str(state.message) if state.message else "系统崩溃"
+        create_notification(
+            title="扫描崩溃",
+            message=f"扫描任务 #{scan_id} 发生严重错误并崩溃: {crash_message}",
+            level=NotificationLevel.CRITICAL
+        )
+    except Exception as e:
+        logger.error(f"发送扫描崩溃通知失败 - Scan ID: {scan_id}: {e}")

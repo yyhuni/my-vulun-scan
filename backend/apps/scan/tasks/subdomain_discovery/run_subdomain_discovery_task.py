@@ -19,11 +19,11 @@ logger = logging.getLogger(__name__)
 
 
 @task(
-    name='run_scanner',
+    name='run_subdomain_discovery',
     retries=0,  # 显式禁用重试
     log_prints=True
 )
-def run_scanner_task(
+def run_subdomain_discovery_task(
     tool: str,
     target: str,
     result_dir: str,
@@ -31,10 +31,10 @@ def run_scanner_task(
     timeout: int
 ) -> str:
     """
-    运行单个扫描工具
+    运行单个子域名发现工具
     
     Args:
-        tool: 扫描工具名称（用于日志和文件命名）
+        tool: 子域名发现工具名称（用于日志和文件命名）
         target: 目标域名
         result_dir: 结果目录（已拼接好完整路径，如：workspace/subdomain_discovery/）
         command: 扫描命令模板（如：'amass enum -passive -d {target} -o {output_file}'）
@@ -59,7 +59,7 @@ def run_scanner_task(
         - 命令模板支持变量替换：{target}、{output_file}
         - 路径管理由 Flow 层统一处理，Task 只负责执行
     """
-    logger.info("开始运行扫描工具: %s - 目标: %s", tool, target)
+    logger.info("开始运行子域名发现工具: %s - 目标: %s", tool, target)
     
     # 1. 验证参数
     if not tool:

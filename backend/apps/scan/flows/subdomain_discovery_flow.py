@@ -102,7 +102,7 @@ def subdomain_discovery_flow(
         
         # ==================== Step 1: 并行运行扫描工具 ====================
         from apps.scan.tasks.subdomain_discovery import (
-            run_scanner_task,
+            run_subdomain_discovery_task,
             merge_and_validate_task,
             save_domains_task
         )
@@ -126,7 +126,7 @@ def subdomain_discovery_flow(
         # 提交并行任务（动态处理所有配置的工具）
         futures = {}
         for tool_name, config in SCANNER_CONFIGS.items():
-            future = run_scanner_task.submit(
+            future = run_subdomain_discovery_task.submit(
                 tool=tool_name,
                 target=target_name,
                 result_dir=result_dir,  # 传递结果目录路径
