@@ -7,6 +7,7 @@ from .models import Organization, Target
 from .serializers import OrganizationSerializer, TargetSerializer, BatchCreateTargetSerializer
 from apps.common.normalizer import normalize_target
 from apps.common.validators import detect_target_type
+from apps.common.pagination import BasePagination
 from apps.asset.models import Subdomain
 
 
@@ -14,6 +15,7 @@ class OrganizationViewSet(viewsets.ModelViewSet):
     """组织管理 - 增删改查"""
     queryset = Organization.objects.all()
     serializer_class = OrganizationSerializer
+    pagination_class = BasePagination
     
     def get_queryset(self):
         """优化查询,预计算目标数量，避免 N+1 查询"""
@@ -118,6 +120,7 @@ class TargetViewSet(viewsets.ModelViewSet):
     # 优化：使用 prefetch_related 预加载 organizations，避免 N+1 查询
     queryset = Target.objects.prefetch_related('organizations').all()
     serializer_class = TargetSerializer
+    pagination_class = BasePagination
     
     @action(detail=False, methods=['post'])
     def batch_create(self, request):
@@ -309,6 +312,63 @@ class TargetViewSet(viewsets.ModelViewSet):
                 serializer = IPAddressListSerializer(page, many=True)
                 return paginator.get_paginated_response(serializer.data)
 
+            return Response(
+                {'error': '必须提供分页参数 page 和 pageSize'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        except ObjectDoesNotExist:
+            return Response(
+                {'error': f'目标 ID {pk} 不存在'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        except (DatabaseError, OperationalError):
+            return Response(
+                {'error': '数据库错误，请稍后重试'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+
+    @action(detail=True, methods=['get'])
+    def websites(self, request, pk=None):
+        """
+        获取目标关联的所有站点（支持分页）
+
+        URL: GET /api/targets/{id}/websites/?page=1&pageSize=10
+
+        功能:
+        - 返回指定目标下的所有站点信息
+        - 包含站点的详细信息（URL、标题、技术栈、状态码等）
+        - 支持分页查询
+
+        返回:
+        - results: 站点列表
+        - total: 总记录数
+        - page: 当前页码
+        - page_size: 每页大小
+        - total_pages: 总页数
+        """
+        from apps.asset.serializers import WebSiteSerializer
+        from apps.asset.models import WebSite
+        from django.core.exceptions import ObjectDoesNotExist
+        from django.db import DatabaseError, OperationalError
+
+        try:
+            # 获取目标对象
+            target = self.get_object()
+
+            # 获取该目标的所有站点（按创建时间倒序）
+            queryset = WebSite.objects.filter(target=target).select_related('subdomain').order_by('-created_at')
+
+            # 使用分页器
+            paginator = self.paginator
+            page = paginator.paginate_queryset(queryset, request, view=self)
+
+            if page is not None:
+                serializer = WebSiteSerializer(page, many=True)
+                return paginator.get_paginated_response(serializer.data)
+
+            # 如果没有分页参数，返回错误
             return Response(
                 {'error': '必须提供分页参数 page 和 pageSize'},
                 status=status.HTTP_400_BAD_REQUEST
