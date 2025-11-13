@@ -56,15 +56,18 @@ class ScanHistorySerializer(serializers.ModelSerializer):
         
         统计该扫描发现的资产数量：
         - subdomains: 子域名数量（使用 annotate 的计数字段，避免 N+1 查询）
+        - websites: 网站数量（使用 annotate 的计数字段，避免 N+1 查询）
         - endpoints: 端点数量（使用 annotate 的计数字段，避免 N+1 查询）
+        - ips: IP地址数量（使用 annotate 的计数字段，避免 N+1 查询）
         - vulnerabilities: 漏洞统计（暂时返回 0，待后续实现）
         
         性能优化：
-        - 优先使用 ViewSet 中 annotate 的计数字段（subdomains_count, endpoints_count）
+        - 优先使用 ViewSet 中 annotate 的计数字段（subdomains_count, websites_count, endpoints_count, ips_count）
         - 如果注解字段不存在（单个对象查询），降级使用 .count()
         """
         return {
             'subdomains': getattr(obj, 'subdomains_count', obj.subdomains.count()),
+            'websites': getattr(obj, 'websites_count', obj.websites.count()),
             'endpoints': getattr(obj, 'endpoints_count', obj.endpoints.count()),
             'ips': getattr(obj, 'ips_count', obj.ip_addresses.count()),
             'vulnerabilities': {

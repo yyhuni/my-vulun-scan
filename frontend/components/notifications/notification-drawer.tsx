@@ -83,7 +83,7 @@ export function NotificationDrawer() {
   const severityIconClassMap: Record<NotificationSeverity, string> = {
     high: "text-red-500",
     medium: "text-amber-500",
-    low: "text-emerald-500",
+    low: "text-gray-500",
   }
 
   const getNotificationIcon = (type: NotificationType, severity?: NotificationSeverity) => {
@@ -101,7 +101,7 @@ export function NotificationDrawer() {
   const severityCardClassMap: Record<NotificationSeverity, string> = {
     high: "border-red-300 bg-red-50 hover:bg-red-100 dark:border-red-500/60 dark:bg-red-500/10 dark:hover:bg-red-500/20",
     medium: "border-amber-300 bg-amber-50 hover:bg-amber-100 dark:border-amber-500/60 dark:bg-amber-500/10 dark:hover:bg-amber-500/20",
-    low: "border-emerald-300 bg-emerald-50 hover:bg-emerald-100 dark:border-emerald-500/60 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20",
+    low: "border-gray-300 bg-gray-50 hover:bg-gray-100 dark:border-gray-500/60 dark:bg-gray-500/10 dark:hover:bg-gray-500/20",
   }
 
   const getNotificationCardClasses = (severity?: NotificationSeverity) => {

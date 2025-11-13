@@ -22,8 +22,8 @@ class ScanViewSet(viewsets.ModelViewSet):
         
         查询优化策略：
         - select_related: 预加载 target 和 engine（一对一/多对一关系，使用 JOIN）
-        - annotate: 使用数据库聚合计算子域名和端点数量（避免 N+1 查询）
-        - prefetch_related: 预加载 subdomains 和 endpoints（用于详情页面）
+        - annotate: 使用数据库聚合计算子域名、网站、端点和IP地址数量（避免 N+1 查询）
+        - prefetch_related: 预加载 subdomains、websites、endpoints 和 ip_addresses（用于详情页面）
         - order_by: 按 ID 降序排列（最新创建的任务排在最前面）
         
         排序说明：
@@ -42,10 +42,11 @@ class ScanViewSet(viewsets.ModelViewSet):
             'target', 'engine'
         ).annotate(
             subdomains_count=Count('subdomains', distinct=True),  # 子域名数量
+            websites_count=Count('websites', distinct=True),      # 网站数量
             endpoints_count=Count('endpoints', distinct=True),    # 端点数量
             ips_count=Count('ip_addresses', distinct=True)        # IP地址数量
         ).prefetch_related(
-            'subdomains', 'endpoints', 'ip_addresses'  # 用于详情页面
+            'subdomains', 'websites', 'endpoints', 'ip_addresses'  # 用于详情页面
         ).order_by('-id').all()  # type: ignore  # pylint: disable=no-member
     
     def get_serializer_class(self):

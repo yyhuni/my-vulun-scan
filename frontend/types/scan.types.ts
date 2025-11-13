@@ -10,6 +10,7 @@ export interface ScanRecord {
   targetName: string           // 目标名称（对应后端 targetName）
   summary: {
     subdomains: number
+    websites: number
     endpoints: number
     ips: number
     vulnerabilities: {
