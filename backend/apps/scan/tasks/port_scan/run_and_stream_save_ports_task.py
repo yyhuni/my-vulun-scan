@@ -27,7 +27,7 @@ import time
 from pathlib import Path
 from prefect import task
 from typing import Generator, List, Optional
-from django.db import IntegrityError, OperationalError, DatabaseError, transaction
+from django.db import IntegrityError, OperationalError, DatabaseError
 
 
 from apps.asset.repositories.django_subdomain_repository import DjangoSubdomainRepository
@@ -38,11 +38,10 @@ from apps.asset.repositories.port_repository import PortDTO
 from .types import PortScanRecord
 
 from apps.scan.utils.stream_command import stream_command
-from .types import PortScanRecord
 
 logger = logging.getLogger(__name__)
 
-MAX_SUBDOMAIN_CACHE_BYTES = 100 * 1024 * 1024
+MAX_SUBDOMAIN_CACHE_BYTES = 50 * 1024 * 1024 # 50 MB
 
 def _approx_size_bytes(obj) -> int:
     try:
@@ -65,12 +64,35 @@ def _estimate_subdomain_cache_size(cache: dict) -> int:
     return size
 
 def _maybe_trim_subdomain_cache(cache: dict) -> bool:
+    """
+    检查并执行缓存淘汰（简单策略：超限时删除早期 50%）
+    
+    淘汰策略：
+    - 如果超过内存上限，删除最早插入的 50%（基于 dict 插入顺序，Python 3.7+）
+    
+    Args:
+        cache: dict 类型的缓存
+    
+    Returns:
+        bool: 是否执行了淘汰
+    """
     try:
-        if _estimate_subdomain_cache_size(cache) > MAX_SUBDOMAIN_CACHE_BYTES:
-            cache.clear()
-            return True
-    except Exception:
+        estimated_size = _estimate_subdomain_cache_size(cache)
+        if estimated_size > MAX_SUBDOMAIN_CACHE_BYTES:
+            # 删除最早插入的 50%
+            items_to_remove = len(cache) // 2
+            if items_to_remove > 0:
+                keys_to_remove = list(cache.keys())[:items_to_remove]
+                for key in keys_to_remove:
+                    del cache[key]
+                logger.warning(
+                    "Subdomain 缓存内存超限 (%d MB > %d MB)，已淘汰 %d 条最早插入的记录",
+                    estimated_size // 1024 // 1024, MAX_SUBDOMAIN_CACHE_BYTES // 1024 // 1024, items_to_remove
+                )
+                return True
+    except Exception as e:
         # 估算失败时不影响主流程
+        logger.warning("缓存淘汰检查失败: %s", e)
         return False
     return False
 
@@ -113,6 +135,17 @@ def _save_batch_with_retry(
                 'skipped_no_ip': stats.get('skipped_no_ip', 0)
             }
         
+        except IntegrityError as e:
+            # 数据完整性错误，不应重试（IntegrityError 是 DatabaseError 的子类，需先处理）
+            logger.error("批次 %d 数据完整性错误，跳过: %s", batch_num, str(e)[:100])
+            return {
+                'success': False,
+                'created_ips': 0,
+                'created_ports': 0,
+                'skipped_no_subdomain': 0,
+                'skipped_no_ip': 0
+            }
+        
         except (OperationalError, DatabaseError) as e:
             # 数据库连接/操作错误，可重试
             if attempt < max_retries - 1:
@@ -131,17 +164,6 @@ def _save_batch_with_retry(
                     'skipped_no_subdomain': 0,
                     'skipped_no_ip': 0
                 }
-        
-        except IntegrityError as e:
-            # 数据完整性错误，不应重试
-            logger.error("批次 %d 数据完整性错误，跳过: %s", batch_num, str(e)[:100])
-            return {
-                'success': False,
-                'created_ips': 0,
-                'created_ports': 0,
-                'skipped_no_subdomain': 0,
-                'skipped_no_ip': 0
-            }
         
         except Exception as e:
             # 其他未知错误
@@ -202,16 +224,47 @@ def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int, subdo
             # 先从缓存命中
             cached_hosts = hosts & set(subdomain_cache.keys())
             
-            # 对未命中的一次性批量查库
+            # 对未命中的一次性批量查库（带重试机制）
             missing_hosts = hosts - cached_hosts
             if missing_hosts:
-                new_data = subdomain_repo.get_by_names_and_target_id(missing_hosts, target_id)
-                # 查到的写回缓存
-                subdomain_cache.update(new_data)
-                # 查不到的会在后续构建 subdomain_map 时自动跳过
+                # 对 Subdomain 查询添加独立的重试机制
+                for query_attempt in range(3):  # 最多重试3次
+                    try:
+                        new_data = subdomain_repo.get_by_names_and_target_id(missing_hosts, target_id)
+                        # 查到的写回缓存
+                        subdomain_cache.update(new_data)
+                        # 查不到的也标记为 None，避免重复查询
+                        for host in missing_hosts:
+                            if host not in subdomain_cache:
+                                subdomain_cache[host] = None
+                        break  # 查询成功，跳出重试循环
+                        
+                    except (OperationalError, DatabaseError) as e:
+                        # 数据库操作错误（连接断开、超时等）- 可重试
+                        logger.warning(
+                            "批次 %d: Subdomain 查询失败（尝试 %d/3）: %s",
+                            batch_num, query_attempt + 1, str(e)[:100]
+                        )
+                        if query_attempt == 2:  # 最后一次尝试
+                            logger.error(
+                                "批次 %d: Subdomain 查询失败，已达最大重试次数，将抛出异常",
+                                batch_num
+                            )
+                            raise  # 重新抛出，让外层处理
+                        # 指数退避，带上限：min(2^attempt, 30)
+                        wait_time = min(2 ** query_attempt, 30)
+                        time.sleep(wait_time)
+                        
+                    except Exception as e:
+                        # 非预期错误 - 不重试，直接抛出
+                        logger.error(
+                            "批次 %d: Subdomain 查询遇到非预期错误: %s (%s)",
+                            batch_num, str(e), type(e).__name__
+                        )
+                        raise
             
-            # 构建 subdomain_map（只包含缓存中存在的）
-            subdomain_map = {h: subdomain_cache[h] for h in hosts if h in subdomain_cache}
+            # 构建 subdomain_map（只包含缓存中存在且值不为 None 的）
+            subdomain_map = {h: subdomain_cache[h] for h in hosts if h in subdomain_cache and subdomain_cache[h] is not None}
             
             # 缓存淘汰延迟到批次处理完成后（在 IP/Port 处理之后）
             
@@ -330,6 +383,15 @@ def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int, subdo
                 'skipped_no_ip': skipped_no_ip
             }
             
+        except IntegrityError as e:
+            # 数据完整性错误（IntegrityError 是 DatabaseError 的子类，需先处理）
+            logger.error(
+                "批次 %d 数据完整性错误: %s，不进行重试",
+                batch_num, str(e)
+            )
+            # 不重试，直接返回失败结果
+            break
+        
         except (OperationalError, DatabaseError) as e:
             # 数据库操作错误（连接断开、超时等）
             if attempt < max_retries - 1:
@@ -345,15 +407,7 @@ def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int, subdo
                     "批次 %d 保存失败，已达最大重试次数 %d: %s",
                     batch_num, max_retries, str(e)
                 )
-                raise
-        
-        except IntegrityError as e:
-            # 数据完整性错误（通常不应该发生，因为有 ignore_conflicts）
-            logger.error(
-                "批次 %d 数据完整性错误: %s，不进行重试",
-                batch_num, str(e)
-            )
-            raise
+                break
         
         except Exception as e:
             # 其他未预期的错误
@@ -361,7 +415,15 @@ def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int, subdo
                 "批次 %d 未知错误: %s (%s)，不进行重试",
                 batch_num, str(e), type(e).__name__
             )
-            raise
+            break
+    
+    # 如果所有重试都失败，返回失败结果
+    return {
+        'created_ips': 0,
+        'created_ports': 0,
+        'skipped_no_subdomain': 0,
+        'skipped_no_ip': 0
+    }
 
 def _parse_naabu_stream_output(
     cmd: str,
@@ -529,18 +591,12 @@ def run_and_stream_save_ports_task(
     if cwd and not Path(cwd).exists():
         raise ValueError(f"工作目录不存在: {cwd}")
     
-    # 创建流式解析生成器
-    try:
-        data_generator = _parse_naabu_stream_output(cmd=cmd, cwd=cwd, shell=shell)
-    except Exception as e:
-        error_msg = f"创建流式解析生成器失败: {e}"
-        logger.error(error_msg)
-        raise RuntimeError(error_msg) from e
-    
+    # 初始化变量
     total_records = 0
     batch_num = 0
     failed_batches = []
     subdomain_cache = {}
+    data_generator = None
     
     # 统计信息
     total_created_ips = 0
@@ -549,6 +605,8 @@ def run_and_stream_save_ports_task(
     total_skipped_no_ip = 0
     
     try:
+        # 创建流式解析生成器
+        data_generator = _parse_naabu_stream_output(cmd=cmd, cwd=cwd, shell=shell)
         batch = []
         
         # 流式读取生成器并分批保存
@@ -563,15 +621,19 @@ def run_and_stream_save_ports_task(
                 result = _save_batch_with_retry(
                     batch, scan_id, target_id, batch_num, subdomain_cache
                 )
+                
+                # 无论成功与否，都累计统计信息（失败时可能有部分数据已保存）
+                total_created_ips += result.get('created_ips', 0)
+                total_created_ports += result.get('created_ports', 0)
+                total_skipped_no_subdomain += result.get('skipped_no_subdomain', 0)
+                total_skipped_no_ip += result.get('skipped_no_ip', 0)
+                
                 if not result['success']:
                     failed_batches.append(batch_num)
-                    logger.warning("批次 %d 保存失败，已记录", batch_num)
-                else:
-                    # 累计统计信息
-                    total_created_ips += result.get('created_ips', 0)
-                    total_created_ports += result.get('created_ports', 0)
-                    total_skipped_no_subdomain += result.get('skipped_no_subdomain', 0)
-                    total_skipped_no_ip += result.get('skipped_no_ip', 0)
+                    logger.warning(
+                        "批次 %d 保存失败，但已累计统计信息：创建IP=%d, 创建端口=%d",
+                        batch_num, result.get('created_ips', 0), result.get('created_ports', 0)
+                    )
                 
                 batch = []  # 清空批次
                 
@@ -585,14 +647,19 @@ def run_and_stream_save_ports_task(
             result = _save_batch_with_retry(
                 batch, scan_id, target_id, batch_num, subdomain_cache
             )
+            
+            # 无论成功与否，都累计统计信息（失败时可能有部分数据已保存）
+            total_created_ips += result.get('created_ips', 0)
+            total_created_ports += result.get('created_ports', 0)
+            total_skipped_no_subdomain += result.get('skipped_no_subdomain', 0)
+            total_skipped_no_ip += result.get('skipped_no_ip', 0)
+            
             if not result['success']:
                 failed_batches.append(batch_num)
-            else:
-                # 累计统计信息
-                total_created_ips += result.get('created_ips', 0)
-                total_created_ports += result.get('created_ports', 0)
-                total_skipped_no_subdomain += result.get('skipped_no_subdomain', 0)
-                total_skipped_no_ip += result.get('skipped_no_ip', 0)
+                logger.warning(
+                    "批次 %d 保存失败，但已累计统计信息：创建IP=%d, 创建端口=%d",
+                    batch_num, result.get('created_ips', 0), result.get('created_ports', 0)
+                )
         
         # 输出最终统计
         if failed_batches:
@@ -627,3 +694,24 @@ def run_and_stream_save_ports_task(
         error_msg = f"流式执行端口扫描任务失败: {e}"
         logger.error(error_msg, exc_info=True)
         raise RuntimeError(error_msg) from e
+    
+    finally:
+        # 清理资源
+        try:
+            # 清理缓存（释放内存）
+            if subdomain_cache:
+                cache_size = len(subdomain_cache)
+                subdomain_cache.clear()
+                logger.debug("已清理 subdomain_cache，释放 %d 条缓存记录", cache_size)
+            
+            # 确保生成器被正确关闭
+            if data_generator is not None:
+                try:
+                    data_generator.close()
+                    logger.debug("已关闭数据生成器")
+                except Exception as gen_close_error:
+                    logger.warning("关闭生成器时出错: %s", gen_close_error)
+        
+        except Exception as cleanup_error:
+            # 清理失败不应影响主流程，只记录警告
+            logger.warning("资源清理时出错: %s", cleanup_error)
