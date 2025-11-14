@@ -22,9 +22,12 @@
 
 import logging
 import json
+import sys
 from pathlib import Path
 from prefect import task
 from typing import Generator, List, Optional
+from django.db import IntegrityError, OperationalError, DatabaseError, transaction
+
 
 from apps.asset.repositories.django_subdomain_repository import DjangoSubdomainRepository
 from apps.asset.repositories.django_ip_address_repository import DjangoIPAddressRepository
@@ -37,6 +40,38 @@ from apps.scan.utils.stream_command import stream_command
 from .types import PortScanRecord
 
 logger = logging.getLogger(__name__)
+
+MAX_SUBDOMAIN_CACHE_BYTES = 100 * 1024 * 1024
+
+def _approx_size_bytes(obj) -> int:
+    try:
+        return sys.getsizeof(obj)
+    except Exception:
+        return 0
+
+def _estimate_subdomain_cache_size(cache: dict) -> int:
+    size = _approx_size_bytes(cache)
+    for k, v in cache.items():
+        size += _approx_size_bytes(k)
+        # 仅估算关键字段，避免对 ORM 实例做深度遍历
+        if v is None:
+            continue
+        size += _approx_size_bytes(getattr(v, 'id', None))
+        size += _approx_size_bytes(getattr(v, 'name', None))
+        size += _approx_size_bytes(getattr(v, 'subdomain', None))
+        if not getattr(v, 'id', None) and not getattr(v, 'name', None):
+            size += _approx_size_bytes(str(v))
+    return size
+
+def _maybe_trim_subdomain_cache(cache: dict) -> bool:
+    try:
+        if _estimate_subdomain_cache_size(cache) > MAX_SUBDOMAIN_CACHE_BYTES:
+            cache.clear()
+            return True
+    except Exception:
+        # 估算失败时不影响主流程
+        return False
+    return False
 
 
 def _save_batch_with_retry(
