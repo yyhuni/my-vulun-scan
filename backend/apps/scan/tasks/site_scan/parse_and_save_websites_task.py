@@ -344,7 +344,7 @@ def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int, subdo
             hosts = {record.host for record in batch}
             uncached = hosts - set(subdomain_cache.keys())
             if uncached:
-                new_data = subdomain_repo.get_by_names(uncached, target_id)
+                new_data = subdomain_repo.get_by_names_and_target_id(uncached, target_id)
                 subdomain_cache.update(new_data)
                 logger.debug("LRU缓存更新：新增 %d 项，当前大小 %d", len(new_data), subdomain_cache.size())
             

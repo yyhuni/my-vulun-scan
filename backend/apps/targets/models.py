@@ -6,7 +6,7 @@ class Organization(models.Model):
 
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=300, unique=True, blank=True, default='', help_text='组织名称')
-    description = models.TextField(blank=True, default='', help_text='组织描述')
+    description = models.CharField(max_length=1000, blank=True, default='', help_text='组织描述')
     created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
 
     targets = models.ManyToManyField(

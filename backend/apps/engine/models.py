@@ -6,7 +6,7 @@ class ScanEngine(models.Model):
     
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=200, unique=True, help_text='引擎名称')
-    configuration = models.TextField(blank=True, default='', help_text='引擎配置，yaml 格式')
+    configuration = models.CharField(max_length=10000, blank=True, default='', help_text='引擎配置，yaml 格式')
     is_default = models.BooleanField(default=False, help_text='是否为默认引擎')
     created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
 

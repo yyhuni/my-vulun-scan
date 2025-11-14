@@ -23,7 +23,7 @@ class Notification(models.Model):
     )
     
     title = models.CharField(max_length=200, help_text='通知标题')
-    message = models.TextField(help_text='通知内容')
+    message = models.CharField(max_length=2000, help_text='通知内容')
     
     # 时间信息
     created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')

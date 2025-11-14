@@ -196,14 +196,24 @@ def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int, subdo
     for attempt in range(max_retries):
         try:
             # ========== Step 1: 批量查询 Subdomain（读操作，无需事务）==========
+            # 收集当前批次所有 host
             hosts = {record['host'] for record in batch}
-            uncached = hosts - set(subdomain_cache.keys())
-            if uncached:
-                new_data = subdomain_repo.get_by_names(uncached, target_id)
+            
+            # 先从缓存命中
+            cached_hosts = hosts & set(subdomain_cache.keys())
+            
+            # 对未命中的一次性批量查库
+            missing_hosts = hosts - cached_hosts
+            if missing_hosts:
+                new_data = subdomain_repo.get_by_names_and_target_id(missing_hosts, target_id)
+                # 查到的写回缓存
                 subdomain_cache.update(new_data)
-                if _maybe_trim_subdomain_cache(subdomain_cache):
-                    logger.warning("Subdomain 缓存超过上限，已清空以避免 OOM")
+                # 查不到的会在后续构建 subdomain_map 时自动跳过
+            
+            # 构建 subdomain_map（只包含缓存中存在的）
             subdomain_map = {h: subdomain_cache[h] for h in hosts if h in subdomain_cache}
+            
+            # 缓存淘汰延迟到批次处理完成后（在 IP/Port 处理之后）
             
             # ========== Step 2: 准备 IPAddress 数据（内存操作，无需事务）==========
             # 提取所有唯一的 (subdomain_id, ip) 组合
@@ -309,6 +319,10 @@ def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int, subdo
                 port_repo.bulk_create_ignore_conflicts(port_items)
             
             # 🎉 成功完成，退出重试循环
+            # 批次处理完成后执行缓存淘汰检查
+            if _maybe_trim_subdomain_cache(subdomain_cache):
+                logger.warning("Subdomain 缓存超过上限，已清空以避免 OOM")
+            
             return {
                 'created_ips': len(ip_items),
                 'created_ports': len(port_items),

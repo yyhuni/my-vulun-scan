@@ -52,9 +52,9 @@ class SubdomainRepository(Protocol):
         """
         raise NotImplementedError
     
-    def get_by_names(self, names: set, target_id: int) -> dict:
+    def get_by_names_and_target_id(self, names: set, target_id: int) -> dict:
         """
-        根据域名列表批量查询 Subdomain
+        根据域名列表和目标ID批量查询 Subdomain
         
         Args:
             names: 域名集合
