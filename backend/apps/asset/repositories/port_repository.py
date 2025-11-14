@@ -9,7 +9,7 @@ from typing import Protocol, List
 @dataclass
 class PortDTO:
     """Port 数据传输对象"""
-    ip_id: int
+    ip_address_id: int
     subdomain_id: int
     number: int
     service_name: str = ''

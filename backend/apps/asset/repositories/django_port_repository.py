@@ -34,7 +34,7 @@ class DjangoPortRepository(PortRepository):
             # 转换为 Django 模型对象
             port_objects = [
                 Port(
-                    ip_id=item.ip_id,
+                    ip_address_id=item.ip_address_id,
                     subdomain_id=item.subdomain_id,
                     number=item.number,
                     service_name=item.service_name
@@ -44,10 +44,12 @@ class DjangoPortRepository(PortRepository):
 
             with transaction.atomic():
                 # 批量插入，忽略冲突
+                # 注意：unique_fields 必须使用数据库中实际的字段名（迁移文件中的名称）
+                # 模型中是 ip_address，但数据库字段名是 ip_id（由 ip_address 外键自动生成）
                 Port.objects.bulk_create(
                     port_objects,
                     ignore_conflicts=True,
-                    unique_fields=['ip', 'number']  # 根据唯一约束
+                    unique_fields=['ip_address', 'number']  # Django 会自动将 ip_address 转换为 ip_address_id
                 )
 
             logger.debug(f"成功处理 {len(items)} 条 Port 记录")

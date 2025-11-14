@@ -360,7 +360,7 @@ def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int, subdo
                 
                 port_items.append(
                     PortDTO(
-                        ip_id=ip_obj.id,
+                        ip_address_id=ip_obj.id,
                         subdomain_id=subdomain.id,
                         number=port_num,
                         service_name=''  # 可以后续添加服务识别
