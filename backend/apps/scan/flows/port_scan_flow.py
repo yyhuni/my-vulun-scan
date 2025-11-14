@@ -1,11 +1,12 @@
 import logging
 import os
+import uuid
+from datetime import datetime
 from pathlib import Path
 from prefect import flow
 from apps.scan.tasks.port_scan import (
     export_domains_task,
-    run_port_scanner_task,
-    parse_and_save_ports_task
+    run_and_stream_save_ports_task
 )
 from apps.scan.handlers.scan_flow_handlers import (
     on_scan_flow_running,
@@ -70,9 +71,8 @@ def port_scan_flow(
     
     工作流程：
         Step 1: 导出域名列表到文件（供扫描工具使用）
-        Step 2: 并行运行端口扫描工具（naabu 等）
-        Step 3: 解析扫描结果（JSONL 格式）
-        Step 4: 流式保存到数据库（Subdomain → IPAddress → Port）
+        Step 2: 并行运行端口扫描工具并实时解析输出
+        Step 3: 流式保存到数据库（Subdomain → IPAddress → Port）
 
     Args:
         scan_id: 扫描任务 ID
@@ -152,77 +152,81 @@ def port_scan_flow(
             logger.warning("目标下没有域名，无法执行端口扫描")
             raise ValueError("目标下没有域名，无法执行端口扫描")
         
-        # ==================== Step 2: 并行运行端口扫描工具 ====================
+        # ==================== Step 2 & 3: 流式执行并实时保存 ====================
         logger.info(
-            "Step 2: 并行运行端口扫描工具（%s）",
+            "Step 2 & 3: 流式执行端口扫描并实时保存结果（%s）",
             ', '.join(PORT_SCANNER_CONFIGS.keys())
         )
         
-        # 提交并行任务（动态处理所有配置的工具）
         futures = {}
         for tool_name, config in PORT_SCANNER_CONFIGS.items():
-            future = run_port_scanner_task.submit(
-                tool=tool_name,
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            short_uuid = uuid.uuid4().hex[:4]
+            output_file = str(port_scan_dir / f"{tool_name}_{timestamp}_{short_uuid}.jsonl")
+            command = config['command'].format(
                 target_file=domains_file,
-                result_dir=str(port_scan_dir),
-                command=config['command'],
-                timeout=dynamic_timeout
+                output_file=output_file
             )
-            futures[tool_name] = future
+            future = run_and_stream_save_ports_task.submit(
+                cmd=command,
+                scan_id=scan_id,
+                target_id=target_id,
+                cwd=str(port_scan_dir),
+                shell=True,
+                batch_size=500
+            )
+            futures[tool_name] = {
+                'future': future,
+                'output_file': output_file,
+                'command': command
+            }
         
-        # 等待并行任务完成，获取结果
-        results = {tool_name: future.result() for tool_name, future in futures.items()}
+        processed_records = 0
+        result_files = []
+        failed_tools = []
+        tool_stats = {}
         
-        # 过滤掉失败的扫描结果（空字符串表示失败）
-        result_files = [result for result in results.values() if result]
-        failed_tools = [tool for tool, result in results.items() if not result]
+        for tool_name, task_info in futures.items():
+            try:
+                result = task_info['future'].result()
+                tool_stats[tool_name] = {
+                    'command': task_info['command'],
+                    'output_file': task_info['output_file'],
+                    'result': result
+                }
+                processed_records += result.get('processed_records', 0)
+                result_files.append(task_info['output_file'])
+                logger.info(
+                    "✓ 工具 %s 流式处理完成 - 记录数: %d",
+                    tool_name, result.get('processed_records', 0)
+                )
+            except Exception as exc:
+                failed_tools.append(tool_name)
+                logger.error("工具 %s 执行失败: %s", tool_name, exc)
         
-        # 记录失败的工具
         if failed_tools:
-            logger.warning(
-                "以下扫描工具执行失败: %s",
-                ', '.join(failed_tools)
-            )
+            logger.warning("以下扫描工具执行失败: %s", ', '.join(failed_tools))
         
-        if not result_files:
-            tool_names = ', '.join(PORT_SCANNER_CONFIGS.keys())
+        if not tool_stats:
             error_details = "\n".join([
-                f"  - {tool}: {results.get(tool, 'unknown error')}"
+                f"  - {tool}: 流式处理失败"
                 for tool in failed_tools
             ])
             raise RuntimeError(
                 f"所有端口扫描工具均失败 - 目标: {target_name}\n"
-                f"失败工具:\n{error_details}\n"
-                f"请检查: 1) 工具是否安装（{tool_names}） 2) 网络连接 3) 目标是否可达"
+                f"失败工具:\n{error_details}"
             )
         
         logger.info(
-            "✓ 端口扫描工具并行执行完成 - 成功: %d/%d",
-            len(result_files), len(PORT_SCANNER_CONFIGS)
-        )
-        
-        # ==================== Step 3: 解析并保存到数据库 ====================
-        logger.info("Step 3: 解析扫描结果并流式保存到数据库")
-        
-        # 使用合并任务，避免 Prefect 任务间传递生成器的序列化问题
-        save_result = parse_and_save_ports_task(
-            result_files=result_files,
-            scan_id=scan_id,
-            target_id=target_id,
-            batch_size=500  # 每批 500 条，平衡性能和内存
-        )
-        
-        logger.info(
-            "✓ 保存完成 - 处理记录: %d",
-            save_result['processed_records']
+            "✓ 流式端口扫描执行完成 - 成功: %d/%d",
+            len(tool_stats), len(PORT_SCANNER_CONFIGS)
         )
         
         logger.info("="*60 + "\n✓ 端口扫描完成\n" + "="*60)
         
         # 动态生成已执行的任务列表
         executed_tasks = ['export_domains']
-        executed_tasks.extend([f'run_port_scanner ({tool})' for tool in PORT_SCANNER_CONFIGS.keys()])
-        executed_tasks.extend(['parse_naabu_result', 'save_ports'])
+        executed_tasks.extend([f'run_and_stream_save_ports ({tool})' for tool in tool_stats.keys()])
         
         return {
             'success': True,
@@ -232,8 +236,9 @@ def port_scan_flow(
             'domains_file': export_result['output_file'],
             'domain_count': export_result['total_count'],
             'result_files': result_files,
-            'processed_records': save_result['processed_records'],
-            'executed_tasks': executed_tasks
+            'processed_records': processed_records,
+            'executed_tasks': executed_tasks,
+            'tool_stats': tool_stats
         }
 
     except Exception as e:
