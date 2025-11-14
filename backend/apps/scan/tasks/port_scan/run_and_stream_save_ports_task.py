@@ -23,6 +23,7 @@
 import logging
 import json
 import sys
+import time
 from pathlib import Path
 from prefect import task
 from typing import Generator, List, Optional
@@ -348,19 +349,19 @@ def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int, subdo
             )
             raise
 
-def _parse_stream_output(
+def _parse_naabu_stream_output(
     cmd: str,
     cwd: Optional[str] = None,
     shell: bool = False
 ) -> Generator[PortScanRecord, None, None]:
     """
-    流式解析端口扫描命令输出
+    流式解析 naabu 端口扫描命令输出
     
-    基于 stream_command 实时处理命令的 stdout，将每行 JSON 输出
+    基于 stream_command 实时处理 naabu 命令的 stdout，将每行 JSON 输出
     转换为 PortScanRecord 格式，沿用现有字段校验逻辑
     
     Args:
-        cmd: 端口扫描命令（如: "naabu -l domains.txt -json"）
+        cmd: naabu 端口扫描命令（如: "naabu -l domains.txt -json"）
         cwd: 工作目录
         shell: 是否使用 shell 执行
     
@@ -372,25 +373,31 @@ def _parse_stream_output(
             'port': int,          # 端口号
         }
     """
-    logger.info("开始流式解析端口扫描命令输出 - 命令: %s", cmd)
+    logger.info("开始流式解析 naabu 端口扫描命令输出 - 命令: %s", cmd)
     
     total_lines = 0
     error_lines = 0
-    valid_records = 0
     
     try:
         # 使用 stream_command 获取实时输出流
-        for line_data in stream_command(cmd=cmd, cwd=cwd, shell=shell):
+        for line in stream_command(cmd=cmd, cwd=cwd, shell=shell):
             total_lines += 1
             
             try:
-                # stream_command 已经过滤 JSON 对象
-                if not isinstance(line_data, dict):
-                    logger.warning("收到非 JSON 格式数据，跳过: %s", str(line_data)[:100])
+                # 尝试将行解析为 JSON 对象（必须是字典类型）
+                try:
+                    line_data = json.loads(line)
+                    if not isinstance(line_data, dict):
+                        logger.warning("解析后的数据不是字典类型，跳过: %s", str(line_data)[:100])
+                        error_lines += 1
+                        continue
+                except json.JSONDecodeError:
+                    # JSON 解析失败，跳过该行
+                    logger.debug("跳过非 JSON 格式的行: %s", line[:100])
                     error_lines += 1
                     continue
                 
-                # 提取必要字段（与现有逻辑保持一致）
+                # 提取必要字段
                 host = line_data.get('host', '').strip()
                 ip = line_data.get('ip', '').strip()  
                 port = line_data.get('port')
@@ -417,19 +424,15 @@ def _parse_stream_output(
                     continue
                 
                 # yield 一条有效记录
-                valid_records += 1
+
                 yield {
                     'host': host,
                     'ip': ip,
                     'port': port,
                 }
                 
-                # 每1000条记录输出一次进度
-                if valid_records % 1000 == 0:
-                    logger.info("已解析 %d 条有效记录", valid_records)
-                
             except Exception as e:
-                logger.warning("解析行数据异常: %s - 数据: %s", e, str(line_data)[:100])
+                logger.warning("解析行数据异常: %s - 数据: %s", e, line[:100])
                 error_lines += 1
                 continue
                 
@@ -438,8 +441,8 @@ def _parse_stream_output(
         raise
     
     logger.info(
-        "流式解析完成 - 总行数: %d, 错误行数: %d, 有效记录: %d", 
-        total_lines, error_lines, valid_records
+        "流式解析完成 - 总行数: %d, 错误行数: %d", 
+        total_lines, error_lines,
     )
 
 
@@ -514,7 +517,7 @@ def run_and_stream_save_ports_task(
     
     # 创建流式解析生成器
     try:
-        data_generator = _parse_stream_output(cmd=cmd, cwd=cwd, shell=shell)
+        data_generator = _parse_naabu_stream_output(cmd=cmd, cwd=cwd, shell=shell)
     except Exception as e:
         error_msg = f"创建流式解析生成器失败: {e}"
         logger.error(error_msg)
@@ -535,13 +538,8 @@ def run_and_stream_save_ports_task(
         batch = []
         
         # 流式读取生成器并分批保存
-        record_count = 0
         for record in data_generator:
-            record_count += 1
-            
-            if record_count % 1000 == 0:  # 每1000条记录输出一次进度
-                logger.info("已读取 %d 条记录", record_count)
-            
+
             batch.append(record)
             total_records += 1
             

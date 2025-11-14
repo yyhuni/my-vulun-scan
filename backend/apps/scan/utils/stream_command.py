@@ -1,8 +1,7 @@
-import json
 import logging
 import re
 import subprocess
-from typing import Generator, Union, Optional
+from typing import Generator, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -13,8 +12,8 @@ def stream_command(
     shell: bool = False,
     encoding: str = 'utf-8',
     suffix_char: Optional[str] = None
-) -> Generator[Union[str, dict], None, None]:
-    """以流式运行命令，逐行返回输出。
+) -> Generator[str, None, None]:
+    """以流式运行命令,逐行返回输出。
     
     Args:
         cmd: 要执行的命令
@@ -24,7 +23,7 @@ def stream_command(
         suffix_char: 末尾后缀字符
     
     Yields:
-        每行输出的内容（字符串或JSON对象）
+        每行输出的内容（字符串）
     """
     # 记录执行的命令，便于调试和日志追踪
     logger.info(f"执行命令: {cmd}")
@@ -70,16 +69,8 @@ def stream_command(
             if suffix_char and line.endswith(suffix_char):
                 line = line[:-1]
             
-            # 将行解析为JSON对象
-            try:
-                parsed_line = json.loads(line)
-                # 生成当前行的数据，调用者可以逐行处理
-                yield parsed_line
-            except json.JSONDecodeError as e:
-                # JSON解析失败时记录错误并跳过该行
-
-                logger.debug(f"跳过非JSON格式的行: {line[:100]}")
-                continue
+            # 直接返回行内容，由调用者负责解析
+            yield line
     
     finally:
         # 确保进程被正确清理，即使发生异常也会执行
