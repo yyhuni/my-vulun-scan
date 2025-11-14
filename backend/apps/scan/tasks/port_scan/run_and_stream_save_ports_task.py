@@ -26,6 +26,13 @@ from pathlib import Path
 from prefect import task
 from typing import Generator, List, Optional
 
+from apps.asset.repositories.django_subdomain_repository import DjangoSubdomainRepository
+from apps.asset.repositories.django_ip_address_repository import DjangoIPAddressRepository
+from apps.asset.repositories.django_port_repository import DjangoPortRepository
+from apps.asset.repositories.ip_address_repository import IPAddressDTO
+from apps.asset.repositories.port_repository import PortDTO
+from .types import PortScanRecord
+
 from apps.scan.utils.stream_command import stream_command
 from .types import PortScanRecord
 
@@ -119,6 +126,193 @@ def _save_batch_with_retry(
         'skipped_no_ip': 0
     }
 
+
+def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int, subdomain_cache: dict, max_retries: int = 3) -> dict:
+    """
+    保存一个批次的数据到数据库（使用 Repository 模式）
+    
+    数据关系链：
+        Subdomain (已存在) → IPAddress (待创建/已存在) → Port (待创建)
+    
+    处理流程（4次数据库操作）：
+        1. 查询 Subdomain：根据域名批量查询（Repository）
+        2. 创建 IPAddress：批量插入 IP 记录，ignore_conflicts（Repository，独立短事务）
+        3. 查询 IPAddress：获取刚创建的 IP 记录（Repository）
+        4. 创建 Port：批量插入端口记录，ignore_conflicts（Repository，独立短事务）
+    
+    Args:
+        batch: 数据批次，list of {'host', 'ip', 'port'}
+        scan_id: 扫描任务 ID
+        target_id: 目标 ID
+        batch_num: 批次编号（用于日志）
+        max_retries: 最大重试次数（默认3次）
+    """
+    # 初始化 Repository
+    subdomain_repo = DjangoSubdomainRepository()
+    ip_repo = DjangoIPAddressRepository()
+    port_repo = DjangoPortRepository()
+    
+    # 统计变量
+    skipped_no_subdomain = 0
+    skipped_no_ip = 0
+    
+    # 重试机制：确保数据最终一致性
+    for attempt in range(max_retries):
+        try:
+            # ========== Step 1: 批量查询 Subdomain（读操作，无需事务）==========
+            hosts = {record['host'] for record in batch}
+            uncached = hosts - set(subdomain_cache.keys())
+            if uncached:
+                new_data = subdomain_repo.get_by_names(uncached, target_id)
+                subdomain_cache.update(new_data)
+                if _maybe_trim_subdomain_cache(subdomain_cache):
+                    logger.warning("Subdomain 缓存超过上限，已清空以避免 OOM")
+            subdomain_map = {h: subdomain_cache[h] for h in hosts if h in subdomain_cache}
+            
+            # ========== Step 2: 准备 IPAddress 数据（内存操作，无需事务）==========
+            # 提取所有唯一的 (subdomain_id, ip) 组合
+            ip_set = set()
+            
+            for record in batch:
+                host = record['host']
+                ip_addr = record['ip']
+                
+                subdomain = subdomain_map.get(host)
+                if not subdomain:
+                    skipped_no_subdomain += 1
+                    continue
+                
+                ip_key = (subdomain.id, ip_addr)
+                ip_set.add(ip_key)
+            
+            # ========== Step 3: 批量创建 IPAddress（Repository 内部独立短事务）==========
+            ip_items = [
+                IPAddressDTO(
+                    subdomain_id=subdomain_id,
+                    ip=ip_addr,
+                    target_id=target_id,
+                    scan_id=scan_id
+                )
+                for subdomain_id, ip_addr in ip_set
+            ]
+            
+            # 批量插入（忽略已存在的记录）
+            if ip_items:
+                ip_repo.bulk_create_ignore_conflicts(ip_items)
+            
+            # ========== Step 4: 批量查询所有 IPAddress（读操作，无需事务）==========
+            ip_map = {}
+            if ip_set:
+                # 从 ip_set 中提取查询条件
+                subdomain_ids = {subdomain_id for subdomain_id, _ in ip_set}
+                ip_addrs = {ip_addr for _, ip_addr in ip_set}
+                
+                # 使用 Repository 批量查询
+                ip_map = ip_repo.get_by_subdomain_and_ips(subdomain_ids, ip_addrs)
+                
+                # 验证查询结果的完整性
+                expected_count = len(ip_set)
+                actual_count = len(ip_map)
+                if actual_count < expected_count:
+                    logger.warning(
+                        "批次 %d: IPAddress 查询结果不完整 - 预期 %d，实际 %d",
+                        batch_num, expected_count, actual_count
+                    )
+                    
+                    # 短暂延迟后重试查询（给数据库提交更多时间）
+                    time.sleep(1)
+                    ip_map_retry = ip_repo.get_by_subdomain_and_ips(subdomain_ids, ip_addrs)
+                    
+                    if len(ip_map_retry) > actual_count:
+                        logger.info(
+                            "批次 %d: 重试查询成功 - 找到 %d 条记录",
+                            batch_num, len(ip_map_retry)
+                        )
+                        ip_map = ip_map_retry
+                    else:
+                        logger.debug(
+                            "批次 %d: 重试查询无改善，可能是域名不存在或数据不一致",
+                            batch_num
+                        )
+            
+            # ========== Step 5: 批量创建 Port（Repository 内部独立短事务）==========
+            port_items = []
+            
+            for record in batch:
+                host = record['host']
+                ip_addr = record['ip']
+                port_num = record['port']
+                
+                subdomain = subdomain_map.get(host)
+                if not subdomain:
+                    continue
+                
+                # 从映射中获取 IPAddress 对象
+                ip_key = (subdomain.id, ip_addr)
+                ip_obj = ip_map.get(ip_key)
+                
+                if not ip_obj:
+                    skipped_no_ip += 1
+                    logger.warning(
+                        "批次 %d: 未找到 IP (%s, %s)，跳过端口 %d",
+                        batch_num, host, ip_addr, port_num
+                    )
+                    continue
+                
+                port_items.append(
+                    PortDTO(
+                        ip_id=ip_obj.id,
+                        subdomain_id=subdomain.id,
+                        number=port_num,
+                        service_name=''  # 可以后续添加服务识别
+                    )
+                )
+            
+            # 批量插入 Port（忽略重复）
+            if port_items:
+                port_repo.bulk_create_ignore_conflicts(port_items)
+            
+            # 🎉 成功完成，退出重试循环
+            return {
+                'created_ips': len(ip_items),
+                'created_ports': len(port_items),
+                'skipped_no_subdomain': skipped_no_subdomain,
+                'skipped_no_ip': skipped_no_ip
+            }
+            
+        except (OperationalError, DatabaseError) as e:
+            # 数据库操作错误（连接断开、超时等）
+            if attempt < max_retries - 1:
+                # 还有重试机会
+                logger.warning(
+                    "批次 %d 保存失败（尝试 %d/%d）: %s，将在 1 秒后重试",
+                    batch_num, attempt + 1, max_retries, str(e)
+                )
+                time.sleep(1)  # 短暂延迟后重试
+            else:
+                # 已达最大重试次数
+                logger.error(
+                    "批次 %d 保存失败，已达最大重试次数 %d: %s",
+                    batch_num, max_retries, str(e)
+                )
+                raise
+        
+        except IntegrityError as e:
+            # 数据完整性错误（通常不应该发生，因为有 ignore_conflicts）
+            logger.error(
+                "批次 %d 数据完整性错误: %s，不进行重试",
+                batch_num, str(e)
+            )
+            raise
+        
+        except Exception as e:
+            # 其他未预期的错误
+            logger.error(
+                "批次 %d 未知错误: %s (%s)，不进行重试",
+                batch_num, str(e), type(e).__name__
+            )
+            raise
+
 def _parse_stream_output(
     cmd: str,
     cwd: Optional[str] = None,
@@ -155,7 +349,7 @@ def _parse_stream_output(
             total_lines += 1
             
             try:
-                # stream_command 已经解析为 JSON 对象
+                # stream_command 已经过滤 JSON 对象
                 if not isinstance(line_data, dict):
                     logger.warning("收到非 JSON 格式数据，跳过: %s", str(line_data)[:100])
                     error_lines += 1

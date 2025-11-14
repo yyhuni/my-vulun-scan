@@ -77,7 +77,8 @@ def stream_command(
                 yield parsed_line
             except json.JSONDecodeError as e:
                 # JSON解析失败时记录错误并跳过该行
-                logger.error(f"JSON解析失败: {e}, 行内容: {line[:100]}")
+
+                logger.debug(f"跳过非JSON格式的行: {line[:100]}")
                 continue
     
     finally:
