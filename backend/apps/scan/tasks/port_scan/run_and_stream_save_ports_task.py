@@ -29,6 +29,7 @@ from prefect import task
 from typing import Generator, List, Optional
 from django.db import IntegrityError, OperationalError, DatabaseError
 from cachetools import LRUCache
+from dataclasses import dataclass
 
 
 from apps.asset.repositories.django_subdomain_repository import DjangoSubdomainRepository
@@ -48,12 +49,34 @@ logger = logging.getLogger(__name__)
 MAX_SUBDOMAIN_CACHE_SIZE = 10000
 
 
+@dataclass
+class RepositorySet:
+    """
+    Repository 集合，用于依赖注入
+    
+    提供所有需要的 Repository 实例，便于测试时注入 Mock 对象
+    """
+    subdomain: DjangoSubdomainRepository
+    ip_address: DjangoIPAddressRepository
+    port: DjangoPortRepository
+    
+    @classmethod
+    def create_default(cls) -> 'RepositorySet':
+        """创建默认的 Repository 集合"""
+        return cls(
+            subdomain=DjangoSubdomainRepository(),
+            ip_address=DjangoIPAddressRepository(),
+            port=DjangoPortRepository()
+        )
+
+
 def _save_batch_with_retry(
     batch: list,
     scan_id: int,
     target_id: int,
     batch_num: int,
     subdomain_cache: LRUCache,
+    repositories: RepositorySet,
     max_retries: int = 3
 ) -> dict:
     """
@@ -64,6 +87,8 @@ def _save_batch_with_retry(
         scan_id: 扫描任务ID
         target_id: 目标ID
         batch_num: 批次编号
+        subdomain_cache: 子域名缓存
+        repositories: Repository 集合（必须，依赖注入）
         max_retries: 最大重试次数
     
     Returns:
@@ -77,7 +102,7 @@ def _save_batch_with_retry(
     """
     for attempt in range(max_retries):
         try:
-            stats = _save_batch(batch, scan_id, target_id, batch_num, subdomain_cache)
+            stats = _save_batch(batch, scan_id, target_id, batch_num, subdomain_cache, repositories)
             return {
                 'success': True,
                 'created_ips': stats.get('created_ips', 0),
@@ -136,7 +161,14 @@ def _save_batch_with_retry(
     }
 
 
-def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int, subdomain_cache: LRUCache) -> dict:
+def _save_batch(
+    batch: list, 
+    scan_id: int, 
+    target_id: int, 
+    batch_num: int, 
+    subdomain_cache: LRUCache,
+    repositories: RepositorySet
+) -> dict:
     """
     保存一个批次的数据到数据库（使用 Repository 模式）
     
@@ -155,6 +187,7 @@ def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int, subdo
         target_id: 目标 ID
         batch_num: 批次编号（用于日志）
         subdomain_cache: 子域名缓存字典
+        repositories: Repository 集合（依赖注入）
     
     Returns:
         dict: 包含创建和跳过记录的统计信息
@@ -181,10 +214,10 @@ def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int, subdo
             'skipped_no_ip': 0
         }
     
-    # 初始化 Repository
-    subdomain_repo = DjangoSubdomainRepository()
-    ip_repo = DjangoIPAddressRepository()
-    port_repo = DjangoPortRepository()
+    # 使用注入的 Repository 实例
+    subdomain_repo = repositories.subdomain
+    ip_repo = repositories.ip_address
+    port_repo = repositories.port
     
     # 统计变量
     skipped_no_subdomain = 0
@@ -469,7 +502,8 @@ def _process_batch(
     batch_num: int,
     subdomain_cache: LRUCache,
     total_stats: dict,
-    failed_batches: list
+    failed_batches: list,
+    repositories: RepositorySet
 ) -> None:
     """
     处理单个批次
@@ -482,9 +516,10 @@ def _process_batch(
         subdomain_cache: 子域名缓存
         total_stats: 总统计信息
         failed_batches: 失败批次列表
+        repositories: Repository 集合（必须，依赖注入）
     """
     result = _save_batch_with_retry(
-        batch, scan_id, target_id, batch_num, subdomain_cache
+        batch, scan_id, target_id, batch_num, subdomain_cache, repositories
     )
     
     # 累计统计信息（失败时可能有部分数据已保存）
@@ -503,7 +538,8 @@ def _process_records_in_batches(
     scan_id: int,
     target_id: int,
     subdomain_cache: LRUCache,
-    batch_size: int
+    batch_size: int,
+    repositories: RepositorySet
 ) -> dict:
     """
     流式处理记录并分批保存
@@ -514,6 +550,7 @@ def _process_records_in_batches(
         target_id: 目标ID
         subdomain_cache: 子域名缓存
         batch_size: 批次大小
+        repositories: Repository 集合（必须，依赖注入）
         
     Returns:
         dict: 处理统计信息
@@ -542,7 +579,7 @@ def _process_records_in_batches(
         # 达到批次大小，执行保存
         if len(batch) >= batch_size:
             batch_num += 1
-            _process_batch(batch, scan_id, target_id, batch_num, subdomain_cache, total_stats, failed_batches)
+            _process_batch(batch, scan_id, target_id, batch_num, subdomain_cache, total_stats, failed_batches, repositories)
             batch = []  # 清空批次
             
             # 每20个批次输出进度
@@ -552,7 +589,7 @@ def _process_records_in_batches(
     # 保存最后一批
     if batch:
         batch_num += 1
-        _process_batch(batch, scan_id, target_id, batch_num, subdomain_cache, total_stats, failed_batches)
+        _process_batch(batch, scan_id, target_id, batch_num, subdomain_cache, total_stats, failed_batches, repositories)
     
     # 检查失败批次
     if failed_batches:
@@ -684,10 +721,11 @@ def run_and_stream_save_ports_task(
         
         # 2. 初始化资源
         subdomain_cache, data_generator = _initialize_task_resources(cmd, cwd, shell, timeout)
+        repositories = RepositorySet.create_default()
         
         # 3. 流式处理记录并分批保存
         stats = _process_records_in_batches(
-            data_generator, scan_id, target_id, subdomain_cache, batch_size
+            data_generator, scan_id, target_id, subdomain_cache, batch_size, repositories
         )
         
         # 4. 构建最终结果
