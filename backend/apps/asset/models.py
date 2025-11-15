@@ -2,8 +2,6 @@
 from django.db import models
 from django.contrib.postgres.fields import ArrayField
 from django.core.validators import MinValueValidator, MaxValueValidator
-from scan.models import Scan
-from targets.models import Target
 
 
 class Subdomain(models.Model):
@@ -11,7 +9,7 @@ class Subdomain(models.Model):
 
     id = models.AutoField(primary_key=True)
     scan = models.ForeignKey(
-        Scan,
+        'scan.Scan',  # 使用字符串引用避免循环导入
         on_delete=models.CASCADE,
         related_name='subdomains',
         null=True,
@@ -19,7 +17,7 @@ class Subdomain(models.Model):
         help_text='所属的扫描任务（冗余字段，用于快速查询）'
     )
     target = models.ForeignKey(
-        Target,
+        'targets.Target',  # 使用字符串引用避免循环导入
         on_delete=models.CASCADE,
         related_name='subdomains',
         help_text='所属的扫描目标（主关联字段，表示所属关系，不能为空）'
@@ -71,13 +69,13 @@ class Endpoint(models.Model):
 
     id = models.AutoField(primary_key=True)
     target = models.ForeignKey(
-        Target,
+        'targets.Target',  # 使用字符串引用
         on_delete=models.CASCADE,
         related_name='endpoints',
         help_text='所属的扫描目标（冗余字段，用于快速查询）'
     )
     scan = models.ForeignKey(
-        Scan,
+        'scan.Scan',  # 使用字符串引用
         on_delete=models.CASCADE,
         related_name='endpoints',
         null=True,
@@ -165,7 +163,7 @@ class WebSite(models.Model):
 
     id = models.AutoField(primary_key=True)
     scan = models.ForeignKey(
-        Scan,
+        'scan.Scan',  # 使用字符串引用
         on_delete=models.CASCADE,
         related_name='websites',
         null=True,
@@ -173,7 +171,7 @@ class WebSite(models.Model):
         help_text='所属的扫描任务（冗余字段，用于快速查询）'
     )
     target = models.ForeignKey(
-        Target,
+        'targets.Target',  # 使用字符串引用
         on_delete=models.CASCADE,
         related_name='websites',
         null=True,
@@ -181,7 +179,7 @@ class WebSite(models.Model):
         help_text='所属的扫描目标（冗余字段，用于快速查询）'
     )
     subdomain = models.ForeignKey(
-        Subdomain,
+        'Subdomain',  # 同一个 app 内的模型也使用字符串引用
         on_delete=models.CASCADE,
         related_name='websites',
         help_text='所属的子域名（主关联字段，表示所属关系，不能为空）'
@@ -270,7 +268,7 @@ class IPAddress(models.Model):
 
     id = models.AutoField(primary_key=True)
     scan = models.ForeignKey(
-        Scan,
+        'scan.Scan',  # 使用字符串引用
         on_delete=models.CASCADE,
         related_name='ip_addresses',
         null=True,
@@ -278,7 +276,7 @@ class IPAddress(models.Model):
         help_text='所属的扫描任务（冗余字段，用于快速查询）'
     )
     target = models.ForeignKey(
-        Target,
+        'targets.Target',  # 使用字符串引用
         on_delete=models.CASCADE,
         related_name='ip_addresses',
         null=True,
@@ -286,7 +284,7 @@ class IPAddress(models.Model):
         help_text='所属的扫描目标（冗余字段，用于快速查询）'
     )
     subdomain = models.ForeignKey(
-        Subdomain,
+        'Subdomain',  # 使用字符串引用
         on_delete=models.CASCADE,
         related_name='ip_addresses',
         help_text='所属的子域名（主关联字段，表示所属关系，不能为空）'
@@ -347,7 +345,7 @@ class Port(models.Model):
         help_text='所属的IP地址（主关联字段，表示所属关系，不能为空）'
     )
     subdomain = models.ForeignKey(
-        Subdomain,
+        'Subdomain',  # 使用字符串引用
         on_delete=models.CASCADE,
         related_name='ports',
         null=True,

@@ -2,7 +2,6 @@ from django.db import models
 from django.contrib.postgres.fields import ArrayField
 
 from ..common.definitions import ScanStatus
-from ..asset.models import Email, Employee, Dork, S3Bucket
 
 
 class Scan(models.Model):
@@ -47,35 +46,6 @@ class Scan(models.Model):
     )
 
     error_message = models.CharField(max_length=2000, blank=True, default='', help_text='错误信息')
-
-    # 扫描发现的资产关联
-    emails = models.ManyToManyField(
-        Email,
-        blank=True,
-        related_name='scans',
-        help_text='发现的邮箱'
-    )
-
-    employees = models.ManyToManyField(
-        Employee,
-        blank=True,
-        related_name='scans',
-        help_text='发现的员工信息'
-    )
-
-    dorks = models.ManyToManyField(
-        Dork,
-        blank=True,
-        related_name='scans',
-        help_text='发现的 Google Dorks'
-    )
-
-    s3_buckets = models.ManyToManyField(
-        S3Bucket,
-        blank=True,
-        related_name='scans',
-        help_text='发现的 S3 存储桶'
-    )
 
     class Meta:
         db_table = 'scan'
