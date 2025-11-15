@@ -21,11 +21,13 @@ from apps.scan.handlers.scan_flow_handlers import (
 logger = logging.getLogger(__name__)
 
 PORT_SCANNER_CONFIGS = {
-    'naabu': {
-        # naabu 命令参数说明：
-        # -timeout 50: 每个域名的扫描超时（50秒，由 naabu 工具控制）
-        # dynamic_timeout: 整个命令执行的总超时，由 stream_command 控制，防止进程卡死
-        'command': 'naabu -exclude-cdn -top-ports 100 -c 30 -rate 150 -timeout 50 -list {target_file} -o {output_file} -json',
+    'naabu_active': {
+        # 主动扫描
+        'command': 'naabu -exclude-cdn -c 5 -rate 10 -p 1-65535 -warm-up-time 5 -retries 1 -verify -timeout 5000 -list {target_file}  -json -silent',
+    },
+    'naabu_passive': {
+        # 被动扫描
+        'command': 'naabu -list {target_file} -passive -json -silent',
     }
 }
 
@@ -91,16 +93,17 @@ def _export_target_domains(target_id: int, port_scan_dir: Path) -> tuple[str, in
     return domains_file, domain_count
 
 
-def _submit_scan_tasks(
+def _run_scans_sequentially(
     domains_file: str,
     port_scan_dir: Path,
     scan_id: int,
     target_id: int,
     domain_count: int,
-    dynamic_timeout: int
-) -> dict:
+    dynamic_timeout: int,
+    target_name: str
+) -> tuple[dict, list, int, list]:
     """
-    提交端口扫描任务
+    串行执行端口扫描任务
     
     Args:
         domains_file: 域名文件路径
@@ -109,17 +112,28 @@ def _submit_scan_tasks(
         target_id: 目标 ID
         domain_count: 域名数量
         dynamic_timeout: 动态计算的超时时间
+        target_name: 目标名称（用于错误日志）
         
     Returns:
-        dict: {tool_name: {future, output_file, command, timeout}}
+        tuple: (tool_stats, result_files, processed_records, failed_tools)
+        
+    Raises:
+        RuntimeError: 所有工具均失败
     """
     logger.info(
-        "Step 2 & 3: 流式执行端口扫描并实时保存结果（%s）",
+        "Step 2 & 3: 串行执行端口扫描并实时保存结果（%s）",
         ', '.join(PORT_SCANNER_CONFIGS.keys())
     )
     
-    futures = {}
+    tool_stats = {}
+    processed_records = 0
+    result_files = []
+    failed_tools = []
+    
     for tool_name, config in PORT_SCANNER_CONFIGS.items():
+        logger.info("开始执行 %s 扫描...", tool_name)
+        
+        # 生成输出文件
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         short_uuid = uuid.uuid4().hex[:4]
         output_file = str(port_scan_dir / f"{tool_name}_{timestamp}_{short_uuid}.jsonl")
@@ -133,65 +147,36 @@ def _submit_scan_tasks(
             tool_name, dynamic_timeout, domain_count
         )
         
-        # 提交任务到 Prefect Task Queue 并获取 Future 对象
-        future = run_and_stream_save_ports_task.submit(
-            cmd=command,
-            scan_id=scan_id,
-            target_id=target_id,
-            cwd=str(port_scan_dir),
-            shell=True,
-            batch_size=500,
-            timeout=dynamic_timeout  # 透传超时参数
-        )
-        futures[tool_name] = {
-            'future': future,
-            'output_file': output_file,
-            'command': command,
-            'timeout': dynamic_timeout
-        }
-    
-    return futures
-
-
-def _collect_scan_results(futures: dict, target_name: str) -> tuple[dict, list, int, list]:
-    """
-    收集扫描任务结果
-    
-    Args:
-        futures: 任务 Future 字典
-        target_name: 目标名称（用于错误日志）
-        
-    Returns:
-        tuple: (tool_stats, result_files, processed_records, failed_tools)
-        
-    Raises:
-        RuntimeError: 所有工具均失败
-    """
-    processed_records = 0
-    result_files = []
-    failed_tools = []
-    tool_stats = {}
-    
-    for tool_name, task_info in futures.items():
         try:
-            result = task_info['future'].result()
+            # 直接调用 task（串行执行）
+            result = run_and_stream_save_ports_task(
+                cmd=command,
+                scan_id=scan_id,
+                target_id=target_id,
+                cwd=str(port_scan_dir),
+                shell=True,
+                batch_size=500,
+                timeout=dynamic_timeout
+            )
+            
             tool_stats[tool_name] = {
-                'command': task_info['command'],
-                'output_file': task_info['output_file'],
+                'command': command,
+                'output_file': output_file,
                 'result': result
             }
             processed_records += result.get('processed_records', 0)
-            result_files.append(task_info['output_file'])
+            result_files.append(output_file)
             logger.info(
                 "✓ 工具 %s 流式处理完成 - 记录数: %d",
                 tool_name, result.get('processed_records', 0)
             )
+            
         except subprocess.TimeoutExpired as exc:
             # 超时异常单独处理
             failed_tools.append(tool_name)
             logger.error(
                 "工具 %s 执行超时 - 超时配置: %d秒, 异常: %s",
-                tool_name, task_info.get('timeout', 0), exc
+                tool_name, dynamic_timeout, exc
             )
         except Exception as exc:
             # 其他异常
@@ -212,7 +197,7 @@ def _collect_scan_results(futures: dict, target_name: str) -> tuple[dict, list, 
         )
     
     logger.info(
-        "✓ 流式端口扫描执行完成 - 成功: %d/%d",
+        "✓ 串行端口扫描执行完成 - 成功: %d/%d",
         len(tool_stats), len(PORT_SCANNER_CONFIGS)
     )
     
@@ -333,18 +318,14 @@ def port_scan_flow(
         dynamic_timeout = calculate_timeout(domain_count)
         logger.info("动态计算超时时间: %d 秒（基于域名数量 %d）", dynamic_timeout, domain_count)
         
-        # Step 2 & 3: 提交任务并收集结果
-        futures = _submit_scan_tasks(
+        # Step 2 & 3: 串行执行扫描任务
+        tool_stats, result_files, processed_records, failed_tools = _run_scans_sequentially(
             domains_file=domains_file,
             port_scan_dir=port_scan_dir,
             scan_id=scan_id,
             target_id=target_id,
             domain_count=domain_count,
-            dynamic_timeout=dynamic_timeout
-        )
-        
-        tool_stats, result_files, processed_records, failed_tools = _collect_scan_results(
-            futures=futures,
+            dynamic_timeout=dynamic_timeout,
             target_name=target_name
         )
         
