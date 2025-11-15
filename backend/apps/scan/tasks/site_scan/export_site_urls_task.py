@@ -79,23 +79,13 @@ def export_site_urls_task(
                 ports_list = list(subdomain.ports.all())
                 
                 if not ports_list:
-                    # 如果没有端口，使用默认端口80和443
-                    default_ports = [80, 443]
-                    for port_num in default_ports:
-                        # 写入HTTP和HTTPS URL，默认端口不显示端口号
-                        if port_num == 80:
-                            http_url = f"http://{subdomain_name}"
-                        else:
-                            http_url = f"http://{subdomain_name}:{port_num}"
-                            
-                        if port_num == 443:
-                            https_url = f"https://{subdomain_name}"
-                        else:
-                            https_url = f"https://{subdomain_name}:{port_num}"
-                        
-                        f.write(f"{http_url}\n")
-                        f.write(f"{https_url}\n")
-                        total_urls += 2
+                    # 如果没有端口，使用默认协议端口组合
+                    # HTTP 使用默认端口80，HTTPS 使用默认端口443
+                    http_url = f"http://{subdomain_name}"
+                    https_url = f"https://{subdomain_name}"
+                    f.write(f"{http_url}\n")
+                    f.write(f"{https_url}\n")
+                    total_urls += 2
                 else:
                     # 如果有端口，使用实际端口
                     for port in ports_list:
