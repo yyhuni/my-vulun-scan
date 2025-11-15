@@ -348,6 +348,8 @@ def run_and_stream_save_directories_task(
     try:
         # 1. 查找站点
         try:
+            # 确保数据库连接健康（处理长时间运行后的连接失效）
+            _ensure_db_connection()
             website = WebSite.objects.get(url=site_url, target_id=target_id)
             logger.info("找到站点: %s (ID: %d)", site_url, website.id)
         except WebSite.DoesNotExist:
