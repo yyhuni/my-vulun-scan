@@ -21,20 +21,21 @@ HTTPX_CONFIGS = {
     }
 }
 
-def calculate_timeout(url_count: int) -> int:
+def calculate_timeout(url_count: int, max_timeout: int = 86400) -> int:
     """
-    根据URL数量动态计算扫描超时时间。
+    根据URL数量动态计算扫描超时时间（带上限保护）。
 
     规则：
     - 基础时间 base = 600 秒（10 分钟）
     - 每个URL额外增加 per_url = 1 秒
-    - 不设置最大上限（大量URL情况下允许更长超时，由外层流程兜底）
+    - 强制上限 max_timeout = 86400 秒（24 小时），防止资源耗尽
 
     Args:
         url_count: URL数量，必须为正整数
+        max_timeout: 最大超时时间（秒），默认 86400（24 小时）
 
     Returns:
-        int: 计算得到的超时时间（秒）
+        int: 计算得到的超时时间（秒），不超过 max_timeout
 
     Raises:
         ValueError: 当 url_count 为负数或 0 时抛出异常
@@ -46,7 +47,10 @@ def calculate_timeout(url_count: int) -> int:
 
     base = 600
     per_url = 1
-    return base + int(url_count * per_url)
+    timeout = base + int(url_count * per_url)
+    
+    # 强制上限，防止资源耗尽
+    return min(timeout, max_timeout)
 
 
 @flow(
