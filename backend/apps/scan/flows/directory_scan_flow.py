@@ -295,6 +295,12 @@ def directory_scan_flow(
             target_name=target_name
         )
         
+        # 检查是否所有站点都失败
+        if processed_sites == 0 and site_count > 0:
+            error_msg = f"所有站点扫描均失败 - 总站点数: {site_count}, 失败数: {len(failed_sites)}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
+        
         logger.info("="*60 + "\n✓ 目录扫描完成\n" + "="*60)
         
         return {

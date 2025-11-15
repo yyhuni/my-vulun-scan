@@ -268,6 +268,16 @@ def site_scan_flow(
             command, scan_id, target_id, site_scan_dir, timeout
         )
         
+        # 检查是否所有站点都失败
+        if save_result['created_websites'] == 0 and total_urls > 0:
+            error_msg = (
+                f"所有站点扫描均失败 - 总URL数: {total_urls}, "
+                f"处理记录: {save_result['processed_records']}, "
+                f"跳过（失败）: {save_result['skipped_failed']}"
+            )
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
+        
         logger.info("="*60 + "\n✓ 站点扫描完成\n" + "="*60)
         
         return {
