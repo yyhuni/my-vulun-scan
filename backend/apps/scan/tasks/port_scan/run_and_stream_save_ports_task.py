@@ -399,6 +399,226 @@ def _parse_naabu_stream_output(
     )
 
 
+def _validate_task_parameters(cmd: str, target_id: int, scan_id: int, cwd: Optional[str]) -> None:
+    """
+    验证任务参数的有效性
+    
+    Args:
+        cmd: 扫描命令
+        target_id: 目标ID
+        scan_id: 扫描ID
+        cwd: 工作目录
+        
+    Raises:
+        ValueError: 参数验证失败
+    """
+    if not cmd or not cmd.strip():
+        raise ValueError("扫描命令不能为空")
+    
+    if target_id is None:
+        raise ValueError("target_id 不能为 None，必须指定目标ID")
+        
+    if scan_id is None:
+        raise ValueError("scan_id 不能为 None，必须指定扫描ID")
+    
+    # 验证工作目录（如果指定）
+    if cwd and not Path(cwd).exists():
+        raise ValueError(f"工作目录不存在: {cwd}")
+
+
+def _initialize_task_resources(cmd: str, cwd: Optional[str], shell: bool, timeout: Optional[int]) -> tuple:
+    """
+    初始化任务资源
+    
+    Args:
+        cmd: 扫描命令
+        cwd: 工作目录
+        shell: 是否使用shell
+        timeout: 超时时间
+        
+    Returns:
+        tuple: (subdomain_cache, data_generator)
+    """
+    # 使用 LRU 缓存，自动淘汰最少使用的条目
+    subdomain_cache = LRUCache(maxsize=MAX_SUBDOMAIN_CACHE_SIZE)
+    
+    # 创建流式解析生成器（带超时控制）
+    data_generator = _parse_naabu_stream_output(cmd=cmd, cwd=cwd, shell=shell, timeout=timeout)
+    
+    return subdomain_cache, data_generator
+
+
+def _accumulate_batch_stats(total_stats: dict, batch_result: dict) -> None:
+    """
+    累加批次统计信息
+    
+    Args:
+        total_stats: 总统计信息字典
+        batch_result: 批次结果字典
+    """
+    total_stats['created_ips'] += batch_result.get('created_ips', 0)
+    total_stats['created_ports'] += batch_result.get('created_ports', 0)
+    total_stats['skipped_no_subdomain'] += batch_result.get('skipped_no_subdomain', 0)
+    total_stats['skipped_no_ip'] += batch_result.get('skipped_no_ip', 0)
+
+
+def _process_batch(
+    batch: list,
+    scan_id: int,
+    target_id: int,
+    batch_num: int,
+    subdomain_cache: LRUCache,
+    total_stats: dict,
+    failed_batches: list
+) -> None:
+    """
+    处理单个批次
+    
+    Args:
+        batch: 数据批次
+        scan_id: 扫描ID
+        target_id: 目标ID
+        batch_num: 批次编号
+        subdomain_cache: 子域名缓存
+        total_stats: 总统计信息
+        failed_batches: 失败批次列表
+    """
+    result = _save_batch_with_retry(
+        batch, scan_id, target_id, batch_num, subdomain_cache
+    )
+    
+    # 累计统计信息（失败时可能有部分数据已保存）
+    _accumulate_batch_stats(total_stats, result)
+    
+    if not result['success']:
+        failed_batches.append(batch_num)
+        logger.warning(
+            "批次 %d 保存失败，但已累计统计信息：创建IP=%d, 创建端口=%d",
+            batch_num, result.get('created_ips', 0), result.get('created_ports', 0)
+        )
+
+
+def _process_records_in_batches(
+    data_generator,
+    scan_id: int,
+    target_id: int,
+    subdomain_cache: LRUCache,
+    batch_size: int
+) -> dict:
+    """
+    流式处理记录并分批保存
+    
+    Args:
+        data_generator: 数据生成器
+        scan_id: 扫描ID
+        target_id: 目标ID
+        subdomain_cache: 子域名缓存
+        batch_size: 批次大小
+        
+    Returns:
+        dict: 处理统计信息
+        
+    Raises:
+        RuntimeError: 存在失败批次时抛出
+    """
+    total_records = 0
+    batch_num = 0
+    failed_batches = []
+    batch = []
+    
+    # 统计信息
+    total_stats = {
+        'created_ips': 0,
+        'created_ports': 0,
+        'skipped_no_subdomain': 0,
+        'skipped_no_ip': 0
+    }
+    
+    # 流式读取生成器并分批保存
+    for record in data_generator:
+        batch.append(record)
+        total_records += 1
+        
+        # 达到批次大小，执行保存
+        if len(batch) >= batch_size:
+            batch_num += 1
+            _process_batch(batch, scan_id, target_id, batch_num, subdomain_cache, total_stats, failed_batches)
+            batch = []  # 清空批次
+            
+            # 每20个批次输出进度
+            if batch_num % 20 == 0:
+                logger.info("进度: 已处理 %d 批次，%d 条记录", batch_num, total_records)
+    
+    # 保存最后一批
+    if batch:
+        batch_num += 1
+        _process_batch(batch, scan_id, target_id, batch_num, subdomain_cache, total_stats, failed_batches)
+    
+    # 检查失败批次
+    if failed_batches:
+        error_msg = (
+            f"流式保存端口扫描结果时出现失败批次，处理记录: {total_records}，"
+            f"失败批次: {failed_batches}"
+        )
+        logger.error(error_msg)
+        raise RuntimeError(error_msg)
+    
+    return {
+        'processed_records': total_records,
+        'batch_count': batch_num,
+        **total_stats
+    }
+
+
+def _build_final_result(stats: dict) -> dict:
+    """
+    构建最终结果并输出日志
+    
+    Args:
+        stats: 处理统计信息
+        
+    Returns:
+        dict: 最终结果
+    """
+    logger.info(
+        "✓ 流式保存完成 - 处理记录: %d（%d 批次），创建IP: %d，创建端口: %d，跳过（无域名）: %d，跳过（无IP）: %d",
+        stats['processed_records'], stats['batch_count'], stats['created_ips'], stats['created_ports'], 
+        stats['skipped_no_subdomain'], stats['skipped_no_ip']
+    )
+    
+    # 如果没有创建任何记录，给出明确提示
+    if stats['created_ips'] == 0 and stats['created_ports'] == 0:
+        logger.warning(
+            "⚠️  没有创建任何记录！可能原因：1) 域名不在数据库中 2) 命令输出格式问题 3) 重复数据被忽略"
+        )
+    
+    return {
+        'processed_records': stats['processed_records'],
+        'created_ips': stats['created_ips'],
+        'created_ports': stats['created_ports'],
+        'skipped_no_subdomain': stats['skipped_no_subdomain'],
+        'skipped_no_ip': stats['skipped_no_ip']
+    }
+
+
+def _cleanup_resources(data_generator) -> None:
+    """
+    清理任务资源
+    
+    Args:
+        data_generator: 数据生成器
+    """
+    # 注：LRUCache 是局部变量，函数结束时会自动释放，无需手动 clear()
+    
+    # 确保生成器被正确关闭
+    if data_generator is not None:
+        try:
+            data_generator.close()
+            logger.debug("已关闭数据生成器")
+        except Exception as gen_close_error:
+            logger.error("关闭生成器时出错: %s", gen_close_error)
+
+
 @task(
     name='run_and_stream_save_ports',
     retries=0,
@@ -418,10 +638,9 @@ def run_and_stream_save_ports_task(
     
     该任务将：
     1. 验证输入参数
-    2. 构建/执行扫描命令
-    3. 调用流式生成器实时解析输出
-    4. 按批调用 _save_batch_with_retry 写库
-    5. 汇总并返回结果统计
+    2. 初始化资源（缓存、生成器）
+    3. 流式处理记录并分批保存
+    4. 构建并返回结果统计
     
     Args:
         cmd: 端口扫描命令（如: "naabu -l domains.txt -json"）
@@ -457,125 +676,28 @@ def run_and_stream_save_ports_task(
         target_id, timeout if timeout else '无限制', cmd
     )
     
-    # 参数验证
-    if not cmd or not cmd.strip():
-        raise ValueError("扫描命令不能为空")
-    
-    if target_id is None:
-        raise ValueError("target_id 不能为 None，必须指定目标ID")
-        
-    if scan_id is None:
-        raise ValueError("scan_id 不能为 None，必须指定扫描ID")
-    
-    # 验证工作目录（如果指定）
-    if cwd and not Path(cwd).exists():
-        raise ValueError(f"工作目录不存在: {cwd}")
-    
-    # 初始化变量
-    total_records = 0
-    batch_num = 0
-    failed_batches = []
-    # 使用 LRU 缓存，自动淘汰最少使用的条目
-    subdomain_cache = LRUCache(maxsize=MAX_SUBDOMAIN_CACHE_SIZE)
     data_generator = None
     
-    # 统计信息
-    total_created_ips = 0
-    total_created_ports = 0
-    total_skipped_no_subdomain = 0
-    total_skipped_no_ip = 0
-    
     try:
-        # 创建流式解析生成器（带超时控制）
-        data_generator = _parse_naabu_stream_output(cmd=cmd, cwd=cwd, shell=shell, timeout=timeout)
-        batch = []
+        # 1. 验证参数
+        _validate_task_parameters(cmd, target_id, scan_id, cwd)
         
-        # 流式读取生成器并分批保存
-        for record in data_generator:
-
-            batch.append(record)
-            total_records += 1
-            
-            # 达到批次大小，执行保存
-            if len(batch) >= batch_size:
-                batch_num += 1
-                result = _save_batch_with_retry(
-                    batch, scan_id, target_id, batch_num, subdomain_cache
-                )
-                
-                # 无论成功与否，都累计统计信息（失败时可能有部分数据已保存）
-                total_created_ips += result.get('created_ips', 0)
-                total_created_ports += result.get('created_ports', 0)
-                total_skipped_no_subdomain += result.get('skipped_no_subdomain', 0)
-                total_skipped_no_ip += result.get('skipped_no_ip', 0)
-                
-                if not result['success']:
-                    failed_batches.append(batch_num)
-                    logger.warning(
-                        "批次 %d 保存失败，但已累计统计信息：创建IP=%d, 创建端口=%d",
-                        batch_num, result.get('created_ips', 0), result.get('created_ports', 0)
-                    )
-                
-                batch = []  # 清空批次
-                
-                # 每20个批次输出进度
-                if batch_num % 20 == 0:
-                    logger.info("进度: 已处理 %d 批次，%d 条记录", batch_num, total_records)
+        # 2. 初始化资源
+        subdomain_cache, data_generator = _initialize_task_resources(cmd, cwd, shell, timeout)
         
-        # 保存最后一批
-        if batch:
-            batch_num += 1
-            result = _save_batch_with_retry(
-                batch, scan_id, target_id, batch_num, subdomain_cache
-            )
-            
-            # 无论成功与否，都累计统计信息（失败时可能有部分数据已保存）
-            total_created_ips += result.get('created_ips', 0)
-            total_created_ports += result.get('created_ports', 0)
-            total_skipped_no_subdomain += result.get('skipped_no_subdomain', 0)
-            total_skipped_no_ip += result.get('skipped_no_ip', 0)
-            
-            if not result['success']:
-                failed_batches.append(batch_num)
-                logger.warning(
-                    "批次 %d 保存失败，但已累计统计信息：创建IP=%d, 创建端口=%d",
-                    batch_num, result.get('created_ips', 0), result.get('created_ports', 0)
-                )
-        
-        # 输出最终统计
-        if failed_batches:
-            error_msg = (
-                f"流式保存端口扫描结果时出现失败批次，处理记录: {total_records}，"
-                f"失败批次: {failed_batches}"
-            )
-            logger.error(error_msg)
-            raise RuntimeError(error_msg)
-        
-        logger.info(
-            "✓ 流式保存完成 - 处理记录: %d（%d 批次），创建IP: %d，创建端口: %d，跳过（无域名）: %d，跳过（无IP）: %d",
-            total_records, batch_num, total_created_ips, total_created_ports, 
-            total_skipped_no_subdomain, total_skipped_no_ip
+        # 3. 流式处理记录并分批保存
+        stats = _process_records_in_batches(
+            data_generator, scan_id, target_id, subdomain_cache, batch_size
         )
         
-        # 如果没有创建任何记录，给出明确提示
-        if total_created_ips == 0 and total_created_ports == 0:
-            logger.warning(
-                "⚠️  没有创建任何记录！可能原因：1) 域名不在数据库中 2) 命令输出格式问题 3) 重复数据被忽略"
-            )
-        
-        return {
-            'processed_records': total_records,
-            'created_ips': total_created_ips,
-            'created_ports': total_created_ports,
-            'skipped_no_subdomain': total_skipped_no_subdomain,
-            'skipped_no_ip': total_skipped_no_ip
-        }
+        # 4. 构建最终结果
+        return _build_final_result(stats)
         
     except subprocess.TimeoutExpired:
         # 超时异常直接向上传播，保留异常类型
         logger.error(
-            "端口扫描任务超时 - target_id=%s, 超时=%s秒, 已处理记录: %d",
-            target_id, timeout, total_records
+            "端口扫描任务超时 - target_id=%s, 超时=%s秒",
+            target_id, timeout
         )
         raise  # 直接重新抛出，不包装
     
@@ -585,13 +707,5 @@ def run_and_stream_save_ports_task(
         raise RuntimeError(error_msg) from e
     
     finally:
-        # 清理资源
-        # 注：LRUCache 是局部变量，函数结束时会自动释放，无需手动 clear()
-        
-        # 确保生成器被正确关闭
-        if data_generator is not None:
-            try:
-                data_generator.close()
-                logger.debug("已关闭数据生成器")
-            except Exception as gen_close_error:
-                logger.error("关闭生成器时出错: %s", gen_close_error)
+        # 5. 清理资源
+        _cleanup_resources(data_generator)
