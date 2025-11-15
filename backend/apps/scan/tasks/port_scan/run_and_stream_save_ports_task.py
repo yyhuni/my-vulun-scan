@@ -23,12 +23,12 @@
 import logging
 import json
 import subprocess
-import sys
 import time
 from pathlib import Path
 from prefect import task
 from typing import Generator, List, Optional
 from django.db import IntegrityError, OperationalError, DatabaseError
+from cachetools import LRUCache
 
 
 from apps.asset.repositories.django_subdomain_repository import DjangoSubdomainRepository
@@ -42,60 +42,10 @@ from apps.scan.utils.stream_command import stream_command
 
 logger = logging.getLogger(__name__)
 
-MAX_SUBDOMAIN_CACHE_BYTES = 50 * 1024 * 1024 # 50 MB
-
-def _approx_size_bytes(obj) -> int:
-    try:
-        return sys.getsizeof(obj)
-    except Exception:
-        return 0
-
-def _estimate_subdomain_cache_size(cache: dict) -> int:
-    size = _approx_size_bytes(cache)
-    for k, v in cache.items():
-        size += _approx_size_bytes(k)
-        # 仅估算关键字段，避免对 ORM 实例做深度遍历
-        if v is None:
-            continue
-        size += _approx_size_bytes(getattr(v, 'id', None))
-        size += _approx_size_bytes(getattr(v, 'name', None))
-        size += _approx_size_bytes(getattr(v, 'subdomain', None))
-        if not getattr(v, 'id', None) and not getattr(v, 'name', None):
-            size += _approx_size_bytes(str(v))
-    return size
-
-def _maybe_trim_subdomain_cache(cache: dict) -> bool:
-    """
-    检查并执行缓存淘汰（简单策略：超限时删除早期 50%）
-    
-    淘汰策略：
-    - 如果超过内存上限，删除最早插入的 50%（基于 dict 插入顺序，Python 3.7+）
-    
-    Args:
-        cache: dict 类型的缓存
-    
-    Returns:
-        bool: 是否执行了淘汰
-    """
-    try:
-        estimated_size = _estimate_subdomain_cache_size(cache)
-        if estimated_size > MAX_SUBDOMAIN_CACHE_BYTES:
-            # 删除最早插入的 50%
-            items_to_remove = len(cache) // 2
-            if items_to_remove > 0:
-                keys_to_remove = list(cache.keys())[:items_to_remove]
-                for key in keys_to_remove:
-                    del cache[key]
-                logger.warning(
-                    "Subdomain 缓存内存超限 (%d MB > %d MB)，已淘汰 %d 条最早插入的记录",
-                    estimated_size // 1024 // 1024, MAX_SUBDOMAIN_CACHE_BYTES // 1024 // 1024, items_to_remove
-                )
-                return True
-    except Exception as e:
-        # 估算失败时不影响主流程
-        logger.warning("缓存淘汰检查失败: %s", e)
-        return False
-    return False
+# LRU 缓存配置
+# 最大缓存条目数：10000 条域名记录
+# 优点：自动淘汰最少使用的条目，内存占用可控
+MAX_SUBDOMAIN_CACHE_SIZE = 10000
 
 
 def _save_batch_with_retry(
@@ -103,7 +53,7 @@ def _save_batch_with_retry(
     scan_id: int,
     target_id: int,
     batch_num: int,
-    subdomain_cache: dict,
+    subdomain_cache: LRUCache,
     max_retries: int = 3
 ) -> dict:
     """
@@ -186,7 +136,7 @@ def _save_batch_with_retry(
     }
 
 
-def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int, subdomain_cache: dict, max_retries: int = 3) -> dict:
+def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int, subdomain_cache: LRUCache) -> dict:
     """
     保存一个批次的数据到数据库（使用 Repository 模式）
     
@@ -204,7 +154,18 @@ def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int, subdo
         scan_id: 扫描任务 ID
         target_id: 目标 ID
         batch_num: 批次编号（用于日志）
-        max_retries: 最大重试次数（默认3次）
+        subdomain_cache: 子域名缓存字典
+    
+    Returns:
+        dict: 包含创建和跳过记录的统计信息
+    
+    Raises:
+        IntegrityError: 数据完整性错误
+        OperationalError: 数据库操作错误
+        DatabaseError: 其他数据库错误
+    
+    Note:
+        此函数不包含重试逻辑，由外层 _save_batch_with_retry 负责重试
     """
     # 初始化 Repository
     subdomain_repo = DjangoSubdomainRepository()
@@ -215,215 +176,137 @@ def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int, subdo
     skipped_no_subdomain = 0
     skipped_no_ip = 0
     
-    # 重试机制：确保数据最终一致性
-    for attempt in range(max_retries):
-        try:
-            # ========== Step 1: 批量查询 Subdomain（读操作，无需事务）==========
-            # 收集当前批次所有 host
-            hosts = {record['host'] for record in batch}
-            
-            # 先从缓存命中
-            cached_hosts = hosts & set(subdomain_cache.keys())
-            
-            # 对未命中的一次性批量查库（带重试机制）
-            missing_hosts = hosts - cached_hosts
-            if missing_hosts:
-                # 对 Subdomain 查询添加独立的重试机制
-                for query_attempt in range(3):  # 最多重试3次
-                    try:
-                        new_data = subdomain_repo.get_by_names_and_target_id(missing_hosts, target_id)
-                        # 查到的写回缓存
-                        subdomain_cache.update(new_data)
-                        # 查不到的也标记为 None，避免重复查询
-                        for host in missing_hosts:
-                            if host not in subdomain_cache:
-                                subdomain_cache[host] = None
-                        break  # 查询成功，跳出重试循环
-                        
-                    except (OperationalError, DatabaseError) as e:
-                        # 数据库操作错误（连接断开、超时等）- 可重试
-                        logger.warning(
-                            "批次 %d: Subdomain 查询失败（尝试 %d/3）: %s",
-                            batch_num, query_attempt + 1, str(e)[:100]
-                        )
-                        if query_attempt == 2:  # 最后一次尝试
-                            logger.error(
-                                "批次 %d: Subdomain 查询失败，已达最大重试次数，将抛出异常",
-                                batch_num
-                            )
-                            raise  # 重新抛出，让外层处理
-                        # 指数退避，带上限：min(2^attempt, 30)
-                        wait_time = min(2 ** query_attempt, 30)
-                        time.sleep(wait_time)
-                        
-                    except Exception as e:
-                        # 非预期错误 - 不重试，直接抛出
-                        logger.error(
-                            "批次 %d: Subdomain 查询遇到非预期错误: %s (%s)",
-                            batch_num, str(e), type(e).__name__
-                        )
-                        raise
-            
-            # 构建 subdomain_map（只包含缓存中存在且值不为 None 的）
-            subdomain_map = {h: subdomain_cache[h] for h in hosts if h in subdomain_cache and subdomain_cache[h] is not None}
-            
-            # 缓存淘汰延迟到批次处理完成后（在 IP/Port 处理之后）
-            
-            # ========== Step 2: 准备 IPAddress 数据（内存操作，无需事务）==========
-            # 提取所有唯一的 (subdomain_id, ip) 组合
-            ip_set = set()
-            
-            for record in batch:
-                host = record['host']
-                ip_addr = record['ip']
-                
-                subdomain = subdomain_map.get(host)
-                if not subdomain:
-                    skipped_no_subdomain += 1
-                    continue
-                
-                ip_key = (subdomain.id, ip_addr)
-                ip_set.add(ip_key)
-            
-            # ========== Step 3: 批量创建 IPAddress（Repository 内部独立短事务）==========
-            ip_items = [
-                IPAddressDTO(
-                    subdomain_id=subdomain_id,
-                    ip=ip_addr,
-                    target_id=target_id,
-                    scan_id=scan_id
-                )
-                for subdomain_id, ip_addr in ip_set
-            ]
-            
-            # 批量插入（忽略已存在的记录）
-            if ip_items:
-                ip_repo.bulk_create_ignore_conflicts(ip_items)
-            
-            # ========== Step 4: 批量查询所有 IPAddress（读操作，无需事务）==========
-            ip_map = {}
-            if ip_set:
-                # 从 ip_set 中提取查询条件
-                subdomain_ids = {subdomain_id for subdomain_id, _ in ip_set}
-                ip_addrs = {ip_addr for _, ip_addr in ip_set}
-                
-                # 使用 Repository 批量查询
-                ip_map = ip_repo.get_by_subdomain_and_ips(subdomain_ids, ip_addrs)
-                
-                # 验证查询结果的完整性
-                expected_count = len(ip_set)
-                actual_count = len(ip_map)
-                if actual_count < expected_count:
-                    logger.warning(
-                        "批次 %d: IPAddress 查询结果不完整 - 预期 %d，实际 %d",
-                        batch_num, expected_count, actual_count
-                    )
-                    
-                    # 短暂延迟后重试查询（给数据库提交更多时间）
-                    time.sleep(1)
-                    ip_map_retry = ip_repo.get_by_subdomain_and_ips(subdomain_ids, ip_addrs)
-                    
-                    if len(ip_map_retry) > actual_count:
-                        logger.info(
-                            "批次 %d: 重试查询成功 - 找到 %d 条记录",
-                            batch_num, len(ip_map_retry)
-                        )
-                        ip_map = ip_map_retry
-                    else:
-                        logger.debug(
-                            "批次 %d: 重试查询无改善，可能是域名不存在或数据不一致",
-                            batch_num
-                        )
-            
-            # ========== Step 5: 批量创建 Port（Repository 内部独立短事务）==========
-            port_items = []
-            
-            for record in batch:
-                host = record['host']
-                ip_addr = record['ip']
-                port_num = record['port']
-                
-                subdomain = subdomain_map.get(host)
-                if not subdomain:
-                    continue
-                
-                # 从映射中获取 IPAddress 对象
-                ip_key = (subdomain.id, ip_addr)
-                ip_obj = ip_map.get(ip_key)
-                
-                if not ip_obj:
-                    skipped_no_ip += 1
-                    logger.warning(
-                        "批次 %d: 未找到 IP (%s, %s)，跳过端口 %d",
-                        batch_num, host, ip_addr, port_num
-                    )
-                    continue
-                
-                port_items.append(
-                    PortDTO(
-                        ip_address_id=ip_obj.id,
-                        subdomain_id=subdomain.id,
-                        number=port_num,
-                        service_name=''  # 可以后续添加服务识别
-                    )
-                )
-            
-            # 批量插入 Port（忽略重复）
-            if port_items:
-                port_repo.bulk_create_ignore_conflicts(port_items)
-            
-            # 🎉 成功完成，退出重试循环
-            # 批次处理完成后执行缓存淘汰检查
-            if _maybe_trim_subdomain_cache(subdomain_cache):
-                logger.warning("Subdomain 缓存超过上限，已清空以避免 OOM")
-            
-            return {
-                'created_ips': len(ip_items),
-                'created_ports': len(port_items),
-                'skipped_no_subdomain': skipped_no_subdomain,
-                'skipped_no_ip': skipped_no_ip
-            }
-            
-        except IntegrityError as e:
-            # 数据完整性错误（IntegrityError 是 DatabaseError 的子类，需先处理）
-            logger.error(
-                "批次 %d 数据完整性错误: %s，不进行重试",
-                batch_num, str(e)
-            )
-            # 不重试，直接返回失败结果
-            break
-        
-        except (OperationalError, DatabaseError) as e:
-            # 数据库操作错误（连接断开、超时等）
-            if attempt < max_retries - 1:
-                # 还有重试机会
-                logger.warning(
-                    "批次 %d 保存失败（尝试 %d/%d）: %s，将在 1 秒后重试",
-                    batch_num, attempt + 1, max_retries, str(e)
-                )
-                time.sleep(1)  # 短暂延迟后重试
-            else:
-                # 已达最大重试次数
-                logger.error(
-                    "批次 %d 保存失败，已达最大重试次数 %d: %s",
-                    batch_num, max_retries, str(e)
-                )
-                break
-        
-        except Exception as e:
-            # 其他未预期的错误
-            logger.error(
-                "批次 %d 未知错误: %s (%s)，不进行重试",
-                batch_num, str(e), type(e).__name__
-            )
-            break
+    # ========== Step 1: 批量查询 Subdomain（读操作，无需事务）==========
+    # 收集当前批次所有 host
+    hosts = {record['host'] for record in batch}
     
-    # 如果所有重试都失败，返回失败结果
+    # 先从缓存命中
+    cached_hosts = hosts & set(subdomain_cache.keys())
+    
+    # 对未命中的一次性批量查库
+    missing_hosts = hosts - cached_hosts
+    if missing_hosts:
+        new_data = subdomain_repo.get_by_names_and_target_id(missing_hosts, target_id)
+        # 查到的写回缓存
+        subdomain_cache.update(new_data)
+        # 查不到的也标记为 None，避免重复查询
+        for host in missing_hosts:
+            if host not in subdomain_cache:
+                subdomain_cache[host] = None
+    
+    # 构建 subdomain_map（只包含缓存中存在且值不为 None 的）
+    subdomain_map = {h: subdomain_cache[h] for h in hosts if h in subdomain_cache and subdomain_cache[h] is not None}
+    
+    # ========== Step 2: 准备 IPAddress 数据（内存操作，无需事务）==========
+    # 提取所有唯一的 (subdomain_id, ip) 组合
+    ip_set = set()
+    
+    for record in batch:
+        host = record['host']
+        ip_addr = record['ip']
+        
+        subdomain = subdomain_map.get(host)
+        if not subdomain:
+            skipped_no_subdomain += 1
+            continue
+        
+        ip_key = (subdomain.id, ip_addr)
+        ip_set.add(ip_key)
+    
+    # ========== Step 3: 批量创建 IPAddress（Repository 内部独立短事务）==========
+    ip_items = [
+        IPAddressDTO(
+            subdomain_id=subdomain_id,
+            ip=ip_addr,
+            target_id=target_id,
+            scan_id=scan_id
+        )
+        for subdomain_id, ip_addr in ip_set
+    ]
+    
+    # 批量插入（忽略已存在的记录）
+    if ip_items:
+        ip_repo.bulk_create_ignore_conflicts(ip_items)
+    
+    # ========== Step 4: 批量查询所有 IPAddress（读操作，无需事务）==========
+    ip_map = {}
+    if ip_set:
+        # 从 ip_set 中提取查询条件
+        subdomain_ids = {subdomain_id for subdomain_id, _ in ip_set}
+        ip_addrs = {ip_addr for _, ip_addr in ip_set}
+        
+        # 使用 Repository 批量查询
+        ip_map = ip_repo.get_by_subdomain_and_ips(subdomain_ids, ip_addrs)
+        
+        # 验证查询结果的完整性
+        expected_count = len(ip_set)
+        actual_count = len(ip_map)
+        if actual_count < expected_count:
+            logger.warning(
+                "批次 %d: IPAddress 查询结果不完整 - 预期 %d，实际 %d",
+                batch_num, expected_count, actual_count
+            )
+            
+            # 短暂延迟后重试查询（给数据库提交更多时间）
+            time.sleep(1)
+            ip_map_retry = ip_repo.get_by_subdomain_and_ips(subdomain_ids, ip_addrs)
+            
+            if len(ip_map_retry) > actual_count:
+                logger.info(
+                    "批次 %d: 重试查询成功 - 找到 %d 条记录",
+                    batch_num, len(ip_map_retry)
+                )
+                ip_map = ip_map_retry
+            else:
+                logger.debug(
+                    "批次 %d: 重试查询无改善，可能是域名不存在或数据不一致",
+                    batch_num
+                )
+    
+    # ========== Step 5: 批量创建 Port（Repository 内部独立短事务）==========
+    port_items = []
+    
+    for record in batch:
+        host = record['host']
+        ip_addr = record['ip']
+        port_num = record['port']
+        
+        subdomain = subdomain_map.get(host)
+        if not subdomain:
+            continue
+        
+        # 从映射中获取 IPAddress 对象
+        ip_key = (subdomain.id, ip_addr)
+        ip_obj = ip_map.get(ip_key)
+        
+        if not ip_obj:
+            skipped_no_ip += 1
+            logger.warning(
+                "批次 %d: 未找到 IP (%s, %s)，跳过端口 %d",
+                batch_num, host, ip_addr, port_num
+            )
+            continue
+        
+        port_items.append(
+            PortDTO(
+                ip_address_id=ip_obj.id,
+                subdomain_id=subdomain.id,
+                number=port_num,
+                service_name=''  # 可以后续添加服务识别
+            )
+        )
+    
+    # 批量插入 Port（忽略重复）
+    if port_items:
+        port_repo.bulk_create_ignore_conflicts(port_items)
+    
+    # LRU 缓存会自动管理淘汰，无需手动检查
+    
     return {
-        'created_ips': 0,
-        'created_ports': 0,
-        'skipped_no_subdomain': 0,
-        'skipped_no_ip': 0
+        'created_ips': len(ip_items),
+        'created_ports': len(port_items),
+        'skipped_no_subdomain': skipped_no_subdomain,
+        'skipped_no_ip': skipped_no_ip
     }
 
 def _parse_naabu_stream_output(
@@ -601,7 +484,8 @@ def run_and_stream_save_ports_task(
     total_records = 0
     batch_num = 0
     failed_batches = []
-    subdomain_cache = {}
+    # 使用 LRU 缓存，自动淘汰最少使用的条目
+    subdomain_cache = LRUCache(maxsize=MAX_SUBDOMAIN_CACHE_SIZE)
     data_generator = None
     
     # 统计信息
@@ -711,21 +595,12 @@ def run_and_stream_save_ports_task(
     
     finally:
         # 清理资源
-        try:
-            # 清理缓存（释放内存）
-            if subdomain_cache:
-                cache_size = len(subdomain_cache)
-                subdomain_cache.clear()
-                logger.debug("已清理 subdomain_cache，释放 %d 条缓存记录", cache_size)
-            
-            # 确保生成器被正确关闭
-            if data_generator is not None:
-                try:
-                    data_generator.close()
-                    logger.debug("已关闭数据生成器")
-                except Exception as gen_close_error:
-                    logger.warning("关闭生成器时出错: %s", gen_close_error)
+        # 注：LRUCache 是局部变量，函数结束时会自动释放，无需手动 clear()
         
-        except Exception as cleanup_error:
-            # 清理失败不应影响主流程，只记录警告
-            logger.warning("资源清理时出错: %s", cleanup_error)
+        # 确保生成器被正确关闭
+        if data_generator is not None:
+            try:
+                data_generator.close()
+                logger.debug("已关闭数据生成器")
+            except Exception as gen_close_error:
+                logger.warning("关闭生成器时出错: %s", gen_close_error)
