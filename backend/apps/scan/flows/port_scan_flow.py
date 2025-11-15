@@ -265,7 +265,7 @@ def port_scan_flow(
     
     工作流程：
         Step 1: 导出域名列表到文件（供扫描工具使用）
-        Step 2: 并行运行端口扫描工具并实时解析输出
+        Step 2: 串行执行扫描任务，运行端口扫描工具并实时解析输出
         Step 3: 流式保存到数据库（Subdomain → IPAddress → Port）
 
     Args:

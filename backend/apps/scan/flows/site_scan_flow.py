@@ -17,7 +17,6 @@ logger = logging.getLogger(__name__)
 HTTPX_CONFIGS = {
     'httpx': {
         'command': '$HOME/go/bin/httpx -l {target_file} -status-code -content-type -content-length -location -title -server -body-preview -tech-detect -cdn -vhost -random-agent -json',
-        'timeout': 1800  # 30分钟超时
     }
 }
 

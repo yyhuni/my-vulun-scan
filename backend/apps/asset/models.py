@@ -397,4 +397,91 @@ class Port(models.Model):
     def __str__(self):
         return str(self.number or f'Port {self.id}')
 
+class Directory(models.Model):
+    """
+    目录模型
+    """
+
+    id = models.AutoField(primary_key=True)
+    website = models.ForeignKey(
+        'Website',
+        on_delete=models.CASCADE,
+        related_name='directories',
+        help_text='所属的站点（主关联字段，表示所属关系，不能为空）'
+    )
+    target = models.ForeignKey(
+        'targets.Target',  # 使用字符串引用
+        on_delete=models.CASCADE,
+        related_name='directories',
+        null=True,
+        blank=True,
+        help_text='所属的扫描目标（冗余字段，用于快速查询）'
+    )
+    scan = models.ForeignKey(
+        'scan.Scan',  # 使用字符串引用
+        on_delete=models.CASCADE,
+        related_name='directories',
+        null=True,
+        blank=True,
+        help_text='所属的扫描任务（冗余字段，用于快速查询）'
+    )
+    
+    url = models.CharField(
+        null=False,
+        blank=False,
+        max_length=2000,
+        help_text='完整请求 URL'
+    )
+    status = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text='HTTP 响应状态码'
+    )
+    length = models.BigIntegerField(
+        null=True,
+        blank=True,
+        help_text='响应体字节大小（Content-Length 或实际长度）'
+    )
+    words = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text='响应体中单词数量（按空格分割）'
+    )
+    lines = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text='响应体行数（按换行符分割）'
+    )
+    content_type = models.CharField(
+        max_length=200,
+        blank=True,
+        default='',
+        help_text='响应头 Content-Type 值'
+    )
+    duration = models.BigIntegerField(
+        null=True,
+        blank=True,
+        help_text='请求耗时（单位：纳秒）'
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
+
+    class Meta:
+        db_table = 'directory'
+        verbose_name = '目录'
+        verbose_name_plural = '目录'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['-created_at']),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['website', 'url'],    
+                name='unique_url_website'   # 唯一约束，确保一个站点下没有重复的目录 URL
+            ),
+        ]
+
+    def __str__(self):
+        return str(self.url or f'Directory {self.id}')
+
 
