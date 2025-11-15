@@ -40,6 +40,7 @@ from apps.asset.repositories.port_repository import PortDTO
 from .types import PortScanRecord
 
 from apps.scan.utils.stream_command import stream_command
+from apps.common.validators import validate_port
 
 logger = logging.getLogger(__name__)
 
@@ -397,24 +398,17 @@ def _parse_naabu_stream_output(
                     error_lines += 1
                     continue
                 
-                # 确保端口是整数且在有效范围内
-                try:
-                    port = int(port)
-                    if port < 1 or port > 65535:
-                        logger.warning("端口号无效 (%d)，跳过", port)
-                        error_lines += 1
-                        continue
-                except (ValueError, TypeError):
-                    logger.warning("端口号格式错误，跳过: %s", port)
+                # 验证端口号有效性
+                is_valid, port_num = validate_port(port)
+                if not is_valid:
                     error_lines += 1
                     continue
                 
                 # yield 一条有效记录
-
                 yield {
                     'host': host,
                     'ip': ip,
-                    'port': port,
+                    'port': port_num,
                 }
                 
             except Exception as e:

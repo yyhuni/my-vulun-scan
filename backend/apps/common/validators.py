@@ -1,6 +1,9 @@
-"""域名和目标验证工具函数"""
+"""域名、IP、端口和目标验证工具函数"""
 import ipaddress
+import logging
 import validators
+
+logger = logging.getLogger(__name__)
 
 
 def validate_domain(domain: str) -> None:
@@ -97,3 +100,40 @@ def detect_target_type(name: str) -> str:
     
     # 无法识别的格式
     raise ValueError(f"无法识别的目标格式: {name}，必须是域名、IP地址或CIDR范围")
+
+
+def validate_port(port: any) -> tuple[bool, int | None]:
+    """
+    验证并转换端口号
+    
+    Args:
+        port: 待验证的端口号（可能是字符串、整数或其他类型）
+    
+    Returns:
+        tuple: (is_valid, port_number)
+            - is_valid: 端口是否有效
+            - port_number: 有效时为整数端口号，无效时为 None
+    
+    验证规则：
+        1. 必须能转换为整数
+        2. 必须在 1-65535 范围内
+    
+    示例：
+        >>> is_valid, port_num = validate_port(8080)
+        >>> is_valid, port_num
+        (True, 8080)
+        
+        >>> is_valid, port_num = validate_port("invalid")
+        >>> is_valid, port_num
+        (False, None)
+    """
+    try:
+        port_num = int(port)
+        if 1 <= port_num <= 65535:
+            return True, port_num
+        else:
+            logger.warning("端口号超出有效范围 (1-65535): %d", port_num)
+            return False, None
+    except (ValueError, TypeError):
+        logger.warning("端口号格式错误，无法转换为整数: %s", port)
+        return False, None
