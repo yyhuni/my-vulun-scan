@@ -64,17 +64,17 @@ const data = {
       icon: IconDashboard,
     },
     {
-      title: "组织管理", // 组织管理
+      title: "组织", // 组织
       url: "/organization/",
       icon: IconUsers,
     },
     {
-      title: "目标管理", // 目标管理
+      title: "目标", // 目标
       url: "/target/",
       icon: IconListDetails,
     },
     {
-      title: "扫描管理", // 扫描管理
+      title: "扫描", // 扫描
       url: "/scan/",
       icon: IconRadar,
       items: [

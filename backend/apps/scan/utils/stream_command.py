@@ -1,6 +1,7 @@
 import logging
 import re
 import subprocess
+import threading
 from typing import Generator, Optional
 
 logger = logging.getLogger(__name__)
@@ -11,7 +12,8 @@ def stream_command(
     cwd: Optional[str] = None,
     shell: bool = False,
     encoding: str = 'utf-8',
-    suffix_char: Optional[str] = None
+    suffix_char: Optional[str] = None,
+    timeout: Optional[int] = None
 ) -> Generator[str, None, None]:
     """以流式运行命令,逐行返回输出。
     
@@ -21,9 +23,13 @@ def stream_command(
         shell: 是否使用shell执行
         encoding: 编码格式
         suffix_char: 末尾后缀字符
+        timeout: 命令执行超时时间（秒），None 表示不设置超时
     
     Yields:
         每行输出的内容（字符串）
+        
+    Raises:
+        subprocess.TimeoutExpired: 命令执行超时
     """
     # 记录执行的命令，便于调试和日志追踪
     logger.info(f"执行命令: {cmd}")
@@ -45,10 +51,29 @@ def stream_command(
         encoding=encoding,  # 指定编码格式
         shell=shell
     )
+        
+    # 超时控制：使用 Timer 在指定时间后终止进程
+    timed_out = False
+        
+    def _kill_when_timeout():
+        nonlocal timed_out
+        timed_out = True
+        if process.poll() is None:  # 进程还在运行
+            logger.warning(f"命令执行超时（{timeout}秒），正在终止进程: {cmd}")
+            process.kill()
+        
+    timer = None
+    if timeout is not None:
+        timer = threading.Timer(timeout, _kill_when_timeout)
+        timer.start()
 
     try:
         # 逐行读取进程输出，直到EOF（空字符串）
-        for line in iter(lambda: process.stdout.readline(), ''):
+        # stdout 不会为 None，因为我们明确设置了 stdout=subprocess.PIPE
+        stdout = process.stdout
+        assert stdout is not None, "stdout should not be None when stdout=PIPE"
+        
+        for line in iter(lambda: stdout.readline(), ''):
             if not line:
                 break
             
@@ -73,9 +98,28 @@ def stream_command(
             yield line
     
     finally:
-        # 确保进程被正确清理，即使发生异常也会执行
+        # 取消定时器（如果还没触发）
+        if timer:
+            timer.cancel()
+        
+        # 确保进程被正确清理
+        if process.poll() is None:
+            # 进程还在运行，先尝试优雅终止
+            process.terminate()
+            try:
+                process.wait(timeout=5)  # 给5秒时间优雅退出
+            except subprocess.TimeoutExpired:
+                # 仍未退出，强制杀死
+                process.kill()
+                process.wait()
+        
         # wait()会阻塞直到进程结束，返回退出码
         exit_code = process.wait()
+        
+        # 如果是超时导致的终止，抛出标准异常
+        if timed_out:
+            raise subprocess.TimeoutExpired(cmd, timeout if timeout else 0)
+        
         # 记录异常退出的情况
         if exit_code != 0:
             logger.warning(f"命令执行失败，退出码: {exit_code}")

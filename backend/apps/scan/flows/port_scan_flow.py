@@ -22,7 +22,6 @@ logger = logging.getLogger(__name__)
 PORT_SCANNER_CONFIGS = {
     'naabu': {
         'command': 'naabu -exclude-cdn -top-ports 100 -c 30 -rate 150 -timeout 50 -list {target_file} -o {output_file} -json',
-        'timeout': 1200
     }
 }
 
@@ -167,6 +166,14 @@ def port_scan_flow(
                 target_file=domains_file,
                 output_file=output_file
             )
+            
+            # 使用动态计算的超时（基于域名数量）
+            timeout = dynamic_timeout
+            logger.info(
+                "工具 %s 超时配置: %d 秒（动态计算，基于 %d 个域名）",
+                tool_name, timeout, domain_count
+            )
+            
             # 提交任务到 Prefect Task Queue 并获取 Future 对象
             future = run_and_stream_save_ports_task.submit(
                 cmd=command,
@@ -174,12 +181,14 @@ def port_scan_flow(
                 target_id=target_id,
                 cwd=str(port_scan_dir),
                 shell=True,
-                batch_size=500
+                batch_size=500,
+                timeout=timeout  # 透传超时参数
             )
             futures[tool_name] = {
                 'future': future,
                 'output_file': output_file,
-                'command': command
+                'command': command,
+                'timeout': timeout
             }
         
         processed_records = 0

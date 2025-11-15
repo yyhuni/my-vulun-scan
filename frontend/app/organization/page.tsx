@@ -16,7 +16,7 @@ export default function OrganizationPage() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <Building2 />
-            组织管理
+            组织
           </h2>
           <p className="text-muted-foreground">
             管理和查看系统中的所有组织信息

@@ -9,7 +9,7 @@ export default function AllTargetsPage() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <Target />
-            目标管理
+            目标
           </h2>
           <p className="text-muted-foreground">
             管理系统中的所有目标信息

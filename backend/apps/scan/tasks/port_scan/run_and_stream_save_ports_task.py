@@ -428,7 +428,8 @@ def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int, subdo
 def _parse_naabu_stream_output(
     cmd: str,
     cwd: Optional[str] = None,
-    shell: bool = False
+    shell: bool = False,
+    timeout: Optional[int] = None
 ) -> Generator[PortScanRecord, None, None]:
     """
     流式解析 naabu 端口扫描命令输出
@@ -440,6 +441,7 @@ def _parse_naabu_stream_output(
         cmd: naabu 端口扫描命令（如: "naabu -l domains.txt -json"）
         cwd: 工作目录
         shell: 是否使用 shell 执行
+        timeout: 命令执行超时时间（秒），None 表示不设置超时
     
     Yields:
         PortScanRecord: 每次 yield 一条解析后的端口记录，格式：
@@ -455,8 +457,8 @@ def _parse_naabu_stream_output(
     error_lines = 0
     
     try:
-        # 使用 stream_command 获取实时输出流
-        for line in stream_command(cmd=cmd, cwd=cwd, shell=shell):
+        # 使用 stream_command 获取实时输出流（带超时控制）
+        for line in stream_command(cmd=cmd, cwd=cwd, shell=shell, timeout=timeout):
             total_lines += 1
             
             try:
@@ -533,7 +535,8 @@ def run_and_stream_save_ports_task(
     target_id: int,
     cwd: Optional[str] = None,
     shell: bool = False,
-    batch_size: int = 500
+    batch_size: int = 500,
+    timeout: Optional[int] = None
 ) -> dict:
     """
     执行端口扫描命令并流式保存结果到数据库
@@ -552,6 +555,7 @@ def run_and_stream_save_ports_task(
         cwd: 工作目录（可选）
         shell: 是否使用 shell 执行（默认 False）
         batch_size: 批量保存大小（默认500）
+        timeout: 命令执行超时时间（秒），None 表示不设置超时
     
     Returns:
         dict: {
@@ -565,6 +569,7 @@ def run_and_stream_save_ports_task(
     Raises:
         ValueError: 参数验证失败
         RuntimeError: 命令执行或数据库操作失败
+        subprocess.TimeoutExpired: 命令执行超时
     
     Performance:
         - 流式处理，实时解析命令输出
@@ -573,8 +578,8 @@ def run_and_stream_save_ports_task(
         - 使用事务确保数据一致性
     """
     logger.info(
-        "开始执行流式端口扫描任务 - target_id=%s, 命令: %s", 
-        target_id, cmd
+        "开始执行流式端口扫描任务 - target_id=%s, 超时=%s秒, 命令: %s", 
+        target_id, timeout if timeout else '无限制', cmd
     )
     
     # 参数验证
@@ -605,8 +610,8 @@ def run_and_stream_save_ports_task(
     total_skipped_no_ip = 0
     
     try:
-        # 创建流式解析生成器
-        data_generator = _parse_naabu_stream_output(cmd=cmd, cwd=cwd, shell=shell)
+        # 创建流式解析生成器（带超时控制）
+        data_generator = _parse_naabu_stream_output(cmd=cmd, cwd=cwd, shell=shell, timeout=timeout)
         batch = []
         
         # 流式读取生成器并分批保存
