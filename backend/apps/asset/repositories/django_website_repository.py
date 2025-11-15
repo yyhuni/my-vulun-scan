@@ -53,10 +53,16 @@ class DjangoWebSiteRepository(WebSiteRepository):
             ]
 
             with transaction.atomic():
-                # 批量插入，忽略冲突
+                # 批量插入或更新
+                # 如果URL和子域名已存在，则更新探测字段，但不更新 scan_id（保留原始扫描任务关联）
+                # 唯一约束已在模型 Meta.constraints 中定义，此处无需重复指定
                 WebSite.objects.bulk_create(
                     website_objects,
-                    ignore_conflicts=True,
+                    update_conflicts=True,
+                    update_fields=[
+                        'location', 'title', 'webserver', 'body_preview',
+                        'content_type', 'tech', 'status_code', 'content_length', 'vhost'
+                    ]
                 )
 
             logger.debug(f"成功处理 {len(items)} 条 WebSite 记录")
