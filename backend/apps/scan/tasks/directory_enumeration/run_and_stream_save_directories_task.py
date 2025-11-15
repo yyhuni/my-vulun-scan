@@ -145,8 +145,9 @@ def _parse_ffuf_stream_output(
                 
     except subprocess.TimeoutExpired as e:
         # 超时异常：简洁输出，不显示堆栈
-        logger.error("流式解析命令输出失败: %s", e)
-        raise
+        error_msg = f"流式解析命令输出超时 - 命令执行超过 {timeout} 秒"
+        logger.error(error_msg)
+        raise RuntimeError(error_msg) from e
     except Exception as e:
         # 其他异常：输出详细堆栈以便调试
         logger.error("流式解析命令输出失败: %s", e, exc_info=True)
