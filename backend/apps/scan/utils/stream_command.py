@@ -103,18 +103,19 @@ def stream_command(
             timer.cancel()
         
         # 确保进程被正确清理
+        exit_code = None
         if process.poll() is None:
             # 进程还在运行，先尝试优雅终止
             process.terminate()
             try:
-                process.wait(timeout=5)  # 给5秒时间优雅退出
+                exit_code = process.wait(timeout=5)  # 给5秒时间优雅退出
             except subprocess.TimeoutExpired:
                 # 仍未退出，强制杀死
                 process.kill()
-                process.wait()
-        
-        # wait()会阻塞直到进程结束，返回退出码
-        exit_code = process.wait()
+                exit_code = process.wait()
+        else:
+            # 进程已经结束，直接获取退出码
+            exit_code = process.returncode
         
         # 如果是超时导致的终止，抛出标准异常
         if timed_out_event.is_set():

@@ -29,6 +29,196 @@ PORT_SCANNER_CONFIGS = {
     }
 }
 
+def _setup_port_scan_directory(scan_workspace_dir: str) -> Path:
+    """
+    创建并验证端口扫描工作目录
+    
+    Args:
+        scan_workspace_dir: 扫描工作空间目录
+        
+    Returns:
+        Path: 端口扫描目录路径
+        
+    Raises:
+        RuntimeError: 目录创建或验证失败
+    """
+    port_scan_dir = Path(scan_workspace_dir) / 'port_scan'
+    port_scan_dir.mkdir(parents=True, exist_ok=True)
+    
+    if not port_scan_dir.is_dir():
+        raise RuntimeError(f"端口扫描目录创建失败: {port_scan_dir}")
+    if not os.access(port_scan_dir, os.W_OK):
+        raise RuntimeError(f"端口扫描目录不可写: {port_scan_dir}")
+    
+    return port_scan_dir
+
+
+def _export_target_domains(target_id: int, port_scan_dir: Path) -> tuple[str, int]:
+    """
+    导出目标域名到文件
+    
+    Args:
+        target_id: 目标 ID
+        port_scan_dir: 端口扫描目录
+        
+    Returns:
+        tuple: (domains_file, domain_count)
+        
+    Raises:
+        ValueError: 域名数量为 0
+    """
+    logger.info("Step 1: 导出目标域名列表")
+    
+    domains_file = str(port_scan_dir / 'domains.txt')
+    export_result = export_domains_task(
+        target_id=target_id,
+        output_file=domains_file,
+        batch_size=1000  # 每次读取 1000 条，优化内存占用
+    )
+    
+    domain_count = export_result['total_count']
+    
+    logger.info(
+        "✓ 域名导出完成 - 文件: %s, 数量: %d",
+        export_result['output_file'],
+        domain_count
+    )
+    
+    if domain_count == 0:
+        logger.warning("目标下没有域名，无法执行端口扫描")
+        raise ValueError("目标下没有域名，无法执行端口扫描")
+    
+    return domains_file, domain_count
+
+
+def _submit_scan_tasks(
+    domains_file: str,
+    port_scan_dir: Path,
+    scan_id: int,
+    target_id: int,
+    domain_count: int,
+    dynamic_timeout: int
+) -> dict:
+    """
+    提交端口扫描任务
+    
+    Args:
+        domains_file: 域名文件路径
+        port_scan_dir: 端口扫描目录
+        scan_id: 扫描任务 ID
+        target_id: 目标 ID
+        domain_count: 域名数量
+        dynamic_timeout: 动态计算的超时时间
+        
+    Returns:
+        dict: {tool_name: {future, output_file, command, timeout}}
+    """
+    logger.info(
+        "Step 2 & 3: 流式执行端口扫描并实时保存结果（%s）",
+        ', '.join(PORT_SCANNER_CONFIGS.keys())
+    )
+    
+    futures = {}
+    for tool_name, config in PORT_SCANNER_CONFIGS.items():
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        short_uuid = uuid.uuid4().hex[:4]
+        output_file = str(port_scan_dir / f"{tool_name}_{timestamp}_{short_uuid}.jsonl")
+        command = config['command'].format(
+            target_file=domains_file,
+            output_file=output_file
+        )
+        
+        logger.info(
+            "工具 %s 超时配置: %d 秒（动态计算，基于 %d 个域名）",
+            tool_name, dynamic_timeout, domain_count
+        )
+        
+        # 提交任务到 Prefect Task Queue 并获取 Future 对象
+        future = run_and_stream_save_ports_task.submit(
+            cmd=command,
+            scan_id=scan_id,
+            target_id=target_id,
+            cwd=str(port_scan_dir),
+            shell=True,
+            batch_size=500,
+            timeout=dynamic_timeout  # 透传超时参数
+        )
+        futures[tool_name] = {
+            'future': future,
+            'output_file': output_file,
+            'command': command,
+            'timeout': dynamic_timeout
+        }
+    
+    return futures
+
+
+def _collect_scan_results(futures: dict, target_name: str) -> tuple[dict, list, int, list]:
+    """
+    收集扫描任务结果
+    
+    Args:
+        futures: 任务 Future 字典
+        target_name: 目标名称（用于错误日志）
+        
+    Returns:
+        tuple: (tool_stats, result_files, processed_records, failed_tools)
+        
+    Raises:
+        RuntimeError: 所有工具均失败
+    """
+    processed_records = 0
+    result_files = []
+    failed_tools = []
+    tool_stats = {}
+    
+    for tool_name, task_info in futures.items():
+        try:
+            result = task_info['future'].result()
+            tool_stats[tool_name] = {
+                'command': task_info['command'],
+                'output_file': task_info['output_file'],
+                'result': result
+            }
+            processed_records += result.get('processed_records', 0)
+            result_files.append(task_info['output_file'])
+            logger.info(
+                "✓ 工具 %s 流式处理完成 - 记录数: %d",
+                tool_name, result.get('processed_records', 0)
+            )
+        except subprocess.TimeoutExpired as exc:
+            # 超时异常单独处理
+            failed_tools.append(tool_name)
+            logger.error(
+                "工具 %s 执行超时 - 超时配置: %d秒, 异常: %s",
+                tool_name, task_info.get('timeout', 0), exc
+            )
+        except Exception as exc:
+            # 其他异常
+            failed_tools.append(tool_name)
+            logger.error("工具 %s 执行失败: %s", tool_name, exc)
+    
+    if failed_tools:
+        logger.warning("以下扫描工具执行失败: %s", ', '.join(failed_tools))
+    
+    if not tool_stats:
+        error_details = "\n".join([
+            f"  - {tool}: 流式处理失败"
+            for tool in failed_tools
+        ])
+        raise RuntimeError(
+            f"所有端口扫描工具均失败 - 目标: {target_name}\n"
+            f"失败工具:\n{error_details}"
+        )
+    
+    logger.info(
+        "✓ 流式端口扫描执行完成 - 成功: %d/%d",
+        len(tool_stats), len(PORT_SCANNER_CONFIGS)
+    )
+    
+    return tool_stats, result_files, processed_records, failed_tools
+
+
 def calculate_timeout(domain_count: int) -> int:
     """
     根据域名数量动态计算扫描超时时间。
@@ -129,131 +319,29 @@ def port_scan_flow(
             "="*60
         )
         
-        # 创建端口扫描工作目录
-        port_scan_dir = Path(scan_workspace_dir) / 'port_scan'
-        port_scan_dir.mkdir(parents=True, exist_ok=True)
-
-        if not port_scan_dir.is_dir():
-            raise RuntimeError(f"端口扫描目录创建失败: {port_scan_dir}")
-        if not os.access(port_scan_dir, os.W_OK):
-            raise RuntimeError(f"端口扫描目录不可写: {port_scan_dir}")
+        # Step 0: 创建工作目录
+        port_scan_dir = _setup_port_scan_directory(scan_workspace_dir)
         
-        # ==================== Step 1: 导出目标域名到 TXT 文件 ====================
-        logger.info("Step 1: 导出目标域名列表")
+        # Step 1: 导出目标域名
+        domains_file, domain_count = _export_target_domains(target_id, port_scan_dir)
         
-        # 导出域名到文件（同时获取数量）
-        domains_file = str(port_scan_dir / 'domains.txt')
-        export_result = export_domains_task(
-            target_id=target_id,
-            output_file=domains_file,
-            batch_size=1000  # 每次读取 1000 条，优化内存占用
-        )
-        
-        # 从导出结果中获取域名数量
-        domain_count = export_result['total_count']
-        
-        logger.info(
-            "✓ 域名导出完成 - 文件: %s, 数量: %d",
-            export_result['output_file'],
-            domain_count
-        )
-        
-        # 动态计算端口扫描超时时间（根据域名数量）
+        # 动态计算超时时间
         dynamic_timeout = calculate_timeout(domain_count)
         logger.info("动态计算超时时间: %d 秒（基于域名数量 %d）", dynamic_timeout, domain_count)
         
-        # 检查域名数量
-        if domain_count == 0:
-            logger.warning("目标下没有域名，无法执行端口扫描")
-            raise ValueError("目标下没有域名，无法执行端口扫描")
-        
-        # ==================== Step 2 & 3: 流式执行并实时保存 ====================
-        logger.info(
-            "Step 2 & 3: 流式执行端口扫描并实时保存结果（%s）",
-            ', '.join(PORT_SCANNER_CONFIGS.keys())
+        # Step 2 & 3: 提交任务并收集结果
+        futures = _submit_scan_tasks(
+            domains_file=domains_file,
+            port_scan_dir=port_scan_dir,
+            scan_id=scan_id,
+            target_id=target_id,
+            domain_count=domain_count,
+            dynamic_timeout=dynamic_timeout
         )
         
-        futures = {}
-        for tool_name, config in PORT_SCANNER_CONFIGS.items():
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            short_uuid = uuid.uuid4().hex[:4]
-            output_file = str(port_scan_dir / f"{tool_name}_{timestamp}_{short_uuid}.jsonl")
-            command = config['command'].format(
-                target_file=domains_file,
-                output_file=output_file
-            )
-            
-            # 使用动态计算的超时（基于域名数量）
-            timeout = dynamic_timeout
-            logger.info(
-                "工具 %s 超时配置: %d 秒（动态计算，基于 %d 个域名）",
-                tool_name, timeout, domain_count
-            )
-            
-            # 提交任务到 Prefect Task Queue 并获取 Future 对象
-            future = run_and_stream_save_ports_task.submit(
-                cmd=command,
-                scan_id=scan_id,
-                target_id=target_id,
-                cwd=str(port_scan_dir),
-                shell=True,
-                batch_size=500,
-                timeout=timeout  # 透传超时参数
-            )
-            futures[tool_name] = {
-                'future': future,
-                'output_file': output_file,
-                'command': command,
-                'timeout': timeout
-            }
-        
-        processed_records = 0
-        result_files = []
-        failed_tools = []
-        tool_stats = {}
-        
-        for tool_name, task_info in futures.items():
-            try:
-                result = task_info['future'].result()
-                tool_stats[tool_name] = {
-                    'command': task_info['command'],
-                    'output_file': task_info['output_file'],
-                    'result': result
-                }
-                processed_records += result.get('processed_records', 0)
-                result_files.append(task_info['output_file'])
-                logger.info(
-                    "✓ 工具 %s 流式处理完成 - 记录数: %d",
-                    tool_name, result.get('processed_records', 0)
-                )
-            except subprocess.TimeoutExpired as exc:
-                # 超时异常单独处理
-                failed_tools.append(tool_name)
-                logger.error(
-                    "工具 %s 执行超时 - 超时配置: %d秒, 异常: %s",
-                    tool_name, task_info.get('timeout', 0), exc
-                )
-            except Exception as exc:
-                # 其他异常
-                failed_tools.append(tool_name)
-                logger.error("工具 %s 执行失败: %s", tool_name, exc)
-        
-        if failed_tools:
-            logger.warning("以下扫描工具执行失败: %s", ', '.join(failed_tools))
-        
-        if not tool_stats:
-            error_details = "\n".join([
-                f"  - {tool}: 流式处理失败"
-                for tool in failed_tools
-            ])
-            raise RuntimeError(
-                f"所有端口扫描工具均失败 - 目标: {target_name}\n"
-                f"失败工具:\n{error_details}"
-            )
-        
-        logger.info(
-            "✓ 流式端口扫描执行完成 - 成功: %d/%d",
-            len(tool_stats), len(PORT_SCANNER_CONFIGS)
+        tool_stats, result_files, processed_records, failed_tools = _collect_scan_results(
+            futures=futures,
+            target_name=target_name
         )
         
         logger.info("="*60 + "\n✓ 端口扫描完成\n" + "="*60)
@@ -267,8 +355,8 @@ def port_scan_flow(
             'scan_id': scan_id,
             'target': target_name,
             'scan_workspace_dir': scan_workspace_dir,
-            'domains_file': export_result['output_file'],
-            'domain_count': export_result['total_count'],
+            'domains_file': domains_file,
+            'domain_count': domain_count,
             'result_files': result_files,
             'processed_records': processed_records,
             'executed_tasks': executed_tasks,
