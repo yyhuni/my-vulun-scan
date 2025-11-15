@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 # ffuf 配置
 FFUF_CONFIG = {
     'wordlist': '~/Desktop/dirsearch_dicc.txt',
-    'command': 'ffuf -w {wordlist} -u {url}/FUZZ -p 0.1-2.0 -t 10 -timeout 10 -recursion -recursion-depth 2 -se -ac -mc 200,201,301,302,401,403 -json'
+    'command': 'ffuf -w {wordlist} -u {url}/FUZZ -p 0.1-2.0 -t 10 -timeout 10 -se -ac -mc 200,201,301,302,401,403 -json'
 }
 
 
