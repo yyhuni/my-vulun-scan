@@ -531,7 +531,12 @@ def _parse_httpx_stream_output(
             if valid_records % 1000 == 0:
                 logger.info("已解析 %d 条有效记录...", valid_records)
                 
+    except subprocess.TimeoutExpired as e:
+        # 超时异常：简洁输出，不显示堆栈
+        logger.error("流式解析命令输出失败: %s", e)
+        raise
     except Exception as e:
+        # 其他异常：输出详细堆栈以便调试
         logger.error("流式解析命令输出失败: %s", e, exc_info=True)
         raise
     

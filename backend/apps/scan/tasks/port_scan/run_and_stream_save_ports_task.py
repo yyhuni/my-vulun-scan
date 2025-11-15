@@ -456,7 +456,12 @@ def _parse_naabu_stream_output(
             # yield 一条有效记录
             yield record
                 
+    except subprocess.TimeoutExpired as e:
+        # 超时异常：简洁输出，不显示堆栈
+        logger.error("流式解析命令输出失败: %s", e)
+        raise
     except Exception as e:
+        # 其他异常：输出详细堆栈以便调试
         logger.error("流式解析命令输出失败: %s", e, exc_info=True)
         raise
     
