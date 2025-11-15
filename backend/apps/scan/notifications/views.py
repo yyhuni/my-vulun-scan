@@ -30,27 +30,27 @@ def notifications_sse(request):
     """
     SSE 实时通知推送 - 使用 Redis 订阅
     """
-    logger.info("SSE 连接请求开始处理")
+    # logger.info("SSE 连接请求开始处理")
     
     def event_stream():
         try:
-            logger.info("事件流生成器开始执行")
+            # logger.info("事件流生成器开始执行")
             
             from .services import get_redis_client
             import redis
             
             # 获取 Redis 客户端
             redis_client = get_redis_client()
-            logger.info("Redis 连接成功")
+            # logger.info("Redis 连接成功")
             
             # 发送连接成功消息
             yield f"data: {json.dumps({'type': 'connected', 'message': '连接成功'}, ensure_ascii=False)}\n\n"
-            logger.info("已发送连接成功消息")
+            # logger.info("已发送连接成功消息")
             
             # 订阅通知频道
             pubsub = redis_client.pubsub()
             pubsub.subscribe('notifications')
-            logger.info("已订阅通知频道")
+            # logger.info("已订阅通知频道")
             
             # 监听消息
             heartbeat_interval = getattr(settings, 'SSE_HEARTBEAT_INTERVAL', 15)
@@ -77,7 +77,7 @@ def notifications_sse(request):
                             }
                             
                             yield f"data: {json.dumps(sse_data, ensure_ascii=False)}\n\n"
-                            logger.info(f"已推送通知 - ID: {notification_data.get('id')}")
+                            # logger.info(f"已推送通知 - ID: {notification_data.get('id')}")
                             last_heartbeat = time.monotonic()
                             
                         except json.JSONDecodeError as e:
@@ -85,7 +85,7 @@ def notifications_sse(request):
                             continue
                             
                     elif message['type'] == 'subscribe':
-                        logger.info(f"订阅成功 - 频道: {message['channel']}")
+                        # logger.info(f"订阅成功 - 频道: {message['channel']}")
                         last_heartbeat = time.monotonic()
 
                 # 无论是否收到通知，周期性发送心跳，避免客户端超时
@@ -112,7 +112,7 @@ def notifications_sse(request):
         response['Access-Control-Allow-Origin'] = '*'
         # 注意：Django 开发服务器不允许设置 Connection 头部
         
-        logger.info("SSE 响应创建成功")
+        # logger.info("SSE 响应创建成功")
         return response
         
     except Exception as e:
