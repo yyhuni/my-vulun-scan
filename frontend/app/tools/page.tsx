@@ -4,7 +4,7 @@ import { PackageOpen, Settings, ArrowRight } from "lucide-react"
 import Link from "next/link"
 
 /**
- * 工具管理概览页面
+ * 工具概览页面
  * 显示开源工具和自定义工具的入口
  */
 export default function ToolsPage() {
@@ -39,7 +39,7 @@ export default function ToolsPage() {
       {/* 页面头部 */}
       <div className="flex items-center justify-between px-4 lg:px-6">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">工具管理</h2>
+          <h2 className="text-2xl font-bold tracking-tight">工具</h2>
           <p className="text-muted-foreground">
             管理和配置扫描工具，包括开源工具和自定义工具
           </p>
@@ -105,7 +105,7 @@ export default function ToolsPage() {
           <CardHeader>
             <CardTitle>快速操作</CardTitle>
             <CardDescription>
-              常用的工具管理操作
+              常用的工具操作
             </CardDescription>
           </CardHeader>
           <CardContent>

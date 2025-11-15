@@ -93,7 +93,7 @@ const data = {
       ],
     },
     {
-      title: "工具管理", // 工具管理
+      title: "工具", // 工具
       url: "/tools/",
       icon: IconTool,
       items: [
