@@ -160,6 +160,7 @@ def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int, subdo
         dict: 包含创建和跳过记录的统计信息
     
     Raises:
+        TypeError: batch 参数类型错误
         IntegrityError: 数据完整性错误
         OperationalError: 数据库操作错误
         DatabaseError: 其他数据库错误
@@ -167,6 +168,19 @@ def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int, subdo
     Note:
         此函数不包含重试逻辑，由外层 _save_batch_with_retry 负责重试
     """
+    # 参数验证
+    if not isinstance(batch, list):
+        raise TypeError(f"batch 必须是 list 类型，实际: {type(batch).__name__}")
+    
+    if not batch:
+        logger.debug("批次 %d 为空，跳过处理", batch_num)
+        return {
+            'created_ips': 0,
+            'created_ports': 0,
+            'skipped_no_subdomain': 0,
+            'skipped_no_ip': 0
+        }
+    
     # 初始化 Repository
     subdomain_repo = DjangoSubdomainRepository()
     ip_repo = DjangoIPAddressRepository()
