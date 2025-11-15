@@ -44,3 +44,40 @@ class Notification(models.Model):
     
     def __str__(self):
         return f"{self.get_level_display()} - {self.title}"
+    
+    @classmethod
+    def cleanup_old_notifications(cls):
+        """
+        清理超过15天的旧通知（硬编码）
+        
+        Returns:
+            int: 删除的通知数量
+        """
+        from datetime import datetime, timedelta
+        
+        # 硬编码：只保留最近15天的通知
+        cutoff_date = datetime.now() - timedelta(days=15)
+        delete_result = cls.objects.filter(created_at__lt=cutoff_date).delete()
+        
+        return delete_result[0] if delete_result[0] else 0
+    
+    def save(self, *args, **kwargs):
+        """
+        重写save方法，在创建新通知时自动清理旧通知
+        """
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+        
+        # 只在创建新通知时执行清理（自动清理超过15天的通知）
+        if is_new:
+            try:
+                deleted_count = self.__class__.cleanup_old_notifications()
+                if deleted_count > 0:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.info(f"自动清理了 {deleted_count} 条超过15天的旧通知")
+            except Exception as e:
+                # 清理失败不应影响通知创建
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"通知自动清理失败: {e}")
