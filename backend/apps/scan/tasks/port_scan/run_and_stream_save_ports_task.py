@@ -236,32 +236,9 @@ def _save_batch(batch: list, scan_id: int, target_id: int, batch_num: int, subdo
         ip_addrs = {ip_addr for _, ip_addr in ip_set}
         
         # 使用 Repository 批量查询
+        # 注：上方的 bulk_create 是同步阻塞操作，执行到这里时数据已提交
+        # 如果查不到，说明数据本身不存在（如 subdomain 不在库中），而非延迟问题
         ip_map = ip_repo.get_by_subdomain_and_ips(subdomain_ids, ip_addrs)
-        
-        # 验证查询结果的完整性
-        expected_count = len(ip_set)
-        actual_count = len(ip_map)
-        if actual_count < expected_count:
-            logger.warning(
-                "批次 %d: IPAddress 查询结果不完整 - 预期 %d，实际 %d",
-                batch_num, expected_count, actual_count
-            )
-            
-            # 短暂延迟后重试查询（给数据库提交更多时间）
-            time.sleep(1)
-            ip_map_retry = ip_repo.get_by_subdomain_and_ips(subdomain_ids, ip_addrs)
-            
-            if len(ip_map_retry) > actual_count:
-                logger.info(
-                    "批次 %d: 重试查询成功 - 找到 %d 条记录",
-                    batch_num, len(ip_map_retry)
-                )
-                ip_map = ip_map_retry
-            else:
-                logger.debug(
-                    "批次 %d: 重试查询无改善，可能是域名不存在或数据不一致",
-                    batch_num
-                )
     
     # ========== Step 5: 批量创建 Port（Repository 内部独立短事务）==========
     port_items = []
@@ -355,7 +332,7 @@ def _parse_naabu_stream_output(
                         continue
                 except json.JSONDecodeError:
                     # JSON 解析失败，跳过该行
-                    logger.debug("跳过非 JSON 格式的行: %s", line[:100])
+                    logger.info("跳过非 JSON 格式的行: %s", line[:100])
                     error_lines += 1
                     continue
                 
@@ -394,7 +371,7 @@ def _parse_naabu_stream_output(
                 }
                 
             except Exception as e:
-                logger.warning("解析行数据异常: %s - 数据: %s", e, line[:100])
+                logger.error("解析行数据异常: %s - 数据: %s", e, line[:100])
                 error_lines += 1
                 continue
                 
@@ -603,4 +580,4 @@ def run_and_stream_save_ports_task(
                 data_generator.close()
                 logger.debug("已关闭数据生成器")
             except Exception as gen_close_error:
-                logger.warning("关闭生成器时出错: %s", gen_close_error)
+                logger.error("关闭生成器时出错: %s", gen_close_error)
