@@ -57,7 +57,6 @@ class DjangoWebSiteRepository(WebSiteRepository):
                 WebSite.objects.bulk_create(
                     website_objects,
                     ignore_conflicts=True,
-                    unique_fields=['url']  # 根据URL唯一约束
                 )
 
             logger.debug(f"成功处理 {len(items)} 条 WebSite 记录")

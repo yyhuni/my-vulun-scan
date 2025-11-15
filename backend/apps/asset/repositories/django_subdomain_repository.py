@@ -48,7 +48,6 @@ class DjangoSubdomainRepository(SubdomainRepository):
                 Subdomain.objects.bulk_create(  # type: ignore[attr-defined]
                     subdomain_objects,
                     ignore_conflicts=True,  # 忽略重复记录
-                    unique_fields=['name', 'target_id'],  # 唯一约束：同一 Target 下子域名唯一
                 )
 
             logger.debug(f"成功处理 {len(items)} 条子域名记录")

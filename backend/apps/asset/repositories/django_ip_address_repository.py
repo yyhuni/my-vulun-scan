@@ -47,7 +47,6 @@ class DjangoIPAddressRepository(IPAddressRepository):
                 IPAddress.objects.bulk_create(
                     ip_objects,
                     ignore_conflicts=True,
-                    unique_fields=['subdomain', 'ip']  # 根据唯一约束
                 )
 
             logger.debug(f"成功处理 {len(items)} 条 IPAddress 记录")
