@@ -356,7 +356,7 @@ def _parse_and_validate_line(line: str) -> Optional[PortScanRecord]:
         try:
             line_data = json.loads(line)
         except json.JSONDecodeError:
-            logger.info("跳过非 JSON 格式的行: %s", line[:100])
+            logger.debug("跳过非 JSON 格式的行: %s", line[:100])
             return None
         
         # 步骤 2: 验证数据类型

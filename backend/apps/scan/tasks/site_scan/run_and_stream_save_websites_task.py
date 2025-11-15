@@ -30,7 +30,7 @@ from typing import Generator, Optional, Dict, Any
 from django.db import IntegrityError, OperationalError, DatabaseError, connection
 from cachetools import LRUCache
 from dataclasses import dataclass
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 from dateutil.parser import parse as parse_datetime
 from psycopg2 import InterfaceError
 
@@ -46,6 +46,61 @@ logger = logging.getLogger(__name__)
 # 最大缓存条目数：10000 条域名记录
 # 优点：自动淘汰最少使用的条目，内存占用可控
 MAX_SUBDOMAIN_CACHE_SIZE = 10000
+
+
+def normalize_url(url: str) -> str:
+    """
+    标准化 URL，移除默认端口号
+    
+    处理规则：
+    - HTTPS 协议的 443 端口 → 移除端口号
+    - HTTP 协议的 80 端口 → 移除端口号
+    - 其他端口 → 保留端口号
+    
+    Args:
+        url: 原始 URL（如 https://www.example.com:443）
+    
+    Returns:
+        str: 标准化后的 URL（如 https://www.example.com）
+    
+    Examples:
+        >>> normalize_url('https://www.example.com:443')
+        'https://www.example.com'
+        >>> normalize_url('http://www.example.com:80')
+        'http://www.example.com'
+        >>> normalize_url('https://www.example.com:8443')
+        'https://www.example.com:8443'
+    """
+    try:
+        parsed = urlparse(url)
+        
+        # 检查是否需要移除端口号
+        should_remove_port = (
+            (parsed.scheme == 'https' and parsed.port == 443) or
+            (parsed.scheme == 'http' and parsed.port == 80)
+        )
+        
+        if should_remove_port:
+            # 重建 URL，不包含端口号
+            # netloc 可能是 'domain:port' 格式，需要只保留 hostname
+            netloc = parsed.hostname or parsed.netloc.split(':')[0]
+            normalized = urlunparse((
+                parsed.scheme,
+                netloc,
+                parsed.path,
+                parsed.params,
+                parsed.query,
+                parsed.fragment
+            ))
+            return normalized
+        
+        # 不需要修改，返回原 URL
+        return url
+        
+    except Exception as e:
+        # 解析失败，返回原 URL
+        logger.debug("URL 标准化失败: %s，使用原始 URL: %s", e, url)
+        return url
 
 
 @dataclass
@@ -352,12 +407,15 @@ def _save_batch(
             except (ValueError, TypeError) as e:
                 logger.warning(f"无法解析时间戳 {record.timestamp}: {e}")
         
+        # 标准化 URL，移除默认端口号
+        normalized_url = normalize_url(record.url)
+        
         # 创建 WebSite DTO
         website_dto = WebSiteDTO(
             scan_id=scan_id,
             target_id=target_id,
             subdomain_id=subdomain.id,
-            url=record.url,
+            url=normalized_url,
             location=record.location,
             title=record.title[:1000] if record.title else '',
             webserver=record.webserver[:200] if record.webserver else '',
@@ -403,7 +461,7 @@ def _parse_and_validate_line(line: str) -> Optional[HttpxRecord]:
         try:
             line_data = json.loads(line)
         except json.JSONDecodeError:
-            logger.info("跳过非 JSON 格式的行: %s", line[:100])
+            logger.debug("跳过非 JSON 格式的行: %s", line[:100])
             return None
         
         # 步骤 2: 验证数据类型

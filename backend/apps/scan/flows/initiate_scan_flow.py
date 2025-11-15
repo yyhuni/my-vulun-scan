@@ -57,6 +57,7 @@ def initiate_scan_flow(
     - subdomain discovery -> subdomain_discovery_flow
     - port scan -> port_scan_flow
     - site scan -> site_scan_flow
+    - directory scan -> directory_scan_flow
     - vuln_scan -> vuln_scan_flow (未来扩展)
     
     Args:
@@ -133,6 +134,15 @@ def initiate_scan_flow(
                 scan_workspace_dir=str(scan_workspace_path),
                 engine_config=engine_config
             )
+        elif engine_name == 'directory scan':
+            from apps.scan.flows.directory_scan_flow import directory_scan_flow
+            result = directory_scan_flow(
+                scan_id=scan_id,
+                target_name=target_name,
+                target_id=target_id,
+                scan_workspace_dir=str(scan_workspace_path),
+                engine_config=engine_config
+            )
             
         # 未来扩展:
         # elif engine_name == 'vuln_scan':
@@ -141,7 +151,7 @@ def initiate_scan_flow(
         else:
             raise ValueError(
                 f"未知的引擎: '{engine_name}'. "
-                f"可用引擎: subdomain discovery, port scan, site scan"
+                f"可用引擎: subdomain discovery, port scan, site scan, directory scan"
             )
         
         # ==================== 完成 ====================
