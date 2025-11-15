@@ -334,6 +334,66 @@ def _save_batch(
         'skipped_no_ip': skipped_no_ip
     }
 
+def _parse_and_validate_line(line: str) -> Optional[PortScanRecord]:
+    """
+    解析并验证单行 JSON 数据
+    
+    Args:
+        line: 单行输出数据
+    
+    Returns:
+        Optional[PortScanRecord]: 有效的端口扫描记录，或 None 如果验证失败
+    
+    验证步骤：
+        1. 解析 JSON 格式
+        2. 验证数据类型为字典
+        3. 提取必要字段（host, ip, port）
+        4. 验证字段不为空
+        5. 验证端口号有效性
+    """
+    try:
+        # 步骤 1: 解析 JSON
+        try:
+            line_data = json.loads(line)
+        except json.JSONDecodeError:
+            logger.info("跳过非 JSON 格式的行: %s", line[:100])
+            return None
+        
+        # 步骤 2: 验证数据类型
+        if not isinstance(line_data, dict):
+            logger.warning("解析后的数据不是字典类型，跳过: %s", str(line_data)[:100])
+            return None
+        
+        # 步骤 3: 提取必要字段
+        host = line_data.get('host', '').strip()
+        ip = line_data.get('ip', '').strip()
+        port = line_data.get('port')
+        
+        # 步骤 4: 验证字段不为空
+        if not host or not ip or port is None:
+            logger.warning(
+                "缺少必要字段，跳过: host=%s, ip=%s, port=%s",
+                host, ip, port
+            )
+            return None
+        
+        # 步骤 5: 验证端口号有效性
+        is_valid, port_num = validate_port(port)
+        if not is_valid:
+            return None
+        
+        # 返回有效记录
+        return {
+            'host': host,
+            'ip': ip,
+            'port': port_num,
+        }
+    
+    except Exception as e:
+        logger.error("解析行数据异常: %s - 数据: %s", e, line[:100])
+        return None
+
+
 def _parse_naabu_stream_output(
     cmd: str,
     cwd: Optional[str] = None,
@@ -370,51 +430,14 @@ def _parse_naabu_stream_output(
         for line in stream_command(cmd=cmd, cwd=cwd, shell=shell, timeout=timeout):
             total_lines += 1
             
-            try:
-                # 尝试将行解析为 JSON 对象（必须是字典类型）
-                try:
-                    line_data = json.loads(line)
-                    if not isinstance(line_data, dict):
-                        logger.warning("解析后的数据不是字典类型，跳过: %s", str(line_data)[:100])
-                        error_lines += 1
-                        continue
-                except json.JSONDecodeError:
-                    # JSON 解析失败，跳过该行
-                    logger.info("跳过非 JSON 格式的行: %s", line[:100])
-                    error_lines += 1
-                    continue
-                
-                # 提取必要字段
-                host = line_data.get('host', '').strip()
-                ip = line_data.get('ip', '').strip()  
-                port = line_data.get('port')
-                
-                # 验证必要字段
-                if not host or not ip or port is None:
-                    logger.warning(
-                        "缺少必要字段，跳过: host=%s, ip=%s, port=%s",
-                        host, ip, port
-                    )
-                    error_lines += 1
-                    continue
-                
-                # 验证端口号有效性
-                is_valid, port_num = validate_port(port)
-                if not is_valid:
-                    error_lines += 1
-                    continue
-                
-                # yield 一条有效记录
-                yield {
-                    'host': host,
-                    'ip': ip,
-                    'port': port_num,
-                }
-                
-            except Exception as e:
-                logger.error("解析行数据异常: %s - 数据: %s", e, line[:100])
+            # 解析并验证单行数据
+            record = _parse_and_validate_line(line)
+            if record is None:
                 error_lines += 1
                 continue
+            
+            # yield 一条有效记录
+            yield record
                 
     except Exception as e:
         logger.error("流式解析命令输出失败: %s", e, exc_info=True)
