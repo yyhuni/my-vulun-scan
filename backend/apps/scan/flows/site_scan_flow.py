@@ -30,8 +30,20 @@ def calculate_timeout(url_count: int) -> int:
     - 每个URL额外增加 per_url = 1 秒
     - 不设置最大上限（大量URL情况下允许更长超时，由外层流程兜底）
 
-    返回值为上述规则计算结果。
+    Args:
+        url_count: URL数量，必须为正整数
+
+    Returns:
+        int: 计算得到的超时时间（秒）
+
+    Raises:
+        ValueError: 当 url_count 为负数或 0 时抛出异常
     """
+    if url_count < 0:
+        raise ValueError(f"URL数量不能为负数: {url_count}")
+    if url_count == 0:
+        raise ValueError("URL数量不能为0")
+
     base = 600
     per_url = 1
     return base + int(url_count * per_url)

@@ -38,8 +38,20 @@ def calculate_timeout(domain_count: int) -> int:
     - 每个域名额外增加 per_domain = 1 秒
     - 不设置最大上限（大量域名情况下允许更长超时，由外层流程兜底）
 
-    返回值为上述规则计算结果。
+    Args:
+        domain_count: 域名数量，必须为正整数
+
+    Returns:
+        int: 计算得到的超时时间（秒）
+
+    Raises:
+        ValueError: 当 domain_count 为负数或 0 时抛出异常
     """
+    if domain_count < 0:
+        raise ValueError(f"域名数量不能为负数: {domain_count}")
+    if domain_count == 0:
+        raise ValueError("域名数量不能为0")
+
     base = 300
     per_domain = 1
     return base + int(domain_count * per_domain)

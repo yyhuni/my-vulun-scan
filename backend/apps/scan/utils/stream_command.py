@@ -53,11 +53,11 @@ def stream_command(
     )
         
     # 超时控制：使用 Timer 在指定时间后终止进程
-    timed_out = False
+    # 使用 threading.Event 保证线程安全，避免竞态条件
+    timed_out_event = threading.Event()
         
     def _kill_when_timeout():
-        nonlocal timed_out
-        timed_out = True
+        timed_out_event.set()
         if process.poll() is None:  # 进程还在运行
             logger.warning(f"命令执行超时（{timeout}秒），正在终止进程: {cmd}")
             process.kill()
@@ -117,7 +117,7 @@ def stream_command(
         exit_code = process.wait()
         
         # 如果是超时导致的终止，抛出标准异常
-        if timed_out:
+        if timed_out_event.is_set():
             raise subprocess.TimeoutExpired(cmd, timeout if timeout else 0)
         
         # 记录异常退出的情况
