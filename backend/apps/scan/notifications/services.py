@@ -73,7 +73,7 @@ def create_notification(
         # 2. SSE 实时推送
         _push_to_sse(notification)
         
-        # logger.info(f"通知已创建并推送 - {title}")
+        logger.debug(f"通知已创建并推送 - {title}")
         return notification
         
     except Exception as e:
@@ -90,7 +90,7 @@ def _push_to_sse(notification: Notification) -> None:
     推送通知到 SSE 频道
     """
     try:
-        # logger.info(f"开始推送通知到 SSE - ID: {notification.id}")
+        logger.debug(f"开始推送通知到 SSE - ID: {notification.id}")
         
         redis_client = get_redis_client()
         
@@ -107,7 +107,7 @@ def _push_to_sse(notification: Notification) -> None:
         message = json.dumps(data, ensure_ascii=False)
         result = redis_client.publish('notifications', message)
         
-        # logger.info(f"通知推送成功 - ID: {notification.id}, 订阅者数量: {result}")
+        logger.debug(f"通知推送成功 - ID: {notification.id}, 订阅者数量: {result}")
         
     except ImportError as e:
         logger.warning(f"Redis 模块未安装，跳过 SSE 推送: {e}")
