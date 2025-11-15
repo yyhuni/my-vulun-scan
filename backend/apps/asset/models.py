@@ -1,6 +1,7 @@
 
 from django.db import models
 from django.contrib.postgres.fields import ArrayField
+from django.core.validators import MinValueValidator, MaxValueValidator
 from scan.models import Scan
 from targets.models import Target
 
@@ -356,7 +357,11 @@ class Port(models.Model):
     number = models.IntegerField(
         null=False,
         blank=False,
-        help_text='端口号'
+        validators=[
+            MinValueValidator(1, message='端口号必须大于等于1'),
+            MaxValueValidator(65535, message='端口号必须小于等于65535')
+        ],
+        help_text='端口号（1-65535）'
     )
     description = models.CharField(
         max_length=500,

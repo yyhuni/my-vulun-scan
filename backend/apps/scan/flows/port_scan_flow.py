@@ -1,5 +1,6 @@
 import logging
 import os
+import subprocess
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -21,6 +22,9 @@ logger = logging.getLogger(__name__)
 
 PORT_SCANNER_CONFIGS = {
     'naabu': {
+        # naabu 命令参数说明：
+        # -timeout 50: 每个域名的扫描超时（50秒，由 naabu 工具控制）
+        # dynamic_timeout: 整个命令执行的总超时，由 stream_command 控制，防止进程卡死
         'command': 'naabu -exclude-cdn -top-ports 100 -c 30 -rate 150 -timeout 50 -list {target_file} -o {output_file} -json',
     }
 }
@@ -210,7 +214,15 @@ def port_scan_flow(
                     "✓ 工具 %s 流式处理完成 - 记录数: %d",
                     tool_name, result.get('processed_records', 0)
                 )
+            except subprocess.TimeoutExpired as exc:
+                # 超时异常单独处理
+                failed_tools.append(tool_name)
+                logger.error(
+                    "工具 %s 执行超时 - 超时配置: %d秒, 异常: %s",
+                    tool_name, task_info.get('timeout', 0), exc
+                )
             except Exception as exc:
+                # 其他异常
                 failed_tools.append(tool_name)
                 logger.error("工具 %s 执行失败: %s", tool_name, exc)
         
