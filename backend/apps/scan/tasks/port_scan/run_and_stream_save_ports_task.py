@@ -22,6 +22,7 @@
 
 import logging
 import json
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -695,6 +696,14 @@ def run_and_stream_save_ports_task(
             'skipped_no_ip': total_skipped_no_ip
         }
         
+    except subprocess.TimeoutExpired:
+        # 超时异常直接向上传播，保留异常类型
+        logger.error(
+            "端口扫描任务超时 - target_id=%s, 超时=%s秒, 已处理记录: %d",
+            target_id, timeout, total_records
+        )
+        raise  # 直接重新抛出，不包装
+    
     except Exception as e:
         error_msg = f"流式执行端口扫描任务失败: {e}"
         logger.error(error_msg, exc_info=True)
