@@ -4,9 +4,13 @@
 
 import logging
 import os
+import subprocess
 from pathlib import Path
 from prefect import flow
-from apps.scan.tasks.directory_enumeration import export_sites_task
+from apps.scan.tasks.directory_enumeration import (
+    export_sites_task,
+    run_and_stream_save_directories_task
+)
 from apps.scan.handlers.scan_flow_handlers import (
     on_scan_flow_running,
     on_scan_flow_completed,
@@ -17,8 +21,11 @@ from apps.scan.handlers.scan_flow_handlers import (
 
 logger = logging.getLogger(__name__)
 
-# ffuf命令：
-# ffuf -w ~/Desktop/dirsearch_dicc.txt -p 0.1-5.0 -recursion -recursion-depth 2 -t 5 -timeout 10 -se -ac -mc 200 -u {target_url}/FUZZ -json
+# ffuf 配置
+FFUF_CONFIG = {
+    'wordlist': '~/Desktop/dirsearch_dicc.txt',
+    'command': 'ffuf -w {wordlist} -u {url}/FUZZ -p 0.1-2.0 -t 10 -timeout 10 -recursion -recursion-depth 2 -se -ac -mc 200,201,301,302,401,403 -json'
+}
 
 
 def _setup_directory_scan_directory(scan_workspace_dir: str) -> Path:
@@ -83,6 +90,120 @@ def _export_site_urls(target_id: int, directory_scan_dir: Path) -> tuple[str, in
     return sites_file, site_count
 
 
+def _run_scans_sequentially(
+    sites_file: str,
+    directory_scan_dir: Path,
+    scan_id: int,
+    target_id: int,
+    site_count: int,
+    target_name: str
+) -> tuple[int, int, list]:
+    """
+    串行执行目录扫描任务
+    
+    Args:
+        sites_file: 站点文件路径
+        directory_scan_dir: 目录扫描目录
+        scan_id: 扫描任务 ID
+        target_id: 目标 ID
+        site_count: 站点数量
+        target_name: 目标名称（用于错误日志）
+        
+    Returns:
+        tuple: (total_directories, processed_sites, failed_sites)
+    """
+    logger.info(
+        "Step 2 & 3: 串行执行目录扫描并实时保存结果（ffuf）"
+    )
+    
+    # 读取站点列表
+    sites = []
+    with open(sites_file, 'r', encoding='utf-8') as f:
+        for line in f:
+            site_url = line.strip()
+            if site_url:
+                sites.append(site_url)
+    
+    logger.info("准备扫描 %d 个站点", len(sites))
+    
+    total_directories = 0
+    processed_sites = 0
+    failed_sites = []
+    
+    # 逐个站点执行扫描
+    for idx, site_url in enumerate(sites, 1):
+        logger.info(
+            "[%d/%d] 开始扫描站点: %s",
+            idx, len(sites), site_url
+        )
+        
+        # 构建 ffuf 命令
+        command = FFUF_CONFIG['command'].format(
+            wordlist=FFUF_CONFIG['wordlist'],
+            url=site_url
+        )
+        
+        # 单个站点超时：10 分钟
+        site_timeout = 600
+        
+        try:
+            # 直接调用 task（串行执行）
+            result = run_and_stream_save_directories_task(
+                cmd=command,
+                scan_id=scan_id,
+                target_id=target_id,
+                site_url=site_url,
+                cwd=str(directory_scan_dir),
+                shell=True,
+                batch_size=500,
+                timeout=site_timeout
+            )
+            
+            total_directories += result.get('created_directories', 0)
+            processed_sites += 1
+            
+            logger.info(
+                "✓ [%d/%d] 站点扫描完成: %s - 发现 %d 个目录",
+                idx, len(sites), site_url,
+                result.get('created_directories', 0)
+            )
+            
+        except subprocess.TimeoutExpired as exc:
+            # 超时异常单独处理
+            failed_sites.append(site_url)
+            logger.error(
+                "✗ [%d/%d] 站点扫描超时: %s - 超时配置: %d秒",
+                idx, len(sites), site_url, site_timeout
+            )
+        except Exception as exc:
+            # 其他异常
+            failed_sites.append(site_url)
+            logger.error(
+                "✗ [%d/%d] 站点扫描失败: %s - 错误: %s",
+                idx, len(sites), site_url, exc
+            )
+        
+        # 每 10 个站点输出进度
+        if idx % 10 == 0:
+            logger.info(
+                "进度: %d/%d (%.1f%%) - 已发现 %d 个目录",
+                idx, len(sites), idx/len(sites)*100, total_directories
+            )
+    
+    if failed_sites:
+        logger.warning(
+            "部分站点扫描失败: %d/%d",
+            len(failed_sites), len(sites)
+        )
+    
+    logger.info(
+        "✓ 串行目录扫描执行完成 - 成功: %d/%d, 失败: %d, 总目录数: %d",
+        processed_sites, len(sites), len(failed_sites), total_directories
+    )
+    
+    return total_directories, processed_sites, failed_sites
+
+
 @flow(
     name="directory_scan", 
     log_prints=True,
@@ -136,6 +257,9 @@ def directory_scan_flow(
             'scan_workspace_dir': str,
             'sites_file': str,
             'site_count': int,
+            'total_directories': int,  # 发现的总目录数
+            'processed_sites': int,  # 成功处理的站点数
+            'failed_sites_count': int,  # 失败的站点数
             'executed_tasks': list
         }
     
@@ -159,10 +283,19 @@ def directory_scan_flow(
         # Step 1: 导出站点 URL
         sites_file, site_count = _export_site_urls(target_id, directory_scan_dir)
         
-        # TODO: Step 2 & 3: 串行执行 ffuf 扫描任务并实时保存扫描结果到数据库
-        # 参考 port_scan_flow.py 的串行运行逻辑
+        # Step 2 & 3: 串行执行 ffuf 扫描任务并实时保存
+        # 每个站点固定超时 600 秒（10 分钟）
+        logger.info("准备扫描 %d 个站点，每个站点超时: 600 秒（10 分钟）", site_count)
+        total_directories, processed_sites, failed_sites = _run_scans_sequentially(
+            sites_file=sites_file,
+            directory_scan_dir=directory_scan_dir,
+            scan_id=scan_id,
+            target_id=target_id,
+            site_count=site_count,
+            target_name=target_name
+        )
         
-        logger.info("="*60 + "\n✓ 目录扫描完成（Step 1 已实现）\n" + "="*60)
+        logger.info("="*60 + "\n✓ 目录扫描完成\n" + "="*60)
         
         return {
             'success': True,
@@ -171,7 +304,10 @@ def directory_scan_flow(
             'scan_workspace_dir': scan_workspace_dir,
             'sites_file': sites_file,
             'site_count': site_count,
-            'executed_tasks': ['export_sites']
+            'total_directories': total_directories,
+            'processed_sites': processed_sites,
+            'failed_sites_count': len(failed_sites),
+            'executed_tasks': ['export_sites', 'run_and_stream_save_directories']
         }
         
     except Exception as e:

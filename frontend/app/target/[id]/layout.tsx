@@ -33,6 +33,7 @@ export default function TargetLayout({
     if (pathname.includes("/subdomain")) return "subdomain"
     if (pathname.includes("/endpoints")) return "endpoints"
     if (pathname.includes("/websites")) return "websites"
+    if (pathname.includes("/directories")) return "directories"
     if (pathname.includes("/vulnerabilities")) return "vulnerabilities"
     if (pathname.includes("/ip-addresses")) return "ip-addresses"
     return ""
@@ -44,6 +45,7 @@ export default function TargetLayout({
     subdomain: `${basePath}/subdomain/`,
     endpoints: `${basePath}/endpoints/`,
     websites: `${basePath}/websites/`,
+    directories: `${basePath}/directories/`,
     vulnerabilities: `${basePath}/vulnerabilities/`,
     "ip-addresses": `${basePath}/ip-addresses/`,
   }
@@ -53,6 +55,7 @@ export default function TargetLayout({
     subdomain: (target as any)?.summary?.subdomains || 0,
     endpoints: (target as any)?.summary?.endpoints || 0,
     websites: (target as any)?.summary?.websites || 0,
+    directories: (target as any)?.summary?.directories || 0,
     vulnerabilities: (target as any)?.summary?.vulnerabilities?.total || 0,
     "ip-addresses": (target as any)?.summary?.ips || 0,
   }
@@ -154,6 +157,14 @@ export default function TargetLayout({
                 Websites
                 <Badge className="text-xs bg-chart-5 text-white border-0">
                   {counts.websites}
+                </Badge>
+              </Link>
+            </TabsTrigger>
+            <TabsTrigger value="directories" asChild>
+              <Link href={tabPaths.directories} className="flex items-center gap-0.5">
+                Directories
+                <Badge className="text-xs bg-chart-5 text-white border-0">
+                  {counts.directories}
                 </Badge>
               </Link>
             </TabsTrigger>

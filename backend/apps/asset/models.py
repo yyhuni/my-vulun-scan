@@ -477,7 +477,7 @@ class Directory(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=['website', 'url'],    
-                name='unique_url_website'   # 唯一约束，确保一个站点下没有重复的目录 URL
+                name='unique_directory_url_website'   # 唯一约束，确保一个站点下没有重复的目录 URL
             ),
         ]
 

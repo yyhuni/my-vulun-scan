@@ -21,6 +21,7 @@ export default function ScanHistoryLayout({
     if (pathname.includes("/subdomain")) return "subdomain"
     if (pathname.includes("/endpoints")) return "endpoints"
     if (pathname.includes("/websites")) return "websites"
+    if (pathname.includes("/directories")) return "directories"
     if (pathname.includes("/vulnerabilities")) return "vulnerabilities"
     if (pathname.includes("/ip-addresses")) return "ip-addresses"
     return ""
@@ -31,6 +32,7 @@ export default function ScanHistoryLayout({
     subdomain: `${basePath}/subdomain/`,
     endpoints: `${basePath}/endpoints/`,
     websites: `${basePath}/websites/`,
+    directories: `${basePath}/directories/`,
     vulnerabilities: `${basePath}/vulnerabilities/`,
     "ip-addresses": `${basePath}/ip-addresses/`,
   }
@@ -40,6 +42,7 @@ export default function ScanHistoryLayout({
     subdomain: scanData?.summary?.subdomains || 0,
     endpoints: scanData?.summary?.endpoints || 0,
     websites: scanData?.summary?.websites || 0,
+    directories: scanData?.summary?.directories || 0,
     vulnerabilities: scanData?.summary?.vulnerabilities?.total || 0,
     "ip-addresses": scanData?.summary?.ips || 0,
   }
@@ -80,6 +83,14 @@ export default function ScanHistoryLayout({
                 Websites
                 <Badge className="text-xs bg-chart-5 text-white border-0">
                   {counts.websites}
+                </Badge>
+              </Link>
+            </TabsTrigger>
+            <TabsTrigger value="directories" asChild>
+              <Link href={tabPaths.directories} className="flex items-center gap-0.5">
+                Directories
+                <Badge className="text-xs bg-chart-5 text-white border-0">
+                  {counts.directories}
                 </Badge>
               </Link>
             </TabsTrigger>
