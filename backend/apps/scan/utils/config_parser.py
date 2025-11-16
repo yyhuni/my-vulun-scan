@@ -47,14 +47,14 @@ def _parse_engine_config(engine_config_str: Optional[str]) -> Dict[str, Any]:
 
 def parse_enabled_tools(
     scan_type: str,
-    engine_config_str: Optional[str] = None
+    engine_config: Optional[str] = None
 ) -> Dict[str, Dict[str, Any]]:
     """
     解析 YAML 配置，获取启用的工具及其配置
     
     Args:
         scan_type: 扫描类型 (subdomain_discovery, port_scan, site_scan, directory_scan)
-        engine_config_str: 引擎配置（YAML 字符串）
+        engine_config: 引擎配置（YAML 字符串）
     
     Returns:
         启用的工具配置字典 {tool_name: tool_config}
@@ -83,18 +83,18 @@ def parse_enabled_tools(
         - 所有启用的工具保证包含有效的 timeout 参数
         - 命令构建逻辑在 command_helper 中实现
     """
-    if not engine_config_str:
+    if not engine_config:
         # 没有配置 → 返回空字典，不执行任何工具
         logger.warning(f"没有引擎配置，{scan_type} 不会执行任何工具")
         return {}
     
     # 1. 解析引擎配置
-    engine_config = _parse_engine_config(engine_config_str)
-    if scan_type not in engine_config:
+    parsed_config = _parse_engine_config(engine_config)
+    if scan_type not in parsed_config:
         logger.warning(f"引擎配置中未找到扫描类型: {scan_type}")
         return {}
     
-    scan_config = engine_config[scan_type]
+    scan_config = parsed_config[scan_type]
     if 'tools' not in scan_config:
         logger.warning(f"扫描类型 {scan_type} 未配置任何工具")
         return {}
