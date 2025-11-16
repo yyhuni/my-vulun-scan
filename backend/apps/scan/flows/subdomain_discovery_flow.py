@@ -13,9 +13,6 @@ from prefect import flow
 from pathlib import Path
 import logging
 import os
-import uuid
-from datetime import datetime
-from django.conf import settings
 from apps.scan.handlers.scan_flow_handlers import (
     on_scan_flow_running,
     on_scan_flow_completed,
@@ -23,44 +20,11 @@ from apps.scan.handlers.scan_flow_handlers import (
     on_scan_flow_cancelled,
     on_scan_flow_crashed
 )
-from apps.scan.utils import build_command
+from apps.scan.utils import parse_and_build_commands
 from apps.common.normalizer import normalize_domain
 from apps.common.validators import validate_domain
 
 logger = logging.getLogger(__name__)
-
-# 扫描工具配置（在 Flow 层管理）
-# 
-# 如何添加新工具：
-# 1. 在下方字典中添加新的工具配置
-# 2. 无需修改其他代码，Flow 会自动并行执行所有配置的工具
-# 
-# 参数说明：
-# - {target}: 目标域名
-# - {output_file}: 输出文件路径
-# - timeout: 命令执行超时时间（秒）
-SCANNER_CONFIGS = {
-    'subfinder': {
-        'command': 'subfinder -d {target} -o {output_file} -proxy http://proxy:8080 -t 10 -silent',
-        'timeout': 600  # 10分钟，使用代理可能较慢
-    },
-    'amass_passive': {
-        'command': 'amass enum -passive -d {target} -o {output_file}',
-        'timeout': 600  # 10分钟
-    },
-    'amass_active': {
-        'command': 'amass enum -active -d {target} -o {output_file} -brute -w /usr/src/wordlist/deepmagic.com-prefixes-top50000.txt',
-        'timeout': 1800  # 30分钟，主动扫描+暴力破解耗时较长
-    },
-    'sublist3r': {
-        'command': 'python3 /usr/src/github/Sublist3r/sublist3r.py -d {target} -o {output_file} -t 50',
-        'timeout': 900  # 15分钟
-    },
-    'oneforall': {
-        'command': 'python3 /usr/src/github/OneForAll/oneforall.py --target {target} run && cut -d\',\' -f6 /usr/src/github/OneForAll/results/{target}.csv | tail -n +2 > {output_file} && rm -rf /usr/src/github/OneForAll/results/{target}.csv',
-        'timeout': 1200  # 20分钟，OneForAll 功能全面但耗时
-    }
-}
 
 
 @flow(
@@ -77,7 +41,7 @@ def subdomain_discovery_flow(
     target_name: str,
     target_id: int,
     scan_workspace_dir: str,
-    engine_config: str = None
+    engine_config: str
 ) -> dict:
     """
     子域名发现扫描流程
@@ -92,7 +56,7 @@ def subdomain_discovery_flow(
         target_name: 目标名称（域名）
         target_id: 目标 ID
         scan_workspace_dir: Scan 工作空间目录（由 Service 层创建）
-        engine_config: 引擎配置（预留，暂未使用）
+        engine_config: 引擎配置（YAML 字符串，必需）
     
     Returns:
         dict: {
@@ -109,6 +73,17 @@ def subdomain_discovery_flow(
         RuntimeError: 执行失败
     """
     try:
+        # ==================== 参数验证 ====================
+        if not scan_id:
+            raise ValueError("scan_id 不能为空")
+        if not target_name:
+            raise ValueError("target_name 不能为空")
+        if not target_id:
+            raise ValueError("target_id 不能为空")
+        if not scan_workspace_dir:
+            raise ValueError("scan_workspace_dir 不能为空")
+        if not engine_config:
+            raise ValueError("engine_config 不能为空")
         
         logger.info(
             "="*60 + "\n" +
@@ -127,22 +102,15 @@ def subdomain_discovery_flow(
         )
         
         # 准备结果目录（集中管理路径）
-        result_path = Path(scan_workspace_dir) / 'subdomain_discovery'
-        result_path.mkdir(parents=True, exist_ok=True)
+        result_dir = Path(scan_workspace_dir) / 'subdomain_discovery'
+        result_dir.mkdir(parents=True, exist_ok=True)
 
-        if not result_path.is_dir():
-            raise RuntimeError(f"子域名扫描目录创建失败: {result_path}")
-        if not os.access(result_path, os.W_OK):
-            raise RuntimeError(f"子域名扫描目录不可写: {result_path}")
+        if not result_dir.is_dir():
+            raise RuntimeError(f"子域名扫描目录创建失败: {result_dir}")
+        if not os.access(result_dir, os.W_OK):
+            raise RuntimeError(f"子域名扫描目录不可写: {result_dir}")
 
-        result_dir = str(result_path)
-        
-        logger.info(
-            "Step 1: 并行运行扫描工具（%s）",
-            ', '.join(SCANNER_CONFIGS.keys())
-        )
-        
-        # 规范化和验证域名
+        # ==================== 规范化和验证域名 ====================
         try:
             normalized_target = normalize_domain(target_name)
             validate_domain(normalized_target)
@@ -153,47 +121,64 @@ def subdomain_discovery_flow(
             logger.error(error_msg)
             raise ValueError(error_msg) from e
         
-        # 提交并行任务（动态处理所有配置的工具）
+        # ==================== 解析配置并构建命令 ====================
+        # 解析配置并构建完整命令（一步到位）
+        tool_commands = parse_and_build_commands(
+            scan_type='subdomain_discovery',
+            engine_config=engine_config,
+            runtime_params={
+                'target': target_name,
+                'output_path': str(result_dir)  # 输出路径，文件名由函数自动生成
+            }
+        )
+        
+        if not tool_commands:
+            raise RuntimeError("没有启用的扫描工具，请检查引擎配置。")
+        
+        logger.info(
+            f"Step 1: 并行运行 {len(tool_commands)} 个扫描工具"
+        )
+        
+        # TODO: 接入代理池管理系统
+        # from apps.proxy.services import proxy_pool
+        # proxy_stats = proxy_pool.get_stats()
+        # logger.info(f"代理池状态: {proxy_stats['healthy']}/{proxy_stats['total']} 可用")
+        
+        # ==================== 提交并行任务 ====================
         futures = {}
-        for tool_name, config in SCANNER_CONFIGS.items():
-            # 生成输出文件路径
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            short_uuid = uuid.uuid4().hex[:4]
-            output_file = str(result_path / f"{tool_name}_{timestamp}_{short_uuid}.txt")
-            
-            # 使用统一的命令构建器
-            command = build_command(
-                template=config['command'],
-                target=target_name,
-                output_file=output_file
+        executed_tools = []  # 记录执行的工具名称
+        
+        for tool_name, command, timeout, output_file in tool_commands:
+            executed_tools.append(tool_name)
+            logger.debug(
+                f"工具: {tool_name}, 超时: {timeout}s, 输出: {output_file}, 命令: {command}"
             )
             
+            # 提交任务
             future = run_subdomain_discovery_task.submit(
                 tool=tool_name,
-                result_dir=result_dir,
-                command=command,  # 传递完整命令
-                timeout=config['timeout'],
-                output_file=output_file  # 传递输出文件路径
+                command=command,
+                timeout=timeout,
+                output_file=output_file
             )
             futures[tool_name] = future
         
         # 等待并行任务完成，获取结果
         # 注意：Task 资源由 Prefect 调度器管理，完成后自动释放，不受此处等待影响
-        results = {}
+        result_files = []
         for tool_name, future in futures.items():
             try:
-                result = future.result()
-                results[tool_name] = result
-                logger.info("✓ 扫描工具 %s 执行成功", tool_name)
+                result = future.result()  # 返回文件路径（字符串）或 ""（失败）
+                if result:
+                    result_files.append(result)
+                    logger.info("✓ 扫描工具 %s 执行成功: %s", tool_name, result)
+                else:
+                    logger.warning("⚠️ 扫描工具 %s 未生成结果文件", tool_name)
             except Exception as e:
                 logger.warning("⚠️ 扫描工具 %s 执行失败: %s", tool_name, str(e))
-                results[tool_name] = None  # 标记为失败
-        
-        # 过滤掉失败的扫描结果（None表示失败）
-        result_files = [result for result in results.values() if result]
         
         if not result_files:
-            tool_names = ', '.join(SCANNER_CONFIGS.keys())
+            tool_names = ', '.join(executed_tools)
             raise RuntimeError(
                 f"所有扫描工具均失败 - 目标: {target_name}. "
                 f"请检查扫描工具是否正确安装（{tool_names}）"
@@ -201,7 +186,7 @@ def subdomain_discovery_flow(
         
         logger.info(
             "✓ 扫描工具并行执行完成 - 成功: %d/%d",
-            len(result_files), len(SCANNER_CONFIGS)
+            len(result_files), len(executed_tools)
         )
         
         # ==================== Step 2: 合并并去重域名 ====================
@@ -209,7 +194,7 @@ def subdomain_discovery_flow(
         
         merged_file = merge_and_validate_task(
             result_files=result_files,
-            result_dir=result_dir
+            result_dir=str(result_dir)
         )
         
         # ==================== Step 3: 流式保存到数据库 ====================
@@ -225,7 +210,7 @@ def subdomain_discovery_flow(
         logger.info("="*60 + "\n✓ 子域名发现扫描完成\n" + "="*60)
         
         # 动态生成已执行的任务列表，用于返回结果
-        executed_tasks = [f'run_scanner ({tool})' for tool in SCANNER_CONFIGS.keys()]
+        executed_tasks = [f'run_scanner ({tool})' for tool in executed_tools]
         executed_tasks.extend([
             'merge_and_validate', 
             'save_domains'

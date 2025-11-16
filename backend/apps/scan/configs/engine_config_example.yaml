@@ -1,0 +1,75 @@
+# 引擎配置示例
+# 
+# 说明：
+# - 这是引擎配置（engine_config）的示例文件
+# - 实际配置存储在数据库的 ScanEngine.configuration 字段中
+#
+# 必需参数：
+# - enabled: 是否启用工具（true/false）
+# - timeout: 超时时间（秒），工具执行超过此时间会被强制终止
+#
+# 可选参数：
+# - threads: 线程数，影响扫描速度
+# - wordlist: 字典文件路径
+# - top_ports: 扫描 Top N 端口
+# - retries: 重试次数
+# - extensions: 文件扩展名
+#
+# 使用方式：
+# - 在前端创建扫描引擎时，将此配置保存到数据库
+# - 执行扫描时，从数据库读取配置并传递给 Flow
+# - 取消注释可选参数即可启用
+
+# ==================== 子域名发现 ====================
+subdomain_discovery:
+  tools:
+    subfinder:
+      enabled: true
+      timeout: 600      # 10 分钟（必需）
+      # threads: 10     # 可选，线程数
+      
+    amass_passive:
+      enabled: true
+      timeout: 600      # 10 分钟（必需）
+      
+    amass_active:
+      enabled: true
+      timeout: 1800     # 30 分钟，暴力破解耗时长（必需）
+      # wordlist: /usr/src/wordlist/deepmagic.com-prefixes-top50000.txt  # 可选，字典文件
+      
+    sublist3r:
+      enabled: true
+      timeout: 900      # 15 分钟（必需）
+      # threads: 50     # 可选，线程数
+      
+    oneforall:
+      enabled: true
+      timeout: 1200     # 20 分钟，全面扫描（必需）
+
+# ==================== 端口扫描 ====================
+port_scan:
+  tools:
+    naabu:
+      enabled: true
+      timeout: 300      # 5 分钟（必需）
+      # threads: 100    # 可选，线程数
+      # top_ports: 1000 # 可选，扫描 Top N 端口
+
+# ==================== 站点扫描 ====================
+site_scan:
+  tools:
+    httpx:
+      enabled: true
+      timeout: 300      # 5 分钟（必需）
+      # threads: 50     # 可选，线程数
+      # retries: 2      # 可选，重试次数
+
+# ==================== 目录扫描 ====================
+directory_scan:
+  tools:
+    dirsearch:
+      enabled: true
+      timeout: 600      # 10 分钟（必需）
+      # threads: 50     # 可选，线程数
+      # wordlist: /usr/src/wordlist/common.txt  # 可选，字典文件
+      # extensions: php,html,js  # 可选，文件扩展名
