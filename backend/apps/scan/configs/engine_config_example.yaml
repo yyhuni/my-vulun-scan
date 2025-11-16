@@ -42,32 +42,27 @@ subdomain_discovery:
 # ==================== 端口扫描 ====================
 port_scan:
   tools:
-    naabu:
-      enabled: true
-      timeout: 300      # 5 分钟（必需）
-      # threads: 100    # 可选，线程数
-      # top_ports: 1000 # 可选，扫描 Top N 端口
-      
     naabu_active:
       enabled: true
-      timeout: 600      # 10 分钟（必需）
-      threads: 5        # 必需，并发连接数
-      ports: 1-65535    # 必需，扫描端口范围
-      rate: 10          # 必需，扫描速率
+      timeout: 3600     # 1 小时（必需）
+      threads: 5        # 可选，并发连接数（默认 5）
+      ports: 1-65535    # 可选，扫描端口范围（默认 1-65535）
+      rate: 10          # 可选，扫描速率（默认 10）
       
     naabu_passive:
       enabled: true
-      timeout: 300      # 5 分钟（必需）
-      # 被动扫描，使用被动数据源
+      timeout: 1800     # 30 分钟（必需）
+      # 被动扫描，使用被动数据源，无需额外配置
 
 # ==================== 站点扫描 ====================
 site_scan:
   tools:
     httpx:
       enabled: true
-      timeout: 300      # 5 分钟（必需）
-      # threads: 50     # 可选，线程数
-      # retries: 2      # 可选，重试次数
+      timeout: 300          # Flow 超时时间（秒，必需）
+      # threads: 50         # 可选，线程数
+      # request_timeout: 5  # 可选，httpx 工具的请求超时（秒）
+      # retries: 2          # 可选，重试次数
 
 # ==================== 目录扫描 ====================
 directory_scan:

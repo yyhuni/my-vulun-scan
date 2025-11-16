@@ -12,7 +12,8 @@
 from .directory_cleanup import remove_directory
 from .command_builder import build_command
 from .stream_command import stream_command
-from .command_helper import parse_and_build_commands
+from . import command_helper  # 导入模块
+from . import config_parser  # 导入模块
 from .run_scan_command import run_scan_command
 
 __all__ = [
@@ -22,8 +23,10 @@ __all__ = [
     'build_command',
     # 流式命令执行（快捷函数）
     'stream_command',
-    # 命令辅助（一站式命令构建）
-    'parse_and_build_commands',
+    # 命令辅助（模块）
+    'command_helper',
+    # 配置解析（模块）
+    'config_parser',
     # 扫描命令执行（快捷函数）
     'run_scan_command',
 ]

@@ -8,8 +8,7 @@
 - 工具配置：从引擎配置（engine_config YAML 字符串）读取
 - 无默认配置文件：所有配置必须在引擎配置中提供
 
-核心方法：
-- parse_engine_config(): 解析 YAML 字符串
+核心函数：
 - parse_enabled_tools(): 解析并过滤启用的工具，返回工具配置字典
 
 返回格式：
@@ -24,101 +23,95 @@ from typing import Dict, Any, Optional
 logger = logging.getLogger(__name__)
 
 
-class _ScannerConfigParser:
+def _parse_engine_config(engine_config_str: Optional[str]) -> Dict[str, Any]:
     """
-    扫描配置解析器
+    解析引擎配置（YAML 字符串）
     
-    职责：
-    - 解析引擎配置（YAML 字符串）
-    - 提取启用的工具配置
-    - 过滤工具启用状态
+    Args:
+        engine_config_str: YAML 格式的引擎配置字符串
     
-    不负责：
-    - 命令构建（在工具类中）
-    - 默认配置管理（工具类自带默认值）
+    Returns:
+        引擎配置字典
     """
+    if not engine_config_str or not engine_config_str.strip():
+        return {}
     
-    def parse_engine_config(self, engine_config_str: Optional[str]) -> Dict[str, Any]:
-        """
-        解析引擎配置（YAML 字符串）
-        
-        Args:
-            engine_config_str: YAML 格式的引擎配置字符串
-        
-        Returns:
-            引擎配置字典
-        """
-        if not engine_config_str or not engine_config_str.strip():
-            return {}
-        
-        try:
-            config = yaml.safe_load(engine_config_str) or {}
-            logger.debug(f"解析引擎配置成功: {len(config)} 个配置项")
-            return config
-        except yaml.YAMLError as e:
-            logger.error(f"解析引擎配置失败: {e}")
-            return {}
+    try:
+        config = yaml.safe_load(engine_config_str) or {}
+        logger.debug(f"解析引擎配置成功: {len(config)} 个配置项")
+        return config
+    except yaml.YAMLError as e:
+        logger.error(f"解析引擎配置失败: {e}")
+        return {}
+
+
+def parse_enabled_tools(
+    scan_type: str,
+    engine_config_str: Optional[str] = None
+) -> Dict[str, Dict[str, Any]]:
+    """
+    解析 YAML 配置，获取启用的工具及其配置
     
-    def parse_enabled_tools(
-        self,
-        scan_type: str,
-        engine_config_str: Optional[str] = None
-    ) -> Dict[str, Dict[str, Any]]:
-        """
-        解析 YAML 配置，获取启用的工具及其配置
+    Args:
+        scan_type: 扫描类型 (subdomain_discovery, port_scan, site_scan, directory_scan)
+        engine_config_str: 引擎配置（YAML 字符串）
+    
+    Returns:
+        启用的工具配置字典 {tool_name: tool_config}
+        例如: {
+            'subfinder': {'enabled': True, 'threads': 10, 'timeout': 600},
+            'amass_passive': {'enabled': True, 'timeout': 300}
+        }
+    
+    Example:
+        >>> enabled_tools = parse_enabled_tools('subdomain_discovery', yaml_config)
+        >>> for tool_name, tool_config in enabled_tools.items():
+        ...     timeout = tool_config['timeout']
+        ...     threads = tool_config.get('threads', 50)
+    
+    Note:
+        返回的是工具配置字典，不是工具名列表。
+        命令构建逻辑在 command_helper 中实现。
+    """
+    if not engine_config_str:
+        # 没有配置 → 返回空字典，不执行任何工具
+        logger.warning(f"没有引擎配置，{scan_type} 不会执行任何工具")
+        return {}
+    
+    # 1. 解析引擎配置
+    engine_config = _parse_engine_config(engine_config_str)
+    if scan_type not in engine_config:
+        logger.warning(f"引擎配置中未找到扫描类型: {scan_type}")
+        return {}
+    
+    scan_config = engine_config[scan_type]
+    if 'tools' not in scan_config:
+        logger.warning(f"扫描类型 {scan_type} 未配置任何工具")
+        return {}
+    
+    tools = scan_config['tools']
+    
+    # 2. 过滤出启用的工具
+    enabled_tools = {}
+    for name, config in tools.items():
+        if not isinstance(config, dict):
+            logger.warning(f"工具 {name} 配置格式错误，跳过")
+            continue
         
-        Args:
-            scan_type: 扫描类型
-            engine_config_str: 引擎配置（YAML 字符串）
-        
-        Returns:
-            启用的工具配置字典 {tool_name: tool_config}
-            例如: {'subfinder': {'enabled': True, 'threads': 10, 'timeout': 600}}
-        
-        Note:
-            返回的是工具配置字典，不是工具名列表。
-            命令构建逻辑在 command_helper 中实现。
-        """
-        if not engine_config_str:
-            # 没有配置 → 返回空字典，不执行任何工具
-            logger.warning(f"没有引擎配置，{scan_type} 不会执行任何工具")
-            return {}
-        
-        # 直接使用引擎配置
-        engine_config = self.parse_engine_config(engine_config_str)
-        scan_config = engine_config.get(scan_type, {})
-        
-        if not scan_config:
-            logger.warning(f"引擎配置中没有 {scan_type} 配置")
-            return {}
-        
-        tools = scan_config.get('tools', {})
-        
-        if not tools:
-            logger.warning(f"{scan_type} 配置中没有工具列表")
-            return {}
-        
-        # 过滤启用的工具（必须明确配置 enabled）
-        enabled_tools = {}
-        for name, config in tools.items():
-            # 检查是否配置了 enabled
-            if 'enabled' not in config:
-                logger.warning(f"工具 {name} 缺少 enabled 配置，跳过")
+        # 检查是否启用（默认为 False）
+        if config.get('enabled', False):
+            # 检查必需参数
+            if 'timeout' not in config:
+                logger.warning(
+                    f"工具 {name} 缺少必需参数 'timeout'，跳过"
+                )
                 continue
             
-            # 只添加 enabled=true 的工具
-            if config.get('enabled') is True:
-                enabled_tools[name] = config
-        
-        logger.info(
-            f"扫描类型: {scan_type}, "
-            f"启用工具: {len(enabled_tools)}/{len(tools)}"
-        )
-        
-        return enabled_tools
-
-
-# ==================== 内部单例（不对外暴露）====================
-_config_parser = _ScannerConfigParser()
-
-
+            enabled_tools[name] = config
+    
+    logger.info(
+        f"扫描类型: {scan_type}, "
+        f"启用工具: {len(enabled_tools)}/{len(tools)}"
+    )
+    
+    return enabled_tools

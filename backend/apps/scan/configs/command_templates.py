@@ -71,7 +71,7 @@ SITE_SCAN_COMMANDS = {
         'command': 'httpx -l {input_file} -o {output_file} -json -silent',
         'optional_flags': {
             'threads': '-threads {threads}',
-            'timeout': '-timeout {timeout}',
+            'request_timeout': '-timeout {request_timeout}',  # 重命名，避免和 Flow timeout 冲突
             'retries': '-retries {retries}',
             'use_proxy': '-http-proxy {proxy_url}',
         }

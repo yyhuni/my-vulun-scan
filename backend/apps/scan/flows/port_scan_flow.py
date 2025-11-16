@@ -1,8 +1,18 @@
+"""  
+端口扫描 Flow
+
+负责编排端口扫描的完整流程
+
+架构：
+- Flow 负责编排多个原子 Task
+- 支持串行执行扫描工具（流式处理）
+- 每个 Task 可独立重试
+- 配置由 YAML 解析
+"""
+
 import logging
 import os
 import subprocess
-import uuid
-from datetime import datetime
 from pathlib import Path
 from prefect import flow
 from apps.scan.tasks.port_scan import (
@@ -16,21 +26,10 @@ from apps.scan.handlers.scan_flow_handlers import (
     on_scan_flow_cancelled,
     on_scan_flow_crashed
 )
-from apps.scan.utils import build_command
+from apps.scan.utils import config_parser, command_helper
 
 
 logger = logging.getLogger(__name__)
-
-PORT_SCANNER_CONFIGS = {
-    'naabu_active': {
-        # 主动扫描
-        'command': 'naabu -exclude-cdn -c 5 -rate 10 -p 1-65535 -warm-up-time 5 -retries 1 -verify -timeout 5000 -list {target_file}  -json -silent',
-    },
-    'naabu_passive': {
-        # 被动扫描
-        'command': 'naabu -list {target_file} -passive -json -silent',
-    }
-}
 
 def _setup_port_scan_directory(scan_workspace_dir: str) -> Path:
     """
@@ -99,10 +98,9 @@ def _run_scans_sequentially(
     port_scan_dir: Path,
     scan_id: int,
     target_id: int,
-    domain_count: int,
-    dynamic_timeout: int,
-    target_name: str
-) -> tuple[dict, list, int, list]:
+    target_name: str,
+    engine_config: str
+) -> tuple[dict, int, list]:
     """
     串行执行端口扫描任务
     
@@ -111,48 +109,64 @@ def _run_scans_sequentially(
         port_scan_dir: 端口扫描目录
         scan_id: 扫描任务 ID
         target_id: 目标 ID
-        domain_count: 域名数量
-        dynamic_timeout: 动态计算的超时时间
         target_name: 目标名称（用于错误日志）
+        engine_config: 引擎配置（YAML 字符串）
         
     Returns:
-        tuple: (tool_stats, result_files, processed_records, failed_tools)
+        tuple: (tool_stats, processed_records, failed_tools)
+        注意：端口扫描是流式输出，不生成结果文件
         
     Raises:
         RuntimeError: 所有工具均失败
     """
+    # ==================== Step 1: 解析配置，获取启用的工具 ====================
+    enabled_tools = config_parser.parse_enabled_tools(
+        scan_type='port_scan',
+        engine_config=engine_config
+    )
+    
+    if not enabled_tools:
+        raise RuntimeError("没有启用的端口扫描工具，请检查引擎配置。")
+    
+    # ==================== Step 2: 构建命令并串行执行 ====================
     logger.info(
-        "Step 2 & 3: 串行执行端口扫描并实时保存结果（%s）",
-        ', '.join(PORT_SCANNER_CONFIGS.keys())
+        "开始串行执行 %d 个端口扫描工具并实时保存结果",
+        len(enabled_tools)
     )
     
     tool_stats = {}
     processed_records = 0
-    result_files = []
     failed_tools = []
     
-    for tool_name, config in PORT_SCANNER_CONFIGS.items():
-        logger.info("开始执行 %s 扫描...", tool_name)
+    for tool_name, tool_config in enabled_tools.items():
+        # 2.1 构建完整命令（变量替换）
+        try:
+            command = command_helper.build_tool_command(
+                tool_name=tool_name,
+                scan_type='port_scan',
+                command_params={
+                    'target_file': domains_file  # 对应 {target_file}
+                },
+                tool_config=tool_config
+            )
+        except Exception as e:
+            logger.error(f"构建 {tool_name} 命令失败: {e}")
+            failed_tools.append(tool_name)
+            continue
         
-        # 生成输出文件
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        short_uuid = uuid.uuid4().hex[:4]
-        output_file = str(port_scan_dir / f"{tool_name}_{timestamp}_{short_uuid}.jsonl")
+        # 2.2 获取超时时间
+        config_timeout = tool_config.get('timeout')
+        if not config_timeout:
+            logger.warning(f"工具 {tool_name} 缺少 timeout 配置，跳过")
+            failed_tools.append(tool_name)
+            continue
         
-        # 使用统一的命令构建器
-        command = build_command(
-            template=config['command'],
-            target_file=domains_file,
-            output_file=output_file
-        )
-        
-        logger.info(
-            "工具 %s 超时配置: %d 秒（动态计算，基于 %d 个域名）",
-            tool_name, dynamic_timeout, domain_count
-        )
+        # 2.3 执行扫描任务
+        logger.info("开始执行 %s 扫描（超时: %d秒）...", tool_name, config_timeout)
         
         try:
             # 直接调用 task（串行执行）
+            # 注意：端口扫描是流式输出到 stdout，不使用 output_file
             result = run_and_stream_save_ports_task(
                 cmd=command,
                 scan_id=scan_id,
@@ -160,16 +174,15 @@ def _run_scans_sequentially(
                 cwd=str(port_scan_dir),
                 shell=True,
                 batch_size=500,
-                timeout=dynamic_timeout
+                timeout=config_timeout
             )
             
             tool_stats[tool_name] = {
                 'command': command,
-                'output_file': output_file,
-                'result': result
+                'result': result,
+                'timeout': config_timeout
             }
             processed_records += result.get('processed_records', 0)
-            result_files.append(output_file)
             logger.info(
                 "✓ 工具 %s 流式处理完成 - 记录数: %d",
                 tool_name, result.get('processed_records', 0)
@@ -180,7 +193,7 @@ def _run_scans_sequentially(
             failed_tools.append(tool_name)
             logger.error(
                 "工具 %s 执行超时 - 超时配置: %d秒, 异常: %s",
-                tool_name, dynamic_timeout, exc
+                tool_name, config_timeout, exc
             )
         except Exception as exc:
             # 其他异常
@@ -202,42 +215,11 @@ def _run_scans_sequentially(
     
     logger.info(
         "✓ 串行端口扫描执行完成 - 成功: %d/%d",
-        len(tool_stats), len(PORT_SCANNER_CONFIGS)
+        len(tool_stats), len(tool_commands)
     )
     
-    return tool_stats, result_files, processed_records, failed_tools
+    return tool_stats, processed_records, failed_tools
 
-
-def calculate_timeout(domain_count: int, max_timeout: int = 86400) -> int:
-    """
-    根据域名数量动态计算扫描超时时间（带上限保护）。
-
-    规则：
-    - 基础时间 base = 300 秒（5 分钟）
-    - 每个域名额外增加 per_domain = 1 秒
-    - 强制上限 max_timeout = 86400 秒（24 小时），防止资源耗尽
-
-    Args:
-        domain_count: 域名数量，必须为正整数
-        max_timeout: 最大超时时间（秒），默认 86400（24 小时）
-
-    Returns:
-        int: 计算得到的超时时间（秒），不超过 max_timeout
-
-    Raises:
-        ValueError: 当 domain_count 为负数或 0 时抛出异常
-    """
-    if domain_count < 0:
-        raise ValueError(f"域名数量不能为负数: {domain_count}")
-    if domain_count == 0:
-        raise ValueError("域名数量不能为0")
-
-    base = 300
-    per_domain = 1
-    timeout = base + int(domain_count * per_domain)
-    
-    # 强制上限，防止资源耗尽
-    return min(timeout, max_timeout)
 
 @flow(
     name="port_scan", 
@@ -277,7 +259,7 @@ def port_scan_flow(
         target_name: 域名
         target_id: 目标 ID
         scan_workspace_dir: Scan 工作空间目录
-        engine_config: 引擎配置（预留，暂未使用）
+        engine_config: 引擎配置（YAML 字符串，必需）
 
     Returns:
         dict: {
@@ -318,19 +300,14 @@ def port_scan_flow(
         # Step 1: 导出目标域名
         domains_file, domain_count = _export_target_domains(target_id, port_scan_dir)
         
-        # 动态计算超时时间
-        dynamic_timeout = calculate_timeout(domain_count)
-        logger.info("动态计算超时时间: %d 秒（基于域名数量 %d）", dynamic_timeout, domain_count)
-        
         # Step 2 & 3: 串行执行扫描任务
-        tool_stats, result_files, processed_records, failed_tools = _run_scans_sequentially(
+        tool_stats, processed_records, failed_tools = _run_scans_sequentially(
             domains_file=domains_file,
             port_scan_dir=port_scan_dir,
             scan_id=scan_id,
             target_id=target_id,
-            domain_count=domain_count,
-            dynamic_timeout=dynamic_timeout,
-            target_name=target_name
+            target_name=target_name,
+            engine_config=engine_config
         )
         
         logger.info("="*60 + "\n✓ 端口扫描完成\n" + "="*60)
@@ -346,7 +323,6 @@ def port_scan_flow(
             'scan_workspace_dir': scan_workspace_dir,
             'domains_file': domains_file,
             'domain_count': domain_count,
-            'result_files': result_files,
             'processed_records': processed_records,
             'executed_tasks': executed_tasks,
             'tool_stats': tool_stats
