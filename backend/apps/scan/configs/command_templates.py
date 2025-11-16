@@ -9,6 +9,12 @@
 - YAML 配置：提供所有参数值和超时时间
 """
 
+import os
+
+# ==================== 路径配置 ====================
+# 扫描工具基础路径（支持环境变量配置）
+SCAN_TOOLS_BASE_PATH = os.getenv('SCAN_TOOLS_PATH', '/opt/github')
+
 # ==================== 子域名发现 ====================
 
 SUBDOMAIN_DISCOVERY_COMMANDS = {
@@ -32,14 +38,14 @@ SUBDOMAIN_DISCOVERY_COMMANDS = {
     },
     
     'sublist3r': {
-        'command': 'python3 /opt/github/Sublist3r/sublist3r.py -d {target} -o {output_file}',
+        'command': f'python3 {SCAN_TOOLS_BASE_PATH}/Sublist3r/sublist3r.py -d {{target}} -o {{output_file}}',
         'optional_flags': {
             'threads': '-t {threads}',
         }
     },
     
     'oneforall': {
-        'command': 'python3 /opt/github/OneForAll/oneforall.py --target {target} run && cut -d\',\' -f6 /opt/github/OneForAll/results/{target}.csv | tail -n +2 > {output_file} && rm -rf /opt/github/OneForAll/results/{target}.csv',
+        'command': f'python3 {SCAN_TOOLS_BASE_PATH}/OneForAll/oneforall.py --target {{target}} run && cut -d\',\' -f6 {SCAN_TOOLS_BASE_PATH}/OneForAll/results/{{target}}.csv | tail -n +2 > {{output_file}} && rm -rf {SCAN_TOOLS_BASE_PATH}/OneForAll/results/{{target}}.csv',
         'optional_flags': {}
     },
 }
@@ -83,7 +89,7 @@ SITE_SCAN_COMMANDS = {
 
 DIRECTORY_SCAN_COMMANDS = {
     'dirsearch': {
-        'command': 'python3 /opt/github/dirsearch/dirsearch.py -u {target} -o {output_file}',
+        'command': f'python3 {SCAN_TOOLS_BASE_PATH}/dirsearch/dirsearch.py -u {{target}} -o {{output_file}}',
         'optional_flags': {
             'threads': '-t {threads}',
             'wordlist': '-w {wordlist}',

@@ -15,6 +15,10 @@ from typing import Dict, Any, Optional, Generator
 
 logger = logging.getLogger(__name__)
 
+# 常量定义
+GRACEFUL_SHUTDOWN_TIMEOUT = 5  # 进程优雅退出的超时时间（秒）
+MAX_LOG_TAIL_LINES = 1000  # 日志文件读取的最大行数
+
 
 class CommandExecutor:
     """
@@ -106,7 +110,7 @@ class CommandExecutor:
                 # 命令执行失败，尝试读取错误日志
                 error_output = ""
                 if log_file_path:
-                    error_output = self._read_log_tail(log_file_path, max_lines=1000)
+                    error_output = self._read_log_tail(log_file_path, max_lines=MAX_LOG_TAIL_LINES)
                 logger.warning(
                     "扫描工具 %s 返回非零状态码: %d%s",
                     tool_name, returncode,
@@ -229,6 +233,7 @@ class CommandExecutor:
             # 取消定时器（如果还没触发）
             if timer:
                 timer.cancel()
+                timer.join(timeout=0.1)  # 等待 timer 线程结束，避免悬挂
             
             # 确保进程被正确清理
             exit_code = None
@@ -236,7 +241,7 @@ class CommandExecutor:
                 # 进程还在运行，先尝试优雅终止
                 process.terminate()
                 try:
-                    exit_code = process.wait(timeout=5)  # 给5秒时间优雅退出
+                    exit_code = process.wait(timeout=GRACEFUL_SHUTDOWN_TIMEOUT)
                 except subprocess.TimeoutExpired:
                     # 仍未退出，强制杀死
                     process.kill()
@@ -253,7 +258,7 @@ class CommandExecutor:
             if exit_code != 0:
                 logger.warning(f"命令执行失败，退出码: {exit_code}")
     
-    def _read_log_tail(self, log_file: Path, max_lines: int = 1000) -> str:
+    def _read_log_tail(self, log_file: Path, max_lines: int = MAX_LOG_TAIL_LINES) -> str:
         """
         读取日志文件的末尾部分
         

@@ -288,6 +288,13 @@ def _save_batch(
         # 注：上方的 bulk_create 是同步阻塞操作，执行到这里时数据已提交
         # 如果查不到，说明数据本身不存在（如 subdomain 不在库中），而非延迟问题
         ip_map = ip_repo.get_by_subdomain_and_ips(subdomain_ids, ip_addrs)
+        
+        # 验证数据完整性（有助于发现潜在问题）
+        if len(ip_map) < len(ip_set):
+            logger.warning(
+                "批次 %d: IP 创建后查询不完整 - 预期 %d 条，实际查到 %d 条（可能原因：subdomain 不存在或已删除）",
+                batch_num, len(ip_set), len(ip_map)
+            )
     
     # ========== Step 5: 批量创建 Port（Repository 内部独立短事务）==========
     port_items = []

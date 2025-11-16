@@ -165,6 +165,7 @@ def subdomain_discovery_flow(
         # proxy_stats = proxy_pool.get_stats()
         # logger.info(f"代理池状态: {proxy_stats['healthy']}/{proxy_stats['total']} 可用")
         
+        failures = []  # 记录命令构建失败的工具
         futures = {}
         
         for tool_name, tool_config in enabled_tools.items():
