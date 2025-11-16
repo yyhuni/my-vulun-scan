@@ -706,17 +706,37 @@ def _cleanup_resources(data_generator) -> None:
     清理任务资源
     
     Args:
-        data_generator: 数据生成器
+        data_generator: 数据生成器（可以为 None）
+    
+    Note:
+        此函数设计为幂等且安全：
+        - 可以多次调用
+        - 接受 None 值
+        - 捕获所有异常，不会导致 finally 块失败
     """
     # 注：LRUCache 是局部变量，函数结束时会自动释放，无需手动 clear()
     
     # 确保生成器被正确关闭
-    if data_generator is not None:
-        try:
-            data_generator.close()
-            logger.debug("已关闭数据生成器")
-        except Exception as gen_close_error:
-            logger.error("关闭生成器时出错: %s", gen_close_error)
+    if data_generator is None:
+        logger.debug("数据生成器为 None，无需清理")
+        return
+    
+    try:
+        data_generator.close()
+        logger.debug("✓ 已成功关闭数据生成器")
+    except StopIteration:
+        # 生成器已经正常结束，这是预期行为
+        logger.debug("数据生成器已正常结束")
+    except GeneratorExit:
+        # 生成器已经被关闭，这是预期行为
+        logger.debug("数据生成器已被关闭")
+    except Exception as gen_close_error:
+        # 未预期的错误：记录但不抛出，避免掩盖原始异常
+        logger.error(
+            "⚠️ 关闭生成器时出错（此错误不会影响任务结果）: %s",
+            gen_close_error,
+            exc_info=True
+        )
 
 
 @task(

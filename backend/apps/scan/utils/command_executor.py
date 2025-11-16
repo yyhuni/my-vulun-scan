@@ -230,35 +230,50 @@ class CommandExecutor:
                 yield line
         
         finally:
-            # 取消定时器（如果还没触发）
+            # 1. 停止定时器（如果还没触发）
             if timer:
                 timer.cancel()
-                timer.join(timeout=0.1)  # 等待 timer 线程结束，避免悬挂
+                timer.join(timeout=0.1)  # 等待 timer 线程完全结束，避免悬挂
             
-            # 确保进程被正确清理
+            # 2. 清理进程资源
+            # 注意：使用 timed_out_event 避免竞态条件
             exit_code = None
-            if process.poll() is None:
-                # 进程还在运行，先尝试优雅终止
+            
+            if timed_out_event.is_set():
+                # 超时情况：定时器已经处理了进程终止，只需获取退出码
+                logger.debug("进程已被超时定时器终止，等待进程结束")
+                try:
+                    exit_code = process.wait(timeout=1.0)  # 等待进程完全退出
+                except subprocess.TimeoutExpired:
+                    # 极端情况：进程仍未退出，强制终止
+                    logger.warning("进程在超时后仍未退出，强制终止")
+                    process.kill()
+                    exit_code = process.wait()
+            elif process.poll() is None:
+                # 正常情况：进程还在运行，需要手动清理
+                logger.debug("进程仍在运行，执行优雅终止")
                 process.terminate()
                 try:
                     exit_code = process.wait(timeout=GRACEFUL_SHUTDOWN_TIMEOUT)
                 except subprocess.TimeoutExpired:
-                    # 仍未退出，强制杀死
+                    # 优雅终止失败，强制杀死
+                    logger.warning("进程未响应 terminate 信号，强制 kill")
                     process.kill()
                     exit_code = process.wait()
             else:
-                # 进程已经结束，直接获取退出码
+                # 进程已经正常结束
                 exit_code = process.returncode
+                logger.debug("进程已正常结束，退出码: %s", exit_code)
             
-            # 如果是超时导致的终止，抛出标准异常
+            # 3. 如果是超时导致的终止，抛出标准异常
             # 注意：对于流式处理任务（如端口扫描），超时时已处理的数据已保存到数据库
             # 这是预期行为：流式处理允许部分数据保存，即使任务未完全完成
             if timed_out_event.is_set():
                 raise subprocess.TimeoutExpired(cmd, timeout if timeout else 0)
             
-            # 记录异常退出的情况
-            if exit_code != 0:
-                logger.warning(f"命令执行失败，退出码: {exit_code}")
+            # 4. 记录异常退出的情况（非超时）
+            if exit_code is not None and exit_code != 0:
+                logger.warning("命令执行失败，退出码: %s", exit_code)
     
     def _read_log_tail(self, log_file: Path, max_lines: int = MAX_LOG_TAIL_LINES) -> str:
         """
