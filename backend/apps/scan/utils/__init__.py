@@ -10,24 +10,22 @@
 """
 
 from .directory_cleanup import remove_directory
-from .command_builder import build_command
+from .command_builder import build_command, build_scan_command
 from .stream_command import stream_command
-from . import command_helper  # 导入模块
-from . import config_parser  # 导入模块
+from . import config_parser
 from .run_scan_command import run_scan_command
 
 __all__ = [
     # 目录清理
     'remove_directory',
-    # 命令构建（快捷函数）
-    'build_command',
-    # 流式命令执行（快捷函数）
+    # 命令构建
+    'build_command',         # 通用：字符串模板替换
+    'build_scan_command',    # 专用：扫描工具命令构建
+    # 流式命令执行
     'stream_command',
-    # 命令辅助（模块）
-    'command_helper',
-    # 配置解析（模块）
+    # 配置解析
     'config_parser',
-    # 扫描命令执行（快捷函数）
+    # 扫描命令执行
     'run_scan_command',
 ]
 

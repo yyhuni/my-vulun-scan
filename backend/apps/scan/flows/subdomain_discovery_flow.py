@@ -20,7 +20,7 @@ from apps.scan.handlers.scan_flow_handlers import (
     on_scan_flow_cancelled,
     on_scan_flow_crashed
 )
-from apps.scan.utils import config_parser, command_helper
+from apps.scan.utils import config_parser, build_scan_command
 from apps.common.normalizer import normalize_domain
 from apps.common.validators import validate_domain
 from datetime import datetime
@@ -174,7 +174,7 @@ def subdomain_discovery_flow(
             
             # 2.2 构建完整命令（变量替换）
             try:
-                command = command_helper.build_tool_command(
+                command = build_scan_command(
                     tool_name=tool_name,
                     scan_type='subdomain_discovery',
                     command_params={

@@ -168,3 +168,63 @@ def build_command(template: str, **variables) -> str:
         'amass enum -d example.com -o /tmp/result.txt'
     """
     return _command_builder.build(template, **variables)
+
+
+# ==================== 扫描工具专用命令构建 ====================
+
+def build_scan_command(
+    tool_name: str,
+    scan_type: str,
+    command_params: Dict[str, Any],
+    tool_config: Dict[str, Any]
+) -> str:
+    """
+    构建扫描工具命令（结合命令模板 + 可选参数）
+    
+    Args:
+        tool_name: 工具名称（如 'subfinder'）
+        scan_type: 扫描类型（如 'subdomain_discovery'）
+        command_params: 命令占位符参数
+            - target: 扫描目标
+            - output_file: 输出文件路径
+            - target_file: 目标文件路径
+        tool_config: 工具配置参数（包含可选参数）
+            - threads: 线程数
+            - tool_timeout: Flow 超时（会被忽略）
+            - tool_enabled: 启用状态（会被忽略）
+    
+    Returns:
+        完整的命令字符串
+    
+    Example:
+        >>> build_scan_command(
+        ...     tool_name='subfinder',
+        ...     scan_type='subdomain_discovery',
+        ...     command_params={'target': 'example.com', 'output_file': '/tmp/out.txt'},
+        ...     tool_config={'threads': 10}
+        ... )
+        'subfinder -d example.com -o /tmp/out.txt -t 10 -silent'
+    """
+    from apps.scan.configs.command_templates import get_command_template
+    
+    # 获取命令模板
+    template = get_command_template(scan_type, tool_name)
+    if not template:
+        raise ValueError(f"未找到工具 {tool_name} 的命令模板（扫描类型: {scan_type}）")
+    
+    # 构建基础命令
+    command_parts = [template['command']]
+    
+    # 拼接可选参数
+    for flag_name, flag_template in template.get('optional_flags', {}).items():
+        if param_value := tool_config.get(flag_name):
+            command_parts.append(flag_template)
+    
+    # 格式化命令（替换占位符）
+    command_template = ' '.join(command_parts)
+    all_params = {**command_params, **tool_config}
+    
+    try:
+        return command_template.format(**all_params)
+    except KeyError as e:
+        raise ValueError(f"命令构建失败，缺少必需参数: {e}")

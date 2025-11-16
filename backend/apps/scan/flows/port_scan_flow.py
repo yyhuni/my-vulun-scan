@@ -26,7 +26,7 @@ from apps.scan.handlers.scan_flow_handlers import (
     on_scan_flow_cancelled,
     on_scan_flow_crashed
 )
-from apps.scan.utils import config_parser, command_helper
+from apps.scan.utils import config_parser, build_scan_command
 
 
 logger = logging.getLogger(__name__)
@@ -141,7 +141,7 @@ def _run_scans_sequentially(
     for tool_name, tool_config in enabled_tools.items():
         # 2.1 构建完整命令（变量替换）
         try:
-            command = command_helper.build_tool_command(
+            command = build_scan_command(
                 tool_name=tool_name,
                 scan_type='port_scan',
                 command_params={
