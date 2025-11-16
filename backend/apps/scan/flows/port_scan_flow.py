@@ -215,7 +215,7 @@ def _run_scans_sequentially(
     
     logger.info(
         "✓ 串行端口扫描执行完成 - 成功: %d/%d",
-        len(tool_stats), len(tool_commands)
+        len(tool_stats), len(enabled_tools)
     )
     
     return tool_stats, processed_records, failed_tools

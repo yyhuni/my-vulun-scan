@@ -128,7 +128,7 @@ class _ScanCommandRunner:
             error_msg = f"扫描工具 {tool_name} 执行超时（{timeout}秒）"
             logger.error(error_msg)
             # 超时时日志文件已保留
-            if log_file_path.exists():
+            if log_file_path and log_file_path.exists():
                 logger.debug("超时日志已保存: %s", log_file_path)
             raise RuntimeError(error_msg) from e
         
