@@ -12,7 +12,7 @@ from typing import Dict, Any, Optional
 logger = logging.getLogger(__name__)
 
 
-class ScanCommandRunner:
+class _ScanCommandRunner:
     """
     扫描命令执行器
     
@@ -23,9 +23,9 @@ class ScanCommandRunner:
     4. 支持超时控制
     5. 清理资源
     
-    与 StreamCommandRunner 的区别：
-    - StreamCommandRunner: 流式输出，实时处理
-    - ScanCommandRunner: 文件输出，结果验证
+    与 _StreamCommandRunner 的区别：
+    - _StreamCommandRunner: 流式输出，实时处理
+    - _ScanCommandRunner: 文件输出，结果验证
     """
     
     def run(
@@ -164,8 +164,8 @@ class ScanCommandRunner:
             return "(无法读取日志文件)"
 
 
-# 单例实例
-scan_command_runner = ScanCommandRunner()
+# 内部单例实例（不对外暴露）
+_scan_command_runner = _ScanCommandRunner()
 
 
 def run_scan_command(
@@ -177,7 +177,7 @@ def run_scan_command(
     """
     快捷函数：执行扫描命令
     
-    这是 ScanCommandRunner.run() 的快捷方式
+    这是 _ScanCommandRunner.run() 的快捷方式
     
     Args:
         tool_name: 工具名称
@@ -206,7 +206,7 @@ def run_scan_command(
         >>> print(result['success'], result['returncode'])
         True 0
     """
-    return scan_command_runner.run(
+    return _scan_command_runner.run(
         tool_name=tool_name,
         command=command,
         timeout=timeout,

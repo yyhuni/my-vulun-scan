@@ -10,6 +10,7 @@
 
 import logging
 import functools
+import time
 from django.db import connection
 
 logger = logging.getLogger(__name__)
@@ -88,30 +89,57 @@ def auto_ensure_db_connection(cls):
     return cls
 
 
-def _check_and_reconnect():
+def _check_and_reconnect(max_retries=5):
     """
-    检查数据库连接健康状态，必要时重新连接
+    检查数据库连接健康状态，必要时使用指数退避重新连接
     
     策略：
     1. 尝试执行简单查询测试连接
-    2. 如果失败，关闭当前连接并重新建立
+    2. 如果失败，使用指数退避策略重试（最多5次）
+    3. 每次重试的等待时间：2^attempt 秒 (1s, 2s, 4s, 8s, 16s)
     
     异常处理：
     - 连接失效时自动重连
-    - 记录警告日志
+    - 记录警告日志和重试信息
     - 忽略关闭连接时的错误
+    - 达到最大重试次数后抛出异常
     """
-    try:
-        connection.ensure_connection()
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT 1")
-            cursor.fetchone()
-    except Exception as e:
-        logger.warning("数据库连接检查失败，重新建立连接: %s", str(e))
+    last_error = None
+    
+    for attempt in range(max_retries):
         try:
-            connection.close()
-        except Exception:
-            pass  # 忽略关闭时的错误
-        connection.ensure_connection()
+            connection.ensure_connection()
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+                cursor.fetchone()
+            
+            # 连接成功
+            if attempt > 0:
+                logger.info(f"数据库重连成功 (尝试 {attempt + 1}/{max_retries})")
+            return
+            
+        except Exception as e:
+            last_error = e
+            logger.warning(
+                f"数据库连接检查失败 (尝试 {attempt + 1}/{max_retries}): {e}"
+            )
+            
+            # 关闭失效的连接
+            try:
+                connection.close()
+            except Exception:
+                pass  # 忽略关闭时的错误
+            
+            # 如果还有重试机会，使用指数退避等待
+            if attempt < max_retries - 1:
+                delay = 2 ** attempt  # 指数退避: 1, 2, 4, 8, 16 秒
+                logger.info(f"等待 {delay} 秒后重试...")
+                time.sleep(delay)
+            else:
+                # 最后一次尝试也失败，抛出异常
+                logger.error(
+                    f"数据库重连失败，已达最大重试次数 ({max_retries})"
+                )
+                raise last_error
 
 

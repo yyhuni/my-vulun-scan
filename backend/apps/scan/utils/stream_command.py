@@ -13,7 +13,7 @@ from typing import Generator, Optional
 logger = logging.getLogger(__name__)
 
 
-class StreamCommandRunner:
+class _StreamCommandRunner:
     """
     流式命令执行器
     
@@ -25,7 +25,7 @@ class StreamCommandRunner:
     
     使用示例：
         # 基本用法
-        runner = StreamCommandRunner()
+        runner = _StreamCommandRunner()
         for line in runner.run(cmd='echo hello', shell=True):
             print(line)
         
@@ -61,7 +61,7 @@ class StreamCommandRunner:
             subprocess.TimeoutExpired: 命令执行超时
             
         Examples:
-            >>> runner = StreamCommandRunner()
+            >>> runner = _StreamCommandRunner()
             >>> for line in runner.run('echo "line1\\nline2"', shell=True):
             ...     print(line)
             line1
@@ -162,8 +162,8 @@ class StreamCommandRunner:
                 logger.warning(f"命令执行失败，退出码: {exit_code}")
 
 
-# 单例实例，可以直接导入使用
-stream_command_runner = StreamCommandRunner()
+# 内部单例实例（不对外暴露）
+_stream_command_runner = _StreamCommandRunner()
 
 
 def stream_command(
@@ -177,7 +177,7 @@ def stream_command(
     """
     快捷函数：以流式方式运行命令
     
-    这是 StreamCommandRunner.run() 的快捷方式，保持向后兼容
+    这是 _StreamCommandRunner.run() 的快捷方式
     
     Args:
         cmd: 要执行的命令
@@ -199,7 +199,7 @@ def stream_command(
         ...     print(line)
         hello
     """
-    return stream_command_runner.run(
+    return _stream_command_runner.run(
         cmd=cmd,
         cwd=cwd,
         shell=shell,

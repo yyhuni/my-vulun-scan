@@ -131,11 +131,11 @@ def parse_and_build_commands(
         >>> for tool_name, command, timeout, output_file, config in commands:
         ...     run_task(command, timeout, output_file)
     """
-    from apps.scan.utils.config_parser import config_parser
+    from apps.scan.utils.config_parser import _config_parser
     from apps.scan.configs.command_templates import get_command_template
     
     # 1. 解析 YAML，获取启用的工具及其配置
-    enabled_tools = config_parser.parse_enabled_tools(scan_type, engine_config)
+    enabled_tools = _config_parser.parse_enabled_tools(scan_type, engine_config)
     
     if not enabled_tools:
         logger.warning(f"没有启用的工具: {scan_type}")

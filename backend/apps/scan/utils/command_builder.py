@@ -11,7 +11,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 
-class CommandBuilder:
+class _CommandBuilder:
     """
     扫描命令构建器
     
@@ -22,7 +22,7 @@ class CommandBuilder:
     4. 生成最终可执行的命令
     
     使用示例：
-        builder = CommandBuilder()
+        builder = _CommandBuilder()
         
         # 基本用法
         cmd = builder.build(
@@ -61,7 +61,7 @@ class CommandBuilder:
             KeyError: 模板中的变量在 variables 中不存在
             
         Examples:
-            >>> builder = CommandBuilder()
+            >>> builder = _CommandBuilder()
             >>> builder.build(
             ...     template='echo {message}',
             ...     message='Hello World'
@@ -130,7 +130,7 @@ class CommandBuilder:
             list[str]: 变量名列表
             
         Examples:
-            >>> builder = CommandBuilder()
+            >>> builder = _CommandBuilder()
             >>> builder._extract_variables('echo {msg} to {file}')
             ['msg', 'file']
         """
@@ -141,15 +141,15 @@ class CommandBuilder:
         return variables
 
 
-# 单例实例，可以直接导入使用
-command_builder = CommandBuilder()
+# 内部单例实例（不对外暴露）
+_command_builder = _CommandBuilder()
 
 
 def build_command(template: str, **variables) -> str:
     """
     快捷函数：构建命令
     
-    这是 CommandBuilder.build() 的快捷方式
+    这是 _CommandBuilder.build() 的快捷方式
     
     Args:
         template: 命令模板
@@ -167,4 +167,4 @@ def build_command(template: str, **variables) -> str:
         ... )
         'amass enum -d example.com -o /tmp/result.txt'
     """
-    return command_builder.build(template, **variables)
+    return _command_builder.build(template, **variables)

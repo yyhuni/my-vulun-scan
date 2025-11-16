@@ -24,7 +24,7 @@ from typing import Dict, Any, Optional
 logger = logging.getLogger(__name__)
 
 
-class ScannerConfigParser:
+class _ScannerConfigParser:
     """
     扫描配置解析器
     
@@ -118,11 +118,7 @@ class ScannerConfigParser:
         return enabled_tools
 
 
-# ==================== 单例 ====================
-# 创建全局单例（供外部使用）
-config_parser = ScannerConfigParser()
-
-# 向后兼容的私有单例
-_config_parser = config_parser
+# ==================== 内部单例（不对外暴露）====================
+_config_parser = _ScannerConfigParser()
 
 
