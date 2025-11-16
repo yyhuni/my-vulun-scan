@@ -35,31 +35,30 @@ logger = logging.getLogger(__name__)
 # 1. 在下方字典中添加新的工具配置
 # 2. 无需修改其他代码，Flow 会自动并行执行所有配置的工具
 # 
-# 示例：
-# 'assetfinder': {
-#     'command': 'assetfinder --subs-only {target} > {output_file}',
-#     'timeout': 1200
-# }
+# 参数说明：
+# - {target}: 目标域名
+# - {output_file}: 输出文件路径
+# - timeout: 命令执行超时时间（秒）
 SCANNER_CONFIGS = {
-    'amass': {
-        'command': 'amass enum -passive -d {target} -o {output_file}',
-        'timeout': 360
-    },
     'subfinder': {
-        'command': 'subfinder -d {target} -o {output_file}',
-        'timeout': 360
+        'command': 'subfinder -d {target} -o {output_file} -proxy http://proxy:8080 -t 10 -silent',
+        'timeout': 600  # 10分钟，使用代理可能较慢
     },
-    'test_tool_not_found': {
-        'command': 'echo1 "test" > {output_file}',  # 命令不存在，返回状态码127
-        'timeout': 60
+    'amass_passive': {
+        'command': 'amass enum -passive -d {target} -o {output_file}',
+        'timeout': 600  # 10分钟
     },
-    'test_tool_timeout': {
-        'command': 'sleep 100',  # 睡眠100秒，触发超时异常
-        'timeout': 1  # 1秒后超时
+    'amass_active': {
+        'command': 'amass enum -active -d {target} -o {output_file} -brute -w /usr/src/wordlist/deepmagic.com-prefixes-top50000.txt',
+        'timeout': 1800  # 30分钟，主动扫描+暴力破解耗时较长
     },
-    'test_tool_syntax_error': {
-        'command': 'bash -c "syntax error',  # 语法错误的命令
-        'timeout': 60
+    'sublist3r': {
+        'command': 'python3 /usr/src/github/Sublist3r/sublist3r.py -d {target} -o {output_file} -t 50',
+        'timeout': 900  # 15分钟
+    },
+    'oneforall': {
+        'command': 'python3 /usr/src/github/OneForAll/oneforall.py --target {target} run && cut -d\',\' -f6 /usr/src/github/OneForAll/results/{target}.csv | tail -n +2 > {output_file} && rm -rf /usr/src/github/OneForAll/results/{target}.csv',
+        'timeout': 1200  # 20分钟，OneForAll 功能全面但耗时
     }
 }
 
