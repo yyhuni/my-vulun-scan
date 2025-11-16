@@ -40,7 +40,7 @@ from apps.asset.repositories.ip_address_repository import IPAddressDTO
 from apps.asset.repositories.port_repository import PortDTO
 from .types import PortScanRecord
 
-from apps.scan.utils.stream_command import stream_command
+from apps.scan.utils import stream_command
 from apps.common.validators import validate_port
 
 logger = logging.getLogger(__name__)

@@ -12,6 +12,11 @@ from .command_builder import (
     command_builder,
     build_command,
 )
+from .stream_command import (
+    StreamCommandRunner,
+    stream_command_runner,
+    stream_command,
+)
 
 __all__ = [
     # 目录清理
@@ -20,5 +25,9 @@ __all__ = [
     'CommandBuilder',
     'command_builder',
     'build_command',
+    # 流式命令执行
+    'StreamCommandRunner',
+    'stream_command_runner',
+    'stream_command',
 ]
 

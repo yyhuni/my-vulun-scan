@@ -30,7 +30,7 @@ from django.db import IntegrityError, OperationalError, DatabaseError, connectio
 from psycopg2 import InterfaceError
 
 from apps.asset.models import WebSite, Directory
-from apps.scan.utils.stream_command import stream_command
+from apps.scan.utils import stream_command
 
 logger = logging.getLogger(__name__)
 

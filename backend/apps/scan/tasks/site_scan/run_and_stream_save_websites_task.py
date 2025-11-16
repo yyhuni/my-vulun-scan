@@ -38,7 +38,7 @@ from apps.asset.repositories.django_subdomain_repository import DjangoSubdomainR
 from apps.asset.repositories.django_website_repository import DjangoWebSiteRepository
 from apps.asset.repositories.website_repository import WebSiteDTO
 
-from apps.scan.utils.stream_command import stream_command
+from apps.scan.utils import stream_command
 
 logger = logging.getLogger(__name__)
 
