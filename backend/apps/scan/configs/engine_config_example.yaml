@@ -15,6 +15,10 @@
 # - retries: 重试次数
 # - extensions: 文件扩展名
 #
+# 注意：
+# - 子域名发现工具不需要代理（被动信息收集，不触发告警）
+# - 代理仅在站点扫描等主动探测工具中使用
+#
 # 使用方式：
 # - 在前端创建扫描引擎时，将此配置保存到数据库
 # - 执行扫描时，从数据库读取配置并传递给 Flow
@@ -34,7 +38,7 @@ subdomain_discovery:
       
     amass_active:
       enabled: true
-      timeout: 1800     # 30 分钟，暴力破解耗时长（必需）
+      timeout: 1800     # 30 分钟（必需）
       # wordlist: /usr/src/wordlist/deepmagic.com-prefixes-top50000.txt  # 可选，字典文件
       
     sublist3r:
@@ -44,7 +48,7 @@ subdomain_discovery:
       
     oneforall:
       enabled: true
-      timeout: 1200     # 20 分钟，全面扫描（必需）
+      timeout: 1200     # 20 分钟（必需）
 
 # ==================== 端口扫描 ====================
 port_scan:

@@ -16,34 +16,30 @@ SUBDOMAIN_DISCOVERY_COMMANDS = {
         'command': 'subfinder -d {target} -o {output_file} -silent',
         'optional_flags': {
             'threads': '-t {threads}',
-            'use_proxy': '-proxy {proxy_url}',
         }
     },
     
     'amass_passive': {
         'command': 'amass enum -passive -d {target} -o {output_file}',
-        'optional_flags': {
-            'use_proxy': '-config {amass_config}',
-        }
+        'optional_flags': {}
     },
     
     'amass_active': {
         'command': 'amass enum -active -d {target} -o {output_file} -brute',
         'optional_flags': {
             'wordlist': '-w {wordlist}',
-            'use_proxy': '-config {amass_config}',
         }
     },
     
     'sublist3r': {
-        'command': 'python3 /usr/src/github/Sublist3r/sublist3r.py -d {target} -o {output_file}',
+        'command': 'python3 /opt/github/Sublist3r/sublist3r.py -d {target} -o {output_file}',
         'optional_flags': {
             'threads': '-t {threads}',
         }
     },
     
     'oneforall': {
-        'command': 'python3 /usr/src/github/OneForAll/oneforall.py --target {target} run && cut -d\',\' -f6 /usr/src/github/OneForAll/results/{target}.csv | tail -n +2 > {output_file} && rm -rf /usr/src/github/OneForAll/results/{target}.csv',
+        'command': 'python3 /opt/github/OneForAll/oneforall.py --target {target} run && cut -d\',\' -f6 /opt/github/OneForAll/results/{target}.csv | tail -n +2 > {output_file} && rm -rf /opt/github/OneForAll/results/{target}.csv',
         'optional_flags': {}
     },
 }
@@ -82,7 +78,7 @@ SITE_SCAN_COMMANDS = {
 
 DIRECTORY_SCAN_COMMANDS = {
     'dirsearch': {
-        'command': 'python3 /usr/src/github/dirsearch/dirsearch.py -u {target} -o {output_file}',
+        'command': 'python3 /opt/github/dirsearch/dirsearch.py -u {target} -o {output_file}',
         'optional_flags': {
             'threads': '-t {threads}',
             'wordlist': '-w {wordlist}',
