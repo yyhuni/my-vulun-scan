@@ -11,6 +11,7 @@ from apps.scan.handlers.scan_flow_handlers import (
     on_scan_flow_cancelled,
     on_scan_flow_crashed
 )
+from apps.scan.utils import build_command
 
 logger = logging.getLogger(__name__)
 
@@ -106,8 +107,11 @@ def _build_httpx_command(urls_file: str, total_urls: int) -> tuple[str, int]:
     # 获取httpx配置
     httpx_config = HTTPX_CONFIGS['httpx']
     
-    # 构建httpx命令（流式处理，直接从 stdout 读取，无需输出文件）
-    command = httpx_config['command'].format(target_file=urls_file)
+    # 使用统一的命令构建器
+    command = build_command(
+        template=httpx_config['command'],
+        target_file=urls_file
+    )
     
     logger.info(
         "httpx 超时配置: %d 秒（动态计算，基于 %d 个 URL）",

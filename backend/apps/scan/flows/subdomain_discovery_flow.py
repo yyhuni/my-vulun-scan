@@ -13,6 +13,8 @@ from prefect import flow
 from pathlib import Path
 import logging
 import os
+import uuid
+from datetime import datetime
 from django.conf import settings
 from apps.scan.handlers.scan_flow_handlers import (
     on_scan_flow_running,
@@ -21,6 +23,9 @@ from apps.scan.handlers.scan_flow_handlers import (
     on_scan_flow_cancelled,
     on_scan_flow_crashed
 )
+from apps.scan.utils import build_command
+from apps.common.normalizer import normalize_domain
+from apps.common.validators import validate_domain
 
 logger = logging.getLogger(__name__)
 
@@ -138,15 +143,38 @@ def subdomain_discovery_flow(
             ', '.join(SCANNER_CONFIGS.keys())
         )
         
+        # 规范化和验证域名
+        try:
+            normalized_target = normalize_domain(target_name)
+            validate_domain(normalized_target)
+            logger.debug("域名验证通过: %s -> %s", target_name, normalized_target)
+            target_name = normalized_target
+        except ValueError as e:
+            error_msg = f"无效的目标域名: {target_name} - {e}"
+            logger.error(error_msg)
+            raise ValueError(error_msg) from e
+        
         # 提交并行任务（动态处理所有配置的工具）
         futures = {}
         for tool_name, config in SCANNER_CONFIGS.items():
+            # 生成输出文件路径
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            short_uuid = uuid.uuid4().hex[:4]
+            output_file = str(result_path / f"{tool_name}_{timestamp}_{short_uuid}.txt")
+            
+            # 使用统一的命令构建器
+            command = build_command(
+                template=config['command'],
+                target=target_name,
+                output_file=output_file
+            )
+            
             future = run_subdomain_discovery_task.submit(
                 tool=tool_name,
-                target=target_name,
-                result_dir=result_dir,  # 传递结果目录路径
-                command=config['command'],
-                timeout=config['timeout']
+                result_dir=result_dir,
+                command=command,  # 传递完整命令
+                timeout=config['timeout'],
+                output_file=output_file  # 传递输出文件路径
             )
             futures[tool_name] = future
         

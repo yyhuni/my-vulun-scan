@@ -16,6 +16,7 @@ from apps.scan.handlers.scan_flow_handlers import (
     on_scan_flow_cancelled,
     on_scan_flow_crashed
 )
+from apps.scan.utils import build_command
 
 
 logger = logging.getLogger(__name__)
@@ -137,7 +138,10 @@ def _run_scans_sequentially(
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         short_uuid = uuid.uuid4().hex[:4]
         output_file = str(port_scan_dir / f"{tool_name}_{timestamp}_{short_uuid}.jsonl")
-        command = config['command'].format(
+        
+        # 使用统一的命令构建器
+        command = build_command(
+            template=config['command'],
             target_file=domains_file,
             output_file=output_file
         )

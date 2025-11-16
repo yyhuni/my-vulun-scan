@@ -7,13 +7,8 @@
 import logging
 import subprocess
 import os
-import uuid
 from pathlib import Path
-from datetime import datetime
 from prefect import task
-
-from apps.common.normalizer import normalize_domain
-from apps.common.validators import validate_domain
 
 logger = logging.getLogger(__name__)
 
@@ -25,20 +20,20 @@ logger = logging.getLogger(__name__)
 )
 def run_subdomain_discovery_task(
     tool: str,
-    target: str,
     result_dir: str,
     command: str,
-    timeout: int
+    timeout: int,
+    output_file: str
 ) -> str:
     """
     运行单个子域名发现工具
     
     Args:
-        tool: 子域名发现工具名称（用于日志和文件命名）
-        target: 目标域名
+        tool: 子域名发现工具名称（用于日志）
         result_dir: 结果目录（已拼接好完整路径，如：workspace/subdomain_discovery/）
-        command: 扫描命令模板（如：'amass enum -passive -d {target} -o {output_file}'）
+        command: 完整的扫描命令（已由 Flow 层使用命令构建器生成）
         timeout: 命令执行超时时间（秒）
+        output_file: 输出文件路径（由 Flow 层生成，用于验证）
     
     Returns:
         str: 结果文件路径
@@ -56,10 +51,10 @@ def run_subdomain_discovery_task(
     
     Design:
         - Task 不包含配置，由 Flow 层传入，提高灵活性和可测试性
-        - 命令模板支持变量替换：{target}、{output_file}
+        - 命令由 Flow 层使用统一的命令构建器生成，Task 只负责执行
         - 路径管理由 Flow 层统一处理，Task 只负责执行
     """
-    logger.info("开始运行子域名发现工具: %s - 目标: %s", tool, target)
+    logger.info("开始运行子域名发现工具: %s", tool)
     
     # 1. 验证参数
     if not tool:
@@ -70,51 +65,32 @@ def run_subdomain_discovery_task(
         raise ValueError(f"超时时间必须大于0: {timeout}")
     if not result_dir:
         raise ValueError("结果目录不能为空")
+    if not output_file:
+        raise ValueError("输出文件不能为空")
     
-    # 2. 规范化和验证域名
-    try:
-        normalized_target = normalize_domain(target)
-        validate_domain(normalized_target)
-        logger.debug("域名验证通过: %s -> %s", target, normalized_target)
-        target = normalized_target  # 使用规范化后的域名
-    except ValueError as e:
-        error_msg = f"无效的目标域名: {target} - {e}"
-        logger.error(error_msg)
-        raise ValueError(error_msg) from e
-    
-    # 3. 验证结果目录
+    # 2. 验证结果目录
     result_path = Path(result_dir)
     if not result_path.exists():
         raise RuntimeError(f"结果目录不存在: {result_dir}")
     
-    # 4. 验证目录是否可写
+    # 3. 验证目录是否可写
     if not result_path.is_dir() or not os.access(result_path, os.W_OK):
         raise RuntimeError(f"目录 {result_path} 不可写")
     
-    # 生成输出文件路径（时间戳 + 短UUID，确保唯一性）
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    short_uuid = uuid.uuid4().hex[:4]  # 4位十六进制UUID
-    file_prefix = f"{tool}_{timestamp}_{short_uuid}"
+    # 4. 转换输出文件路径为 Path 对象
+    output_file_path = Path(output_file)
     
-    output_file = result_path / f"{file_prefix}.txt"
-    
-    # 生成日志文件路径（记录命令的 stdout/stderr）
-    log_file = result_path / f"{file_prefix}.log"
-    
-    # 构建命令（替换模板变量）
-    actual_command = command.format(
-        target=target,
-        output_file=str(output_file)
-    )
+    # 生成日志文件路径（与输出文件同名，后缀改为 .log）
+    log_file = output_file_path.with_suffix('.log')
     
     try:
-        logger.debug("执行命令: %s", actual_command)
-        logger.debug("结果文件: %s", output_file)
+        logger.debug("执行命令: %s", command)
+        logger.debug("结果文件: %s", output_file_path)
         
         # 执行扫描 - 只记录 stderr，stdout 直接丢弃（节省 I/O）
         with open(log_file, 'w', encoding='utf-8', buffering=1) as log_f:
             result = subprocess.run(
-                actual_command,
+                command,
                 shell=True,
                 stdout=subprocess.DEVNULL,  # 丢弃标准输出
                 stderr=log_f,  # 只记录错误输出
@@ -141,30 +117,30 @@ def run_subdomain_discovery_task(
             )
         
         # 验证输出文件
-        if not output_file.exists():
+        if not output_file_path.exists():
             logger.warning(
                 "扫描工具 %s 未生成结果文件: %s",
-                tool, output_file
+                tool, output_file_path
             )
             # 返回空字符串表示失败，让 Flow 层处理
             return ""
         
         # 检查文件是否为空
-        file_size = output_file.stat().st_size
+        file_size = output_file_path.stat().st_size
         if file_size == 0:
             logger.warning(
                 "扫描工具 %s 生成的结果文件为空: %s",
-                tool, output_file
+                tool, output_file_path
             )
             # 返回文件路径（即使为空，也让 merge 步骤处理）
-            return str(output_file)
+            return str(output_file_path)
         else:
             logger.info(
                 "✓ 扫描完成: %s - 结果文件: %s (%.2f KB)",
-                tool, output_file.name, file_size / 1024
+                tool, output_file_path.name, file_size / 1024
             )
         
-        return str(output_file)
+        return str(output_file_path)
         
     except subprocess.TimeoutExpired as e:
         error_msg = f"扫描工具 {tool} 执行超时（{timeout}秒）"

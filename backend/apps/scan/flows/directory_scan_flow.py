@@ -18,6 +18,7 @@ from apps.scan.handlers.scan_flow_handlers import (
     on_scan_flow_cancelled,
     on_scan_flow_crashed
 )
+from apps.scan.utils import build_command
 
 logger = logging.getLogger(__name__)
 
@@ -137,8 +138,9 @@ def _run_scans_sequentially(
             idx, len(sites), site_url
         )
         
-        # 构建 ffuf 命令
-        command = FFUF_CONFIG['command'].format(
+        # 使用统一的命令构建器
+        command = build_command(
+            template=FFUF_CONFIG['command'],
             wordlist=FFUF_CONFIG['wordlist'],
             url=site_url
         )

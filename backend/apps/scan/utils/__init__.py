@@ -7,9 +7,18 @@
 from .directory_cleanup import (
     remove_directory,
 )
+from .command_builder import (
+    CommandBuilder,
+    command_builder,
+    build_command,
+)
 
 __all__ = [
     # 目录清理
     'remove_directory',
+    # 命令构建
+    'CommandBuilder',
+    'command_builder',
+    'build_command',
 ]
 
