@@ -90,6 +90,7 @@ def save_domains_task(
                     logger.warning("跳过无效域名: %s - %s", domain, e)
                     continue
                 
+                # 只有通过验证的域名才添加到批次和计数
                 batch.append(domain)
                 total_domains += 1
                 

@@ -217,7 +217,8 @@ def build_scan_command(
     
     # 拼接可选参数
     for flag_name, flag_template in template.get('optional_flags', {}).items():
-        if param_value := tool_config.get(flag_name):
+        param_value = tool_config.get(flag_name)
+        if param_value is not None and param_value != '':
             command_parts.append(flag_template)
     
     # 格式化命令（替换占位符）

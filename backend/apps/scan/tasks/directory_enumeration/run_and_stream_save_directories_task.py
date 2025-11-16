@@ -1,5 +1,5 @@
 """
-基于 stream_command 的流式目录扫描任务
+基于 execute_stream 的流式目录扫描任务
 
 主要功能：
     1. 实时执行目录扫描命令（如 ffuf）
@@ -14,7 +14,7 @@
     输出：Directory 记录
 
 优化策略：
-    - 使用 stream_command 实时处理输出
+    - 使用 execute_stream 实时处理输出
     - 流式处理避免内存溢出
     - 批量操作减少数据库交互
 """
@@ -30,7 +30,7 @@ from django.db import IntegrityError, OperationalError, DatabaseError
 from psycopg2 import InterfaceError
 
 from apps.asset.models import WebSite, Directory
-from apps.scan.utils import stream_command
+from apps.scan.utils import execute_stream
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +93,7 @@ def _parse_ffuf_stream_output(
     """
     流式解析 ffuf 目录扫描命令输出
     
-    基于 stream_command 实时处理 ffuf 命令的 stdout，将每行 JSON 输出
+    基于 execute_stream 实时处理 ffuf 命令的 stdout，将每行 JSON 输出
     转换为 Directory 记录格式
     
     Args:
@@ -112,8 +112,8 @@ def _parse_ffuf_stream_output(
     valid_records = 0
     
     try:
-        # 使用 stream_command 获取实时输出流（带超时控制）
-        for line in stream_command(cmd=cmd, cwd=cwd, shell=shell, timeout=timeout):
+        # 使用 execute_stream 获取实时输出流（带超时控制）
+        for line in execute_stream(cmd=cmd, cwd=cwd, shell=shell, timeout=timeout):
             total_lines += 1
             
             # 解析并验证单行数据

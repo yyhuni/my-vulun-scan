@@ -106,11 +106,11 @@ def subdomain_discovery_flow(
     """
     try:
         # ==================== 参数验证 ====================
-        if not scan_id:
+        if scan_id is None:
             raise ValueError("scan_id 不能为空")
         if not target_name:
             raise ValueError("target_name 不能为空")
-        if not target_id:
+        if target_id is None:
             raise ValueError("target_id 不能为空")
         if not scan_workspace_dir:
             raise ValueError("scan_workspace_dir 不能为空")
@@ -184,14 +184,13 @@ def subdomain_discovery_flow(
                     tool_config=tool_config
                 )
             except Exception as e:
+                failure_msg = f"{tool_name}: 命令构建失败 - {e}"
+                failures.append(failure_msg)
                 logger.error(f"构建 {tool_name} 命令失败: {e}")
                 continue
             
-            # 2.3 获取超时时间
-            timeout = tool_config.get('timeout')
-            if not timeout:
-                logger.warning(f"工具 {tool_name} 缺少 timeout 配置，跳过")
-                continue
+            # 2.3 获取超时时间（已在 config_parser 中验证）
+            timeout = tool_config['timeout']
             
             # 2.4 提交任务
             logger.debug(
@@ -206,10 +205,17 @@ def subdomain_discovery_flow(
             )
             futures[tool_name] = future
         
+        # 提前检查是否有任何工具成功提交
+        if not futures:
+            error_msg = (
+                f"所有扫描工具均无法启动 - 目标: {target_name}.\n"
+                f"失败详情:\n" + "\n".join(f"  - {f}" for f in failures)
+            )
+            raise RuntimeError(error_msg)
+        
         # 等待并行任务完成，获取结果
         # 注意：Task 资源由 Prefect 调度器管理，完成后自动释放，不受此处等待影响
         result_files = []
-        failures = []  # 收集失败信息
         
         for tool_name, future in futures.items():
             try:

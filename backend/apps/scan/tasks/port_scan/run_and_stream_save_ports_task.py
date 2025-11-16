@@ -40,7 +40,7 @@ from apps.asset.repositories.ip_address_repository import IPAddressDTO
 from apps.asset.repositories.port_repository import PortDTO
 from .types import PortScanRecord
 
-from apps.scan.utils import stream_command
+from apps.scan.utils import execute_stream
 from apps.common.validators import validate_port
 
 logger = logging.getLogger(__name__)
@@ -427,8 +427,8 @@ def _parse_naabu_stream_output(
     error_lines = 0
     
     try:
-        # 使用 stream_command 获取实时输出流（带超时控制）
-        for line in stream_command(cmd=cmd, cwd=cwd, shell=shell, timeout=timeout):
+        # 使用 execute_stream 获取实时输出流（带超时控制）
+        for line in execute_stream(cmd=cmd, cwd=cwd, shell=shell, timeout=timeout):
             total_lines += 1
             
             # 解析并验证单行数据

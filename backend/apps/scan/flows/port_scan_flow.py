@@ -154,12 +154,8 @@ def _run_scans_sequentially(
             failed_tools.append(tool_name)
             continue
         
-        # 2.2 获取超时时间
-        config_timeout = tool_config.get('timeout')
-        if not config_timeout:
-            logger.warning(f"工具 {tool_name} 缺少 timeout 配置，跳过")
-            failed_tools.append(tool_name)
-            continue
+        # 2.2 获取超时时间（已在 config_parser 中验证）
+        config_timeout = tool_config['timeout']
         
         # 2.3 执行扫描任务
         logger.info("开始执行 %s 扫描（超时: %d秒）...", tool_name, config_timeout)
@@ -198,7 +194,7 @@ def _run_scans_sequentially(
         except Exception as exc:
             # 其他异常
             failed_tools.append(tool_name)
-            logger.error("工具 %s 执行失败: %s", tool_name, exc)
+            logger.error("工具 %s 执行失败: %s", tool_name, exc, exc_info=True)
     
     if failed_tools:
         logger.warning("以下扫描工具执行失败: %s", ', '.join(failed_tools))
@@ -284,7 +280,19 @@ def port_scan_flow(
         - 端口属于 IP，而不是直接属于域名
         - 同一域名可能对应多个 IP（CDN、负载均衡）
     """
-    try: 
+    try:
+        # 参数验证
+        if scan_id is None:
+            raise ValueError("scan_id 不能为空")
+        if not target_name:
+            raise ValueError("target_name 不能为空")
+        if target_id is None:
+            raise ValueError("target_id 不能为空")
+        if not scan_workspace_dir:
+            raise ValueError("scan_workspace_dir 不能为空")
+        if not engine_config:
+            raise ValueError("engine_config 不能为空")
+        
         logger.info(
             "="*60 + "\n" +
             "开始端口扫描\n" +
@@ -328,6 +336,12 @@ def port_scan_flow(
             'tool_stats': tool_stats
         }
 
+    except ValueError as e:
+        logger.error("配置错误: %s", e)
+        raise
+    except RuntimeError as e:
+        logger.error("运行时错误: %s", e)
+        raise
     except Exception as e:
         logger.exception("端口扫描失败: %s", e)
         raise

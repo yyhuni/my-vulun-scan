@@ -7,7 +7,7 @@
 import logging
 from pathlib import Path
 from prefect import task
-from apps.scan.utils import run_scan_command
+from apps.scan.utils import execute_and_wait
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +52,7 @@ def run_subdomain_discovery_task(
     
     # 使用通用的扫描命令执行器
     try:
-        result = run_scan_command(
+        result = execute_and_wait(
             tool_name=tool,
             command=command,
             timeout=timeout,
@@ -71,11 +71,12 @@ def run_subdomain_discovery_task(
         file_size = output_file_path.stat().st_size
         if file_size == 0:
             logger.warning("扫描工具 %s 生成的结果文件为空: %s", tool, output_file_path)
-        else:
-            logger.info(
-                "✓ 扫描完成: %s - 结果文件: %s (%.2f KB)",
-                tool, output_file_path.name, file_size / 1024
-            )
+            return ""  # 空文件视为无效结果，与未生成文件的行为一致
+        
+        logger.info(
+            "✓ 扫描完成: %s - 结果文件: %s (%.2f KB)",
+            tool, output_file_path.name, file_size / 1024
+        )
         
         # 返回结果文件路径
         return str(output_file_path)
