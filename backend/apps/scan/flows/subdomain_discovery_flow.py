@@ -166,6 +166,8 @@ def subdomain_discovery_flow(
         # 等待并行任务完成，获取结果
         # 注意：Task 资源由 Prefect 调度器管理，完成后自动释放，不受此处等待影响
         result_files = []
+        failures = []  # 收集失败信息
+        
         for tool_name, future in futures.items():
             try:
                 result = future.result()  # 返回文件路径（字符串）或 ""（失败）
@@ -173,16 +175,20 @@ def subdomain_discovery_flow(
                     result_files.append(result)
                     logger.info("✓ 扫描工具 %s 执行成功: %s", tool_name, result)
                 else:
+                    failure_msg = f"{tool_name}: 未生成结果文件"
+                    failures.append(failure_msg)
                     logger.warning("⚠️ 扫描工具 %s 未生成结果文件", tool_name)
             except Exception as e:
+                failure_msg = f"{tool_name}: {str(e)}"
+                failures.append(failure_msg)
                 logger.warning("⚠️ 扫描工具 %s 执行失败: %s", tool_name, str(e))
         
         if not result_files:
-            tool_names = ', '.join(executed_tools)
-            raise RuntimeError(
-                f"所有扫描工具均失败 - 目标: {target_name}. "
-                f"请检查扫描工具是否正确安装（{tool_names}）"
+            error_msg = (
+                f"所有扫描工具均失败 - 目标: {target_name}.\n"
+                f"失败详情:\n" + "\n".join(f"  - {f}" for f in failures)
             )
+            raise RuntimeError(error_msg)
         
         logger.info(
             "✓ 扫描工具并行执行完成 - 成功: %d/%d",

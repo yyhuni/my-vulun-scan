@@ -13,6 +13,7 @@ from django.db import IntegrityError, OperationalError, DatabaseError
 
 from apps.asset.repositories.django_subdomain_repository import DjangoSubdomainRepository
 from apps.asset.repositories.subdomain_repository import SubdomainDTO
+from apps.common.validators import validate_domain
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +82,12 @@ def save_domains_task(
         with open(domains_file, 'r', encoding='utf-8') as f:
             for line in f:
                 domain = line.strip()
-                if not domain:
+                
+                # 验证域名格式（包含空行检查）
+                try:
+                    validate_domain(domain)
+                except ValueError as e:
+                    logger.warning("跳过无效域名: %s - %s", domain, e)
                     continue
                 
                 batch.append(domain)
