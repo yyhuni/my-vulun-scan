@@ -8,17 +8,6 @@
 # - enabled: 是否启用工具（true/false）
 # - timeout: 超时时间（秒），工具执行超过此时间会被强制终止
 #
-# 可选参数：
-# - threads: 线程数，影响扫描速度
-# - wordlist: 字典文件路径
-# - top_ports: 扫描 Top N 端口
-# - retries: 重试次数
-# - extensions: 文件扩展名
-#
-# 注意：
-# - 子域名发现工具不需要代理（被动信息收集，不触发告警）
-# - 代理仅在站点扫描等主动探测工具中使用
-#
 # 使用方式：
 # - 在前端创建扫描引擎时，将此配置保存到数据库
 # - 执行扫描时，从数据库读取配置并传递给 Flow
@@ -58,6 +47,18 @@ port_scan:
       timeout: 300      # 5 分钟（必需）
       # threads: 100    # 可选，线程数
       # top_ports: 1000 # 可选，扫描 Top N 端口
+      
+    naabu_active:
+      enabled: true
+      timeout: 600      # 10 分钟（必需）
+      threads: 5        # 必需，并发连接数
+      ports: 1-65535    # 必需，扫描端口范围
+      rate: 10          # 必需，扫描速率
+      
+    naabu_passive:
+      enabled: true
+      timeout: 300      # 5 分钟（必需）
+      # 被动扫描，使用被动数据源
 
 # ==================== 站点扫描 ====================
 site_scan:

@@ -48,13 +48,18 @@ SUBDOMAIN_DISCOVERY_COMMANDS = {
 # ==================== 端口扫描 ====================
 
 PORT_SCAN_COMMANDS = {
-    'naabu': {
-        'command': 'naabu -host {target} -o {output_file} -silent',
+    'naabu_active': {
+        'command': 'naabu -exclude-cdn -warm-up-time 5 -retries 1 -verify -timeout 5000 -list {target_file} -json -silent',
         'optional_flags': {
             'threads': '-c {threads}',
             'ports': '-p {ports}',
-            'top_ports': '-top-ports {top_ports}',
+            'rate': '-rate {rate}',
         }
+    },
+    
+    'naabu_passive': {
+        'command': 'naabu -list {target_file} -passive -json -silent',
+        'optional_flags': {}
     },
 }
 
