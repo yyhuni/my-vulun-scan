@@ -251,6 +251,8 @@ class CommandExecutor:
                 exit_code = process.returncode
             
             # 如果是超时导致的终止，抛出标准异常
+            # 注意：对于流式处理任务（如端口扫描），超时时已处理的数据已保存到数据库
+            # 这是预期行为：流式处理允许部分数据保存，即使任务未完全完成
             if timed_out_event.is_set():
                 raise subprocess.TimeoutExpired(cmd, timeout if timeout else 0)
             
@@ -267,17 +269,32 @@ class CommandExecutor:
             max_lines: 最大读取行数
         
         Returns:
-            日志内容（字符串）
+            日志内容（字符串），读取失败返回错误提示
         """
-        if not log_file.exists() or log_file.stat().st_size == 0:
+        if not log_file.exists():
+            logger.debug("日志文件不存在: %s", log_file)
+            return ""
+        
+        if log_file.stat().st_size == 0:
+            logger.debug("日志文件为空: %s", log_file)
             return ""
         
         try:
             with open(log_file, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
                 return ''.join(lines[-max_lines:] if len(lines) > max_lines else lines)
-        except Exception:
-            return "(无法读取日志文件)"
+        except UnicodeDecodeError as e:
+            logger.warning("日志文件编码错误 (%s): %s", log_file, e)
+            return f"(无法读取日志文件: 编码错误 - {e})"
+        except PermissionError as e:
+            logger.warning("日志文件权限不足 (%s): %s", log_file, e)
+            return f"(无法读取日志文件: 权限不足)"
+        except IOError as e:
+            logger.warning("日志文件读取IO错误 (%s): %s", log_file, e)
+            return f"(无法读取日志文件: IO错误 - {e})"
+        except Exception as e:
+            logger.warning("读取日志文件失败 (%s): %s", log_file, e, exc_info=True)
+            return f"(无法读取日志文件: {type(e).__name__} - {e})"
 
 
 # 单例实例

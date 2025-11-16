@@ -93,10 +93,11 @@ class _CommandBuilder:
         # 4. 验证提供的变量是否在模板中存在（避免拼写错误）
         extra_vars = [var for var in variables.keys() if var not in template_vars]
         if extra_vars:
-            logger.warning(
-                "提供了模板中不存在的变量: %s (模板变量: %s)",
-                ', '.join(extra_vars),
-                ', '.join(template_vars)
+            raise ValueError(
+                f"提供了模板中不存在的变量: {', '.join(extra_vars)}\n"
+                f"模板: {template}\n"
+                f"模板变量: {', '.join(template_vars)}\n"
+                f"提供的变量: {list(variables.keys())}"
             )
         
         # 5. 转换 Path 对象为字符串
@@ -225,7 +226,24 @@ def build_scan_command(
     command_template = ' '.join(command_parts)
     all_params = {**command_params, **tool_config}
     
+    # 提取模板中的变量
+    import re
+    pattern = r'\{([^}]+)\}'
+    template_vars = set(re.findall(pattern, command_template))
+    
+    # 只传递模板需要的参数（避免额外参数被静默忽略）
+    filtered_params = {k: v for k, v in all_params.items() if k in template_vars}
+    
+    # 检查是否有缺失的必需参数
+    missing_vars = template_vars - set(filtered_params.keys())
+    if missing_vars:
+        raise ValueError(
+            f"命令构建失败，缺少必需参数: {', '.join(missing_vars)}\n"
+            f"模板: {command_template}\n"
+            f"提供的参数: {list(all_params.keys())}"
+        )
+    
     try:
-        return command_template.format(**all_params)
+        return command_template.format(**filtered_params)
     except KeyError as e:
         raise ValueError(f"命令构建失败，缺少必需参数: {e}")

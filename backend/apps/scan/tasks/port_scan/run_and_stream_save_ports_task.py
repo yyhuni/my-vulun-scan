@@ -438,23 +438,48 @@ def _parse_naabu_stream_output(
         for line in execute_stream(cmd=cmd, cwd=cwd, shell=shell, timeout=timeout):
             total_lines += 1
             
-            # 解析并验证单行数据
-            record = _parse_and_validate_line(line)
-            if record is None:
-                error_lines += 1
-                continue
+            try:
+                # 解析并验证单行数据
+                record = _parse_and_validate_line(line)
+                if record is None:
+                    error_lines += 1
+                    continue
+                
+                # yield 一条有效记录
+                yield record
             
-            # yield 一条有效记录
-            yield record
+            except (json.JSONDecodeError, ValueError, KeyError) as e:
+                # 数据解析错误（可恢复）：记录警告但继续处理后续数据
+                # 这类错误通常是单条数据格式问题，不应影响整体流程
+                error_lines += 1
+                logger.warning(
+                    "数据解析错误，跳过此行 (行号: %d) - 错误: %s, 原始数据: %s",
+                    total_lines, e, line[:100]  # 只记录前100字符避免日志过大
+                )
+                continue
                 
     except subprocess.TimeoutExpired as e:
         # 超时异常：简洁输出，不显示堆栈
         error_msg = f"流式解析命令输出超时 - 命令执行超过 {timeout} 秒"
         logger.error(error_msg)
         raise RuntimeError(error_msg) from e
+    
+    except (IOError, OSError) as e:
+        # IO错误（致命）：无法继续读取数据流
+        logger.error("流式解析IO错误: %s", e, exc_info=True)
+        raise RuntimeError(f"流式解析IO错误: {e}") from e
+    
+    except (BrokenPipeError, ConnectionError) as e:
+        # 连接错误（致命）：进程异常终止或管道断开
+        logger.error("流式解析连接错误（进程可能异常终止）: %s", e, exc_info=True)
+        raise RuntimeError(f"流式解析连接错误: {e}") from e
+    
     except Exception as e:
-        # 其他异常：输出详细堆栈以便调试
-        logger.error("流式解析命令输出失败: %s", e, exc_info=True)
+        # 未预期的异常：输出详细堆栈以便调试
+        logger.error(
+            "流式解析命令输出失败（未预期的异常）: %s",
+            e, exc_info=True
+        )
         raise
     
     logger.info(
@@ -588,6 +613,11 @@ def _process_records_in_batches(
         
     Raises:
         RuntimeError: 存在失败批次时抛出
+        subprocess.TimeoutExpired: 命令执行超时（部分数据已保存）
+    
+    Note:
+        如果发生超时，已处理的数据会被保留在数据库中，
+        但扫描任务会被标记为失败。这是预期行为。
     """
     total_records = 0
     batch_num = 0
@@ -603,6 +633,8 @@ def _process_records_in_batches(
     }
     
     # 流式读取生成器并分批保存
+    # 注意：如果超时，subprocess.TimeoutExpired 会从 data_generator 中抛出
+    # 此时已处理的数据已经保存到数据库
     for record in data_generator:
         batch.append(record)
         total_records += 1
@@ -763,12 +795,15 @@ def run_and_stream_save_ports_task(
         return _build_final_result(stats)
         
     except subprocess.TimeoutExpired:
-        # 超时异常直接向上传播，保留异常类型
+        # 超时异常：部分数据已保存，但扫描未完成
+        # 这是预期行为：流式处理会实时保存已解析的数据
         logger.error(
-            "端口扫描任务超时 - target_id=%s, 超时=%s秒",
+            "⚠️ 端口扫描任务超时 - target_id=%s, 超时=%s秒\n"
+            "注意：超时前已解析的数据已保存到数据库，但扫描未完全完成。\n"
+            "建议：增加超时时间或减少扫描目标数量。",
             target_id, timeout
         )
-        raise  # 直接重新抛出，不包装
+        raise  # 直接重新抛出，保留异常类型
     
     except Exception as e:
         error_msg = f"流式执行端口扫描任务失败: {e}"

@@ -113,7 +113,7 @@ def _run_scans_sequentially(
         engine_config: 引擎配置（YAML 字符串）
         
     Returns:
-        tuple: (tool_stats, processed_records, failed_tools)
+        tuple: (tool_stats, processed_records, successful_tool_names, failed_tools)
         注意：端口扫描是流式输出，不生成结果文件
         
     Raises:
@@ -136,7 +136,7 @@ def _run_scans_sequentially(
     
     tool_stats = {}
     processed_records = 0
-    failed_tools = []
+    failed_tools = []      # 记录失败的工具（含原因）
     
     for tool_name, tool_config in enabled_tools.items():
         # 2.1 构建完整命令（变量替换）
@@ -150,8 +150,9 @@ def _run_scans_sequentially(
                 tool_config=tool_config
             )
         except Exception as e:
+            reason = f"命令构建失败: {str(e)}"
             logger.error(f"构建 {tool_name} 命令失败: {e}")
-            failed_tools.append(tool_name)
+            failed_tools.append({'tool': tool_name, 'reason': reason})
             continue
         
         # 2.2 获取超时时间（已在 config_parser 中验证）
@@ -186,35 +187,47 @@ def _run_scans_sequentially(
             
         except subprocess.TimeoutExpired as exc:
             # 超时异常单独处理
-            failed_tools.append(tool_name)
+            # 注意：流式处理任务超时时，已解析的数据已保存到数据库
+            reason = f"执行超时（配置: {config_timeout}秒）"
+            failed_tools.append({'tool': tool_name, 'reason': reason})
             logger.error(
-                "工具 %s 执行超时 - 超时配置: %d秒, 异常: %s",
-                tool_name, config_timeout, exc
+                "⚠️ 工具 %s 执行超时 - 超时配置: %d秒\n"
+                "注意：超时前已解析的端口数据已保存到数据库，但扫描未完全完成。",
+                tool_name, config_timeout
             )
         except Exception as exc:
             # 其他异常
-            failed_tools.append(tool_name)
+            failed_tools.append({'tool': tool_name, 'reason': str(exc)})
             logger.error("工具 %s 执行失败: %s", tool_name, exc, exc_info=True)
     
     if failed_tools:
-        logger.warning("以下扫描工具执行失败: %s", ', '.join(failed_tools))
+        logger.warning(
+            "以下扫描工具执行失败: %s",
+            ', '.join([f['tool'] for f in failed_tools])
+        )
     
     if not tool_stats:
         error_details = "\n".join([
-            f"  - {tool}: 流式处理失败"
-            for tool in failed_tools
+            f"  - {f['tool']}: {f['reason']}"
+            for f in failed_tools
         ])
         raise RuntimeError(
             f"所有端口扫描工具均失败 - 目标: {target_name}\n"
             f"失败工具:\n{error_details}"
         )
     
+    # 动态计算成功的工具列表
+    successful_tool_names = [name for name in enabled_tools.keys() 
+                              if name not in [f['tool'] for f in failed_tools]]
+    
     logger.info(
-        "✓ 串行端口扫描执行完成 - 成功: %d/%d",
-        len(tool_stats), len(enabled_tools)
+        "✓ 串行端口扫描执行完成 - 成功: %d/%d (成功: %s, 失败: %s)",
+        len(tool_stats), len(enabled_tools),
+        ', '.join(successful_tool_names) if successful_tool_names else '无',
+        ', '.join([f['tool'] for f in failed_tools]) if failed_tools else '无'
     )
     
-    return tool_stats, processed_records, failed_tools
+    return tool_stats, processed_records, successful_tool_names, failed_tools
 
 
 @flow(
@@ -265,9 +278,16 @@ def port_scan_flow(
             'scan_workspace_dir': str,
             'domains_file': str,
             'domain_count': int,
-            'result_files': list,
             'processed_records': int,
-            'executed_tasks': list
+            'executed_tasks': list,
+            'tool_stats': {
+                'total': int,                    # 总工具数
+                'successful': int,               # 成功工具数
+                'failed': int,                   # 失败工具数
+                'successful_tools': list[str],   # 成功工具列表 ['naabu_active']
+                'failed_tools': list[dict],      # 失败工具列表 [{'tool': 'naabu_passive', 'reason': '超时'}]
+                'details': dict                  # 详细执行结果（保留向后兼容）
+            }
         }
 
     Raises:
@@ -309,7 +329,7 @@ def port_scan_flow(
         domains_file, domain_count = _export_target_domains(target_id, port_scan_dir)
         
         # Step 2 & 3: 串行执行扫描任务
-        tool_stats, processed_records, failed_tools = _run_scans_sequentially(
+        tool_stats, processed_records, successful_tool_names, failed_tools = _run_scans_sequentially(
             domains_file=domains_file,
             port_scan_dir=port_scan_dir,
             scan_id=scan_id,
@@ -333,7 +353,14 @@ def port_scan_flow(
             'domain_count': domain_count,
             'processed_records': processed_records,
             'executed_tasks': executed_tasks,
-            'tool_stats': tool_stats
+            'tool_stats': {
+                'total': len(tool_stats) + len(failed_tools),
+                'successful': len(successful_tool_names),
+                'failed': len(failed_tools),
+                'successful_tools': successful_tool_names,
+                'failed_tools': failed_tools,  # [{'tool': 'naabu_active', 'reason': '超时'}]
+                'details': tool_stats  # 详细结果（保留向后兼容）
+            }
         }
 
     except ValueError as e:

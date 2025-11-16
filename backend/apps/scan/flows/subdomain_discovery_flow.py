@@ -97,7 +97,14 @@ def subdomain_discovery_flow(
             'target': str,
             'scan_workspace_dir': str,
             'total': int,
-            'executed_tasks': list
+            'executed_tasks': list,
+            'tool_stats': {
+                'total': int,                    # 总工具数
+                'successful': int,               # 成功工具数
+                'failed': int,                   # 失败工具数
+                'successful_tools': list[str],   # 成功工具列表 ['subfinder', 'amass']
+                'failed_tools': list[dict]       # 失败工具列表 [{'tool': 'oneforall', 'reason': '超时'}]
+            }
         }
     
     Raises:
@@ -217,6 +224,7 @@ def subdomain_discovery_flow(
         # 等待并行任务完成，获取结果
         # 注意：Task 资源由 Prefect 调度器管理，完成后自动释放，不受此处等待影响
         result_files = []
+        failed_tools = []      # 记录失败的工具（含原因）
         
         for tool_name, future in futures.items():
             try:
@@ -227,10 +235,12 @@ def subdomain_discovery_flow(
                 else:
                     failure_msg = f"{tool_name}: 未生成结果文件"
                     failures.append(failure_msg)
+                    failed_tools.append({'tool': tool_name, 'reason': '未生成结果文件'})
                     logger.warning("⚠️ 扫描工具 %s 未生成结果文件", tool_name)
             except Exception as e:
                 failure_msg = f"{tool_name}: {str(e)}"
                 failures.append(failure_msg)
+                failed_tools.append({'tool': tool_name, 'reason': str(e)})
                 logger.warning("⚠️ 扫描工具 %s 执行失败: %s", tool_name, str(e))
         
         if not result_files:
@@ -240,9 +250,15 @@ def subdomain_discovery_flow(
             )
             raise RuntimeError(error_msg)
         
+        # 动态计算成功的工具列表（用于日志）
+        successful_tool_names = [name for name in futures.keys() 
+                                  if name not in [f['tool'] for f in failed_tools]]
+        
         logger.info(
-            "✓ 扫描工具并行执行完成 - 成功: %d/%d",
-            len(result_files), len(futures)
+            "✓ 扫描工具并行执行完成 - 成功: %d/%d (成功: %s, 失败: %s)",
+            len(result_files), len(futures),
+            ', '.join(successful_tool_names) if successful_tool_names else '无',
+            ', '.join([f['tool'] for f in failed_tools]) if failed_tools else '无'
         )
         
         # ==================== Step 2: 合并并去重域名 ====================
@@ -272,13 +288,24 @@ def subdomain_discovery_flow(
             'save_domains'
         ])
         
+        # 动态计算成功的工具列表（用于返回值）
+        successful_tool_names = [name for name in futures.keys() 
+                                  if name not in [f['tool'] for f in failed_tools]]
+        
         return {
             'success': True,
             'scan_id': scan_id,
             'target': target_name,
             'scan_workspace_dir': scan_workspace_dir,
             'total': processed_domains,
-            'executed_tasks': executed_tasks
+            'executed_tasks': executed_tasks,
+            'tool_stats': {
+                'total': len(futures),
+                'successful': len(successful_tool_names),
+                'failed': len(failed_tools),
+                'successful_tools': successful_tool_names,
+                'failed_tools': failed_tools  # [{'tool': 'subfinder', 'reason': '超时'}]
+            }
         }
         
     except ValueError as e:
