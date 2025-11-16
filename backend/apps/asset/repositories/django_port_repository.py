@@ -8,10 +8,12 @@ from django.db import transaction, IntegrityError, OperationalError, DatabaseErr
 
 from apps.asset.models import Port
 from .port_repository import PortDTO, PortRepository
+from .db_connection_decorators import auto_ensure_db_connection
 
 logger = logging.getLogger(__name__)
 
 
+@auto_ensure_db_connection
 class DjangoPortRepository(PortRepository):
     """Django ORM 实现的 Port Repository"""
 

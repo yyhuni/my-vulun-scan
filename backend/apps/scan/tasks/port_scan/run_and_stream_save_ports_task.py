@@ -27,7 +27,7 @@ import time
 from pathlib import Path
 from prefect import task
 from typing import Generator, List, Optional
-from django.db import IntegrityError, OperationalError, DatabaseError, connection
+from django.db import IntegrityError, OperationalError, DatabaseError
 from psycopg2 import InterfaceError
 from cachetools import LRUCache
 from dataclasses import dataclass
@@ -70,19 +70,6 @@ class RepositorySet:
             ip_address=DjangoIPAddressRepository(),
             port=DjangoPortRepository()
         )
-
-
-def _ensure_db_connection():
-    """确保数据库连接健康"""
-    try:
-        connection.ensure_connection()
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT 1")
-            cursor.fetchone()
-    except Exception as e:
-        logger.warning("数据库连接检查失败，重新建立连接: %s", str(e))
-        connection.close()
-        connection.ensure_connection()
 
 
 def _save_batch_with_retry(
@@ -229,10 +216,7 @@ def _save_batch(
             'skipped_no_ip': 0
         }
     
-    # 确保数据库连接健康（处理长时间运行后的连接失效）
-    _ensure_db_connection()
-    
-    # 使用注入的 Repository 实例
+    # 使用注入的 Repository 实例（Repository 装饰器会自动处理数据库连接健康检查）
     subdomain_repo = repositories.subdomain
     ip_repo = repositories.ip_address
     port_repo = repositories.port

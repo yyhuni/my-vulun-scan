@@ -26,26 +26,13 @@ import time
 from pathlib import Path
 from prefect import task
 from typing import Generator, Optional
-from django.db import IntegrityError, OperationalError, DatabaseError, connection
+from django.db import IntegrityError, OperationalError, DatabaseError
 from psycopg2 import InterfaceError
 
 from apps.asset.models import WebSite, Directory
 from apps.scan.utils import stream_command
 
 logger = logging.getLogger(__name__)
-
-
-def _ensure_db_connection():
-    """确保数据库连接健康"""
-    try:
-        connection.ensure_connection()
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT 1")
-            cursor.fetchone()
-    except Exception as e:
-        logger.warning("数据库连接检查失败，重新建立连接: %s", str(e))
-        connection.close()
-        connection.ensure_connection()
 
 
 def _parse_and_validate_line(line: str) -> Optional[dict]:
@@ -208,7 +195,6 @@ def _save_batch_with_retry(
                     "批次 %d 保存失败（第 %d 次尝试），%d秒后重试: %s",
                     batch_num, attempt + 1, wait_time, str(e)[:100]
                 )
-                connection.close()
                 time.sleep(wait_time)
             else:
                 logger.error("批次 %d 保存失败（已重试 %d 次）: %s", batch_num, max_retries, e)
@@ -222,10 +208,9 @@ def _save_batch_with_retry(
             error_str = str(e).lower()
             if 'connection' in error_str and attempt < max_retries - 1:
                 logger.warning(
-                    "批次 %d 连接相关错误（尝试 %d/%d）: %s，将重新连接后重试",
+                    "批次 %d 连接相关错误（尝试 %d/%d）: %s，Repository 装饰器会自动重连",
                     batch_num, attempt + 1, max_retries, str(e)
                 )
-                connection.close()
                 time.sleep(2)
             else:
                 logger.error("批次 %d 未知错误: %s", batch_num, e, exc_info=True)
@@ -267,10 +252,7 @@ def _save_batch(
         logger.debug("批次 %d 为空，跳过处理", batch_num)
         return 0
     
-    # 连接健康检查
-    _ensure_db_connection()
-    
-    # 准备 Directory 数据
+    # 准备 Directory 数据（Repository 装饰器会自动处理数据库连接健康检查）
     directory_items = []
     
     for record in batch:
@@ -354,8 +336,6 @@ def run_and_stream_save_directories_task(
     try:
         # 1. 查找站点
         try:
-            # 确保数据库连接健康（处理长时间运行后的连接失效）
-            _ensure_db_connection()
             website = WebSite.objects.get(url=site_url, target_id=target_id)
             logger.info("找到站点: %s (ID: %d)", site_url, website.id)
         except WebSite.DoesNotExist:

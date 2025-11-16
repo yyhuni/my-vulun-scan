@@ -5,10 +5,12 @@ from django.db import transaction, IntegrityError, OperationalError, DatabaseErr
 
 from apps.asset.models import Subdomain
 from .subdomain_repository import SubdomainRepository, SubdomainDTO
+from .db_connection_decorators import auto_ensure_db_connection
 
 logger = logging.getLogger(__name__)
 
 
+@auto_ensure_db_connection
 class DjangoSubdomainRepository(SubdomainRepository):
     """基于 Django ORM 的子域名仓储实现。"""
 

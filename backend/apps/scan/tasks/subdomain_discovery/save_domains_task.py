@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 from prefect import task
 from typing import List
-from django.db import IntegrityError, OperationalError, DatabaseError, connection
+from django.db import IntegrityError, OperationalError, DatabaseError
 
 from apps.asset.repositories.django_subdomain_repository import DjangoSubdomainRepository
 from apps.asset.repositories.subdomain_repository import SubdomainDTO
@@ -145,24 +145,6 @@ def save_domains_task(
         raise
 
 
-def _ensure_db_connection():
-    """
-    确保数据库连接健康
-    
-    在长时间扫描任务中，数据库连接可能会被服务器关闭。
-    此函数在关键操作前检查并重新建立连接。
-    """
-    try:
-        connection.ensure_connection()
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT 1")
-            cursor.fetchone()
-    except Exception as e:
-        logger.warning("数据库连接检查失败，重新建立连接: %s", str(e))
-        connection.close()
-        connection.ensure_connection()
-
-
 def _save_batch_with_retry(batch: List[str], scan_id: int, target_id: int, batch_num: int, max_retries: int = 3) -> dict:
     """
     保存一个批次的域名（带重试机制）
@@ -192,9 +174,6 @@ def _save_batch_with_retry(batch: List[str], scan_id: int, target_id: int, batch
         for domain in batch
     ]
     
-    # ========== 连接健康检查 ==========
-    _ensure_db_connection()
-    
     for attempt in range(max_retries):
         try:
             repository.bulk_create_ignore_conflicts(items)
@@ -208,8 +187,6 @@ def _save_batch_with_retry(batch: List[str], scan_id: int, target_id: int, batch
                 logger.warning("批次 %d 保存失败（第 %d 次尝试），%d秒后重试: %s", 
                              batch_num, attempt + 1, wait_time, str(e)[:100])
                 time.sleep(wait_time)
-                # 重试前重新检查连接
-                _ensure_db_connection()
             else:
                 logger.error("批次 %d 保存失败（已重试 %d 次）: %s", batch_num, max_retries, e)
                 return {'success': False}
