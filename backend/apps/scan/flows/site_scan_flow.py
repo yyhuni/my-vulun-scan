@@ -1,4 +1,16 @@
 
+"""
+站点扫描 Flow
+
+负责编排站点扫描的完整流程
+
+架构：
+- Flow 负责编排多个原子 Task
+- 支持串行执行扫描工具（流式处理）
+- 每个 Task 可独立重试
+- 配置由 YAML 解析
+"""
+
 import logging
 import os
 from pathlib import Path
@@ -11,15 +23,9 @@ from apps.scan.handlers.scan_flow_handlers import (
     on_scan_flow_cancelled,
     on_scan_flow_crashed
 )
-from apps.scan.utils import build_command
+from apps.scan.utils import config_parser, build_scan_command
 
 logger = logging.getLogger(__name__)
-
-HTTPX_CONFIGS = {
-    'httpx': {
-        'command': '$HOME/go/bin/httpx -l {target_file} -status-code -content-type -content-length -location -title -server -body-preview -tech-detect -cdn -vhost -random-agent -json',
-    }
-}
 
 
 def _setup_site_scan_directory(scan_workspace_dir: str) -> Path:
@@ -87,93 +93,140 @@ def _export_site_urls(target_id: int, site_scan_dir: Path) -> tuple[str, int, in
     return urls_file, total_urls, subdomain_count, port_count
 
 
-def _build_httpx_command(urls_file: str, total_urls: int) -> tuple[str, int]:
-    """
-    构建 httpx 扫描命令
-    
-    Args:
-        urls_file: URL 文件路径
-        total_urls: URL 总数
-        
-    Returns:
-        tuple: (command, timeout)
-    """
-    logger.info("Step 2: 流式执行httpx扫描并实时保存到数据库")
-    
-    # 计算动态超时时间
-    timeout = calculate_timeout(total_urls)
-    logger.info("根据URL数量 %d 计算超时时间: %d 秒", total_urls, timeout)
-    
-    # 获取httpx配置
-    httpx_config = HTTPX_CONFIGS['httpx']
-    
-    # 使用统一的命令构建器
-    command = build_command(
-        template=httpx_config['command'],
-        target_file=urls_file
-    )
-    
-    logger.info(
-        "httpx 超时配置: %d 秒（动态计算，基于 %d 个 URL）",
-        timeout, total_urls
-    )
-    
-    return command, timeout
-
-
-def _execute_httpx_scan(
-    command: str,
+def _run_scans_sequentially(
+    enabled_tools: dict,
+    urls_file: str,
+    total_urls: int,
+    site_scan_dir: Path,
     scan_id: int,
     target_id: int,
-    site_scan_dir: Path,
-    timeout: int
-) -> dict:
+    target_name: str
+) -> tuple[dict, int, list, list]:
     """
-    执行 httpx 扫描并实时保存结果
+    串行执行站点扫描任务
     
     Args:
-        command: httpx 命令
+        enabled_tools: 已启用的工具配置字典
+        urls_file: URL 文件路径
+        total_urls: URL 总数
+        site_scan_dir: 站点扫描目录
         scan_id: 扫描任务 ID
         target_id: 目标 ID
-        site_scan_dir: 站点扫描目录
-        timeout: 超时时间
+        target_name: 目标名称（用于错误日志）
         
     Returns:
-        dict: 扫描结果统计
+        tuple: (tool_stats, processed_records, successful_tool_names, failed_tools)
+        
+    Raises:
+        RuntimeError: 所有工具均失败
     """
-    # 流式执行httpx扫描并实时保存结果
-    save_result = run_and_stream_save_websites_task(
-        cmd=command,
-        scan_id=scan_id,
-        target_id=target_id,
-        cwd=str(site_scan_dir),
-        shell=True,
-        batch_size=500,
-        timeout=timeout
-    )
+    tool_stats = {}
+    processed_records = 0
+    failed_tools = []
+    
+    for tool_name, tool_config in enabled_tools.items():
+        # 1. 构建完整命令（变量替换）
+        try:
+            command = build_scan_command(
+                tool_name=tool_name,
+                scan_type='site_scan',
+                command_params={
+                    'target_file': urls_file
+                },
+                tool_config=tool_config
+            )
+        except Exception as e:
+            reason = f"命令构建失败: {str(e)}"
+            logger.error(f"构建 {tool_name} 命令失败: {e}")
+            failed_tools.append({'tool': tool_name, 'reason': reason})
+            continue
+        
+        # 2. 计算超时时间
+        # 优先使用动态计算（基于 URL 数量），其次使用配置文件的 timeout
+        config_timeout = tool_config.get('timeout', 3600)
+        dynamic_timeout = calculate_timeout(total_urls)
+        timeout = max(dynamic_timeout, config_timeout)  # 取两者中较大的值
+        
+        logger.info(
+            "开始执行 %s 扫描 - URL数量: %d, 动态超时: %d秒, 配置超时: %d秒, 最终超时: %d秒",
+            tool_name, total_urls, dynamic_timeout, config_timeout, timeout
+        )
+        
+        # 3. 执行扫描任务
+        try:
+            # 流式执行扫描并实时保存结果
+            result = run_and_stream_save_websites_task(
+                cmd=command,
+                scan_id=scan_id,
+                target_id=target_id,
+                cwd=str(site_scan_dir),
+                shell=True,
+                batch_size=500,
+                timeout=timeout
+            )
+            
+            tool_stats[tool_name] = {
+                'command': command,
+                'result': result,
+                'timeout': timeout
+            }
+            processed_records += result.get('processed_records', 0)
+            
+            logger.info(
+                "✓ 工具 %s 流式处理完成 - 处理记录: %d, 创建站点: %d, 跳过: %d",
+                tool_name,
+                result.get('processed_records', 0),
+                result.get('created_websites', 0),
+                result.get('skipped_no_subdomain', 0) + result.get('skipped_failed', 0)
+            )
+            
+        except Exception as exc:
+            failed_tools.append({'tool': tool_name, 'reason': str(exc)})
+            logger.error("工具 %s 执行失败: %s", tool_name, exc, exc_info=True)
+    
+    if failed_tools:
+        logger.warning(
+            "以下扫描工具执行失败: %s",
+            ', '.join([f['tool'] for f in failed_tools])
+        )
+    
+    if not tool_stats:
+        error_details = "\n".join([
+            f"  - {f['tool']}: {f['reason']}"
+            for f in failed_tools
+        ])
+        raise RuntimeError(
+            f"所有站点扫描工具均失败 - 目标: {target_name}\n"
+            f"失败工具:\n{error_details}"
+        )
+    
+    # 动态计算成功的工具列表
+    successful_tool_names = [name for name in enabled_tools.keys() 
+                              if name not in [f['tool'] for f in failed_tools]]
     
     logger.info(
-        "✓ 流式处理完成 - 处理记录: %d, 创建站点: %d, 跳过（无域名）: %d, 跳过（失败）: %d",
-        save_result['processed_records'],
-        save_result['created_websites'],
-        save_result['skipped_no_subdomain'],
-        save_result['skipped_failed']
+        "✓ 串行站点扫描执行完成 - 成功: %d/%d (成功: %s, 失败: %s)",
+        len(tool_stats), len(enabled_tools),
+        ', '.join(successful_tool_names) if successful_tool_names else '无',
+        ', '.join([f['tool'] for f in failed_tools]) if failed_tools else '无'
     )
     
-    return save_result
+    return tool_stats, processed_records, successful_tool_names, failed_tools
 
 
-def calculate_timeout(url_count: int, max_timeout: int = 86400) -> int:
+def calculate_timeout(url_count: int, base: int = 600, per_url: int = 1, max_timeout: int = 86400) -> int:
     """
-    根据URL数量动态计算扫描超时时间（带上限保护）。
+    根据 URL 数量动态计算扫描超时时间（带上限保护）
 
     规则：
-    - 基础时间 base = 600 秒（10 分钟）
-    - 每个URL额外增加 per_url = 1 秒
-    - 强制上限 max_timeout = 86400 秒（24 小时），防止资源耗尽
+    - 基础时间：默认 600 秒（10 分钟）
+    - 每个 URL 额外增加：默认 1 秒
+    - 强制上限：默认 86400 秒（24 小时），防止资源耗尽
 
     Args:
-        url_count: URL数量，必须为正整数
+        url_count: URL 数量，必须为正整数
+        base: 基础超时时间（秒），默认 600
+        per_url: 每个 URL 增加的时间（秒），默认 1
         max_timeout: 最大超时时间（秒），默认 86400（24 小时）
 
     Returns:
@@ -187,8 +240,6 @@ def calculate_timeout(url_count: int, max_timeout: int = 86400) -> int:
     if url_count == 0:
         raise ValueError("URL数量不能为0")
 
-    base = 600
-    per_url = 1
     timeout = base + int(url_count * per_url)
     
     # 强制上限，防止资源耗尽
@@ -209,7 +260,7 @@ def site_scan_flow(
     target_name: str,
     target_id: int,
     scan_workspace_dir: str,
-    engine_config: str = None
+    engine_config: str
 ) -> dict:
     """
     站点扫描 Flow
@@ -219,15 +270,17 @@ def site_scan_flow(
         2. 用httpx进行批量请求并实时保存到数据库（流式处理）
     
     工作流程：
-        Step 1: 导出站点URL列表到文件（供httpx使用）
-        Step 2: 流式执行httpx扫描并实时保存结果到数据库
+        Step 0: 创建工作目录
+        Step 1: 导出站点 URL 列表
+        Step 2: 解析配置，获取启用的工具
+        Step 3: 串行执行扫描工具并实时保存结果
     
     Args:
-        scan_id: 扫描任务ID
+        scan_id: 扫描任务 ID
         target_name: 目标名称
-        target_id: 目标ID
+        target_id: 目标 ID
         scan_workspace_dir: 扫描工作空间目录
-        engine_config: 引擎配置（预留）
+        engine_config: 引擎配置（YAML 字符串，必需）
     
     Returns:
         dict: {
@@ -243,8 +296,19 @@ def site_scan_flow(
             'created_websites': int,
             'skipped_no_subdomain': int,
             'skipped_failed': int,
-            'executed_tasks': list
+            'executed_tasks': list,
+            'tool_stats': {
+                'total': int,
+                'successful': int,
+                'failed': int,
+                'successful_tools': list[str],
+                'failed_tools': list[dict]
+            }
         }
+        
+    Raises:
+        ValueError: 配置错误
+        RuntimeError: 执行失败
     """
     try:
         logger.info(
@@ -256,33 +320,63 @@ def site_scan_flow(
             "="*60
         )
         
-        # Step 0: 创建并验证工作目录
+        # 参数验证
+        if scan_id is None:
+            raise ValueError("scan_id 不能为空")
+        if not target_name:
+            raise ValueError("target_name 不能为空")
+        if target_id is None:
+            raise ValueError("target_id 不能为空")
+        if not scan_workspace_dir:
+            raise ValueError("scan_workspace_dir 不能为空")
+        if not engine_config:
+            raise ValueError("engine_config 不能为空")
+        
+        # Step 0: 创建工作目录
         site_scan_dir = _setup_site_scan_directory(scan_workspace_dir)
         
-        # Step 1: 导出站点 URL 到文件
+        # Step 1: 导出站点 URL
         urls_file, total_urls, subdomain_count, port_count = _export_site_urls(
             target_id, site_scan_dir
         )
         
-        # Step 2: 构建 httpx 扫描命令
-        command, timeout = _build_httpx_command(urls_file, total_urls)
-        
-        # Step 3: 执行 httpx 扫描并实时保存结果
-        save_result = _execute_httpx_scan(
-            command, scan_id, target_id, site_scan_dir, timeout
+        # Step 2: 解析配置，获取启用的工具
+        logger.info("Step 2: 解析配置，获取启用的工具")
+        enabled_tools = config_parser.parse_enabled_tools(
+            scan_type='site_scan',
+            engine_config=engine_config
         )
         
-        # 检查是否所有站点都失败
-        if save_result['created_websites'] == 0 and total_urls > 0:
-            error_msg = (
-                f"所有站点扫描均失败 - 总URL数: {total_urls}, "
-                f"处理记录: {save_result['processed_records']}, "
-                f"跳过（失败）: {save_result['skipped_failed']}"
-            )
-            logger.error(error_msg)
-            raise RuntimeError(error_msg)
+        if not enabled_tools:
+            raise RuntimeError("没有启用的站点扫描工具，请检查引擎配置。")
+        
+        logger.info(
+            "✓ 配置解析完成 - 启用工具: %s",
+            ', '.join(enabled_tools.keys())
+        )
+        
+        # Step 3: 串行执行扫描工具
+        logger.info("Step 3: 串行执行扫描工具并实时保存结果")
+        tool_stats, processed_records, successful_tool_names, failed_tools = _run_scans_sequentially(
+            enabled_tools=enabled_tools,
+            urls_file=urls_file,
+            total_urls=total_urls,
+            site_scan_dir=site_scan_dir,
+            scan_id=scan_id,
+            target_id=target_id,
+            target_name=target_name
+        )
         
         logger.info("="*60 + "\n✓ 站点扫描完成\n" + "="*60)
+        
+        # 动态生成已执行的任务列表
+        executed_tasks = ['export_site_urls', 'parse_config']
+        executed_tasks.extend([f'run_and_stream_save_websites ({tool})' for tool in tool_stats.keys()])
+        
+        # 汇总所有工具的结果
+        total_created = sum(stats['result'].get('created_websites', 0) for stats in tool_stats.values())
+        total_skipped_no_subdomain = sum(stats['result'].get('skipped_no_subdomain', 0) for stats in tool_stats.values())
+        total_skipped_failed = sum(stats['result'].get('skipped_failed', 0) for stats in tool_stats.values())
         
         return {
             'success': True,
@@ -293,13 +387,27 @@ def site_scan_flow(
             'total_urls': total_urls,
             'subdomain_count': subdomain_count,
             'port_count': port_count,
-            'processed_records': save_result['processed_records'],
-            'created_websites': save_result['created_websites'],
-            'skipped_no_subdomain': save_result['skipped_no_subdomain'],
-            'skipped_failed': save_result['skipped_failed'],
-            'executed_tasks': ['export_site_urls', 'run_and_stream_save_websites']
+            'processed_records': processed_records,
+            'created_websites': total_created,
+            'skipped_no_subdomain': total_skipped_no_subdomain,
+            'skipped_failed': total_skipped_failed,
+            'executed_tasks': executed_tasks,
+            'tool_stats': {
+                'total': len(enabled_tools),
+                'successful': len(successful_tool_names),
+                'failed': len(failed_tools),
+                'successful_tools': successful_tool_names,
+                'failed_tools': failed_tools,
+                'details': tool_stats
+            }
         }
         
+    except ValueError as e:
+        logger.error("配置错误: %s", e)
+        raise
+    except RuntimeError as e:
+        logger.error("运行时错误: %s", e)
+        raise
     except Exception as e:
         logger.exception("站点扫描失败: %s", e)
         raise

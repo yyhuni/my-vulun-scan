@@ -249,7 +249,7 @@ def port_scan_flow(
         Step 0: 创建工作目录
         Step 1: 导出域名列表到文件（供扫描工具使用）
         Step 2: 解析配置，获取启用的工具
-        Step 3: 串行执行扫描任务，运行端口扫描工具并实时解析输出到数据库（Subdomain → IPAddress → Port）
+        Step 3: 串行执行扫描工具，运行端口扫描工具并实时解析输出到数据库（Subdomain → IPAddress → Port）
 
     Args:
         scan_id: 扫描任务 ID
@@ -331,8 +331,8 @@ def port_scan_flow(
             ', '.join(enabled_tools.keys())
         )
         
-        # Step 3: 串行执行扫描任务
-        logger.info("Step 3: 串行执行扫描任务")
+        # Step 3: 串行执行扫描工具
+        logger.info("Step 3: 串行执行扫描工具")
         tool_stats, processed_records, successful_tool_names, failed_tools = _run_scans_sequentially(
             enabled_tools=enabled_tools,
             domains_file=domains_file,

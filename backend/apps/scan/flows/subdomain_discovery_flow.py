@@ -7,6 +7,7 @@
 - Flow 负责编排多个原子 Task
 - 支持并行执行扫描工具
 - 每个 Task 可独立重试
+- 配置由 YAML 解析
 """
 
 from prefect import flow
