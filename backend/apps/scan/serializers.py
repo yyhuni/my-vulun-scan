@@ -64,25 +64,34 @@ class ScanHistorySerializer(serializers.ModelSerializer):
         
         性能优化：
         - 只使用缓存的统计字段（cached_*_count）
-        - 如果缓存未更新（stats_updated_at 为 None），抛出异常
-        - 确保扫描完成时缓存字段已被正确更新
+        - 如果缓存未更新（stats_updated_at 为 None），返回 0
+        - 扫描完成时缓存字段会被正确更新
         """
-        from rest_framework.exceptions import ValidationError
-        
         # 检查缓存是否已更新（通过 stats_updated_at 字段判断）
         if obj.stats_updated_at is None:
-            raise ValidationError(
-                f'扫描 ID {obj.id} 的缓存统计数据未更新。'
-                f'请等待扫描完成或手动更新缓存统计数据。'
-            )
+            # 缓存未更新，返回 0（扫描刚开始或未完成）
+            return {
+                'subdomains': 0,
+                'websites': 0,
+                'endpoints': 0,
+                'ips': 0,
+                'directories': 0,
+                'vulnerabilities': {
+                    'total': 0,
+                    'critical': 0,
+                    'high': 0,
+                    'medium': 0,
+                    'low': 0
+                }
+            }
         
-        # 只使用缓存字段
+        # 使用缓存字段
         return {
-            'subdomains': obj.cached_subdomains_count,
-            'websites': obj.cached_websites_count,
-            'endpoints': obj.cached_endpoints_count,
-            'ips': obj.cached_ips_count,
-            'directories': obj.cached_directories_count,
+            'subdomains': obj.cached_subdomains_count or 0,
+            'websites': obj.cached_websites_count or 0,
+            'endpoints': obj.cached_endpoints_count or 0,
+            'ips': obj.cached_ips_count or 0,
+            'directories': obj.cached_directories_count or 0,
             'vulnerabilities': {
                 'total': 0,
                 'critical': 0,

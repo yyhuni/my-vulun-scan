@@ -132,6 +132,7 @@ def on_initiate_scan_flow_running(flow: Flow, flow_run: FlowRun, state: State) -
     _retry_database_operation(scan_id, _update_running_status, "状态更新为RUNNING")
     
     # 发送通知
+    logger.info("准备发送扫描开始通知 - Scan ID: %s, Target: %s", scan_id, target_name)
     try:
         from apps.scan.notifications import create_notification, NotificationLevel
         message = f"目标：{target_name}\n扫描引擎：{engine_name}\n状态：已开始执行"
@@ -140,8 +141,9 @@ def on_initiate_scan_flow_running(flow: Flow, flow_run: FlowRun, state: State) -
             message=message,
             level=NotificationLevel.MEDIUM
         )
+        logger.info("✓ 扫描开始通知已发送 - Scan ID: %s, Target: %s", scan_id, target_name)
     except Exception as e:
-        logger.error(f"发送扫描开始通知失败 - Scan ID: {scan_id}: {e}")
+        logger.error(f"发送扫描开始通知失败 - Scan ID: {scan_id}: {e}", exc_info=True)
 
 
 def on_initiate_scan_flow_completed(flow: Flow, flow_run: FlowRun, state: State) -> None:
@@ -236,6 +238,7 @@ def on_initiate_scan_flow_completed(flow: Flow, flow_run: FlowRun, state: State)
     _retry_database_operation(scan_id, _update_completed_status, "状态更新为COMPLETED")
     
     # 发送通知
+    logger.info("准备发送扫描完成通知 - Scan ID: %s, Target: %s", scan_id, target_name)
     try:
         from apps.scan.notifications import create_notification, NotificationLevel
         message = f"目标：{target_name}\n扫描引擎：{engine_name}\n状态：已成功完成"
@@ -244,8 +247,9 @@ def on_initiate_scan_flow_completed(flow: Flow, flow_run: FlowRun, state: State)
             message=message,
             level=NotificationLevel.MEDIUM
         )
+        logger.info("✓ 扫描完成通知已发送 - Scan ID: %s, Target: %s", scan_id, target_name)
     except Exception as e:
-        logger.error(f"发送扫描完成通知失败 - Scan ID: {scan_id}: {e}")
+        logger.error(f"发送扫描完成通知失败 - Scan ID: {scan_id}: {e}", exc_info=True)
 
 
 def on_initiate_scan_flow_failed(flow: Flow, flow_run: FlowRun, state: State) -> None:
@@ -340,6 +344,7 @@ def on_initiate_scan_flow_failed(flow: Flow, flow_run: FlowRun, state: State) ->
     _retry_database_operation(scan_id, _update_failed_status, "状态更新为FAILED")
     
     # 发送通知
+    logger.info("准备发送扫描失败通知 - Scan ID: %s, Target: %s", scan_id, target_name)
     try:
         from apps.scan.notifications import create_notification, NotificationLevel
         error_message = str(state.message) if state.message else "未知错误"
@@ -349,8 +354,9 @@ def on_initiate_scan_flow_failed(flow: Flow, flow_run: FlowRun, state: State) ->
             message=message,
             level=NotificationLevel.HIGH
         )
+        logger.info("✓ 扫描失败通知已发送 - Scan ID: %s, Target: %s", scan_id, target_name)
     except Exception as e:
-        logger.error(f"发送扫描失败通知失败 - Scan ID: {scan_id}: {e}")
+        logger.error(f"发送扫描失败通知失败 - Scan ID: {scan_id}: {e}", exc_info=True)
 
 
 def on_initiate_scan_flow_cancelled(flow: Flow, flow_run: FlowRun, state: State) -> None:
@@ -415,6 +421,7 @@ def on_initiate_scan_flow_cancelled(flow: Flow, flow_run: FlowRun, state: State)
     _retry_database_operation(scan_id, _update_cancelled_status, "状态更新为CANCELLED")
     
     # 发送通知
+    logger.info("准备发送扫描取消通知 - Scan ID: %s, Target: %s", scan_id, target_name)
     try:
         from apps.scan.notifications import create_notification, NotificationLevel
         message = f"目标：{target_name}\n扫描引擎：{engine_name}\n状态：已被取消"
@@ -423,8 +430,9 @@ def on_initiate_scan_flow_cancelled(flow: Flow, flow_run: FlowRun, state: State)
             message=message,
             level=NotificationLevel.MEDIUM
         )
+        logger.info("✓ 扫描取消通知已发送 - Scan ID: %s, Target: %s", scan_id, target_name)
     except Exception as e:
-        logger.error(f"发送扫描取消通知失败 - Scan ID: {scan_id}: {e}")
+        logger.error(f"发送扫描取消通知失败 - Scan ID: {scan_id}: {e}", exc_info=True)
 
 
 def on_initiate_scan_flow_crashed(flow: Flow, flow_run: FlowRun, state: State) -> None:
@@ -498,6 +506,7 @@ def on_initiate_scan_flow_crashed(flow: Flow, flow_run: FlowRun, state: State) -
     _retry_database_operation(scan_id, _update_crashed_status, "状态更新为CRASHED")
     
     # 发送通知
+    logger.info("准备发送扫描崩溃通知 - Scan ID: %s, Target: %s", scan_id, target_name)
     try:
         from apps.scan.notifications import create_notification, NotificationLevel
         crash_message = str(state.message) if state.message else "系统崩溃"
@@ -507,5 +516,6 @@ def on_initiate_scan_flow_crashed(flow: Flow, flow_run: FlowRun, state: State) -
             message=message,
             level=NotificationLevel.HIGH
         )
+        logger.info("✓ 扫描崩溃通知已发送 - Scan ID: %s, Target: %s", scan_id, target_name)
     except Exception as e:
-        logger.error(f"发送扫描崩溃通知失败 - Scan ID: {scan_id}: {e}")
+        logger.error(f"发送扫描崩溃通知失败 - Scan ID: {scan_id}: {e}", exc_info=True)
