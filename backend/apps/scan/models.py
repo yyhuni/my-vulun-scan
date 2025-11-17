@@ -18,7 +18,7 @@ class Scan(models.Model):
         help_text='使用的扫描引擎'
     )
 
-    started_at = models.DateTimeField(null=True, blank=True, help_text='扫描实际开始时间（第一个任务开始执行时）')
+    created_at = models.DateTimeField(auto_now_add=True, help_text='任务创建时间')
     stopped_at = models.DateTimeField(null=True, blank=True, help_text='扫描结束时间')
 
     status = models.CharField(
@@ -51,9 +51,9 @@ class Scan(models.Model):
         db_table = 'scan'
         verbose_name = '扫描任务'
         verbose_name_plural = '扫描任务'
-        ordering = ['-started_at']
+        ordering = ['-created_at']
         indexes = [
-            models.Index(fields=['-started_at']),
+            models.Index(fields=['-created_at']),  # 优化按创建时间降序排序（list 查询的默认排序）
             models.Index(fields=['target']),  # 优化按目标查询扫描任务
         ]
 

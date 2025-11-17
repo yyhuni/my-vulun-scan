@@ -23,11 +23,7 @@ class ScanViewSet(viewsets.ModelViewSet):
         查询优化策略：
         - select_related: 预加载 target 和 engine（一对一/多对一关系，使用 JOIN）
         - annotate (仅列表页): 使用数据库聚合计算统计数量（避免 N+1 查询）
-        - order_by: 按 ID 降序排列（最新创建的任务排在最前面）
-        
-        排序说明：
-        - 使用 ID 降序而非 started_at，因为 started_at 在 INITIATED 状态时为 NULL
-        - ID 是自增的，代表创建顺序，且永远不为 NULL
+        - order_by: 按创建时间降序排列（最新创建的任务排在最前面），且永远不为 NULL
         - 确保最新创建的任务（包括未开始的）都排在最前面
         
         性能优化：
@@ -49,7 +45,7 @@ class ScanViewSet(viewsets.ModelViewSet):
                 directories_count=Count('directories', distinct=True)
             )
         
-        return queryset.order_by('-id').all()  # type: ignore  # pylint: disable=no-member
+        return queryset.order_by('-created_at').all()  # type: ignore  # pylint: disable=no-member
     
     def get_serializer_class(self):
         """根据不同的 action 返回不同的序列化器

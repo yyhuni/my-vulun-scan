@@ -226,7 +226,6 @@ class ScanRepository:
         scan_id: int,
         status: ScanStatus,
         error_message: str | None = None,
-        started_at: datetime | None = None,
         stopped_at: datetime | None = None
     ) -> bool:
         """
@@ -236,7 +235,6 @@ class ScanRepository:
             scan_id: 扫描任务 ID
             status: 新状态
             error_message: 错误消息（可选）
-            started_at: 开始时间（可选，由调用方决定是否传递）
             stopped_at: 结束时间（可选，由调用方决定是否传递）
         
         Returns:
@@ -244,7 +242,7 @@ class ScanRepository:
         
         Note:
             Repository 层不判断业务状态,只负责数据更新
-            是否设置时间戳由调用方（Service/Handler）决定
+            created_at 是自动设置的，不需要手动传递
         """
         scan = ScanRepository.get_by_id_for_update(scan_id)
         if not scan:
@@ -263,9 +261,6 @@ class ScanRepository:
                 scan.error_message = error_message
         
         # 根据传递的参数更新时间戳（由调用方决定）
-        if started_at is not None:
-            scan.started_at = started_at
-        
         if stopped_at is not None:
             scan.stopped_at = stopped_at
         

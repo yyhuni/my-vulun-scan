@@ -382,7 +382,6 @@ class ScanService:
         scan_id: int, 
         status: ScanStatus, 
         error_message: str | None = None,
-        started_at: datetime | None = None,
         stopped_at: datetime | None = None
     ) -> bool:
         """
@@ -392,22 +391,19 @@ class ScanService:
             scan_id: 扫描任务 ID
             status: 新状态
             error_message: 错误消息（可选）
-            started_at: 开始时间（可选）
             stopped_at: 结束时间（可选）
         
         Returns:
             是否更新成功
         
         Note:
-            Service 层负责业务逻辑，决定何时传递时间戳
-            Repository 层只负责数据更新
+            created_at 是自动设置的，不需要手动传递
         """
         try:
             result = self.scan_repo.update_status(
                 scan_id, 
                 status, 
                 error_message,
-                started_at=started_at,
                 stopped_at=stopped_at
             )
             if result:

@@ -521,17 +521,17 @@ export const createScanHistoryColumns = ({
     },
   },
 
-  // Started At 列
+  // Created At 列
   {
-    accessorKey: "startedAt",
+    accessorKey: "createdAt",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Started At" />
+      <DataTableColumnHeader column={column} title="Created At" />
     ),
     cell: ({ row }) => {
-      const startedAt = row.getValue("startedAt") as string | null
+      const createdAt = row.getValue("createdAt") as string
       return (
         <div className="text-sm text-muted-foreground">
-          {startedAt ? formatDate(startedAt) : '-'}
+          {formatDate(createdAt)}
         </div>
       )
     },

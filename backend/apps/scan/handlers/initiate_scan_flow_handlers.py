@@ -108,13 +108,11 @@ def on_initiate_scan_flow_running(flow: Flow, flow_run: FlowRun, state: State) -
     def _update_running_status():
         from apps.scan.services import ScanService
         from apps.common.definitions import ScanStatus
-        from django.utils import timezone
         
         service = ScanService()
         success = service.update_status(
             scan_id, 
-            ScanStatus.RUNNING,
-            started_at=timezone.now()  # Handler 决定设置开始时间
+            ScanStatus.RUNNING
         )
         
         if success:

@@ -24,7 +24,7 @@ export interface ScanRecord {
   }
   engine?: number              // 引擎ID（对应后端 engine）
   engineName: string           // 引擎名称（对应后端 engineName）
-  startedAt: string | null     // 开始时间（对应后端 startedAt）
+  createdAt: string            // 创建时间（对应后端 createdAt）
   status: ScanStatus
   progress: number             // 0-100
 }

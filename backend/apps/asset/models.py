@@ -473,6 +473,8 @@ class Directory(models.Model):
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['-created_at']),
+            models.Index(fields=['scan']),         # 优化从scan_id快速查找下面的目录
+            models.Index(fields=['target']),     # 优化从target_id快速查找下面的目录
         ]
         constraints = [
             models.UniqueConstraint(

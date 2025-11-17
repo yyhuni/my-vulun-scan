@@ -11,11 +11,11 @@ class ScanSerializer(serializers.ModelSerializer):
         model = Scan
         fields = [
             'id', 'target', 'target_name', 'engine', 'engine_name',
-            'started_at', 'stopped_at', 'status', 'results_dir',
+            'created_at', 'stopped_at', 'status', 'results_dir',
             'flow_run_ids', 'flow_run_names', 'error_message'
         ]
         read_only_fields = [
-            'id', 'started_at', 'stopped_at', 'results_dir',
+            'id', 'created_at', 'stopped_at', 'results_dir',
             'flow_run_ids', 'flow_run_names', 'error_message', 'status'
         ]
     
@@ -48,7 +48,7 @@ class ScanHistorySerializer(serializers.ModelSerializer):
         model = Scan
         fields = [
             'id', 'target', 'target_name', 'engine', 'engine_name', 
-            'started_at', 'status', 'summary', 'progress'
+            'created_at', 'status', 'summary', 'progress'
         ]
     
     def get_summary(self, obj):
@@ -114,12 +114,12 @@ class ScanHistorySerializer(serializers.ModelSerializer):
         if obj.status == 'initiated':
             return 0
         
-        # 对于运行中、失败或中止的任务，基于时间估算进度
+        # 对于运行中、失败或中止的任务，基于创建时间估算进度
         if obj.status in ['running', 'failed', 'aborted']:
             # 计算已执行时长（秒）
-            if obj.started_at:
+            if obj.created_at:
                 from django.utils import timezone
-                elapsed_seconds = (timezone.now() - obj.started_at).total_seconds()
+                elapsed_seconds = (timezone.now() - obj.created_at).total_seconds()
                 
                 # 基于时长估算进度
                 if elapsed_seconds < 30:
@@ -139,7 +139,7 @@ class ScanHistorySerializer(serializers.ModelSerializer):
                 # 运行中时，返回估算进度
                 return progress
             else:
-                # 没有开始时间，返回默认值
+                # 没有创建时间，返回默认值
                 return 10 if obj.status == 'running' else 0
         
         return 0
