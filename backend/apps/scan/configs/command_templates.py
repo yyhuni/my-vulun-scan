@@ -93,7 +93,7 @@ DIRECTORY_SCAN_COMMANDS = {
     'ffuf': {
         # 流式输出到 stdout，使用 -json 输出 JSON 格式
         # 扫描目标 URL 的目录，使用 FUZZ 关键字作为字典替换位置
-        'command': 'ffuf -u {url}/FUZZ -se -ac -json',
+        'command': 'ffuf -u {url}/FUZZ -se -ac -sf -json',
         'optional_flags': {
             'wordlist': '-w {wordlist}',                 # 词表文件路径（必需）
             'delay': '-p {delay}',                       # Seconds of `delay` between requests, or a range of random delay. For example "0.1" or "0.1-2.0"
