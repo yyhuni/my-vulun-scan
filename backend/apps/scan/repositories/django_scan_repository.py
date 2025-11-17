@@ -432,57 +432,6 @@ class DjangoScanRepository:
                 e
             )
             return False
-    
-    
-    def update_status(
-        self,
-        scan_id: int,
-        new_status: ScanStatus,
-        stopped_at: datetime = None
-    ) -> bool:
-        """
-        直接更新扫描状态（无条件检查）
-        
-        Args:
-            scan_id: 扫描ID
-            new_status: 要更新到的新状态
-            stopped_at: 停止时间（可选）
-        
-        Returns:
-            bool: 是否更新成功
-        """
-        try:
-            update_fields = {
-                'status': new_status,
-            }
-            
-            if stopped_at:
-                update_fields['stopped_at'] = stopped_at
-            
-            updated = Scan.objects.filter(id=scan_id).update(**update_fields)
-            
-            if updated > 0:
-                logger.debug(
-                    "更新扫描状态成功 - Scan ID: %s, 新状态: %s",
-                    scan_id,
-                    new_status.value
-                )
-                return True
-            else:
-                logger.warning(
-                    "更新扫描状态失败（扫描不存在） - Scan ID: %s",
-                    scan_id
-                )
-                return False
-                
-        except Exception as e:
-            logger.error(
-                "更新扫描状态失败 - Scan ID: %s, 新状态: %s, 错误: %s",
-                scan_id,
-                new_status.value,
-                e
-            )
-            return False
 
 
 # 导出接口
