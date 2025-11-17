@@ -353,8 +353,18 @@ def run_and_stream_save_directories_task(
         failed_batches = []
         batch = []
         total_created = 0
+        seen_urls = set()  # 用于批次内去重
+        duplicate_count = 0  # 重复记录计数
         
         for record in data_generator:
+            url = record.get('url')
+            
+            # 批次内去重：如果URL已存在于当前批次，跳过
+            if url in seen_urls:
+                duplicate_count += 1
+                continue
+            
+            seen_urls.add(url)
             batch.append(record)
             total_records += 1
             
@@ -371,10 +381,14 @@ def run_and_stream_save_directories_task(
                     failed_batches.append(batch_num)
                 
                 batch = []  # 清空批次
+                seen_urls.clear()  # 清空去重集合
                 
                 # 每20个批次输出进度
                 if batch_num % 20 == 0:
-                    logger.info("进度: 已处理 %d 批次，%d 条记录", batch_num, total_records)
+                    logger.info(
+                        "进度: 已处理 %d 批次，%d 条记录（跳过 %d 条重复）", 
+                        batch_num, total_records, duplicate_count
+                    )
         
         # 保存最后一批
         if batch:
@@ -395,8 +409,8 @@ def run_and_stream_save_directories_task(
             )
         
         logger.info(
-            "✓ 流式保存完成 - 站点: %s, 处理记录: %d（%d 批次），创建目录: %d",
-            site_url, total_records, batch_num, total_created
+            "✓ 流式保存完成 - 站点: %s, 处理记录: %d（%d 批次），创建目录: %d，跳过重复: %d",
+            site_url, total_records, batch_num, total_created, duplicate_count
         )
         
         return {
