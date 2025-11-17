@@ -5,7 +5,7 @@ from django.db import transaction, IntegrityError, OperationalError, DatabaseErr
 
 from apps.asset.models import Subdomain
 from .subdomain_repository import SubdomainRepository, SubdomainDTO
-from .db_connection_decorators import auto_ensure_db_connection
+from apps.common.decorators import auto_ensure_db_connection
 
 logger = logging.getLogger(__name__)
 

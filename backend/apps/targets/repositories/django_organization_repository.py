@@ -8,10 +8,12 @@ import logging
 from typing import List, Tuple, Dict
 
 from ..models import Organization, Target
+from apps.common.decorators import auto_ensure_db_connection
 
 logger = logging.getLogger(__name__)
 
 
+@auto_ensure_db_connection
 class DjangoOrganizationRepository:
     """Organization Django ORM 仓储实现"""
     

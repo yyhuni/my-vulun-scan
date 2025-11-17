@@ -18,10 +18,12 @@ from apps.scan.models import Scan
 from apps.targets.models import Target
 from apps.engine.models import ScanEngine
 from apps.common.definitions import ScanStatus
+from apps.common.decorators import auto_ensure_db_connection
 
 logger = logging.getLogger(__name__)
 
 
+@auto_ensure_db_connection
 class DjangoScanRepository:
     """基于 Django ORM 的 Scan 数据访问层实现"""
     

@@ -7,10 +7,12 @@ ScanEngine 数据访问层 Django ORM 实现
 import logging
 
 from ..models import ScanEngine
+from apps.common.decorators import auto_ensure_db_connection
 
 logger = logging.getLogger(__name__)
 
 
+@auto_ensure_db_connection
 class DjangoEngineRepository:
     """基于 Django ORM 的 ScanEngine 数据访问层实现"""
     
