@@ -59,6 +59,7 @@ export function useNotificationSSE() {
   const wsRef = useRef<WebSocket | null>(null)
   const queryClient = useQueryClient()
   const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const heartbeatTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   const markNotificationsAsRead = useCallback((ids?: number[]) => {
     setNotifications(prev => prev.map(notification => {
@@ -67,6 +68,30 @@ export function useNotificationSSE() {
       }
       return notification
     }))
+  }, [])
+
+  // 启动心跳
+  const startHeartbeat = useCallback(() => {
+    // 清除旧的心跳定时器
+    if (heartbeatTimerRef.current) {
+      clearInterval(heartbeatTimerRef.current)
+    }
+
+    // 每 30 秒发送一次心跳
+    heartbeatTimerRef.current = setInterval(() => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        console.log('💓 发送心跳 ping')
+        wsRef.current.send(JSON.stringify({ type: 'ping' }))
+      }
+    }, 30000) // 30秒
+  }, [])
+
+  // 停止心跳
+  const stopHeartbeat = useCallback(() => {
+    if (heartbeatTimerRef.current) {
+      clearInterval(heartbeatTimerRef.current)
+      heartbeatTimerRef.current = null
+    }
   }, [])
 
   // 连接 WebSocket
@@ -96,6 +121,8 @@ export function useNotificationSSE() {
       ws.onopen = () => {
         console.log('✅ WebSocket 连接已建立')
         setIsConnected(true)
+        // 启动心跳
+        startHeartbeat()
       }
 
       ws.onmessage = (event) => {
@@ -172,6 +199,8 @@ export function useNotificationSSE() {
       ws.onclose = (event) => {
         console.log('🔌 WebSocket 连接已关闭:', event.code, event.reason)
         setIsConnected(false)
+        // 停止心跳
+        stopHeartbeat()
         
         // 5秒后重连
         if (event.code !== 1000) { // 1000 = 正常关闭
@@ -185,10 +214,13 @@ export function useNotificationSSE() {
       console.error('❌ 创建 WebSocket 失败:', error)
       setIsConnected(false)
     }
-  }, [queryClient])
+  }, [queryClient, startHeartbeat, stopHeartbeat])
 
   // 断开连接
   const disconnect = useCallback(() => {
+    // 停止心跳
+    stopHeartbeat()
+    
     // 清除重连定时器
     if (reconnectTimerRef.current) {
       clearTimeout(reconnectTimerRef.current)
@@ -200,7 +232,7 @@ export function useNotificationSSE() {
       wsRef.current = null
     }
     setIsConnected(false)
-  }, [])
+  }, [stopHeartbeat])
 
   // 清空通知
   const clearNotifications = () => {

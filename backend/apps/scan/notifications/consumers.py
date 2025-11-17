@@ -4,6 +4,7 @@ WebSocket Consumer - 通知实时推送
 
 import json
 import logging
+import asyncio
 from channels.generic.websocket import AsyncWebsocketConsumer
 
 logger = logging.getLogger(__name__)
@@ -15,7 +16,12 @@ class NotificationConsumer(AsyncWebsocketConsumer):
     
     处理客户端连接、断开和通知推送
     使用 Redis Channel Layer 订阅通知
+    支持心跳保活机制
     """
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.heartbeat_task = None  # 心跳任务
     
     async def connect(self):
         """
@@ -40,6 +46,9 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             'message': '连接成功'
         }, ensure_ascii=False))
         
+        # 启动服务端心跳（可选：防止中间件超时）
+        # self.heartbeat_task = asyncio.create_task(self._heartbeat_loop())
+        
         logger.info(f"WebSocket 连接已建立 - Channel: {self.channel_name}")
     
     async def disconnect(self, close_code):
@@ -47,6 +56,14 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         客户端断开时调用
         离开通知广播组
         """
+        # 取消心跳任务
+        if self.heartbeat_task and not self.heartbeat_task.done():
+            self.heartbeat_task.cancel()
+            try:
+                await self.heartbeat_task
+            except asyncio.CancelledError:
+                pass
+        
         # 离开组
         await self.channel_layer.group_discard(
             self.group_name,
@@ -103,3 +120,24 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             
         except Exception as e:
             logger.error(f"推送通知失败 - Channel: {self.channel_name}: {e}", exc_info=True)
+    
+    async def _heartbeat_loop(self):
+        """
+        服务端主动心跳循环（可选）
+        定期向客户端发送 ping 消息，保持连接活跃
+        防止中间件或防火墙断开长时间无活动的连接
+        
+        注意：通常客户端心跳就足够了，这是额外的保险措施
+        """
+        try:
+            while True:
+                await asyncio.sleep(45)  # 每 45 秒发送一次心跳
+                await self.send(text_data=json.dumps({
+                    'type': 'ping',
+                    'message': '服务端心跳'
+                }, ensure_ascii=False))
+                logger.debug(f"服务端心跳已发送 - Channel: {self.channel_name}")
+        except asyncio.CancelledError:
+            logger.debug(f"心跳循环已取消 - Channel: {self.channel_name}")
+        except Exception as e:
+            logger.error(f"心跳循环异常 - Channel: {self.channel_name}: {e}", exc_info=True)

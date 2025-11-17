@@ -120,7 +120,8 @@ fi
 
 if [ ! -f "$PID_DIR/daphne.pid" ]; then
     cd "$BACKEND_DIR"
-    nohup $PROJECT_ROOT/.venv/bin/daphne -b 0.0.0.0 -p 8888 config.asgi:application > "$PID_DIR/daphne.log" 2>&1 &
+    # 添加 WebSocket 超时配置：--websocket-timeout 3600（1小时）
+    nohup $PROJECT_ROOT/.venv/bin/daphne -b 0.0.0.0 -p 8888 --websocket-timeout 3600 config.asgi:application > "$PID_DIR/daphne.log" 2>&1 &
     echo $! > "$PID_DIR/daphne.pid"
     sleep 2
     

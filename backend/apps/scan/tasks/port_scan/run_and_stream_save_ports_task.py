@@ -167,7 +167,7 @@ def _save_batch(
     target_id: int, 
     batch_num: int, 
     subdomain_cache: LRUCache,
-    repositories: RepositorySet
+    repositories  # Repository集合（依赖注入）
 ) -> dict:
     """
     保存一个批次的数据到数据库（使用 Repository 模式）
