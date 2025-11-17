@@ -29,6 +29,30 @@ import uuid
 logger = logging.getLogger(__name__)
 
 
+def _setup_subdomain_directory(scan_workspace_dir: str) -> Path:
+    """
+    创建并验证子域名扫描工作目录
+    
+    Args:
+        scan_workspace_dir: 扫描工作空间目录
+        
+    Returns:
+        Path: 子域名扫描目录路径
+        
+    Raises:
+        RuntimeError: 目录创建或验证失败
+    """
+    result_dir = Path(scan_workspace_dir) / 'subdomain_discovery'
+    result_dir.mkdir(parents=True, exist_ok=True)
+    
+    if not result_dir.is_dir():
+        raise RuntimeError(f"子域名扫描目录创建失败: {result_dir}")
+    if not os.access(result_dir, os.W_OK):
+        raise RuntimeError(f"子域名扫描目录不可写: {result_dir}")
+    
+    return result_dir
+
+
 def _validate_and_normalize_target(target_name: str) -> str:
     """
     验证并规范化目标域名
@@ -59,6 +83,129 @@ def _validate_and_normalize_target(target_name: str) -> str:
         raise ValueError(error_msg) from e
 
 
+def _run_scans_parallel(
+    enabled_tools: dict,
+    target_name: str,
+    result_dir: Path
+) -> tuple[list, list, list]:
+    """
+    并行执行子域名扫描任务
+    
+    Args:
+        enabled_tools: 已启用的工具配置字典
+        target_name: 目标域名
+        result_dir: 结果目录
+        
+    Returns:
+        tuple: (result_files, failed_tools, successful_tool_names)
+        
+    Raises:
+        RuntimeError: 所有工具均失败
+    """
+    # 导入任务函数
+    from apps.scan.tasks.subdomain_discovery import run_subdomain_discovery_task
+    
+    # 生成时间戳（所有工具共用）
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    
+    # TODO: 接入代理池管理系统
+    # from apps.proxy.services import proxy_pool
+    # proxy_stats = proxy_pool.get_stats()
+    # logger.info(f"代理池状态: {proxy_stats['healthy']}/{proxy_stats['total']} 可用")
+    
+    failures = []  # 记录命令构建失败的工具
+    futures = {}
+    
+    # 1. 构建命令并提交并行任务
+    for tool_name, tool_config in enabled_tools.items():
+        # 1.1 生成唯一的输出文件路径
+        short_uuid = uuid.uuid4().hex[:4]
+        output_file = f"{result_dir}/{tool_name}_{timestamp}_{short_uuid}.txt"
+        
+        # 1.2 构建完整命令（变量替换）
+        try:
+            command = build_scan_command(
+                tool_name=tool_name,
+                scan_type='subdomain_discovery',
+                command_params={
+                    'target': target_name,      # 对应 {target}
+                    'output_file': output_file  # 对应 {output_file}
+                },
+                tool_config=tool_config
+            )
+        except Exception as e:
+            failure_msg = f"{tool_name}: 命令构建失败 - {e}"
+            failures.append(failure_msg)
+            logger.error(f"构建 {tool_name} 命令失败: {e}")
+            continue
+        
+        # 1.3 获取超时时间（已在 config_parser 中验证）
+        timeout = tool_config['timeout']
+        
+        # 1.4 提交任务
+        logger.debug(
+            f"提交任务 - 工具: {tool_name}, 超时: {timeout}s, 输出: {output_file}"
+        )
+        
+        future = run_subdomain_discovery_task.submit(
+            tool=tool_name,
+            command=command,
+            timeout=timeout,
+            output_file=output_file
+        )
+        futures[tool_name] = future
+    
+    # 2. 检查是否有任何工具成功提交
+    if not futures:
+        error_msg = (
+            f"所有扫描工具均无法启动 - 目标: {target_name}.\n"
+            f"失败详情:\n" + "\n".join(f"  - {f}" for f in failures)
+        )
+        raise RuntimeError(error_msg)
+    
+    # 3. 等待并行任务完成，获取结果
+    result_files = []
+    failed_tools = []
+    
+    for tool_name, future in futures.items():
+        try:
+            result = future.result()  # 返回文件路径（字符串）或 ""（失败）
+            if result:
+                result_files.append(result)
+                logger.info("✓ 扫描工具 %s 执行成功: %s", tool_name, result)
+            else:
+                failure_msg = f"{tool_name}: 未生成结果文件"
+                failures.append(failure_msg)
+                failed_tools.append({'tool': tool_name, 'reason': '未生成结果文件'})
+                logger.warning("⚠️ 扫描工具 %s 未生成结果文件", tool_name)
+        except Exception as e:
+            failure_msg = f"{tool_name}: {str(e)}"
+            failures.append(failure_msg)
+            failed_tools.append({'tool': tool_name, 'reason': str(e)})
+            logger.warning("⚠️ 扫描工具 %s 执行失败: %s", tool_name, str(e))
+    
+    # 4. 检查是否有成功的工具
+    if not result_files:
+        error_msg = (
+            f"所有扫描工具均失败 - 目标: {target_name}.\n"
+            f"失败详情:\n" + "\n".join(f"  - {f}" for f in failures)
+        )
+        raise RuntimeError(error_msg)
+    
+    # 5. 动态计算成功的工具列表
+    successful_tool_names = [name for name in futures.keys() 
+                              if name not in [f['tool'] for f in failed_tools]]
+    
+    logger.info(
+        "✓ 扫描工具并行执行完成 - 成功: %d/%d (成功: %s, 失败: %s)",
+        len(result_files), len(futures),
+        ', '.join(successful_tool_names) if successful_tool_names else '无',
+        ', '.join([f['tool'] for f in failed_tools]) if failed_tools else '无'
+    )
+    
+    return result_files, failed_tools, successful_tool_names
+
+
 @flow(
     name="subdomain_discovery", 
     log_prints=True,
@@ -78,10 +225,12 @@ def subdomain_discovery_flow(
     """
     子域名发现扫描流程
     
-    编排步骤：
-    1. 并行运行多个扫描工具（amass、subfinder）
-    2. 合并、解析并验证域名（一体化处理，高性能）
-    3. 批量保存到数据库
+    工作流程：
+        Step 0: 准备工作（目录创建、域名验证）
+        Step 1: 解析配置，获取启用的工具
+        Step 2: 并行运行扫描工具
+        Step 3: 合并并去重域名
+        Step 4: 保存到数据库
     
     Args:
         scan_id: 扫描任务 ID
@@ -133,26 +282,19 @@ def subdomain_discovery_flow(
             "="*60
         )
         
-        # ==================== Step 1: 并行运行扫描工具 ====================
+        # 导入任务函数
         from apps.scan.tasks.subdomain_discovery import (
             run_subdomain_discovery_task,
             merge_and_validate_task,
             save_domains_task
         )
         
-        # 准备结果目录（集中管理路径）
-        result_dir = Path(scan_workspace_dir) / 'subdomain_discovery'
-        result_dir.mkdir(parents=True, exist_ok=True)
-
-        if not result_dir.is_dir():
-            raise RuntimeError(f"子域名扫描目录创建失败: {result_dir}")
-        if not os.access(result_dir, os.W_OK):
-            raise RuntimeError(f"子域名扫描目录不可写: {result_dir}")
-
-        # ==================== 规范化和验证域名 ====================
+        # Step 0: 准备工作
+        result_dir = _setup_subdomain_directory(scan_workspace_dir)
         target_name = _validate_and_normalize_target(target_name)
         
-        # ==================== Step 1: 解析配置，获取启用的工具 ====================
+        # Step 1: 解析配置，获取启用的工具
+        logger.info("Step 1: 解析配置，获取启用的工具")
         enabled_tools = config_parser.parse_enabled_tools(
             scan_type='subdomain_discovery',
             engine_config=engine_config
@@ -161,116 +303,29 @@ def subdomain_discovery_flow(
         if not enabled_tools:
             raise RuntimeError("没有启用的扫描工具，请检查引擎配置。")
         
-        # ==================== Step 2: 构建命令并提交并行任务 ====================
-        # 生成时间戳（所有工具共用）
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        
-        logger.info(f"开始并行运行 {len(enabled_tools)} 个扫描工具")
-        
-        # TODO: 接入代理池管理系统
-        # from apps.proxy.services import proxy_pool
-        # proxy_stats = proxy_pool.get_stats()
-        # logger.info(f"代理池状态: {proxy_stats['healthy']}/{proxy_stats['total']} 可用")
-        
-        failures = []  # 记录命令构建失败的工具
-        futures = {}
-        
-        for tool_name, tool_config in enabled_tools.items():
-            # 2.1 生成唯一的输出文件路径
-            short_uuid = uuid.uuid4().hex[:4]
-            output_file = f"{result_dir}/{tool_name}_{timestamp}_{short_uuid}.txt"
-            
-            # 2.2 构建完整命令（变量替换）
-            try:
-                command = build_scan_command(
-                    tool_name=tool_name,
-                    scan_type='subdomain_discovery',
-                    command_params={
-                        'target': target_name,      # 对应 {target}
-                        'output_file': output_file  # 对应 {output_file}
-                    },
-                    tool_config=tool_config
-                )
-            except Exception as e:
-                failure_msg = f"{tool_name}: 命令构建失败 - {e}"
-                failures.append(failure_msg)
-                logger.error(f"构建 {tool_name} 命令失败: {e}")
-                continue
-            
-            # 2.3 获取超时时间（已在 config_parser 中验证）
-            timeout = tool_config['timeout']
-            
-            # 2.4 提交任务
-            logger.debug(
-                f"提交任务 - 工具: {tool_name}, 超时: {timeout}s, 输出: {output_file}"
-            )
-            
-            future = run_subdomain_discovery_task.submit(
-                tool=tool_name,
-                command=command,
-                timeout=timeout,
-                output_file=output_file
-            )
-            futures[tool_name] = future
-        
-        # 提前检查是否有任何工具成功提交
-        if not futures:
-            error_msg = (
-                f"所有扫描工具均无法启动 - 目标: {target_name}.\n"
-                f"失败详情:\n" + "\n".join(f"  - {f}" for f in failures)
-            )
-            raise RuntimeError(error_msg)
-        
-        # 等待并行任务完成，获取结果
-        # 注意：Task 资源由 Prefect 调度器管理，完成后自动释放，不受此处等待影响
-        result_files = []
-        failed_tools = []      # 记录失败的工具（含原因）
-        
-        for tool_name, future in futures.items():
-            try:
-                result = future.result()  # 返回文件路径（字符串）或 ""（失败）
-                if result:
-                    result_files.append(result)
-                    logger.info("✓ 扫描工具 %s 执行成功: %s", tool_name, result)
-                else:
-                    failure_msg = f"{tool_name}: 未生成结果文件"
-                    failures.append(failure_msg)
-                    failed_tools.append({'tool': tool_name, 'reason': '未生成结果文件'})
-                    logger.warning("⚠️ 扫描工具 %s 未生成结果文件", tool_name)
-            except Exception as e:
-                failure_msg = f"{tool_name}: {str(e)}"
-                failures.append(failure_msg)
-                failed_tools.append({'tool': tool_name, 'reason': str(e)})
-                logger.warning("⚠️ 扫描工具 %s 执行失败: %s", tool_name, str(e))
-        
-        if not result_files:
-            error_msg = (
-                f"所有扫描工具均失败 - 目标: {target_name}.\n"
-                f"失败详情:\n" + "\n".join(f"  - {f}" for f in failures)
-            )
-            raise RuntimeError(error_msg)
-        
-        # 动态计算成功的工具列表（用于日志）
-        successful_tool_names = [name for name in futures.keys() 
-                                  if name not in [f['tool'] for f in failed_tools]]
-        
         logger.info(
-            "✓ 扫描工具并行执行完成 - 成功: %d/%d (成功: %s, 失败: %s)",
-            len(result_files), len(futures),
-            ', '.join(successful_tool_names) if successful_tool_names else '无',
-            ', '.join([f['tool'] for f in failed_tools]) if failed_tools else '无'
+            "✓ 配置解析完成 - 启用工具: %s",
+            ', '.join(enabled_tools.keys())
         )
         
-        # ==================== Step 2: 合并并去重域名 ====================
-        logger.info("Step 2: 合并并去重域名")
+        # Step 2: 并行运行扫描工具
+        logger.info("Step 2: 并行运行扫描工具")
+        result_files, failed_tools, successful_tool_names = _run_scans_parallel(
+            enabled_tools=enabled_tools,
+            target_name=target_name,
+            result_dir=result_dir
+        )
+        
+        # Step 3: 合并并去重域名
+        logger.info("Step 3: 合并并去重域名")
         
         merged_file = merge_and_validate_task(
             result_files=result_files,
             result_dir=str(result_dir)
         )
         
-        # ==================== Step 3: 流式保存到数据库 ====================
-        logger.info("Step 3: 流式保存到数据库")
+        # Step 4: 保存到数据库
+        logger.info("Step 4: 保存到数据库")
         
         save_result = save_domains_task(
             domains_file=merged_file,
@@ -281,16 +336,10 @@ def subdomain_discovery_flow(
         
         logger.info("="*60 + "\n✓ 子域名发现扫描完成\n" + "="*60)
         
-        # 动态生成已执行的任务列表，用于返回结果
-        executed_tasks = [f'run_scanner ({tool})' for tool in futures.keys()]
-        executed_tasks.extend([
-            'merge_and_validate', 
-            'save_domains'
-        ])
-        
-        # 动态计算成功的工具列表（用于返回值）
-        successful_tool_names = [name for name in futures.keys() 
-                                  if name not in [f['tool'] for f in failed_tools]]
+        # 动态生成已执行的任务列表
+        executed_tasks = ['parse_config']
+        executed_tasks.extend([f'run_scanner ({tool})' for tool in successful_tool_names])
+        executed_tasks.extend(['merge_and_validate', 'save_domains'])
         
         return {
             'success': True,
@@ -300,7 +349,7 @@ def subdomain_discovery_flow(
             'total': processed_domains,
             'executed_tasks': executed_tasks,
             'tool_stats': {
-                'total': len(futures),
+                'total': len(enabled_tools),
                 'successful': len(successful_tool_names),
                 'failed': len(failed_tools),
                 'successful_tools': successful_tool_names,
