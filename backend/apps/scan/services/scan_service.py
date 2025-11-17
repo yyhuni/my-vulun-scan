@@ -426,6 +426,60 @@ class ScanService:
             logger.error("Scan 不存在 - Scan ID: %s", scan_id)
             return False
     
+    def update_status_if_match(
+        self,
+        scan_id: int,
+        current_status: ScanStatus,
+        new_status: ScanStatus,
+        stopped_at: datetime | None = None
+    ) -> bool:
+        """
+        条件更新 Scan 状态（原子操作）
+        
+        仅当扫描状态匹配 current_status 时才更新为 new_status。
+        这是一个原子操作，用于处理并发场景下的状态更新。
+        
+        Args:
+            scan_id: 扫描任务 ID
+            current_status: 当前期望的状态
+            new_status: 要更新到的新状态
+            stopped_at: 结束时间（可选）
+        
+        Returns:
+            是否更新成功（True=更新了记录，False=未更新或状态不匹配）
+        
+        Note:
+            此方法通过 Repository 层执行原子操作，适用于需要条件更新的场景
+        """
+        try:
+            result = self.scan_repo.update_status_if_match(
+                scan_id=scan_id,
+                current_status=current_status,
+                new_status=new_status,
+                stopped_at=stopped_at
+            )
+            if result:
+                logger.debug(
+                    "条件更新 Scan 状态成功 - Scan ID: %s, %s → %s",
+                    scan_id,
+                    current_status.value,
+                    new_status.value
+                )
+            return result
+        except (DatabaseError, OperationalError) as e:
+            logger.exception(
+                "数据库错误：条件更新 Scan 状态失败 - Scan ID: %s",
+                scan_id
+            )
+            raise
+        except Exception as e:
+            logger.error(
+                "条件更新 Scan 状态失败 - Scan ID: %s, 错误: %s",
+                scan_id,
+                e
+            )
+            return False
+    
     def update_cached_stats(self, scan_id: int) -> bool:
         """
         更新扫描任务的缓存统计数据

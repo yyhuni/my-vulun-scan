@@ -5,8 +5,8 @@ from rest_framework.response import Response
 from django.core.exceptions import ValidationError
 from django.db import DatabaseError, IntegrityError, OperationalError
 
-from .models import IPAddress, Subdomain, WebSite, Directory
 from .serializers import IPAddressListSerializer, SubdomainListSerializer, WebSiteSerializer, DirectorySerializer
+from .services import IPAddressService, SubdomainService, WebSiteService, DirectoryService
 
 logger = logging.getLogger(__name__)
 
@@ -14,8 +14,15 @@ logger = logging.getLogger(__name__)
 class IPAddressViewSet(viewsets.ModelViewSet):
     """IP 地址管理 ViewSet"""
     
-    queryset = IPAddress.objects.all()
     serializer_class = IPAddressListSerializer
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.service = IPAddressService()
+    
+    def get_queryset(self):
+        """通过 Service 层获取查询集"""
+        return self.service.get_all()
     
     @action(detail=False, methods=['post', 'delete'], url_path='bulk-delete')
     def bulk_delete(self, request):
@@ -57,18 +64,12 @@ class IPAddressViewSet(viewsets.ModelViewSet):
             )
         
         try:
-            # 批量删除 IP 地址
-            deleted_count, _ = IPAddress.objects.filter(id__in=ids).delete()
-            
-            logger.info(
-                "批量删除 IP 地址成功 - 数量: %d, IDs: %s",
-                deleted_count,
-                ids
-            )
+            # 通过 Service 层批量删除 IP 地址
+            deleted_count, message = self.service.bulk_delete(ids)
             
             return Response(
                 {
-                    'message': f'已成功删除 {deleted_count} 个 IP 地址',
+                    'message': message,
                     'deleted_count': deleted_count,
                     'requested_ids': ids
                 },
@@ -95,8 +96,15 @@ class IPAddressViewSet(viewsets.ModelViewSet):
 class SubdomainViewSet(viewsets.ModelViewSet):
     """子域名管理 ViewSet"""
     
-    queryset = Subdomain.objects.all()
     serializer_class = SubdomainListSerializer
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.service = SubdomainService()
+    
+    def get_queryset(self):
+        """通过 Service 层获取查询集"""
+        return self.service.get_all()
     
     @action(detail=False, methods=['post', 'delete'], url_path='bulk-delete')
     def bulk_delete(self, request):
@@ -140,22 +148,14 @@ class SubdomainViewSet(viewsets.ModelViewSet):
             )
         
         try:
-            # 批量删除子域名（级联删除关联的 IP、端口、站点、目录等）
-            deleted_count, deleted_objects = Subdomain.objects.filter(id__in=ids).delete()
-            
-            logger.info(
-                "批量删除子域名成功 - 数量: %d, IDs: %s, 级联删除: %s",
-                deleted_count,
-                ids,
-                deleted_objects
-            )
+            # 通过 Service 层批量删除子域名
+            deleted_count, message = self.service.bulk_delete(ids)
             
             return Response(
                 {
-                    'message': f'已成功删除 {deleted_count} 个子域名及其关联数据',
+                    'message': message,
                     'deleted_count': deleted_count,
-                    'requested_ids': ids,
-                    'cascade_deleted': deleted_objects  # 级联删除的对象统计
+                    'requested_ids': ids
                 },
                 status=status.HTTP_200_OK
             )
@@ -180,8 +180,15 @@ class SubdomainViewSet(viewsets.ModelViewSet):
 class WebSiteViewSet(viewsets.ModelViewSet):
     """站点管理 ViewSet"""
     
-    queryset = WebSite.objects.all()
     serializer_class = WebSiteSerializer
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.service = WebSiteService()
+    
+    def get_queryset(self):
+        """通过 Service 层获取查询集"""
+        return self.service.get_all()
     
     @action(detail=False, methods=['post', 'delete'], url_path='bulk-delete')
     def bulk_delete(self, request):
@@ -225,22 +232,14 @@ class WebSiteViewSet(viewsets.ModelViewSet):
             )
         
         try:
-            # 批量删除站点（级联删除关联的目录等）
-            deleted_count, deleted_objects = WebSite.objects.filter(id__in=ids).delete()
-            
-            logger.info(
-                "批量删除站点成功 - 数量: %d, IDs: %s, 级联删除: %s",
-                deleted_count,
-                ids,
-                deleted_objects
-            )
+            # 通过 Service 层批量删除站点
+            deleted_count, message = self.service.bulk_delete(ids)
             
             return Response(
                 {
-                    'message': f'已成功删除 {deleted_count} 个站点及其关联数据',
+                    'message': message,
                     'deleted_count': deleted_count,
-                    'requested_ids': ids,
-                    'cascade_deleted': deleted_objects  # 级联删除的对象统计
+                    'requested_ids': ids
                 },
                 status=status.HTTP_200_OK
             )
@@ -265,8 +264,15 @@ class WebSiteViewSet(viewsets.ModelViewSet):
 class DirectoryViewSet(viewsets.ModelViewSet):
     """目录管理 ViewSet"""
     
-    queryset = Directory.objects.all()
     serializer_class = DirectorySerializer
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.service = DirectoryService()
+    
+    def get_queryset(self):
+        """通过 Service 层获取查询集"""
+        return self.service.get_all()
     
     @action(detail=False, methods=['post', 'delete'], url_path='bulk-delete')
     def bulk_delete(self, request):
@@ -310,22 +316,14 @@ class DirectoryViewSet(viewsets.ModelViewSet):
             )
         
         try:
-            # 批量删除目录
-            deleted_count, deleted_objects = Directory.objects.filter(id__in=ids).delete()
-            
-            logger.info(
-                "批量删除目录成功 - 数量: %d, IDs: %s, 级联删除: %s",
-                deleted_count,
-                ids,
-                deleted_objects
-            )
+            # 通过 Service 层批量删除目录
+            deleted_count, message = self.service.bulk_delete(ids)
             
             return Response(
                 {
-                    'message': f'已成功删除 {deleted_count} 个目录',
+                    'message': message,
                     'deleted_count': deleted_count,
-                    'requested_ids': ids,
-                    'cascade_deleted': deleted_objects  # 级联删除的对象统计
+                    'requested_ids': ids
                 },
                 status=status.HTTP_200_OK
             )

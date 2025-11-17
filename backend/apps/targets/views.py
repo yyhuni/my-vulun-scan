@@ -19,15 +19,16 @@ logger = logging.getLogger(__name__)
 
 class OrganizationViewSet(viewsets.ModelViewSet):
     """组织管理 - 增删改查"""
-    queryset = Organization.objects.all()
     serializer_class = OrganizationSerializer
     pagination_class = BasePagination
     
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.org_service = OrganizationService()
+    
     def get_queryset(self):
         """优化查询,预计算目标数量，避免 N+1 查询"""
-        return Organization.objects.annotate(
-            target_count=Count('targets')
-        )
+        return self.org_service.get_all_with_stats()
     
     @action(detail=True, methods=['get'])
     def targets(self, request, pk=None):
@@ -250,20 +251,28 @@ class TargetViewSet(viewsets.ModelViewSet):
     serializer_class = TargetSerializer
     pagination_class = BasePagination
     
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.target_service = TargetService()
+    
     def get_queryset(self):
-        """优化查询集，预加载关联对象
+        """获取目标查询集
         
-        查询优化策略：
-        - select_related: 预加载一对一/多对一关系
-        - prefetch_related: 预加载多对多关系（organizations）
+        注意：不在这里使用 .annotate() 预聚合统计数据
         
-        性能优化：
-        - 移除 annotate Count 聚合（在大数据量时很慢）
-        - 让 serializer 直接用 .count() 查询（单条记录时更快）
+        原因：
+        - 列表页（list action）：需要分页 + 高性能统计
+        - 详情页（retrieve action）：只需要一条记录的统计
+        
+        统计策略：
+        - 列表页：在 serializer 中用 .count() 单次查询（高性能）
+        - 详情页：同样用 .count() 单次查询
+        
+        ⚠️ 为什么不用 .annotate():
         - 原因：多个 Count(distinct=True) 在大数据量时很慢（特别是目录数据）
         """
         # 列表和详情都使用相同的查询集（详情页的统计交给 serializer 用 .count()）
-        return Target.objects.prefetch_related('organizations').all()
+        return self.target_service.get_all()
     
     def get_serializer_class(self):
         """根据不同的 action 返回不同的序列化器
@@ -443,9 +452,9 @@ class TargetViewSet(viewsets.ModelViewSet):
         # 如果指定了组织，先获取组织对象
         organization = None
         if organization_id:
-            try:
-                organization = Organization.objects.get(id=organization_id)
-            except Organization.DoesNotExist:
+            org_service = OrganizationService()
+            organization = org_service.get_organization(organization_id)
+            if not organization:
                 return Response(
                     {'error': f'组织 ID {organization_id} 不存在'},
                     status=status.HTTP_400_BAD_REQUEST
@@ -469,12 +478,10 @@ class TargetViewSet(viewsets.ModelViewSet):
                     })
                     continue
                 
-                # 3. 写入：如果目标已存在则获取，不存在则创建
-                target, created = Target.objects.get_or_create(
+                # 3. 写入：通过 Service 层创建或获取目标
+                target, created = self.target_service.create_or_get_target(
                     name=normalized_name,
-                    defaults={
-                        'type': target_type
-                    }
+                    target_type=target_type
                 )
                 
                 # 如果指定了组织，关联目标到组织

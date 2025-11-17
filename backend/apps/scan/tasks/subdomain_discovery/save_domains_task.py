@@ -11,7 +11,7 @@ from prefect import task
 from typing import List
 from django.db import IntegrityError, OperationalError, DatabaseError
 
-from apps.asset.repositories.django_subdomain_repository import DjangoSubdomainRepository
+from apps.asset.services import SubdomainService
 from apps.asset.repositories.subdomain_repository import SubdomainDTO
 from apps.common.validators import validate_domain
 
@@ -165,7 +165,7 @@ def _save_batch_with_retry(batch: List[str], scan_id: int, target_id: int, batch
         - 新域名：插入 (INSERT)
         - 重复域名：忽略（不更新，因为没有探测数据）
     """
-    repository = DjangoSubdomainRepository()
+    service = SubdomainService()
     items = [
         SubdomainDTO(
             name=domain,
@@ -177,7 +177,7 @@ def _save_batch_with_retry(batch: List[str], scan_id: int, target_id: int, batch
     
     for attempt in range(max_retries):
         try:
-            repository.bulk_create_ignore_conflicts(items)
+            service.bulk_create_ignore_conflicts(items)
             logger.debug("批次 %d: 已处理 %d 个域名", batch_num, len(batch))
             return {'success': True}
         

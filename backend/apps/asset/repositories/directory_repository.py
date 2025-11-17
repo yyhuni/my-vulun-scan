@@ -64,3 +64,24 @@ class DirectoryRepository(Protocol):
             int: 目录总数
         """
         ...
+    
+    def get_all(self):
+        """
+        获取所有目录
+        
+        Returns:
+            QuerySet: 目录查询集
+        """
+        ...
+    
+    def bulk_delete_by_ids(self, directory_ids: List[int]) -> tuple:
+        """
+        批量删除目录
+        
+        Args:
+            directory_ids: 目录 ID 列表
+            
+        Returns:
+            tuple: (删除数量, 级联删除的对象统计)
+        """
+        ...

@@ -367,6 +367,119 @@ class DjangoScanRepository:
         except Exception as e:
             logger.error("更新缓存统计数据失败 - Scan ID: %s, 错误: %s", scan_id, e)
             return False
+    
+    @staticmethod
+    def update_status_if_match(
+        scan_id: int,
+        current_status: ScanStatus,
+        new_status: ScanStatus,
+        stopped_at: datetime = None
+    ) -> bool:
+        """
+        条件更新扫描状态（原子操作）
+        
+        仅当扫描状态匹配 current_status 时才更新为 new_status。
+        这是一个原子操作，用于处理并发场景下的状态更新。
+        
+        Args:
+            scan_id: 扫描ID
+            current_status: 当前期望的状态
+            new_status: 要更新到的新状态
+            stopped_at: 停止时间（可选）
+        
+        Returns:
+            bool: 是否更新成功（True=更新了记录，False=未更新）
+        """
+        try:
+            update_fields = {
+                'status': new_status,
+            }
+            
+            if stopped_at:
+                update_fields['stopped_at'] = stopped_at
+            
+            # 原子操作：只有状态匹配时才更新
+            updated = Scan.objects.filter(
+                id=scan_id,
+                status=current_status
+            ).update(**update_fields)
+            
+            if updated > 0:
+                logger.debug(
+                    "条件更新扫描状态成功 - Scan ID: %s, %s → %s",
+                    scan_id,
+                    current_status.value,
+                    new_status.value
+                )
+                return True
+            else:
+                logger.debug(
+                    "条件更新扫描状态跳过（状态不匹配） - Scan ID: %s, 期望: %s, 目标: %s",
+                    scan_id,
+                    current_status.value,
+                    new_status.value
+                )
+                return False
+                
+        except Exception as e:
+            logger.error(
+                "条件更新扫描状态失败 - Scan ID: %s, %s → %s, 错误: %s",
+                scan_id,
+                current_status.value,
+                new_status.value,
+                e
+            )
+            return False
+    
+    @staticmethod
+    def update_status(
+        scan_id: int,
+        new_status: ScanStatus,
+        stopped_at: datetime = None
+    ) -> bool:
+        """
+        直接更新扫描状态（无条件检查）
+        
+        Args:
+            scan_id: 扫描ID
+            new_status: 要更新到的新状态
+            stopped_at: 停止时间（可选）
+        
+        Returns:
+            bool: 是否更新成功
+        """
+        try:
+            update_fields = {
+                'status': new_status,
+            }
+            
+            if stopped_at:
+                update_fields['stopped_at'] = stopped_at
+            
+            updated = Scan.objects.filter(id=scan_id).update(**update_fields)
+            
+            if updated > 0:
+                logger.debug(
+                    "更新扫描状态成功 - Scan ID: %s, 新状态: %s",
+                    scan_id,
+                    new_status.value
+                )
+                return True
+            else:
+                logger.warning(
+                    "更新扫描状态失败（扫描不存在） - Scan ID: %s",
+                    scan_id
+                )
+                return False
+                
+        except Exception as e:
+            logger.error(
+                "更新扫描状态失败 - Scan ID: %s, 新状态: %s, 错误: %s",
+                scan_id,
+                new_status.value,
+                e
+            )
+            return False
 
 
 # 导出接口

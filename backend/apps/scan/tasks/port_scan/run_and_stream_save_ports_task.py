@@ -33,9 +33,7 @@ from cachetools import LRUCache
 from dataclasses import dataclass
 
 
-from apps.asset.repositories.django_subdomain_repository import DjangoSubdomainRepository
-from apps.asset.repositories.django_ip_address_repository import DjangoIPAddressRepository
-from apps.asset.repositories.django_port_repository import DjangoPortRepository
+from apps.asset.services import SubdomainService, IPAddressService, PortService
 from apps.asset.repositories.ip_address_repository import IPAddressDTO
 from apps.asset.repositories.port_repository import PortDTO
 from .types import PortScanRecord
@@ -52,23 +50,23 @@ MAX_SUBDOMAIN_CACHE_SIZE = 10000
 
 
 @dataclass
-class RepositorySet:
+class ServiceSet:
     """
-    Repository 集合，用于依赖注入
+    Service 集合，用于依赖注入
     
-    提供所有需要的 Repository 实例，便于测试时注入 Mock 对象
+    提供所有需要的 Service 实例，便于测试时注入 Mock 对象
     """
-    subdomain: DjangoSubdomainRepository
-    ip_address: DjangoIPAddressRepository
-    port: DjangoPortRepository
+    subdomain: SubdomainService
+    ip_address: IPAddressService
+    port: PortService
     
     @classmethod
-    def create_default(cls) -> 'RepositorySet':
-        """创建默认的 Repository 集合"""
+    def create_default(cls) -> 'ServiceSet':
+        """创建默认的 Service 集合"""
         return cls(
-            subdomain=DjangoSubdomainRepository(),
-            ip_address=DjangoIPAddressRepository(),
-            port=DjangoPortRepository()
+            subdomain=SubdomainService(),
+            ip_address=IPAddressService(),
+            port=PortService()
         )
 
 
@@ -78,7 +76,7 @@ def _save_batch_with_retry(
     target_id: int,
     batch_num: int,
     subdomain_cache: LRUCache,
-    repositories: RepositorySet,
+    services: ServiceSet,
     max_retries: int = 3
 ) -> dict:
     """
@@ -104,7 +102,7 @@ def _save_batch_with_retry(
     """
     for attempt in range(max_retries):
         try:
-            stats = _save_batch(batch, scan_id, target_id, batch_num, subdomain_cache, repositories)
+            stats = _save_batch(batch, scan_id, target_id, batch_num, subdomain_cache, services)
             return {
                 'success': True,
                 'created_ips': stats.get('created_ips', 0),
@@ -216,10 +214,10 @@ def _save_batch(
             'skipped_no_ip': 0
         }
     
-    # 使用注入的 Repository 实例（Repository 装饰器会自动处理数据库连接健康检查）
-    subdomain_repo = repositories.subdomain
-    ip_repo = repositories.ip_address
-    port_repo = repositories.port
+    # 使用注入的 Service 实例
+    subdomain_service = services.subdomain
+    ip_service = services.ip_address
+    port_service = services.port
     
     # 统计变量
     skipped_no_subdomain = 0
@@ -235,7 +233,7 @@ def _save_batch(
     # 对未命中的一次性批量查库
     missing_hosts = hosts - cached_hosts
     if missing_hosts:
-        new_data = subdomain_repo.get_by_names_and_target_id(missing_hosts, target_id)
+        new_data = subdomain_service.get_by_names_and_target_id(missing_hosts, target_id)
         # 查到的写回缓存
         subdomain_cache.update(new_data)
         # 查不到的也标记为 None，避免重复查询
@@ -275,7 +273,7 @@ def _save_batch(
     
     # 批量插入（忽略已存在的记录）
     if ip_items:
-        ip_repo.bulk_create_ignore_conflicts(ip_items)
+        ip_service.bulk_create_ignore_conflicts(ip_items)
     
     # ========== Step 4: 批量查询所有 IPAddress（读操作，无需事务）==========
     ip_map = {}
@@ -287,7 +285,7 @@ def _save_batch(
         # 使用 Repository 批量查询
         # 注：上方的 bulk_create 是同步阻塞操作，执行到这里时数据已提交
         # 如果查不到，说明数据本身不存在（如 subdomain 不在库中），而非延迟问题
-        ip_map = ip_repo.get_by_subdomain_and_ips(subdomain_ids, ip_addrs)
+        ip_map = ip_service.get_by_subdomain_and_ips(subdomain_ids, ip_addrs)
         
         # 验证数据完整性（有助于发现潜在问题）
         if len(ip_map) < len(ip_set):
@@ -331,7 +329,7 @@ def _save_batch(
     
     # 批量插入 Port（忽略重复）
     if port_items:
-        port_repo.bulk_create_ignore_conflicts(port_items)
+        port_service.bulk_create_ignore_conflicts(port_items)
     
     # LRU 缓存会自动管理淘汰，无需手动检查
     
@@ -559,7 +557,7 @@ def _process_batch(
     subdomain_cache: LRUCache,
     total_stats: dict,
     failed_batches: list,
-    repositories: RepositorySet
+    services: ServiceSet
 ) -> None:
     """
     处理单个批次
@@ -572,10 +570,10 @@ def _process_batch(
         subdomain_cache: 子域名缓存
         total_stats: 总统计信息
         failed_batches: 失败批次列表
-        repositories: Repository 集合（必须，依赖注入）
+        services: Service 集合（必须，依赖注入）
     """
     result = _save_batch_with_retry(
-        batch, scan_id, target_id, batch_num, subdomain_cache, repositories
+        batch, scan_id, target_id, batch_num, subdomain_cache, services
     )
     
     # 累计统计信息（失败时可能有部分数据已保存）
@@ -595,7 +593,7 @@ def _process_records_in_batches(
     target_id: int,
     subdomain_cache: LRUCache,
     batch_size: int,
-    repositories: RepositorySet
+    services: ServiceSet
 ) -> dict:
     """
     流式处理记录并分批保存
@@ -606,7 +604,7 @@ def _process_records_in_batches(
         target_id: 目标ID
         subdomain_cache: 子域名缓存
         batch_size: 批次大小
-        repositories: Repository 集合（必须，依赖注入）
+        services: Service 集合（必须，依赖注入）
         
     Returns:
         dict: 处理统计信息
@@ -642,7 +640,7 @@ def _process_records_in_batches(
         # 达到批次大小，执行保存
         if len(batch) >= batch_size:
             batch_num += 1
-            _process_batch(batch, scan_id, target_id, batch_num, subdomain_cache, total_stats, failed_batches, repositories)
+            _process_batch(batch, scan_id, target_id, batch_num, subdomain_cache, total_stats, failed_batches, services)
             batch = []  # 清空批次
             
             # 每20个批次输出进度
@@ -652,7 +650,7 @@ def _process_records_in_batches(
     # 保存最后一批
     if batch:
         batch_num += 1
-        _process_batch(batch, scan_id, target_id, batch_num, subdomain_cache, total_stats, failed_batches, repositories)
+        _process_batch(batch, scan_id, target_id, batch_num, subdomain_cache, total_stats, failed_batches, services)
     
     # 检查失败批次
     if failed_batches:
@@ -804,11 +802,11 @@ def run_and_stream_save_ports_task(
         
         # 2. 初始化资源
         subdomain_cache, data_generator = _initialize_task_resources(cmd, cwd, shell, timeout)
-        repositories = RepositorySet.create_default()
+        services = ServiceSet.create_default()
         
         # 3. 流式处理记录并分批保存
         stats = _process_records_in_batches(
-            data_generator, scan_id, target_id, subdomain_cache, batch_size, repositories
+            data_generator, scan_id, target_id, subdomain_cache, batch_size, services
         )
         
         # 4. 构建最终结果

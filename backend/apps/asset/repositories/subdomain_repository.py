@@ -64,5 +64,26 @@ class SubdomainRepository(Protocol):
             dict: {domain_name: Subdomain对象}
         """
         raise NotImplementedError
+    
+    def get_all(self):
+        """
+        获取所有子域名
+        
+        Returns:
+            QuerySet: 子域名查询集
+        """
+        raise NotImplementedError
+    
+    def bulk_delete_by_ids(self, subdomain_ids: List[int]) -> tuple:
+        """
+        批量删除子域名
+        
+        Args:
+            subdomain_ids: 子域名 ID 列表
+            
+        Returns:
+            tuple: (删除数量, 级联删除的对象统计)
+        """
+        raise NotImplementedError
 
 

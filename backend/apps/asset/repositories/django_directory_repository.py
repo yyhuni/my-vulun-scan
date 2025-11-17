@@ -149,3 +149,24 @@ class DjangoDirectoryRepository(DirectoryRepository):
         except Exception as e:
             logger.error(f"统计目录数量失败 - Website ID: {website_id}, 错误: {e}")
             raise
+    
+    def get_all(self):
+        """
+        获取所有目录
+        
+        Returns:
+            QuerySet: 目录查询集
+        """
+        return Directory.objects.all()
+    
+    def bulk_delete_by_ids(self, directory_ids: List[int]) -> tuple:
+        """
+        批量删除目录
+        
+        Args:
+            directory_ids: 目录 ID 列表
+            
+        Returns:
+            tuple: (删除数量, 级联删除的对象统计)
+        """
+        return Directory.objects.filter(id__in=directory_ids).delete()

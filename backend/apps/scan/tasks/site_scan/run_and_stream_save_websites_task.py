@@ -34,8 +34,7 @@ from urllib.parse import urlparse, urlunparse
 from dateutil.parser import parse as parse_datetime
 from psycopg2 import InterfaceError
 
-from apps.asset.repositories.django_subdomain_repository import DjangoSubdomainRepository
-from apps.asset.repositories.django_website_repository import DjangoWebSiteRepository
+from apps.asset.services import SubdomainService, WebSiteService
 from apps.asset.repositories.website_repository import WebSiteDTO
 
 from apps.scan.utils import execute_stream
@@ -104,21 +103,21 @@ def normalize_url(url: str) -> str:
 
 
 @dataclass
-class RepositorySet:
+class ServiceSet:
     """
-    Repository 集合，用于依赖注入
+    Service 集合，用于依赖注入
     
-    提供所有需要的 Repository 实例，便于测试时注入 Mock 对象
+    提供所有需要的 Service 实例，便于测试时注入 Mock 对象
     """
-    subdomain: DjangoSubdomainRepository
-    website: DjangoWebSiteRepository
+    subdomain: SubdomainService
+    website: WebSiteService
     
     @classmethod
-    def create_default(cls) -> 'RepositorySet':
-        """创建默认的 Repository 集合"""
+    def create_default(cls) -> 'ServiceSet':
+        """创建默认的 Service 集合"""
         return cls(
-            subdomain=DjangoSubdomainRepository(),
-            website=DjangoWebSiteRepository()
+            subdomain=SubdomainService(),
+            website=WebSiteService()
         )
 
 
@@ -193,19 +192,19 @@ def _save_batch_with_retry(
     target_id: int,
     batch_num: int,
     subdomain_cache: LRUCache,
-    repositories: RepositorySet,
+    services: ServiceSet,
     max_retries: int = 3
 ) -> dict:
     """
-    保存一个批次的站点扫描结果（带重试机制）
+    保存一个批次的数据（带重试机制）
     
     Args:
-        batch: 数据批次（list of HttpxRecord）
+        batch: 数据批次
         scan_id: 扫描任务ID
         target_id: 目标ID
         batch_num: 批次编号
         subdomain_cache: 子域名缓存
-        repositories: Repository 集合（必须，依赖注入）
+        services: Service 集合（必须，依赖注入）
         max_retries: 最大重试次数
     
     Returns:
@@ -218,7 +217,7 @@ def _save_batch_with_retry(
     """
     for attempt in range(max_retries):
         try:
-            stats = _save_batch(batch, scan_id, target_id, batch_num, subdomain_cache, repositories)
+            stats = _save_batch(batch, scan_id, target_id, batch_num, subdomain_cache, services)
             return {
                 'success': True,
                 'created_websites': stats.get('created_websites', 0),
@@ -286,10 +285,10 @@ def _save_batch(
     target_id: int, 
     batch_num: int, 
     subdomain_cache: LRUCache,
-    repositories: RepositorySet
+    services: ServiceSet
 ) -> dict:
     """
-    保存一个批次的数据到数据库（使用 Repository 模式）
+    保存一个批次的数据到数据库（使用 Service 层）
     
     数据关系链：
         Subdomain (已存在) → WebSite (待创建)
@@ -304,7 +303,7 @@ def _save_batch(
         target_id: 目标 ID
         batch_num: 批次编号（用于日志）
         subdomain_cache: 子域名缓存字典
-        repositories: Repository 集合（依赖注入）
+        services: Service 集合（依赖注入）
     
     Returns:
         dict: 包含创建和跳过记录的统计信息
@@ -330,9 +329,9 @@ def _save_batch(
             'skipped_failed': 0
         }
     
-    # 使用注入的 Repository 实例
-    subdomain_repo = repositories.subdomain
-    website_repo = repositories.website
+    # 使用注入的 Service 实例
+    subdomain_service = services.subdomain
+    website_service = services.website
     
     # 统计变量
     skipped_no_subdomain = 0
@@ -349,7 +348,7 @@ def _save_batch(
     # 对未命中的一次性批量查库
     missing_hosts = hosts - cached_hosts
     if missing_hosts:
-        new_data = subdomain_repo.get_by_names_and_target_id(missing_hosts, target_id)
+        new_data = subdomain_service.get_by_names_and_target_id(missing_hosts, target_id)
         # 查到的写回缓存
         subdomain_cache.update(new_data)
         # 查不到的也标记为 None，避免重复查询
@@ -417,9 +416,9 @@ def _save_batch(
         
         website_items.append(website_dto)
     
-    # ========== Step 3: 批量创建 WebSite（Repository 内部独立短事务）==========
+    # ========== Step 3: 批量创建 WebSite（Service 内部独立短事务）==========
     if website_items:
-        website_repo.bulk_create_ignore_conflicts(website_items)
+        website_service.bulk_create_ignore_conflicts(website_items)
     
     return {
         'created_websites': len(website_items),
@@ -604,7 +603,7 @@ def _process_batch(
     subdomain_cache: LRUCache,
     total_stats: dict,
     failed_batches: list,
-    repositories: RepositorySet
+    services: ServiceSet
 ) -> None:
     """
     处理单个批次
@@ -617,10 +616,10 @@ def _process_batch(
         subdomain_cache: 子域名缓存
         total_stats: 总统计信息
         failed_batches: 失败批次列表
-        repositories: Repository 集合（必须，依赖注入）
+        services: Service 集合（必须，依赖注入）
     """
     result = _save_batch_with_retry(
-        batch, scan_id, target_id, batch_num, subdomain_cache, repositories
+        batch, scan_id, target_id, batch_num, subdomain_cache, services
     )
     
     # 累计统计信息（失败时可能有部分数据已保存）
@@ -640,7 +639,7 @@ def _process_records_in_batches(
     target_id: int,
     subdomain_cache: LRUCache,
     batch_size: int,
-    repositories: RepositorySet
+    services: ServiceSet
 ) -> dict:
     """
     流式处理记录并分批保存
@@ -651,7 +650,7 @@ def _process_records_in_batches(
         target_id: 目标ID
         subdomain_cache: 子域名缓存
         batch_size: 批次大小
-        repositories: Repository 集合（必须，依赖注入）
+        services: Service 集合（必须，依赖注入）
         
     Returns:
         dict: 处理统计信息
@@ -679,7 +678,7 @@ def _process_records_in_batches(
         # 达到批次大小，执行保存
         if len(batch) >= batch_size:
             batch_num += 1
-            _process_batch(batch, scan_id, target_id, batch_num, subdomain_cache, total_stats, failed_batches, repositories)
+            _process_batch(batch, scan_id, target_id, batch_num, subdomain_cache, total_stats, failed_batches, services)
             batch = []  # 清空批次
             
             # 每20个批次输出进度
@@ -689,7 +688,7 @@ def _process_records_in_batches(
     # 保存最后一批
     if batch:
         batch_num += 1
-        _process_batch(batch, scan_id, target_id, batch_num, subdomain_cache, total_stats, failed_batches, repositories)
+        _process_batch(batch, scan_id, target_id, batch_num, subdomain_cache, total_stats, failed_batches, services)
     
     # 检查失败批次
     if failed_batches:
@@ -819,11 +818,11 @@ def run_and_stream_save_websites_task(
         
         # 2. 初始化资源
         subdomain_cache, data_generator = _initialize_task_resources(cmd, cwd, shell, timeout)
-        repositories = RepositorySet.create_default()
+        services = ServiceSet.create_default()
         
         # 3. 流式处理记录并分批保存
         stats = _process_records_in_batches(
-            data_generator, scan_id, target_id, subdomain_cache, batch_size, repositories
+            data_generator, scan_id, target_id, subdomain_cache, batch_size, services
         )
         
         # 4. 构建最终结果

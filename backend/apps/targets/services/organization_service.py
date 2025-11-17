@@ -57,6 +57,24 @@ class OrganizationService:
         
         return existing_ids, organization_names
     
+    def get_all(self):
+        """
+        获取所有组织
+        
+        Returns:
+            QuerySet: 组织查询集
+        """
+        return self.repo.get_all()
+    
+    def get_all_with_stats(self):
+        """
+        获取所有组织（带统计信息）
+        
+        Returns:
+            QuerySet: 带统计信息的组织查询集
+        """
+        return self.repo.get_all_with_stats()
+    
     # ==================== 删除操作 ====================
     
     def bulk_delete_organizations(

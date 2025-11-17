@@ -99,3 +99,24 @@ class DjangoOrganizationRepository:
         if not organization:
             return []
         return list(organization.targets.all())
+    
+    def get_all(self):
+        """
+        获取所有组织
+        
+        Returns:
+            QuerySet: 组织查询集
+        """
+        return Organization.objects.all()
+    
+    def get_all_with_stats(self):
+        """
+        获取所有组织并预计算目标数量
+        
+        Returns:
+            QuerySet: 带统计信息的组织查询集
+        """
+        from django.db.models import Count
+        return Organization.objects.annotate(
+            target_count=Count('targets')
+        )

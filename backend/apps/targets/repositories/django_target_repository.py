@@ -83,3 +83,28 @@ class DjangoTargetRepository:
                 e
             )
             raise
+    
+    def get_all(self):
+        """
+        获取所有目标
+        
+        Returns:
+            QuerySet: 目标查询集
+        """
+        return Target.objects.prefetch_related('organizations').all()
+    
+    def get_or_create(self, name: str, target_type: str):
+        """
+        获取或创建目标
+        
+        Args:
+            name: 目标名称
+            target_type: 目标类型
+        
+        Returns:
+            (Target对象, 是否新创建的布尔值)
+        """
+        return Target.objects.get_or_create(
+            name=name,
+            defaults={'type': target_type}
+        )

@@ -57,6 +57,42 @@ class TargetService:
         
         return existing_ids, target_names
     
+    def get_all(self):
+        """
+        获取所有目标
+        
+        Returns:
+            QuerySet: 目标查询集
+        """
+        return self.repo.get_all()
+    
+    # ==================== 创建操作 ====================
+    
+    def create_or_get_target(
+        self, 
+        name: str, 
+        target_type: str
+    ) -> Tuple[Target, bool]:
+        """
+        创建或获取目标
+        
+        Args:
+            name: 目标名称
+            target_type: 目标类型
+        
+        Returns:
+            (Target对象, 是否新创建)
+        """
+        logger.debug("创建或获取目标 - Name: %s, Type: %s", name, target_type)
+        target, created = self.repo.get_or_create(name, target_type)
+        
+        if created:
+            logger.info("创建新目标 - ID: %s, Name: %s", target.id, name)
+        else:
+            logger.debug("目标已存在 - ID: %s, Name: %s", target.id, name)
+        
+        return target, created
+    
     # ==================== 删除操作 ====================
     
     def bulk_delete_targets(

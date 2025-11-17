@@ -177,22 +177,22 @@ def on_initiate_scan_flow_completed(flow: Flow, flow_run: FlowRun, state: State)
         return
     
     def _update_completed_status():
-        from apps.scan.models import Scan
+        from apps.scan.services import ScanService
         from apps.common.definitions import ScanStatus
         from django.utils import timezone
         
+        service = ScanService()
+        
         # 🔑 原子操作 1：尝试将 CANCELLING 更新为 CANCELLED（竞态条件兜底）
         # 如果状态是 CANCELLING，说明用户已取消，优先遵循用户意图
-        cancelled_updated = Scan.objects.filter(
-            id=scan_id,
-            status=ScanStatus.CANCELLING  # 条件：只有是 CANCELLING 才更新
-        ).update(
-            status=ScanStatus.CANCELLED,
-            error_message="扫描在完成前被取消（竞态条件）",
+        cancelled_updated = service.update_status_if_match(
+            scan_id=scan_id,
+            current_status=ScanStatus.CANCELLING,
+            new_status=ScanStatus.CANCELLED,
             stopped_at=timezone.now()
-        )  # type: ignore  # pylint: disable=no-member
+        )
         
-        if cancelled_updated > 0:
+        if cancelled_updated:
             # 成功更新（状态确实是 CANCELLING）
             logger.warning(
                 "⚠️ Flow 状态回调：检测到竞态条件，已将 CANCELLING 原子更新为 CANCELLED - Scan ID: %s, Flow Run: %s",
@@ -200,22 +200,19 @@ def on_initiate_scan_flow_completed(flow: Flow, flow_run: FlowRun, state: State)
                 flow_run.id
             )
             # 更新缓存统计数据（终态）
-            from apps.scan.services import ScanService
-            service = ScanService()
             service.update_cached_stats(scan_id)
             return True
         
         # 🔑 原子操作 2：尝试将 RUNNING 更新为 COMPLETED（正常完成）
         # 只有状态是 RUNNING 时才更新（避免覆盖其他状态）
-        completed_updated = Scan.objects.filter(
-            id=scan_id,
-            status=ScanStatus.RUNNING  # 条件：只有是 RUNNING 才更新
-        ).update(
-            status=ScanStatus.COMPLETED,
+        completed_updated = service.update_status_if_match(
+            scan_id=scan_id,
+            current_status=ScanStatus.RUNNING,
+            new_status=ScanStatus.COMPLETED,
             stopped_at=timezone.now()
-        )  # type: ignore  # pylint: disable=no-member
+        )
         
-        if completed_updated > 0:
+        if completed_updated:
             # 成功更新（正常完成流程）
             logger.info(
                 "✓ Flow 状态回调：扫描状态已原子更新为 COMPLETED - Scan ID: %s, Flow Run: %s",
@@ -223,8 +220,6 @@ def on_initiate_scan_flow_completed(flow: Flow, flow_run: FlowRun, state: State)
                 flow_run.id
             )
             # 更新缓存统计数据（终态）
-            from apps.scan.services import ScanService
-            service = ScanService()
             service.update_cached_stats(scan_id)
         else:
             # 未更新任何记录，可能是：
@@ -282,25 +277,25 @@ def on_initiate_scan_flow_failed(flow: Flow, flow_run: FlowRun, state: State) ->
         return
     
     def _update_failed_status():
-        from apps.scan.models import Scan
+        from apps.scan.services import ScanService
         from apps.common.definitions import ScanStatus
         from django.utils import timezone
+        
+        service = ScanService()
         
         # 提取错误信息
         error_message = str(state.message) if state.message else "Flow 执行失败"
         
         # 🔑 原子操作 1：尝试将 CANCELLING 更新为 CANCELLED（竞态条件兜底）
         # 如果状态是 CANCELLING，说明用户已取消，优先遵循用户意图
-        cancelled_updated = Scan.objects.filter(
-            id=scan_id,
-            status=ScanStatus.CANCELLING  # 条件：只有是 CANCELLING 才更新
-        ).update(
-            status=ScanStatus.CANCELLED,
-            error_message="扫描在失败前被取消（竞态条件）",
+        cancelled_updated = service.update_status_if_match(
+            scan_id=scan_id,
+            current_status=ScanStatus.CANCELLING,
+            new_status=ScanStatus.CANCELLED,
             stopped_at=timezone.now()
-        )  # type: ignore  # pylint: disable=no-member
+        )
         
-        if cancelled_updated > 0:
+        if cancelled_updated:
             # 成功更新（状态确实是 CANCELLING）
             logger.warning(
                 "⚠️ Flow 状态回调：检测到竞态条件，已将 CANCELLING 原子更新为 CANCELLED - Scan ID: %s, Flow Run: %s",
@@ -308,23 +303,19 @@ def on_initiate_scan_flow_failed(flow: Flow, flow_run: FlowRun, state: State) ->
                 flow_run.id
             )
             # 更新缓存统计数据（终态）
-            from apps.scan.services import ScanService
-            service = ScanService()
             service.update_cached_stats(scan_id)
             return True
         
         # 🔑 原子操作 2：尝试将 RUNNING 更新为 FAILED（正常失败）
         # 只有状态是 RUNNING 时才更新（避免覆盖其他状态）
-        failed_updated = Scan.objects.filter(
-            id=scan_id,
-            status=ScanStatus.RUNNING  # 条件：只有是 RUNNING 才更新
-        ).update(
-            status=ScanStatus.FAILED,
-            error_message=error_message,
+        failed_updated = service.update_status_if_match(
+            scan_id=scan_id,
+            current_status=ScanStatus.RUNNING,
+            new_status=ScanStatus.FAILED,
             stopped_at=timezone.now()
-        )  # type: ignore  # pylint: disable=no-member
+        )
         
-        if failed_updated > 0:
+        if failed_updated:
             # 成功更新（正常失败流程）
             logger.error(
                 "✗ Flow 状态回调：扫描状态已原子更新为 FAILED - Scan ID: %s, Flow Run: %s, 错误: %s",
@@ -333,8 +324,6 @@ def on_initiate_scan_flow_failed(flow: Flow, flow_run: FlowRun, state: State) ->
                 error_message
             )
             # 更新缓存统计数据（终态）
-            from apps.scan.services import ScanService
-            service = ScanService()
             service.update_cached_stats(scan_id)
         else:
             # 未更新任何记录，可能是：
@@ -390,30 +379,28 @@ def on_initiate_scan_flow_cancelled(flow: Flow, flow_run: FlowRun, state: State)
         return
     
     def _update_cancelled_status():
-        from apps.scan.models import Scan
+        from apps.scan.services import ScanService
         from apps.common.definitions import ScanStatus
         from django.utils import timezone
         
+        service = ScanService()
+        
         # 🔑 原子操作：将 CANCELLING 更新为 CANCELLED
         # 只更新处于 CANCELLING 状态的任务（用户已请求取消）
-        updated = Scan.objects.filter(
-            id=scan_id,
-            status=ScanStatus.CANCELLING  # 只更新 CANCELLING 状态
-        ).update(
-            status=ScanStatus.CANCELLED,
-            error_message="扫描任务已被取消",
+        updated = service.update_status_if_match(
+            scan_id=scan_id,
+            current_status=ScanStatus.CANCELLING,
+            new_status=ScanStatus.CANCELLED,
             stopped_at=timezone.now()
-        )  # type: ignore  # pylint: disable=no-member
+        )
         
-        if updated > 0:
+        if updated:
             logger.warning(
                 "✗ Flow 状态回调：扫描状态已原子更新为 CANCELLED - Scan ID: %s, Flow Run: %s",
                 scan_id,
                 flow_run.id
             )
             # 更新缓存统计数据（终态）
-            from apps.scan.services import ScanService
-            service = ScanService()
             service.update_cached_stats(scan_id)
         else:
             # 可能状态不是 CANCELLING（已被其他 handler 处理）
@@ -472,9 +459,11 @@ def on_initiate_scan_flow_crashed(flow: Flow, flow_run: FlowRun, state: State) -
         return
     
     def _update_crashed_status():
-        from apps.scan.models import Scan
+        from apps.scan.services import ScanService
         from apps.common.definitions import ScanStatus
         from django.utils import timezone
+        
+        service = ScanService()
         
         # 提取崩溃信息
         error_message = str(state.message) if state.message else "Flow 崩溃（系统异常）"
@@ -482,15 +471,13 @@ def on_initiate_scan_flow_crashed(flow: Flow, flow_run: FlowRun, state: State) -
         
         # 🔑 原子操作：直接更新为 CRASHED
         # Crashed 状态是终态，不需要检查当前状态
-        updated = Scan.objects.filter(
-            id=scan_id
-        ).update(
-            status=ScanStatus.CRASHED,
-            error_message=full_error[:2000],  # 截断到字段长度
+        updated = service.update_status(
+            scan_id=scan_id,
+            new_status=ScanStatus.CRASHED,
             stopped_at=timezone.now()
-        )  # type: ignore  # pylint: disable=no-member
+        )
         
-        if updated > 0:
+        if updated:
             logger.critical(
                 "✗ Flow 状态回调：扫描任务崩溃，状态已原子更新为 CRASHED - Scan ID: %s, Flow Run: %s, 错误: %s",
                 scan_id,
@@ -498,8 +485,6 @@ def on_initiate_scan_flow_crashed(flow: Flow, flow_run: FlowRun, state: State) -
                 error_message
             )
             # 更新缓存统计数据（终态）
-            from apps.scan.services import ScanService
-            service = ScanService()
             service.update_cached_stats(scan_id)
         else:
             logger.warning(

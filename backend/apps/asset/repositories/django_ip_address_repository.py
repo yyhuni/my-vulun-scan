@@ -107,3 +107,24 @@ class DjangoIPAddressRepository(IPAddressRepository):
             (ip_obj.subdomain_id, ip_obj.ip): ip_obj
             for ip_obj in ip_objects
         }
+    
+    def get_all(self):
+        """
+        获取所有 IP 地址
+        
+        Returns:
+            QuerySet: IP 地址查询集
+        """
+        return IPAddress.objects.all()
+    
+    def bulk_delete_by_ids(self, ip_address_ids: List[int]) -> tuple:
+        """
+        批量删除 IP 地址
+        
+        Args:
+            ip_address_ids: IP 地址 ID 列表
+            
+        Returns:
+            tuple: (删除数量, 级联删除的对象统计)
+        """
+        return IPAddress.objects.filter(id__in=ip_address_ids).delete()

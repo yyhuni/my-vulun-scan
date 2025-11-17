@@ -166,3 +166,24 @@ class DjangoWebSiteRepository(WebSiteRepository):
         except Exception as e:
             logger.error(f"查询站点失败 - URL: {url}, Target ID: {target_id}, 错误: {e}")
             raise
+    
+    def get_all(self):
+        """
+        获取所有网站
+        
+        Returns:
+            QuerySet: 网站查询集
+        """
+        return WebSite.objects.all()
+    
+    def bulk_delete_by_ids(self, website_ids: List[int]) -> tuple:
+        """
+        批量删除网站
+        
+        Args:
+            website_ids: 网站 ID 列表
+            
+        Returns:
+            tuple: (删除数量, 级联删除的对象统计)
+        """
+        return WebSite.objects.filter(id__in=website_ids).delete()
