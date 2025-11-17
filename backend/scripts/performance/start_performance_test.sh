@@ -6,7 +6,7 @@
 set -e
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
 echo "========================================"
 echo "  PostgreSQL 性能测试工具"
@@ -32,16 +32,31 @@ echo ""
 
 # 检查 PostgreSQL 连接
 echo "检查数据库连接..."
-if ! psql -d "$PGDATABASE" -c "SELECT 1" > /dev/null 2>&1; then
+cd "$PROJECT_DIR"
+if ! source "$PROJECT_DIR/../.venv/bin/activate" && python -c "
+import os
+import django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+django.setup()
+from django.db import connection
+try:
+    with connection.cursor() as cursor:
+        cursor.execute('SELECT 1')
+        print('✓ 数据库连接正常')
+except Exception as e:
+    print(f'❌ 数据库连接失败: {e}')
+    exit(1)
+" > /dev/null 2>&1; then
     echo "❌ 无法连接到数据库 $PGDATABASE"
     echo ""
     echo "请检查："
     echo "  1. VPS 防火墙是否开放 5432 端口"
     echo "  2. PostgreSQL 的 pg_hba.conf 是否允许远程连接"
     echo "  3. .env 文件中的数据库配置是否正确"
+    echo "  4. Django 设置是否正确"
     echo ""
     echo "手动测试连接："
-    echo "  psql -h $PGHOST -U $PGUSER -d $PGDATABASE"
+    echo "  cd $PROJECT_DIR && source $PROJECT_DIR/../.venv/bin/activate && python manage.py dbshell"
     exit 1
 fi
 echo "✓ 数据库连接正常"
@@ -65,7 +80,7 @@ case $choice in
         echo ""
         echo "开始测试批次大小..."
         cd "$PROJECT_DIR"
-        source ../.venv/bin/activate
+        source "$PROJECT_DIR/../.venv/bin/activate"
         python manage.py generate_test_data --target xinye.com --count 10000 --test-batch-sizes
         ;;
     2)
@@ -74,7 +89,7 @@ case $choice in
         echo ""
         echo "开始生成 10 万条数据..."
         cd "$PROJECT_DIR"
-        source ../.venv/bin/activate
+        source "$PROJECT_DIR/../.venv/bin/activate"
         python manage.py generate_test_data \
             --target xinye.com \
             --count 100000 \
@@ -91,7 +106,7 @@ case $choice in
             echo ""
             echo "开始生成 100 万条数据..."
             cd "$PROJECT_DIR"
-            source ../.venv/bin/activate
+            source "$PROJECT_DIR/../.venv/bin/activate"
             python manage.py generate_test_data \
                 --target xinye.com \
                 --count 1000000 \
@@ -149,7 +164,7 @@ case $choice in
         
         echo "步骤 2：测试批次大小"
         cd "$PROJECT_DIR"
-        source ../.venv/bin/activate
+        source "$PROJECT_DIR/../.venv/bin/activate"
         python manage.py generate_test_data --target xinye.com --count 10000 --test-batch-sizes | tee "$PROJECT_DIR/logs/batch_size_test.txt"
         echo ""
         
