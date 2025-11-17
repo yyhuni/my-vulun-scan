@@ -1,11 +1,20 @@
 """
 目录扫描 Flow
+
+负责编排目录扫描的完整流程
+
+架构：
+- Flow 负责编排多个原子 Task
+- 支持串行执行扫描工具（流式处理）
+- 每个 Task 可独立重试
+- 配置由 YAML 解析
 """
 
 import logging
 import os
 import subprocess
 from pathlib import Path
+from typing import Callable
 from prefect import flow
 from apps.scan.tasks.directory_enumeration import (
     export_sites_task,
@@ -18,15 +27,52 @@ from apps.scan.handlers.scan_flow_handlers import (
     on_scan_flow_cancelled,
     on_scan_flow_crashed
 )
-from apps.scan.utils import build_command
+from apps.scan.utils import config_parser, build_scan_command
 
 logger = logging.getLogger(__name__)
 
-# ffuf 配置
-FFUF_CONFIG = {
-    'wordlist': '~/Desktop/dirsearch_dicc.txt',
-    'command': 'ffuf -w {wordlist} -u {url}/FUZZ -p 0.1-2.0 -t 10 -timeout 10 -se -ac -mc 200,201,301,302,401,403 -json'
-}
+
+def calculate_timeout_by_line_count(file_path: str, base_per_time: int = 300) -> int:
+    """
+    根据文件行数计算 timeout
+    
+    使用 wc -l 统计文件行数，根据行数和每行基础时间计算 timeout
+    
+    Args:
+        file_path: 要统计行数的文件路径
+        base_per_time: 每行的基础时间（秒），默认300秒（目录扫描最慢）
+    
+    Returns:
+        int: 计算出的超时时间（秒）
+    
+    Example:
+        timeout = calculate_timeout_by_line_count('/path/to/sites.txt', base_per_time=300)
+    """
+    try:
+        # 使用 wc -l 快速统计行数
+        result = subprocess.run(
+            ['wc', '-l', file_path],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        # wc -l 输出格式：行数 + 空格 + 文件名
+        line_count = int(result.stdout.strip().split()[0])
+        
+        # 计算 timeout：行数 × 每行基础时间
+        timeout = line_count * base_per_time
+        
+        logger.info(
+            f"timeout 自动计算: 文件={file_path}, "
+            f"行数={line_count}, 每行时间={base_per_time}秒, timeout={timeout}秒"
+        )
+        
+        return timeout
+        
+    except Exception as e:
+        # 如果 wc -l 失败，使用默认值
+        logger.warning(f"wc -l 计算行数失败: {e}，使用默认 timeout: 600秒")
+        return 600
 
 
 def _setup_directory_scan_directory(scan_workspace_dir: str) -> Path:
@@ -92,6 +138,7 @@ def _export_site_urls(target_id: int, directory_scan_dir: Path) -> tuple[str, in
 
 
 def _run_scans_sequentially(
+    enabled_tools: dict,
     sites_file: str,
     directory_scan_dir: Path,
     scan_id: int,
@@ -100,9 +147,10 @@ def _run_scans_sequentially(
     target_name: str
 ) -> tuple[int, int, list]:
     """
-    串行执行目录扫描任务
+    串行执行目录扫描任务（支持多工具）
     
     Args:
+        enabled_tools: 启用的工具配置字典
         sites_file: 站点文件路径
         directory_scan_dir: 目录扫描目录
         scan_id: 扫描任务 ID
@@ -113,10 +161,6 @@ def _run_scans_sequentially(
     Returns:
         tuple: (total_directories, processed_sites, failed_sites)
     """
-    logger.info(
-        "Step 2 & 3: 串行执行目录扫描并实时保存结果（ffuf）"
-    )
-    
     # 读取站点列表
     sites = []
     with open(sites_file, 'r', encoding='utf-8') as f:
@@ -125,72 +169,82 @@ def _run_scans_sequentially(
             if site_url:
                 sites.append(site_url)
     
-    logger.info("准备扫描 %d 个站点", len(sites))
+    logger.info("准备扫描 %d 个站点，使用工具: %s", len(sites), ', '.join(enabled_tools.keys()))
     
     total_directories = 0
-    processed_sites = 0
+    processed_sites_set = set()  # 使用 set 避免重复计数
     failed_sites = []
     
-    # 逐个站点执行扫描
-    for idx, site_url in enumerate(sites, 1):
-        logger.info(
-            "[%d/%d] 开始扫描站点: %s",
-            idx, len(sites), site_url
-        )
+    # 遍历每个工具
+    for tool_name, tool_config in enabled_tools.items():
+        logger.info("="*60)
+        logger.info("使用工具: %s", tool_name)
+        logger.info("="*60)
         
-        # 使用统一的命令构建器
-        command = build_command(
-            template=FFUF_CONFIG['command'],
-            wordlist=FFUF_CONFIG['wordlist'],
-            url=site_url
-        )
-        
-        # 单个站点超时：10 分钟
-        site_timeout = 600
-        
-        try:
-            # 直接调用 task（串行执行）
-            result = run_and_stream_save_directories_task(
-                cmd=command,
-                scan_id=scan_id,
-                target_id=target_id,
-                site_url=site_url,
-                cwd=str(directory_scan_dir),
-                shell=True,
-                batch_size=500,
-                timeout=site_timeout
-            )
-            
-            total_directories += result.get('created_directories', 0)
-            processed_sites += 1
-            
+        # 逐个站点执行扫描
+        for idx, site_url in enumerate(sites, 1):
             logger.info(
-                "✓ [%d/%d] 站点扫描完成: %s - 发现 %d 个目录",
-                idx, len(sites), site_url,
-                result.get('created_directories', 0)
+                "[%d/%d] 开始扫描站点: %s (工具: %s)",
+                idx, len(sites), site_url, tool_name
             )
             
-        except subprocess.TimeoutExpired as exc:
-            # 超时异常单独处理
-            failed_sites.append(site_url)
-            logger.error(
-                "✗ [%d/%d] 站点扫描超时: %s - 超时配置: %d秒",
-                idx, len(sites), site_url, site_timeout
+            # 使用统一的命令构建器
+            command = build_scan_command(
+                scan_type='directory_scan',
+                tool_name=tool_name,
+                url=site_url,
+                **tool_config
             )
-        except Exception as exc:
-            # 其他异常
-            failed_sites.append(site_url)
-            logger.error(
-                "✗ [%d/%d] 站点扫描失败: %s - 错误: %s",
-                idx, len(sites), site_url, exc
-            )
-        
-        # 每 10 个站点输出进度
-        if idx % 10 == 0:
-            logger.info(
-                "进度: %d/%d (%.1f%%) - 已发现 %d 个目录",
-                idx, len(sites), idx/len(sites)*100, total_directories
-            )
+            
+            # 单个站点超时：从配置中获取，默认 300 秒
+            site_timeout = tool_config.get('timeout', 300)
+            
+            try:
+                # 直接调用 task（串行执行）
+                result = run_and_stream_save_directories_task(
+                    cmd=command,
+                    scan_id=scan_id,
+                    target_id=target_id,
+                    site_url=site_url,
+                    cwd=str(directory_scan_dir),
+                    shell=True,
+                    batch_size=500,
+                    timeout=site_timeout
+                )
+                
+                total_directories += result.get('created_directories', 0)
+                processed_sites_set.add(site_url)  # 使用 set 记录成功的站点
+                
+                logger.info(
+                    "✓ [%d/%d] 站点扫描完成: %s - 发现 %d 个目录",
+                    idx, len(sites), site_url,
+                    result.get('created_directories', 0)
+                )
+                
+            except subprocess.TimeoutExpired as exc:
+                # 超时异常单独处理
+                failed_sites.append(site_url)
+                logger.error(
+                    "✗ [%d/%d] 站点扫描超时: %s - 超时配置: %d秒",
+                    idx, len(sites), site_url, site_timeout
+                )
+            except Exception as exc:
+                # 其他异常
+                failed_sites.append(site_url)
+                logger.error(
+                    "✗ [%d/%d] 站点扫描失败: %s - 错误: %s",
+                    idx, len(sites), site_url, exc
+                )
+            
+            # 每 10 个站点输出进度
+            if idx % 10 == 0:
+                logger.info(
+                    "进度: %d/%d (%.1f%%) - 已发现 %d 个目录",
+                    idx, len(sites), idx/len(sites)*100, total_directories
+                )
+    
+    # 计算成功和失败的站点数
+    processed_count = len(processed_sites_set)
     
     if failed_sites:
         logger.warning(
@@ -200,10 +254,10 @@ def _run_scans_sequentially(
     
     logger.info(
         "✓ 串行目录扫描执行完成 - 成功: %d/%d, 失败: %d, 总目录数: %d",
-        processed_sites, len(sites), len(failed_sites), total_directories
+        processed_count, len(sites), len(failed_sites), total_directories
     )
     
-    return total_directories, processed_sites, failed_sites
+    return total_directories, processed_count, failed_sites
 
 
 @flow(
@@ -220,20 +274,21 @@ def directory_scan_flow(
     target_name: str,
     target_id: int,
     scan_workspace_dir: str,
-    engine_config: str = None
+    engine_config: str
 ) -> dict:
     """
     目录扫描 Flow
     
     主要功能：
         1. 从 target 获取所有站点的 URL
-        2. 对每个站点 URL 执行目录扫描（ffuf）
+        2. 对每个站点 URL 执行目录扫描（支持 ffuf、dirsearch 等工具）
         3. 流式保存扫描结果到数据库 Directory 表
     
     工作流程：
+        Step 0: 创建工作目录
         Step 1: 导出站点 URL 列表到文件（供扫描工具使用）
-        Step 2: 串行执行目录扫描任务，运行 ffuf 并实时解析输出
-        Step 3: 流式保存到数据库（WebSite → Directory）
+        Step 2: 解析配置，获取启用的工具
+        Step 3: 串行执行扫描工具并实时保存结果
     
     ffuf 输出字段：
         - url: 发现的目录/文件 URL
@@ -249,7 +304,7 @@ def directory_scan_flow(
         target_name: 目标名称
         target_id: 目标 ID
         scan_workspace_dir: 扫描工作空间目录
-        engine_config: 引擎配置（预留）
+        engine_config: 引擎配置（YAML 字符串，必需）
     
     Returns:
         dict: {
@@ -279,16 +334,51 @@ def directory_scan_flow(
             "="*60
         )
         
+        # 参数验证
+        if scan_id is None:
+            raise ValueError("scan_id 不能为空")
+        if not target_name:
+            raise ValueError("target_name 不能为空")
+        if target_id is None:
+            raise ValueError("target_id 不能为空")
+        if not scan_workspace_dir:
+            raise ValueError("scan_workspace_dir 不能为空")
+        if not engine_config:
+            raise ValueError("engine_config 不能为空")
+        
         # Step 0: 创建工作目录
         directory_scan_dir = _setup_directory_scan_directory(scan_workspace_dir)
         
         # Step 1: 导出站点 URL
         sites_file, site_count = _export_site_urls(target_id, directory_scan_dir)
         
-        # Step 2 & 3: 串行执行 ffuf 扫描任务并实时保存
-        # 每个站点固定超时 600 秒（10 分钟）
-        logger.info("准备扫描 %d 个站点，每个站点超时: 600 秒（10 分钟）", site_count)
+        # Step 2: 解析配置，获取启用的工具
+        logger.info("Step 2: 解析配置，获取启用的工具")
+        
+        # 解析配置，传入 timeout 计算函数和参数
+        # 每个站点 300秒，可以改为 600 等
+        enabled_tools = config_parser.parse_enabled_tools(
+            scan_type='directory_scan',
+            engine_config=engine_config,
+            timeout_calculator=calculate_timeout_by_line_count,
+            timeout_calculator_kwargs={
+                'file_path': sites_file,
+                'base_per_time': 300  # 每个站点 300秒
+            }
+        )
+        
+        if not enabled_tools:
+            raise RuntimeError("没有启用的目录扫描工具，请检查引擎配置。")
+        
+        logger.info(
+            "✓ 配置解析完成 - 启用工具: %s",
+            ', '.join(enabled_tools.keys())
+        )
+        
+        # Step 3: 串行执行扫描工具并实时保存结果
+        logger.info("Step 3: 串行执行扫描工具并实时保存结果")
         total_directories, processed_sites, failed_sites = _run_scans_sequentially(
+            enabled_tools=enabled_tools,
             sites_file=sites_file,
             directory_scan_dir=directory_scan_dir,
             scan_id=scan_id,

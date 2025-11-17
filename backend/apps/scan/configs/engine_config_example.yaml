@@ -71,9 +71,15 @@ site_scan:
 # ==================== 目录扫描 ====================
 directory_scan:
   tools:
-    dirsearch:
+    ffuf:
       enabled: true
-      timeout: 600      # 10 分钟（必需）
-      # threads: 50     # 可选，线程数
-      # wordlist: /usr/src/wordlist/common.txt  # 可选，字典文件
-      # extensions: php,html,js  # 可选，文件扩展名
+      timeout: auto                            # Flow超时时间：自动计算（每个站点300秒）
+                                               # 或者手动指定：timeout: 3600
+      wordlist: ~/Desktop/dirsearch_dicc.txt   # 词表文件路径（必需）
+                                               # ffuf会逐行读取该文件，将每行作为FUZZ关键字的替换值
+      # delay: 0.1-2.0                         # Seconds of delay between requests, or a range of random delay
+                                               # For example "0.1" or "0.1-2.0"
+      # threads: 10                            # Number of concurrent threads (default: 40)
+      # request_timeout: 10                    # HTTP request timeout in seconds (default: 10)
+      # match_codes: 200,201,301,302,401,403   # Match HTTP status codes, comma separated
+      # rate: 0                                # Rate of requests per second (default: 0)

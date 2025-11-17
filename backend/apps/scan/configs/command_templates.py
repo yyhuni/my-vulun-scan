@@ -90,13 +90,17 @@ SITE_SCAN_COMMANDS = {
 # ==================== 目录扫描 ====================
 
 DIRECTORY_SCAN_COMMANDS = {
-    'dirsearch': {
-        'command': f'python3 {SCAN_TOOLS_BASE_PATH}/dirsearch/dirsearch.py -u {{target}} -o {{output_file}}',
+    'ffuf': {
+        # 流式输出到 stdout，使用 -json 输出 JSON 格式
+        # 扫描目标 URL 的目录，使用 FUZZ 关键字作为字典替换位置
+        'command': 'ffuf -u {url}/FUZZ -se -ac -json',
         'optional_flags': {
-            'threads': '-t {threads}',
-            'wordlist': '-w {wordlist}',
-            'extensions': '-e {extensions}',
-            'use_proxy': '--proxy {proxy_url}',
+            'wordlist': '-w {wordlist}',                 # 词表文件路径（必需）
+            'delay': '-p {delay}',                       # Seconds of `delay` between requests, or a range of random delay. For example "0.1" or "0.1-2.0"
+            'threads': '-t {threads}',                   # Number of concurrent threads. (default: 40)
+            'request_timeout': '-timeout {request_timeout}',  # HTTP request timeout in seconds. (default: 10)
+            'match_codes': '-mc {match_codes}',          # 匹配的状态码（如 200,201,301,302,401,403）
+            'rate': '-rate {rate}',                      # Rate of requests per second (default: 0)
         }
     },
 }
