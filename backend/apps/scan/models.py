@@ -67,3 +67,15 @@ class Scan(models.Model):
 
     def __str__(self):
         return f"Scan #{self.id} - {self.target.name}"
+    
+    def update_cached_stats(self):
+        """更新缓存的统计数据
+        
+        委托给 Service 层处理，保持架构分层原则
+        
+        用于在资产数据变化后更新缓存统计字段，避免每次查询都执行COUNT操作
+        """
+        from apps.scan.services.scan_service import ScanService
+        
+        service = ScanService()
+        return service.update_cached_stats(self.id)
