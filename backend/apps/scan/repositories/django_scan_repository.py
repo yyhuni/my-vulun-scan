@@ -246,7 +246,7 @@ class DjangoScanRepository:
             Repository 层不判断业务状态,只负责数据更新
             created_at 是自动设置的，不需要手动传递
         """
-        scan = DjangoScanRepository.get_by_id_for_update(scan_id)
+        scan = self.get_by_id_for_update(scan_id)
         if not scan:
             return False
         
@@ -340,7 +340,7 @@ class DjangoScanRepository:
             是否更新成功
         """
         try:
-            scan = DjangoScanRepository.get_by_id(scan_id, prefetch_relations=False)
+            scan = self.get_by_id(scan_id, prefetch_relations=False)
             if not scan:
                 logger.error("Scan 不存在，无法更新缓存统计数据 - Scan ID: %s", scan_id)
                 return False
