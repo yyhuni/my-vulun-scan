@@ -44,14 +44,15 @@ port_scan:
   tools:
     naabu_active:
       enabled: true
-      timeout: 3600     # 1 小时（必需）
+      timeout: auto     # 自动计算（根据域名数量，每个域名30秒）
+                        # 或者手动指定：timeout: 3600
       threads: 5        # 可选，并发连接数（默认 5）
       ports: 1-65535    # 可选，扫描端口范围（默认 1-65535）
       rate: 10          # 可选，扫描速率（默认 10）
       
     naabu_passive:
       enabled: true
-      timeout: 1800     # 30 分钟（必需）
+      timeout: auto     # 自动计算
       # 被动扫描，使用被动数据源，无需额外配置
 
 # ==================== 站点扫描 ====================
@@ -59,7 +60,8 @@ site_scan:
   tools:
     httpx:
       enabled: true
-      timeout: 3600         # Flow 超时时间（秒，必需）
+      timeout: auto         # 自动计算（根据URL数量，每个URL 1秒）
+                            # 或者手动指定：timeout: 3600
       # threads: 50         # 可选，并发线程数（httpx 默认 50）
       # rate_limit: 150     # 可选，每秒发送的请求数量（httpx 默认 150）
       # request_timeout: 10  # 可选，单个请求的超时时间（httpx 默认 10）秒

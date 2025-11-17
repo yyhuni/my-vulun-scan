@@ -18,7 +18,7 @@
 
 import yaml
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Callable
 
 logger = logging.getLogger(__name__)
 
@@ -47,14 +47,19 @@ def _parse_engine_config(engine_config_str: Optional[str]) -> Dict[str, Any]:
 
 def parse_enabled_tools(
     scan_type: str,
-    engine_config: Optional[str] = None
+    engine_config: str,
+    timeout_calculator: Optional[Callable[..., int]] = None,
+    timeout_calculator_kwargs: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Dict[str, Any]]:
     """
     解析 YAML 配置，获取启用的工具及其配置
     
     Args:
         scan_type: 扫描类型 (subdomain_discovery, port_scan, site_scan, directory_scan)
-        engine_config: 引擎配置（YAML 字符串）
+        engine_config: 引擎配置（YAML 字符串，必需）
+        timeout_calculator: 超时时间计算回调函数（可选）
+                          当 timeout 配置为 "auto" 时，调用此函数计算实际超时时间
+        timeout_calculator_kwargs: 传递给 timeout_calculator 的参数字典（可选）
     
     Returns:
         启用的工具配置字典 {tool_name: tool_config}
@@ -65,11 +70,13 @@ def parse_enabled_tools(
     
     Raises:
         ValueError: 配置格式错误或必需参数缺失/无效时抛出
+        - engine_config 为空或空白字符串
         - 工具配置不是字典类型
         - enabled 字段类型不是 bool
         - enabled=true 但缺少 timeout 参数
-        - timeout 参数类型不是 int
+        - timeout 参数类型不是 int 或 "auto"
         - timeout 参数值 <= 0
+        - timeout="auto" 但未提供 timeout_calculator
     
     Example:
         >>> enabled_tools = parse_enabled_tools('subdomain_discovery', yaml_config)
@@ -83,10 +90,9 @@ def parse_enabled_tools(
         - 所有启用的工具保证包含有效的 timeout 参数
         - 命令构建逻辑在 command_helper 中实现
     """
-    if not engine_config:
-        # 没有配置 → 返回空字典，不执行任何工具
-        logger.warning(f"没有引擎配置，{scan_type} 不会执行任何工具")
-        return {}
+    # 参数验证
+    if not engine_config or not engine_config.strip():
+        raise ValueError(f"engine_config 不能为空 - scan_type: {scan_type}")
     
     # 1. 解析引擎配置
     parsed_config = _parse_engine_config(engine_config)
@@ -125,14 +131,42 @@ def parse_enabled_tools(
             
             # 验证 timeout 值的有效性
             timeout_value = config['timeout']
-            if not isinstance(timeout_value, int):
-                raise ValueError(
-                    f"工具 {name} 的 timeout 参数类型错误：期望 int，实际 {type(timeout_value).__name__}"
-                )
             
-            if timeout_value <= 0:
+            # 支持 timeout: auto（动态计算超时时间）
+            if timeout_value == 'auto':
+                if not timeout_calculator:
+                    raise ValueError(
+                        f"工具 {name} 的 timeout 配置为 'auto'，但未提供 timeout_calculator 回调函数"
+                    )
+                
+                # 调用回调函数计算实际的 timeout
+                try:
+                    # 使用 kwargs 调用计算函数
+                    kwargs = timeout_calculator_kwargs or {}
+                    calculated_timeout = timeout_calculator(**kwargs)
+                    
+                    if not isinstance(calculated_timeout, int) or calculated_timeout <= 0:
+                        raise ValueError(
+                            f"timeout_calculator 返回的值无效（{calculated_timeout}），必须是大于0的整数"
+                        )
+                    # 将计算出的 timeout 写回配置
+                    config = dict(config)  # 创建副本避免修改原始配置
+                    config['timeout'] = calculated_timeout
+                    logger.debug(f"工具 {name} 的 timeout 自动计算为: {calculated_timeout}秒")
+                except Exception as e:
+                    raise ValueError(
+                        f"工具 {name} 调用 timeout_calculator 失败: {e}"
+                    ) from e
+            
+            # 验证 timeout 是整数且大于0
+            elif isinstance(timeout_value, int):
+                if timeout_value <= 0:
+                    raise ValueError(
+                        f"工具 {name} 的 timeout 参数无效（{timeout_value}），必须大于0"
+                    )
+            else:
                 raise ValueError(
-                    f"工具 {name} 的 timeout 参数无效（{timeout_value}），必须大于0"
+                    f"工具 {name} 的 timeout 参数类型错误：期望 int 或 'auto'，实际 {type(timeout_value).__name__}"
                 )
             
             enabled_tools[name] = config

@@ -14,6 +14,7 @@ import logging
 import os
 import subprocess
 from pathlib import Path
+from typing import Callable
 from prefect import flow
 from apps.scan.tasks.port_scan import (
     export_domains_task,
@@ -28,8 +29,50 @@ from apps.scan.handlers.scan_flow_handlers import (
 )
 from apps.scan.utils import config_parser, build_scan_command
 
-
 logger = logging.getLogger(__name__)
+
+
+def calculate_timeout_by_line_count(file_path: str, base_per_time: int = 120) -> int:
+    """
+    根据文件行数计算 timeout
+    
+    使用 wc -l 统计文件行数，根据行数和每行基础时间计算 timeout
+    
+    Args:
+        file_path: 要统计行数的文件路径
+        base_per_time: 每行的基础时间（秒），默认120秒（端口扫描较慢）
+    
+    Returns:
+        int: 计算出的超时时间（秒）
+    
+    Example:
+        timeout = calculate_timeout_by_line_count('/path/to/domains.txt', base_per_time=120)
+    """
+    try:
+        # 使用 wc -l 快速统计行数
+        result = subprocess.run(
+            ['wc', '-l', file_path],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        # wc -l 输出格式：行数 + 空格 + 文件名
+        line_count = int(result.stdout.strip().split()[0])
+        
+        # 计算 timeout：行数 × 每行基础时间
+        timeout = line_count * base_per_time
+        
+        logger.info(
+            f"timeout 自动计算: 文件={file_path}, "
+            f"行数={line_count}, 每行时间={base_per_time}秒, timeout={timeout}秒"
+        )
+        
+        return timeout
+        
+    except Exception as e:
+        # 如果 wc -l 失败，使用默认值
+        logger.warning(f"wc -l 计算行数失败: {e}，使用默认 timeout: 600秒")
+        return 600
 
 def _setup_port_scan_directory(scan_workspace_dir: str) -> Path:
     """
@@ -318,9 +361,16 @@ def port_scan_flow(
         
         # Step 2: 解析配置，获取启用的工具
         logger.info("Step 2: 解析配置，获取启用的工具")
+        
+        # 解析配置，传入 timeout 计算函数和参数
         enabled_tools = config_parser.parse_enabled_tools(
             scan_type='port_scan',
-            engine_config=engine_config
+            engine_config=engine_config,
+            timeout_calculator=calculate_timeout_by_line_count,
+            timeout_calculator_kwargs={
+                'file_path': domains_file,
+                'base_per_time': 60  # 每个域名 60秒
+            }
         )
         
         if not enabled_tools:
