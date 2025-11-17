@@ -20,10 +20,9 @@ db.sqlite3-journal
 /media
 /staticfiles
 
-# 运行时文件（Celery、Flower、PID）
+# 运行时文件（Flower、PID）
 /var/*
 !/var/.gitkeep
-celerybeat-schedule*
 flower.db
 pids/
 script/dev/.pids/

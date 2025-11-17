@@ -1,3 +1,4 @@
+import logging
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -5,10 +6,15 @@ from django.db import transaction
 from django.db.models import Count
 from .models import Organization, Target
 from .serializers import OrganizationSerializer, TargetSerializer, TargetDetailSerializer, BatchCreateTargetSerializer
+from .tasks import async_bulk_delete_targets, async_bulk_delete_organizations
+from .services.target_service import TargetService
+from .services.organization_service import OrganizationService
 from apps.common.normalizer import normalize_target
 from apps.common.validators import detect_target_type
 from apps.common.pagination import BasePagination
 from apps.asset.models import Subdomain
+
+logger = logging.getLogger(__name__)
 
 
 class OrganizationViewSet(viewsets.ModelViewSet):
@@ -101,6 +107,130 @@ class OrganizationViewSet(viewsets.ModelViewSet):
             'unlinked_count': existing_count,
             'message': f'成功解除 {existing_count} 个目标的关联'
         })
+    
+    def destroy(self, request, *args, **kwargs):
+        """
+        异步删除单个组织（统一使用批量删除逻辑）
+        
+        DELETE /api/organizations/{id}/
+        
+        功能:
+        - 立即返回 202 Accepted 状态，不等待删除完成
+        - 在后台线程中执行删除操作
+        - 发送通知告知删除进度
+        
+        返回:
+        - 202 Accepted: 删除请求已接受，正在后台处理
+        - 404 Not Found: 组织不存在
+        
+        注意:
+        - 删除组织不会删除关联的目标
+        - 只会清除组织与目标的关联关系
+        - 通过通知中心查看删除进度和结果
+        """
+        try:
+            # 获取组织对象（验证是否存在）
+            organization = self.get_object()
+            organization_id = organization.id
+            organization_name = organization.name
+            
+            # 使用批量删除逻辑（传入单个ID）
+            async_bulk_delete_organizations([organization_id], [organization_name])
+            
+            # 立即返回 202 Accepted
+            return Response(
+                {
+                    'message': '组织删除请求已接受，正在后台处理',
+                    'organizationId': organization_id,
+                    'organizationName': organization_name,
+                    'detail': '删除进度将通过通知中心告知'
+                },
+                status=status.HTTP_202_ACCEPTED
+            )
+        
+        except Organization.DoesNotExist:
+            return Response(
+                {'error': '组织不存在'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+    
+    @action(detail=False, methods=['post', 'delete'], url_path='bulk-delete')
+    def bulk_delete(self, request):
+        """
+        批量异步删除组织
+        
+        POST/DELETE /api/organizations/bulk-delete/
+        
+        请求格式:
+        {
+            "ids": [1, 2, 3]
+        }
+        
+        功能:
+        - 立即返回 202 Accepted 状态，不等待删除完成
+        - 在后台线程中批量执行删除操作
+        - 发送通知告知删除进度和结果
+        
+        返回:
+        - 202 Accepted: 删除请求已接受，正在后台处理
+        - 400 Bad Request: 参数错误
+        
+        注意:
+        - 删除组织不会删除关联的目标
+        - 只会清除组织与目标的关联关系
+        - 通过通知中心查看删除进度和结果
+        """
+        ids = request.data.get('ids', [])
+        
+        # 参数验证
+        if not ids:
+            return Response(
+                {'error': '缺少必填参数: ids'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not isinstance(ids, list):
+            return Response(
+                {'error': 'ids 必须是数组'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not all(isinstance(i, int) for i in ids):
+            return Response(
+                {'error': 'ids 数组中的所有元素必须是整数'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 获取组织名称（用于通知显示）- 通过 Service 层
+        try:
+            organization_service = OrganizationService()
+            existing_ids, organization_names = organization_service.get_organizations_info(ids)
+            
+            if not existing_ids:
+                return Response(
+                    {'error': '未找到要删除的组织'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # 启动异步批量删除任务
+            async_bulk_delete_organizations(existing_ids, organization_names)
+            
+            return Response(
+                {
+                    'message': f'已接受删除 {len(existing_ids)} 个组织的请求，正在后台处理',
+                    'acceptedCount': len(existing_ids),
+                    'requestedCount': len(ids),
+                    'detail': '删除进度将通过通知中心告知'
+                },
+                status=status.HTTP_202_ACCEPTED
+            )
+        
+        except Exception as e:
+            logger.exception("批量删除组织时发生错误")
+            return Response(
+                {'error': '服务器错误，请稍后重试'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class TargetViewSet(viewsets.ModelViewSet):
@@ -144,6 +274,132 @@ class TargetViewSet(viewsets.ModelViewSet):
         if self.action == 'retrieve':
             return TargetDetailSerializer
         return TargetSerializer
+    
+    def destroy(self, request, *args, **kwargs):
+        """
+        异步删除单个目标（统一使用批量删除逻辑）
+        
+        DELETE /api/targets/{id}/
+        
+        功能:
+        - 立即返回 202 Accepted 状态，不等待删除完成
+        - 在后台线程中执行删除操作
+        - 适用于关联数据量大的场景（如40万条记录）
+        - 发送通知告知删除进度
+        
+        返回:
+        - 202 Accepted: 删除请求已接受，正在后台处理
+        - 404 Not Found: 目标不存在
+        
+        注意:
+        - 删除是级联的，会自动删除所有关联数据（子域名、IP、端点、漏洞等）
+        - 删除过程可能需要几分钟，取决于关联数据量
+        - 客户端收到响应后，目标可能还在删除中
+        - 通过通知中心查看删除进度和结果
+        """
+        try:
+            # 获取目标对象（验证是否存在）
+            target = self.get_object()
+            target_id = target.id
+            target_name = target.name
+            
+            # 使用批量删除逻辑（传入单个ID）
+            async_bulk_delete_targets([target_id], [target_name])
+            
+            # 立即返回 202 Accepted
+            return Response(
+                {
+                    'message': '目标删除请求已接受，正在后台处理',
+                    'targetId': target_id,
+                    'targetName': target_name,
+                    'detail': '删除进度将通过通知中心告知'
+                },
+                status=status.HTTP_202_ACCEPTED
+            )
+        
+        except Target.DoesNotExist:
+            return Response(
+                {'error': '目标不存在'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+    
+    @action(detail=False, methods=['post', 'delete'], url_path='bulk-delete')
+    def bulk_delete(self, request):
+        """
+        批量异步删除目标
+        
+        POST/DELETE /api/targets/bulk-delete/
+        
+        请求格式:
+        {
+            "ids": [1, 2, 3]
+        }
+        
+        功能:
+        - 立即返回 202 Accepted 状态，不等待删除完成
+        - 在后台线程中批量执行删除操作
+        - 发送通知告知删除进度和结果
+        
+        返回:
+        - 202 Accepted: 删除请求已接受，正在后台处理
+        - 400 Bad Request: 参数错误
+        
+        注意:
+        - 使用级联删除，会同时删除关联的子域名、IP、端点等数据
+        - 删除过程可能需要几分钟，取决于关联数据量
+        - 通过通知中心查看删除进度和结果
+        """
+        ids = request.data.get('ids', [])
+        
+        # 参数验证
+        if not ids:
+            return Response(
+                {'error': '缺少必填参数: ids'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not isinstance(ids, list):
+            return Response(
+                {'error': 'ids 必须是数组'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not all(isinstance(i, int) for i in ids):
+            return Response(
+                {'error': 'ids 数组中的所有元素必须是整数'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 获取目标名称（用于通知显示）- 通过 Service 层
+        try:
+            target_service = TargetService()
+            existing_ids, target_names = target_service.get_targets_info(ids)
+            
+            if not existing_ids:
+                return Response(
+                    {'error': '未找到要删除的目标'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # 启动异步批量删除任务
+            async_bulk_delete_targets(existing_ids, target_names)
+            
+            return Response(
+                {
+                    'message': f'已接受删除 {len(existing_ids)} 个目标的请求，正在后台处理',
+                    'acceptedCount': len(existing_ids),
+                    'requestedCount': len(ids),
+                    'detail': '删除进度将通过通知中心告知'
+                },
+                status=status.HTTP_202_ACCEPTED
+            )
+        
+        except Exception as e:
+            logger.exception("批量删除目标时发生错误")
+            return Response(
+                {'error': '服务器错误，请稍后重试'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
     @action(detail=False, methods=['post'])
     def batch_create(self, request):
