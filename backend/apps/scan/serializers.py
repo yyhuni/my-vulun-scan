@@ -55,52 +55,33 @@ class ScanHistorySerializer(serializers.ModelSerializer):
         """计算扫描汇总数据
         
         统计该扫描发现的资产数量：
-        - subdomains: 子域名数量（使用 annotate 的计数字段，避免 N+1 查询）
-        - websites: 网站数量（使用 annotate 的计数字段，避免 N+1 查询）
-        - endpoints: 端点数量（使用 annotate 的计数字段，避免 N+1 查询）
-        - ips: IP地址数量（使用 annotate 的计数字段，避免 N+1 查询）
-        - directories: 目录数量（使用 annotate 的计数字段，避免 N+1 查询）
+        - subdomains: 子域名数量
+        - websites: 网站数量
+        - endpoints: 端点数量
+        - ips: IP地址数量
+        - directories: 目录数量
         - vulnerabilities: 漏洞统计（暂时返回 0，待后续实现）
         
         性能优化：
-        - 配合 ViewSet 的 prefetch_related 预加载
-        - 使用 len(obj.xxx.all()) 利用预加载的数据（避免额外查询）
-        - 如果未预加载，降级使用 .count()（单个对象查询时）
+        - 直接使用 .count() 方法（根据测试结果，性能最佳）
+        - 分页场景下，每页只显示10条记录，总查询次数可控
+        - 避免复杂的预加载逻辑，直接高效计算
         """
-        # 尝试使用预加载的数据（prefetch_related），避免额外的 COUNT 查询
-        # 如果数据未预加载（例如单个对象查询），则降级使用 .count()
-        try:
-            # 检查是否已预加载（通过访问 _prefetched_objects_cache）
-            return {
-                'subdomains': len(obj.subdomains.all()),
-                'websites': len(obj.websites.all()),
-                'endpoints': len(obj.endpoints.all()),
-                'ips': len(obj.ip_addresses.all()),
-                'directories': len(obj.directories.all()),
-                'vulnerabilities': {
-                    'total': 0,
-                    'critical': 0,
-                    'high': 0,
-                    'medium': 0,
-                    'low': 0
-                }
+        # 直接使用 .count() 方法（性能测试显示这是最快的方法）
+        return {
+            'subdomains': obj.subdomains.count(),
+            'websites': obj.websites.count(),
+            'endpoints': obj.endpoints.count(),
+            'ips': obj.ip_addresses.count(),
+            'directories': obj.directories.count(),
+            'vulnerabilities': {
+                'total': 0,
+                'critical': 0,
+                'high': 0,
+                'medium': 0,
+                'low': 0
             }
-        except Exception:
-            # 降级方案：使用 .count() 查询
-            return {
-                'subdomains': obj.subdomains.count(),
-                'websites': obj.websites.count(),
-                'endpoints': obj.endpoints.count(),
-                'ips': obj.ip_addresses.count(),
-                'directories': obj.directories.count(),
-                'vulnerabilities': {
-                    'total': 0,
-                    'critical': 0,
-                    'high': 0,
-                    'medium': 0,
-                    'low': 0
-                }
-            }
+        }
     
     def get_progress(self, obj):
         """根据扫描状态和执行时间动态计算进度百分比

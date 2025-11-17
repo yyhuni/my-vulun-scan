@@ -18,36 +18,22 @@ class ScanViewSet(viewsets.ModelViewSet):
     pagination_class = BasePagination
     
     def get_queryset(self):
-        """优化查询集，预加载关联对象
+        """优化查询集，提升API性能
         
         查询优化策略：
         - select_related: 预加载 target 和 engine（一对一/多对一关系，使用 JOIN）
-        - annotate (仅列表页): 使用数据库聚合计算统计数量（避免 N+1 查询）
-        - order_by: 按创建时间降序排列（最新创建的任务排在最前面），且永远不为 NULL
-        - 确保最新创建的任务（包括未开始的）都排在最前面
+        - 移除 prefetch_related: 避免加载大量资产数据到内存
+        - order_by: 按创建时间降序排列（最新创建的任务排在最前面）
         
-        性能优化：
-        - 列表页：使用 annotate Count 进行批量统计
-        - 详情页：不使用 annotate，让 serializer 用 .count() 查询（更快）
-        - 原因：多个 Count(distinct=True) 在大数据量时很慢（特别是目录数据）
+        性能优化原理：
+        - 列表页：使用 .count() 方法进行统计（每个scan只查询5次）
+        - 分页场景：每页只显示10条记录，总查询次数可控
+        - 避免大数据加载：不再预加载所有关联的资产数据
         """
+        # 只保留必要的 select_related，移除所有 prefetch_related
         queryset = Scan.objects.select_related('target', 'engine')
         
-        # 不使用 annotate Count(distinct=True)，因为多个聚合会导致严重的性能问题
-        # 改用序列化器中的 .count() 方法，虽然会有 N+1 查询，但在分页场景下反而更快
-        # 
-        # 性能优化：使用 prefetch_related 预加载关联对象（只加载 ID，用于 count）
-        # 这样可以将 N+1 查询减少为 6 次查询（1 主查询 + 5 个 prefetch）
-        if self.action == 'list':
-            queryset = queryset.prefetch_related(
-                'subdomains',
-                'websites', 
-                'endpoints',
-                'ip_addresses',
-                'directories'
-            )
-        
-        return queryset.order_by('-created_at').all()  # type: ignore  # pylint: disable=no-member
+        return queryset.order_by('-created_at')  # type: ignore  # pylint: disable=no-member
     
     def get_serializer_class(self):
         """根据不同的 action 返回不同的序列化器
