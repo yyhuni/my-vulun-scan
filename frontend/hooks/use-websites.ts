@@ -32,28 +32,34 @@ const websiteService = {
     return response.json()
   },
 
-  // 删除网站
-  deleteWebSite: async (websiteId: number): Promise<void> => {
-    const response = await fetch(`/api/websites/${websiteId}/`, {
-      method: 'DELETE',
-    })
-    if (!response.ok) {
-      throw new Error('删除网站失败')
-    }
-  },
-
-  // 批量删除网站
-  bulkDeleteWebSites: async (websiteIds: number[]): Promise<void> => {
+  // 批量删除网站（支持单个或多个）
+  bulkDeleteWebSites: async (ids: number[]): Promise<{
+    message: string
+    deletedCount: number
+    requestedIds: number[]
+    cascadeDeleted: Record<string, number>
+  }> => {
     const response = await fetch('/api/websites/bulk-delete/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ ids: websiteIds }),
+      body: JSON.stringify({ ids }),
     })
     if (!response.ok) {
       throw new Error('批量删除网站失败')
     }
+    return response.json()
+  },
+
+  // 删除单个网站（复用批量删除接口）
+  deleteWebSite: async (websiteId: number): Promise<{
+    message: string
+    deletedCount: number
+    requestedIds: number[]
+    cascadeDeleted: Record<string, number>
+  }> => {
+    return websiteService.bulkDeleteWebSites([websiteId])
   },
 }
 
@@ -83,36 +89,81 @@ export function useScanWebSites(
   })
 }
 
-// 删除网站
+// 删除单个网站（使用统一的批量删除接口）
 export function useDeleteWebSite() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: websiteService.deleteWebSite,
-    onSuccess: () => {
+    onMutate: (id) => {
+      toast.loading('正在删除网站...', { id: `delete-website-${id}` })
+    },
+    onSuccess: (response, id) => {
+      toast.dismiss(`delete-website-${id}`)
+      
+      // 显示级联删除信息
+      const cascadeInfo = Object.entries(response.cascadeDeleted || {})
+        .filter(([key, count]) => key !== 'asset.WebSite' && count > 0)
+        .map(([key, count]) => {
+          const modelName = key.split('.')[1]
+          return `${modelName}: ${count}`
+        })
+        .join(', ')
+      
+      if (cascadeInfo) {
+        toast.success(`网站已成功删除（级联删除: ${cascadeInfo}）`)
+      } else {
+        toast.success('网站已成功删除')
+      }
+      
       // 刷新相关查询
       queryClient.invalidateQueries({ queryKey: ['target-websites'] })
       queryClient.invalidateQueries({ queryKey: ['scan-websites'] })
-      toast.success('网站删除成功')
+      queryClient.invalidateQueries({ queryKey: ['targets'] })
+      queryClient.invalidateQueries({ queryKey: ['scans'] })
     },
-    onError: (error: Error) => {
+    onError: (error: Error, id) => {
+      toast.dismiss(`delete-website-${id}`)
       toast.error(error.message || '删除网站失败')
     },
   })
 }
 
-// 批量删除网站
+// 批量删除网站（使用统一的批量删除接口）
 export function useBulkDeleteWebSites() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: websiteService.bulkDeleteWebSites,
-    onSuccess: () => {
+    onMutate: () => {
+      toast.loading('正在批量删除网站...', { id: 'bulk-delete-websites' })
+    },
+    onSuccess: (response) => {
+      toast.dismiss('bulk-delete-websites')
+      
+      // 显示级联删除信息
+      const cascadeInfo = Object.entries(response.cascadeDeleted || {})
+        .filter(([key, count]) => key !== 'asset.WebSite' && count > 0)
+        .map(([key, count]) => {
+          const modelName = key.split('.')[1]
+          return `${modelName}: ${count}`
+        })
+        .join(', ')
+      
+      if (cascadeInfo) {
+        toast.success(`成功删除 ${response.deletedCount} 个网站（级联删除: ${cascadeInfo}）`)
+      } else {
+        toast.success(`成功删除 ${response.deletedCount} 个网站`)
+      }
+      
       // 刷新相关查询
       queryClient.invalidateQueries({ queryKey: ['target-websites'] })
       queryClient.invalidateQueries({ queryKey: ['scan-websites'] })
+      queryClient.invalidateQueries({ queryKey: ['targets'] })
+      queryClient.invalidateQueries({ queryKey: ['scans'] })
     },
     onError: (error: Error) => {
+      toast.dismiss('bulk-delete-websites')
       toast.error(error.message || '批量删除网站失败')
     },
   })

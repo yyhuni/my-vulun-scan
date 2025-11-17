@@ -43,9 +43,45 @@ export class SubdomainService {
     return response.data
   }
 
-  /** 删除单个子域名 */
-  static async deleteSubdomain(id: number): Promise<void> {
-    await api.delete(`/domains/${id}/`)
+  /** 批量删除子域名（支持单个或多个，使用统一接口） */
+  static async bulkDeleteSubdomains(
+    ids: number[]
+  ): Promise<{
+    message: string
+    deletedCount: number
+    requestedIds: number[]
+    cascadeDeleted: Record<string, number>
+  }> {
+    const response = await api.post<{
+      message: string
+      deletedCount: number
+      requestedIds: number[]
+      cascadeDeleted: Record<string, number>
+    }>(
+      `/subdomains/bulk-delete/`,
+      { ids }
+    )
+    return response.data
+  }
+
+  /** 删除单个子域名（复用批量删除接口） */
+  static async deleteSubdomain(id: number): Promise<{
+    message: string
+    deletedCount: number
+    requestedIds: number[]
+    cascadeDeleted: Record<string, number>
+  }> {
+    return this.bulkDeleteSubdomains([id])
+  }
+
+  /** 批量删除子域名（别名，兼容旧代码） */
+  static async batchDeleteSubdomains(ids: number[]): Promise<{
+    message: string
+    deletedCount: number
+    requestedIds: number[]
+    cascadeDeleted: Record<string, number>
+  }> {
+    return this.bulkDeleteSubdomains(ids)
   }
 
   /** 批量从组织中移除子域名 */
@@ -62,25 +98,6 @@ export class SubdomainService {
       {
         domainIds: data.domainIds, // 拦截器转换为 domain_ids
       }
-    )
-    return response.data
-  }
-
-  /** 批量删除子域名（全局） */
-  static async batchDeleteSubdomains(
-    domainIds: number[]
-  ): Promise<{
-    message: string
-    deletedDomainCount: number
-    deletedSubdomainCount: number
-  }> {
-    const response = await api.post<{
-      message: string
-      deletedDomainCount: number
-      deletedSubdomainCount: number
-    }>(
-      `/domains/batch-delete/`,
-      { domainIds }
     )
     return response.data
   }

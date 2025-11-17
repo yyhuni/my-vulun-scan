@@ -28,13 +28,29 @@ export class IPAddressService {
     return response.data
   }
 
-  static async deleteIPAddress(ipId: number): Promise<void> {
-    await api.delete(`/ip-addresses/${ipId}/`)
+  /** 批量删除 IP 地址（支持单个或多个） */
+  static async bulkDeleteIPAddresses(ids: number[]): Promise<{
+    message: string
+    deletedCount: number
+    requestedIds: number[]
+    cascadeDeleted: Record<string, number>
+  }> {
+    const response = await api.post<{
+      message: string
+      deletedCount: number
+      requestedIds: number[]
+      cascadeDeleted: Record<string, number>
+    }>('/ip-addresses/bulk-delete/', { ids })
+    return response.data
   }
 
-  static async bulkDeleteIPAddresses(ipIds: number[]): Promise<void> {
-    await api.post('/ip-addresses/bulk-delete/', {
-      ids: ipIds,
-    })
+  /** 删除单个 IP 地址（复用批量删除接口） */
+  static async deleteIPAddress(ipId: number): Promise<{
+    message: string
+    deletedCount: number
+    requestedIds: number[]
+    cascadeDeleted: Record<string, number>
+  }> {
+    return this.bulkDeleteIPAddresses([ipId])
   }
 }

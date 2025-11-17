@@ -144,7 +144,7 @@ export function useBatchDeleteSubdomainsFromOrganization() {
   })
 }
 
-// 删除单个子域名
+// 删除单个子域名（使用统一的批量删除接口）
 export function useDeleteSubdomain() {
   const queryClient = useQueryClient()
 
@@ -153,10 +153,27 @@ export function useDeleteSubdomain() {
     onMutate: (id) => {
       toast.loading('正在删除子域名...', { id: `delete-subdomain-${id}` })
     },
-    onSuccess: (_res, id) => {
+    onSuccess: (response, id) => {
       toast.dismiss(`delete-subdomain-${id}`)
-      toast.success('子域名已成功删除')
+      
+      // 显示级联删除信息
+      const cascadeInfo = Object.entries(response.cascadeDeleted || {})
+        .filter(([key, count]) => key !== 'asset.Subdomain' && count > 0)
+        .map(([key, count]) => {
+          const modelName = key.split('.')[1]
+          return `${modelName}: ${count}`
+        })
+        .join(', ')
+      
+      if (cascadeInfo) {
+        toast.success(`子域名已成功删除（级联删除: ${cascadeInfo}）`)
+      } else {
+        toast.success('子域名已成功删除')
+      }
+      
       queryClient.invalidateQueries({ queryKey: ['subdomains'] })
+      queryClient.invalidateQueries({ queryKey: ['targets'] })
+      queryClient.invalidateQueries({ queryKey: ['scans'] })
       queryClient.invalidateQueries({ queryKey: ['organizations'] })
     },
     onError: (error: any, id) => {
@@ -168,20 +185,36 @@ export function useDeleteSubdomain() {
   })
 }
 
-// 批量删除子域名
+// 批量删除子域名（使用统一的批量删除接口）
 export function useBatchDeleteSubdomains() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (domainIds: number[]) => SubdomainService.batchDeleteSubdomains(domainIds),
+    mutationFn: (ids: number[]) => SubdomainService.batchDeleteSubdomains(ids),
     onMutate: () => {
       toast.loading('正在批量删除子域名...', { id: 'batch-delete-subdomains' })
     },
     onSuccess: (response) => {
       toast.dismiss('batch-delete-subdomains')
-      const { deletedDomainCount, deletedSubdomainCount } = response
-      toast.success(`成功删除 ${deletedDomainCount} 个域名（级联删除 ${deletedSubdomainCount} 个子域名）`)
+      
+      // 显示级联删除信息
+      const cascadeInfo = Object.entries(response.cascadeDeleted || {})
+        .filter(([key, count]) => key !== 'asset.Subdomain' && count > 0)
+        .map(([key, count]) => {
+          const modelName = key.split('.')[1]
+          return `${modelName}: ${count}`
+        })
+        .join(', ')
+      
+      if (cascadeInfo) {
+        toast.success(`成功删除 ${response.deletedCount} 个子域名（级联删除: ${cascadeInfo}）`)
+      } else {
+        toast.success(`成功删除 ${response.deletedCount} 个子域名`)
+      }
+      
       queryClient.invalidateQueries({ queryKey: ['subdomains'] })
+      queryClient.invalidateQueries({ queryKey: ['targets'] })
+      queryClient.invalidateQueries({ queryKey: ['scans'] })
       queryClient.invalidateQueries({ queryKey: ['organizations'] })
     },
     onError: (error: any) => {

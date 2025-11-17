@@ -32,28 +32,34 @@ const directoryService = {
     return response.json()
   },
 
-  // 删除目录
-  deleteDirectory: async (directoryId: number): Promise<void> => {
-    const response = await fetch(`/api/directories/${directoryId}/`, {
-      method: 'DELETE',
-    })
-    if (!response.ok) {
-      throw new Error('删除目录失败')
-    }
-  },
-
-  // 批量删除目录
-  bulkDeleteDirectories: async (directoryIds: number[]): Promise<void> => {
+  // 批量删除目录（支持单个或多个）
+  bulkDeleteDirectories: async (ids: number[]): Promise<{
+    message: string
+    deletedCount: number
+    requestedIds: number[]
+    cascadeDeleted: Record<string, number>
+  }> => {
     const response = await fetch('/api/directories/bulk-delete/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ ids: directoryIds }),
+      body: JSON.stringify({ ids }),
     })
     if (!response.ok) {
       throw new Error('批量删除目录失败')
     }
+    return response.json()
+  },
+
+  // 删除单个目录（复用批量删除接口）
+  deleteDirectory: async (directoryId: number): Promise<{
+    message: string
+    deletedCount: number
+    requestedIds: number[]
+    cascadeDeleted: Record<string, number>
+  }> => {
+    return directoryService.bulkDeleteDirectories([directoryId])
   },
 }
 
@@ -83,36 +89,53 @@ export function useScanDirectories(
   })
 }
 
-// 删除目录
+// 删除单个目录（使用统一的批量删除接口）
 export function useDeleteDirectory() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: directoryService.deleteDirectory,
-    onSuccess: () => {
+    onMutate: (id) => {
+      toast.loading('正在删除目录...', { id: `delete-directory-${id}` })
+    },
+    onSuccess: (response, id) => {
+      toast.dismiss(`delete-directory-${id}`)
+      toast.success('目录已成功删除')
+      
       // 刷新相关查询
       queryClient.invalidateQueries({ queryKey: ['target-directories'] })
       queryClient.invalidateQueries({ queryKey: ['scan-directories'] })
-      toast.success('目录删除成功')
+      queryClient.invalidateQueries({ queryKey: ['targets'] })
+      queryClient.invalidateQueries({ queryKey: ['scans'] })
     },
-    onError: (error: Error) => {
+    onError: (error: Error, id) => {
+      toast.dismiss(`delete-directory-${id}`)
       toast.error(error.message || '删除目录失败')
     },
   })
 }
 
-// 批量删除目录
+// 批量删除目录（使用统一的批量删除接口）
 export function useBulkDeleteDirectories() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: directoryService.bulkDeleteDirectories,
-    onSuccess: () => {
+    onMutate: () => {
+      toast.loading('正在批量删除目录...', { id: 'bulk-delete-directories' })
+    },
+    onSuccess: (response) => {
+      toast.dismiss('bulk-delete-directories')
+      toast.success(`成功删除 ${response.deletedCount} 个目录`)
+      
       // 刷新相关查询
       queryClient.invalidateQueries({ queryKey: ['target-directories'] })
       queryClient.invalidateQueries({ queryKey: ['scan-directories'] })
+      queryClient.invalidateQueries({ queryKey: ['targets'] })
+      queryClient.invalidateQueries({ queryKey: ['scans'] })
     },
     onError: (error: Error) => {
+      toast.dismiss('bulk-delete-directories')
       toast.error(error.message || '批量删除目录失败')
     },
   })

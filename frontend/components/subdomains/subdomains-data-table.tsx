@@ -270,12 +270,6 @@ export function SubdomainsDataTable({
                     Download Selected Subdomains
                   </DropdownMenuItem>
                 )}
-                {onDownloadInteresting && (
-                  <DropdownMenuItem onClick={onDownloadInteresting}>
-                    <IconDownload className="h-4 w-4" />
-                    Download Interesting Subdomains
-                  </DropdownMenuItem>
-                )}
                 {onDownloadImportant && (
                   <DropdownMenuItem onClick={onDownloadImportant}>
                     <IconDownload className="h-4 w-4" />

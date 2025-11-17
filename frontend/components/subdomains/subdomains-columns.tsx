@@ -8,7 +8,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
@@ -22,7 +21,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { MoreHorizontal, Star, Trash2, ChevronsUpDown, ChevronUp, ChevronDown, Copy, Check } from "lucide-react"
+import { MoreHorizontal, Trash2, ChevronsUpDown, ChevronUp, ChevronDown, Copy, Check } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import type { Subdomain } from "@/types/subdomain.types"
 import { toast } from "sonner"
@@ -109,7 +108,6 @@ interface CreateColumnsProps {
   formatDate: (dateString: string) => string
   navigate: (path: string) => void
   handleDelete: (subdomain: Subdomain) => void
-  handleMarkImportant: (subdomain: Subdomain) => void
 }
 
 /**
@@ -117,11 +115,9 @@ interface CreateColumnsProps {
  */
 function SubdomainRowActions({
   subdomain,
-  onMarkImportant,
   onDelete,
 }: {
   subdomain: Subdomain
-  onMarkImportant: () => void
   onDelete: () => void
 }) {
   return (
@@ -136,11 +132,6 @@ function SubdomainRowActions({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
-        <DropdownMenuItem onClick={onMarkImportant}>
-          <Star />
-          Mark Important Subdomain
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={onDelete}
           className="text-destructive focus:text-destructive"
@@ -194,7 +185,6 @@ export const createSubdomainColumns = ({
   formatDate,
   navigate,
   handleDelete,
-  handleMarkImportant,
 }: CreateColumnsProps): ColumnDef<Subdomain>[] => [
   // 选择列
   {
@@ -382,7 +372,6 @@ export const createSubdomainColumns = ({
     cell: ({ row }) => (
       <SubdomainRowActions
         subdomain={row.original}
-        onMarkImportant={() => handleMarkImportant(row.original)}
         onDelete={() => handleDelete(row.original)}
       />
     ),
