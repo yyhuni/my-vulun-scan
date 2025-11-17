@@ -94,23 +94,23 @@ def _export_target_domains(target_id: int, port_scan_dir: Path) -> tuple[str, in
 
 
 def _run_scans_sequentially(
+    enabled_tools: dict,
     domains_file: str,
     port_scan_dir: Path,
     scan_id: int,
     target_id: int,
-    target_name: str,
-    engine_config: str
-) -> tuple[dict, int, list]:
+    target_name: str
+) -> tuple[dict, int, list, list]:
     """
     串行执行端口扫描任务
     
     Args:
+        enabled_tools: 已启用的工具配置字典
         domains_file: 域名文件路径
         port_scan_dir: 端口扫描目录
         scan_id: 扫描任务 ID
         target_id: 目标 ID
         target_name: 目标名称（用于错误日志）
-        engine_config: 引擎配置（YAML 字符串）
         
     Returns:
         tuple: (tool_stats, processed_records, successful_tool_names, failed_tools)
@@ -119,27 +119,14 @@ def _run_scans_sequentially(
     Raises:
         RuntimeError: 所有工具均失败
     """
-    # ==================== Step 1: 解析配置，获取启用的工具 ====================
-    enabled_tools = config_parser.parse_enabled_tools(
-        scan_type='port_scan',
-        engine_config=engine_config
-    )
-    
-    if not enabled_tools:
-        raise RuntimeError("没有启用的端口扫描工具，请检查引擎配置。")
-    
-    # ==================== Step 2: 构建命令并串行执行 ====================
-    logger.info(
-        "开始串行执行 %d 个端口扫描工具并实时保存结果",
-        len(enabled_tools)
-    )
+    # ==================== 构建命令并串行执行 ====================
     
     tool_stats = {}
     processed_records = 0
     failed_tools = []      # 记录失败的工具（含原因）
     
     for tool_name, tool_config in enabled_tools.items():
-        # 2.1 构建完整命令（变量替换）
+        # 1. 构建完整命令（变量替换）
         try:
             command = build_scan_command(
                 tool_name=tool_name,
@@ -155,10 +142,10 @@ def _run_scans_sequentially(
             failed_tools.append({'tool': tool_name, 'reason': reason})
             continue
         
-        # 2.2 获取超时时间（已在 config_parser 中验证）
+        # 2. 获取超时时间（已在 config_parser 中验证）
         config_timeout = tool_config['timeout']
         
-        # 2.3 执行扫描任务
+        # 3. 执行扫描任务
         logger.info("开始执行 %s 扫描（超时: %d秒）...", tool_name, config_timeout)
         
         try:
@@ -259,9 +246,10 @@ def port_scan_flow(
         - IPAddress：域名对应的 IP 地址（附带资产）
     
     工作流程：
+        Step 0: 创建工作目录
         Step 1: 导出域名列表到文件（供扫描工具使用）
-        Step 2: 串行执行扫描任务，运行端口扫描工具并实时解析输出
-        Step 3: 流式保存到数据库（Subdomain → IPAddress → Port）
+        Step 2: 解析配置，获取启用的工具
+        Step 3: 串行执行扫描任务，运行端口扫描工具并实时解析输出到数据库（Subdomain → IPAddress → Port）
 
     Args:
         scan_id: 扫描任务 ID
@@ -328,20 +316,36 @@ def port_scan_flow(
         # Step 1: 导出目标域名
         domains_file, domain_count = _export_target_domains(target_id, port_scan_dir)
         
-        # Step 2 & 3: 串行执行扫描任务
+        # Step 2: 解析配置，获取启用的工具
+        logger.info("Step 2: 解析配置，获取启用的工具")
+        enabled_tools = config_parser.parse_enabled_tools(
+            scan_type='port_scan',
+            engine_config=engine_config
+        )
+        
+        if not enabled_tools:
+            raise RuntimeError("没有启用的端口扫描工具，请检查引擎配置。")
+        
+        logger.info(
+            "✓ 配置解析完成 - 启用工具: %s",
+            ', '.join(enabled_tools.keys())
+        )
+        
+        # Step 3: 串行执行扫描任务
+        logger.info("Step 3: 串行执行扫描任务")
         tool_stats, processed_records, successful_tool_names, failed_tools = _run_scans_sequentially(
+            enabled_tools=enabled_tools,
             domains_file=domains_file,
             port_scan_dir=port_scan_dir,
             scan_id=scan_id,
             target_id=target_id,
-            target_name=target_name,
-            engine_config=engine_config
+            target_name=target_name
         )
         
         logger.info("="*60 + "\n✓ 端口扫描完成\n" + "="*60)
         
         # 动态生成已执行的任务列表
-        executed_tasks = ['export_domains']
+        executed_tasks = ['export_domains', 'parse_config']
         executed_tasks.extend([f'run_and_stream_save_ports ({tool})' for tool in tool_stats.keys()])
         
         return {
