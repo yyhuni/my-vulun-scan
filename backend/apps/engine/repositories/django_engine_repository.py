@@ -16,8 +16,7 @@ logger = logging.getLogger(__name__)
 class DjangoEngineRepository:
     """基于 Django ORM 的 ScanEngine 数据访问层实现"""
     
-    @staticmethod
-    def get_by_id(engine_id: int) -> ScanEngine | None:
+    def get_by_id(self, engine_id: int) -> ScanEngine | None:
         """
         根据 ID 获取扫描引擎
         

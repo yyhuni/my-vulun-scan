@@ -29,8 +29,8 @@ class DjangoScanRepository:
     
     # ==================== 基础 CRUD 操作 ====================
     
-    @staticmethod
-    def get_by_id(
+    
+    def get_by_id(self,
         scan_id: int, 
         prefetch_relations: bool = False,
         for_update: bool = False
@@ -63,8 +63,8 @@ class DjangoScanRepository:
             logger.warning("Scan 不存在 - Scan ID: %s", scan_id)
             return None
     
-    @staticmethod
-    def get_by_id_for_update(scan_id: int) -> Scan | None:
+    
+    def get_by_id_for_update(self, scan_id: int) -> Scan | None:
         """
         根据 ID 获取扫描任务（加锁）
         
@@ -87,8 +87,8 @@ class DjangoScanRepository:
             logger.warning("Scan 不存在 - Scan ID: %s", scan_id)
             return None
     
-    @staticmethod
-    def create(
+    
+    def create(self,
         target: Target,
         engine: ScanEngine,
         results_dir: str,
@@ -118,8 +118,8 @@ class DjangoScanRepository:
         logger.debug("创建 Scan - ID: %s, Target: %s", scan.id, target.name)
         return scan
     
-    @staticmethod
-    def bulk_create(scans: List[Scan]) -> List[Scan]:
+    
+    def bulk_create(self, scans: List[Scan]) -> List[Scan]:
         """
         批量创建扫描任务
         
@@ -133,8 +133,8 @@ class DjangoScanRepository:
         logger.debug("批量创建 Scan - 数量: %d", len(created_scans))
         return created_scans
     
-    @staticmethod
-    def bulk_delete(scan_ids: List[int]) -> tuple[int, dict]:
+    
+    def bulk_delete(self, scan_ids: List[int]) -> tuple[int, dict]:
         """
         批量删除扫描任务（级联删除关联数据）
         
@@ -158,8 +158,8 @@ class DjangoScanRepository:
     
     # ==================== 查询操作 ====================
     
-    @staticmethod
-    def get_all(prefetch_relations: bool = True) -> QuerySet[Scan]:
+    
+    def get_all(self, prefetch_relations: bool = True) -> QuerySet[Scan]:
         """
         获取所有扫描任务
         
@@ -174,8 +174,8 @@ class DjangoScanRepository:
             queryset = queryset.select_related('engine', 'target')
         return queryset
     
-    @staticmethod
-    def get_statistics() -> dict:
+    
+    def get_statistics(self) -> dict:
         """
         获取扫描任务统计数据
         
@@ -222,9 +222,9 @@ class DjangoScanRepository:
     
     # ==================== 状态更新操作 ====================
     
-    @staticmethod
+    
     @transaction.atomic
-    def update_status(
+    def update_status(self,
         scan_id: int,
         status: ScanStatus,
         error_message: str | None = None,
@@ -274,8 +274,8 @@ class DjangoScanRepository:
         )
         return True
     
-    @staticmethod
-    def append_flow_run_id(scan_id: int, flow_run_id: str) -> bool:
+    
+    def append_flow_run_id(self, scan_id: int, flow_run_id: str) -> bool:
         """
         追加 Flow Run ID 到 flow_run_ids 数组（并发安全）
         
@@ -326,8 +326,8 @@ class DjangoScanRepository:
             )
             return False
     
-    @staticmethod
-    def update_cached_stats(scan_id: int) -> bool:
+    
+    def update_cached_stats(self, scan_id: int) -> bool:
         """
         更新扫描任务的缓存统计数据
         
@@ -370,8 +370,8 @@ class DjangoScanRepository:
             logger.error("更新缓存统计数据失败 - Scan ID: %s, 错误: %s", scan_id, e)
             return False
     
-    @staticmethod
-    def update_status_if_match(
+    
+    def update_status_if_match(self,
         scan_id: int,
         current_status: ScanStatus,
         new_status: ScanStatus,
@@ -433,8 +433,9 @@ class DjangoScanRepository:
             )
             return False
     
-    @staticmethod
+    
     def update_status(
+        self,
         scan_id: int,
         new_status: ScanStatus,
         stopped_at: datetime = None
