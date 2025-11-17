@@ -63,17 +63,26 @@ class ScanHistorySerializer(serializers.ModelSerializer):
         - vulnerabilities: 漏洞统计（暂时返回 0，待后续实现）
         
         性能优化：
-        - 直接使用 .count() 方法（根据测试结果，性能最佳）
-        - 分页场景下，每页只显示10条记录，总查询次数可控
-        - 避免复杂的预加载逻辑，直接高效计算
+        - 只使用缓存的统计字段（cached_*_count）
+        - 如果缓存未更新（stats_updated_at 为 None），抛出异常
+        - 确保扫描完成时缓存字段已被正确更新
         """
-        # 直接使用 .count() 方法（性能测试显示这是最快的方法）
+        from rest_framework.exceptions import ValidationError
+        
+        # 检查缓存是否已更新（通过 stats_updated_at 字段判断）
+        if obj.stats_updated_at is None:
+            raise ValidationError(
+                f'扫描 ID {obj.id} 的缓存统计数据未更新。'
+                f'请等待扫描完成或手动更新缓存统计数据。'
+            )
+        
+        # 只使用缓存字段
         return {
-            'subdomains': obj.subdomains.count(),
-            'websites': obj.websites.count(),
-            'endpoints': obj.endpoints.count(),
-            'ips': obj.ip_addresses.count(),
-            'directories': obj.directories.count(),
+            'subdomains': obj.cached_subdomains_count,
+            'websites': obj.cached_websites_count,
+            'endpoints': obj.cached_endpoints_count,
+            'ips': obj.cached_ips_count,
+            'directories': obj.cached_directories_count,
             'vulnerabilities': {
                 'total': 0,
                 'critical': 0,

@@ -26,8 +26,9 @@ class ScanViewSet(viewsets.ModelViewSet):
         - order_by: 按创建时间降序排列（最新创建的任务排在最前面）
         
         性能优化原理：
-        - 列表页：使用 .count() 方法进行统计（每个scan只查询5次）
-        - 分页场景：每页只显示10条记录，总查询次数可控
+        - 列表页：使用缓存统计字段（cached_*_count），避免实时 COUNT 查询
+        - 序列化器：严格验证缓存字段，确保数据一致性
+        - 分页场景：每页只显示10条记录，查询高效
         - 避免大数据加载：不再预加载所有关联的资产数据
         """
         # 只保留必要的 select_related，移除所有 prefetch_related
