@@ -20,7 +20,9 @@ from django.db.utils import DatabaseError, IntegrityError, OperationalError
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 
 from apps.scan.models import Scan
-from apps.scan.repositories import ScanRepository
+from apps.scan.repositories import DjangoScanRepository
+from apps.targets.repositories import DjangoTargetRepository, DjangoOrganizationRepository
+from apps.engine.repositories import DjangoEngineRepository
 from apps.targets.models import Target
 from apps.engine.models import ScanEngine
 from apps.scan.flows import initiate_scan_flow  # 从 flows 导入
@@ -80,16 +82,25 @@ class ScanService:
     }
     
     def __init__(
-        self, 
-        scan_repository: ScanRepository | None = None
+        self,
+        scan_repository = None,
+        target_repository = None,
+        organization_repository = None,
+        engine_repository = None
     ):
         """
         初始化服务
         
         Args:
-            scan_repository: ScanRepository 实例（用于依赖注入）
+            scan_repository: Scan Repository 实例（用于依赖注入）
+            target_repository: Target Repository 实例（用于依赖注入）
+            organization_repository: Organization Repository 实例（用于依赖注入）
+            engine_repository: Engine Repository 实例（用于依赖注入）
         """
-        self.scan_repo = scan_repository or ScanRepository()
+        self.scan_repo = scan_repository or DjangoScanRepository()
+        self.target_repo = target_repository or DjangoTargetRepository()
+        self.organization_repo = organization_repository or DjangoOrganizationRepository()
+        self.engine_repo = engine_repository or DjangoEngineRepository()
     
     def get_scan(self, scan_id: int, prefetch_relations: bool) -> Scan | None:
         """
@@ -133,8 +144,6 @@ class ScanService:
             - 如果提供 organization_id，返回该组织下所有目标
             - 如果提供 target_id，返回单个目标列表
         """
-        from apps.targets.models import Organization
-        
         # 1. 参数验证
         if not engine_id:
             raise ValidationError('缺少必填参数: engine_id')
@@ -145,25 +154,23 @@ class ScanService:
         if organization_id and target_id:
             raise ValidationError('organization_id 和 target_id 只能提供其中之一')
         
-        # 2. 查询扫描引擎
-        try:
-            engine = ScanEngine.objects.get(id=engine_id)  # type: ignore  # pylint: disable=no-member
-        except ScanEngine.DoesNotExist as e:
+        # 2. 查询扫描引擎（通过 Repository 层）
+        engine = self.engine_repo.get_by_id(engine_id)
+        if not engine:
             logger.error("扫描引擎不存在 - Engine ID: %s", engine_id)
-            raise ObjectDoesNotExist(f'ScanEngine ID {engine_id} 不存在') from e
+            raise ObjectDoesNotExist(f'ScanEngine ID {engine_id} 不存在')
         
         # 3. 根据参数获取目标列表
         targets = []
         
         if organization_id:
-            # 根据组织ID获取所有目标
-            try:
-                organization = Organization.objects.get(id=organization_id)  # type: ignore  # pylint: disable=no-member
-            except Organization.DoesNotExist as e:
+            # 根据组织ID获取所有目标（通过 Repository 层）
+            organization = self.organization_repo.get_by_id(organization_id)
+            if not organization:
                 logger.error("组织不存在 - Organization ID: %s", organization_id)
-                raise ObjectDoesNotExist(f'Organization ID {organization_id} 不存在') from e
+                raise ObjectDoesNotExist(f'Organization ID {organization_id} 不存在')
             
-            targets = list(organization.targets.all())
+            targets = self.organization_repo.get_targets(organization_id)
             
             if not targets:
                 raise ValidationError(f'组织 ID {organization_id} 下没有目标')
@@ -175,12 +182,11 @@ class ScanService:
                 engine.name
             )
         else:
-            # 根据目标ID获取单个目标
-            try:
-                target = Target.objects.get(id=target_id)  # type: ignore  # pylint: disable=no-member
-            except Target.DoesNotExist as e:
+            # 根据目标ID获取单个目标（通过 Repository 层）
+            target = self.target_repo.get_by_id(target_id)
+            if not target:
                 logger.error("目标不存在 - Target ID: %s", target_id)
-                raise ObjectDoesNotExist(f'Target ID {target_id} 不存在') from e
+                raise ObjectDoesNotExist(f'Target ID {target_id} 不存在')
             
             targets = [target]
             
@@ -424,7 +430,7 @@ class ScanService:
         """
         更新扫描任务的缓存统计数据
         
-        使用 Django ORM 聚合查询，避免原生 SQL，保持数据库抽象
+        使用 Repository 层进行数据访问，符合分层架构规范
         
         Args:
             scan_id: 扫描任务 ID
@@ -435,32 +441,12 @@ class ScanService:
         Note:
             应该在扫描进入终态时调用，更新缓存的统计字段以提升查询性能
         """
-        from django.utils import timezone
-        
         try:
-            scan = self.scan_repo.get_by_id(scan_id, prefetch_relations=False)
-            if not scan:
-                logger.error("Scan 不存在，无法更新缓存统计数据 - Scan ID: %s", scan_id)
-                return False
-            
-            # 使用 Django ORM 聚合查询，保持数据库抽象
-            stats = {
-                'cached_subdomains_count': scan.subdomains.count(),
-                'cached_websites_count': scan.websites.count(), 
-                'cached_endpoints_count': scan.endpoints.count(),
-                'cached_ips_count': scan.ip_addresses.count(),
-                'cached_directories_count': scan.directories.count(),
-                'stats_updated_at': timezone.now()
-            }
-            
-            # 批量更新字段
-            for field, value in stats.items():
-                setattr(scan, field, value)
-            
-            scan.save(update_fields=list(stats.keys()))
-            
-            logger.debug("更新缓存统计数据成功 - Scan ID: %s", scan_id)
-            return True
+            # 通过 Repository 层更新统计数据
+            result = self.scan_repo.update_cached_stats(scan_id)
+            if result:
+                logger.debug("更新缓存统计数据成功 - Scan ID: %s", scan_id)
+            return result
         except (DatabaseError, OperationalError) as e:
             logger.exception("数据库错误：更新缓存统计数据失败 - Scan ID: %s", scan_id)
             return False

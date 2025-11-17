@@ -1,7 +1,7 @@
 """
-Scan 模型数据访问层
+Scan 数据访问层 Django ORM 实现
 
-负责 Scan 模型的所有数据库操作
+基于 Django ORM 的 Scan Repository 实现类
 """
 
 from __future__ import annotations
@@ -22,8 +22,8 @@ from apps.common.definitions import ScanStatus
 logger = logging.getLogger(__name__)
 
 
-class ScanRepository:
-    """Scan 数据访问层"""
+class DjangoScanRepository:
+    """基于 Django ORM 的 Scan 数据访问层实现"""
     
     # ==================== 基础 CRUD 操作 ====================
     
@@ -244,7 +244,7 @@ class ScanRepository:
             Repository 层不判断业务状态,只负责数据更新
             created_at 是自动设置的，不需要手动传递
         """
-        scan = ScanRepository.get_by_id_for_update(scan_id)
+        scan = DjangoScanRepository.get_by_id_for_update(scan_id)
         if not scan:
             return False
         
@@ -324,8 +324,50 @@ class ScanRepository:
             )
             return False
     
-  
-    
+    @staticmethod
+    def update_cached_stats(scan_id: int) -> bool:
+        """
+        更新扫描任务的缓存统计数据
+        
+        使用 Django ORM 聚合查询，避免原生 SQL，保持数据库抽象
+        
+        Args:
+            scan_id: 扫描任务 ID
+        
+        Returns:
+            是否更新成功
+        """
+        try:
+            scan = DjangoScanRepository.get_by_id(scan_id, prefetch_relations=False)
+            if not scan:
+                logger.error("Scan 不存在，无法更新缓存统计数据 - Scan ID: %s", scan_id)
+                return False
+            
+            # 使用 Django ORM 聚合查询，保持数据库抽象
+            stats = {
+                'cached_subdomains_count': scan.subdomains.count(),
+                'cached_websites_count': scan.websites.count(), 
+                'cached_endpoints_count': scan.endpoints.count(),
+                'cached_ips_count': scan.ip_addresses.count(),
+                'cached_directories_count': scan.directories.count(),
+                'stats_updated_at': timezone.now()
+            }
+            
+            # 批量更新字段
+            for field, value in stats.items():
+                setattr(scan, field, value)
+            
+            scan.save(update_fields=list(stats.keys()))
+            
+            logger.debug("更新缓存统计数据成功 - Scan ID: %s", scan_id)
+            return True
+        except DatabaseError as e:
+            logger.exception("数据库错误：更新缓存统计数据失败 - Scan ID: %s", scan_id)
+            return False
+        except Exception as e:
+            logger.error("更新缓存统计数据失败 - Scan ID: %s, 错误: %s", scan_id, e)
+            return False
+
 
 # 导出接口
-__all__ = ['ScanRepository']
+__all__ = ['DjangoScanRepository']

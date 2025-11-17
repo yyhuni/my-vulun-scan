@@ -7,7 +7,7 @@ Organization Django ORM 仓储实现
 import logging
 from typing import List, Tuple, Dict
 
-from ..models import Organization
+from ..models import Organization, Target
 
 logger = logging.getLogger(__name__)
 
@@ -84,3 +84,18 @@ class DjangoOrganizationRepository:
                 e
             )
             raise
+    
+    def get_targets(self, organization_id: int) -> List[Target]:
+        """
+        获取组织下的所有目标
+        
+        Args:
+            organization_id: 组织 ID
+        
+        Returns:
+            Target 对象列表
+        """
+        organization = self.get_by_id(organization_id)
+        if not organization:
+            return []
+        return list(organization.targets.all())
