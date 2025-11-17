@@ -73,8 +73,8 @@ directory_scan:
   tools:
     ffuf:
       enabled: true
-      timeout: auto                            # Flow超时时间：自动计算（每个站点300秒）
-                                               # 或者手动指定：timeout: 3600
+      timeout: 300                             # 单个站点的扫描超时时间（秒），默认300秒（5分钟）
+                                               # ffuf逐个站点扫描，此timeout为单个站点的超时
       wordlist: ~/Desktop/dirsearch_dicc.txt   # 词表文件路径（必需）
                                                # ffuf会逐行读取该文件，将每行作为FUZZ关键字的替换值
       # delay: 0.1-2.0                         # Seconds of delay between requests, or a range of random delay
