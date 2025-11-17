@@ -29,7 +29,9 @@ from typing import Generator, Optional
 from django.db import IntegrityError, OperationalError, DatabaseError
 from psycopg2 import InterfaceError
 
-from apps.asset.models import WebSite, Directory
+from apps.asset.repositories.django_website_repository import DjangoWebSiteRepository
+from apps.asset.repositories.django_directory_repository import DjangoDirectoryRepository
+from apps.asset.repositories.directory_repository import DirectoryDTO
 from apps.scan.utils import execute_stream
 
 logger = logging.getLogger(__name__)
@@ -252,12 +254,12 @@ def _save_batch(
         logger.debug("批次 %d 为空，跳过处理", batch_num)
         return 0
     
-    # 准备 Directory 数据（Repository 装饰器会自动处理数据库连接健康检查）
-    directory_items = []
+    # 准备 Directory DTO 数据（Repository 装饰器会自动处理数据库连接健康检查）
+    directory_dtos = []
     
     for record in batch:
-        directory_items.append(
-            Directory(
+        directory_dtos.append(
+            DirectoryDTO(
                 website_id=website_id,
                 target_id=target_id,
                 scan_id=scan_id,
@@ -271,14 +273,12 @@ def _save_batch(
             )
         )
     
-    # 批量插入（忽略已存在的记录）
-    if directory_items:
-        Directory.objects.bulk_create(
-            directory_items,
-            ignore_conflicts=True
-        )
+    # 使用 Repository 批量插入（忽略已存在的记录）
+    if directory_dtos:
+        directory_repo = DjangoDirectoryRepository()
+        directory_repo.bulk_create_ignore_conflicts(directory_dtos)
     
-    return len(directory_items)
+    return len(directory_dtos)
 
 
 @task(
@@ -334,18 +334,15 @@ def run_and_stream_save_directories_task(
     data_generator = None
     
     try:
-        # 1. 查找站点
-        try:
-            website = WebSite.objects.get(url=site_url, target_id=target_id)
-            logger.info("找到站点: %s (ID: %d)", site_url, website.id)
-        except WebSite.DoesNotExist:
+        # 1. 查找站点（使用 Repository）
+        website_repo = DjangoWebSiteRepository()
+        website_id = website_repo.get_by_url(url=site_url, target_id=target_id)
+        
+        if website_id is None:
             logger.error("站点不存在: %s", site_url)
             raise ValueError(f"站点不存在: {site_url}")
-        except WebSite.MultipleObjectsReturned:
-            logger.error("发现多个站点: %s", site_url)
-            # 取第一个
-            website = WebSite.objects.filter(url=site_url, target_id=target_id).first()
-            logger.warning("使用第一个站点: ID=%d", website.id)
+        
+        logger.info("找到站点: %s (ID: %d)", site_url, website_id)
         
         # 2. 初始化资源
         data_generator = _parse_ffuf_stream_output(cmd=cmd, cwd=cwd, shell=shell, timeout=timeout)
@@ -365,7 +362,7 @@ def run_and_stream_save_directories_task(
             if len(batch) >= batch_size:
                 batch_num += 1
                 result = _save_batch_with_retry(
-                    batch, website.id, scan_id, target_id, batch_num
+                    batch, website_id, scan_id, target_id, batch_num
                 )
                 
                 total_created += result.get('created_directories', 0)
@@ -383,7 +380,7 @@ def run_and_stream_save_directories_task(
         if batch:
             batch_num += 1
             result = _save_batch_with_retry(
-                batch, website.id, scan_id, target_id, batch_num
+                batch, website_id, scan_id, target_id, batch_num
             )
             total_created += result.get('created_directories', 0)
             

@@ -3,7 +3,7 @@ Django ORM 实现的 WebSite Repository
 """
 
 import logging
-from typing import List, Generator
+from typing import List, Generator, Optional
 from django.db import transaction, IntegrityError, OperationalError, DatabaseError
 
 from apps.asset.models import WebSite
@@ -141,4 +141,28 @@ class DjangoWebSiteRepository(WebSiteRepository):
             
         except Exception as e:
             logger.error(f"统计站点数量失败 - Target ID: {target_id}, 错误: {e}")
+            raise
+
+    def get_by_url(self, url: str, target_id: int) -> Optional[int]:
+        """
+        根据 URL 和 target_id 查找站点 ID
+        
+        Args:
+            url: 站点 URL
+            target_id: 目标 ID
+            
+        Returns:
+            Optional[int]: 站点 ID，如果不存在返回 None
+            
+        Raises:
+            ValueError: 发现多个站点时
+        """
+        try:
+            website = WebSite.objects.filter(url=url, target_id=target_id).first()
+            if website:
+                return website.id
+            return None
+            
+        except Exception as e:
+            logger.error(f"查询站点失败 - URL: {url}, Target ID: {target_id}, 错误: {e}")
             raise
