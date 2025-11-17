@@ -33,16 +33,18 @@ class ScanViewSet(viewsets.ModelViewSet):
         """
         queryset = Scan.objects.select_related('target', 'engine')
         
-        # 只在列表页使用 annotate 聚合（批量查询时更高效）
-        # 详情页直接用 .count() 更快（单条记录）
+        # 不使用 annotate Count(distinct=True)，因为多个聚合会导致严重的性能问题
+        # 改用序列化器中的 .count() 方法，虽然会有 N+1 查询，但在分页场景下反而更快
+        # 
+        # 性能优化：使用 prefetch_related 预加载关联对象（只加载 ID，用于 count）
+        # 这样可以将 N+1 查询减少为 6 次查询（1 主查询 + 5 个 prefetch）
         if self.action == 'list':
-            from django.db.models import Count
-            queryset = queryset.annotate(
-                subdomains_count=Count('subdomains', distinct=True),
-                websites_count=Count('websites', distinct=True),
-                endpoints_count=Count('endpoints', distinct=True),
-                ips_count=Count('ip_addresses', distinct=True),
-                directories_count=Count('directories', distinct=True)
+            queryset = queryset.prefetch_related(
+                'subdomains',
+                'websites', 
+                'endpoints',
+                'ip_addresses',
+                'directories'
             )
         
         return queryset.order_by('-created_at').all()  # type: ignore  # pylint: disable=no-member

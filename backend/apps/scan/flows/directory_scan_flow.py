@@ -175,7 +175,7 @@ def _run_scans_sequentially(
                     site_url=site_url,
                     cwd=str(directory_scan_dir),
                     shell=True,
-                    batch_size=500,
+                    batch_size=1000,
                     timeout=site_timeout
                 )
                 

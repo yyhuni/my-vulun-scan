@@ -206,7 +206,7 @@ def _run_scans_sequentially(
                 target_id=target_id,
                 cwd=str(site_scan_dir),
                 shell=True,
-                batch_size=500,
+                batch_size=1000,
                 timeout=timeout
             )
             

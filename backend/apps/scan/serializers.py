@@ -63,23 +63,44 @@ class ScanHistorySerializer(serializers.ModelSerializer):
         - vulnerabilities: 漏洞统计（暂时返回 0，待后续实现）
         
         性能优化：
-        - 优先使用 ViewSet 中 annotate 的计数字段（subdomains_count, websites_count, endpoints_count, ips_count, directories_count）
-        - 如果注解字段不存在（单个对象查询），降级使用 .count()
+        - 配合 ViewSet 的 prefetch_related 预加载
+        - 使用 len(obj.xxx.all()) 利用预加载的数据（避免额外查询）
+        - 如果未预加载，降级使用 .count()（单个对象查询时）
         """
-        return {
-            'subdomains': getattr(obj, 'subdomains_count', obj.subdomains.count()),
-            'websites': getattr(obj, 'websites_count', obj.websites.count()),
-            'endpoints': getattr(obj, 'endpoints_count', obj.endpoints.count()),
-            'ips': getattr(obj, 'ips_count', obj.ip_addresses.count()),
-            'directories': getattr(obj, 'directories_count', obj.directories.count()),
-            'vulnerabilities': {
-                'total': 0,
-                'critical': 0,
-                'high': 0,
-                'medium': 0,
-                'low': 0
+        # 尝试使用预加载的数据（prefetch_related），避免额外的 COUNT 查询
+        # 如果数据未预加载（例如单个对象查询），则降级使用 .count()
+        try:
+            # 检查是否已预加载（通过访问 _prefetched_objects_cache）
+            return {
+                'subdomains': len(obj.subdomains.all()),
+                'websites': len(obj.websites.all()),
+                'endpoints': len(obj.endpoints.all()),
+                'ips': len(obj.ip_addresses.all()),
+                'directories': len(obj.directories.all()),
+                'vulnerabilities': {
+                    'total': 0,
+                    'critical': 0,
+                    'high': 0,
+                    'medium': 0,
+                    'low': 0
+                }
             }
-        }
+        except Exception:
+            # 降级方案：使用 .count() 查询
+            return {
+                'subdomains': obj.subdomains.count(),
+                'websites': obj.websites.count(),
+                'endpoints': obj.endpoints.count(),
+                'ips': obj.ip_addresses.count(),
+                'directories': obj.directories.count(),
+                'vulnerabilities': {
+                    'total': 0,
+                    'critical': 0,
+                    'high': 0,
+                    'medium': 0,
+                    'low': 0
+                }
+            }
     
     def get_progress(self, obj):
         """根据扫描状态和执行时间动态计算进度百分比

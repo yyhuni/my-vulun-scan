@@ -766,7 +766,7 @@ def run_and_stream_save_websites_task(
     target_id: int,
     cwd: Optional[str] = None,
     shell: bool = False,
-    batch_size: int = 500,
+    batch_size: int = 1000,
     timeout: Optional[int] = None
 ) -> dict:
     """
@@ -784,7 +784,7 @@ def run_and_stream_save_websites_task(
         target_id: 目标 ID
         cwd: 工作目录（可选）
         shell: 是否使用 shell 执行（默认 False）
-        batch_size: 批量保存大小（默认500）
+        batch_size: 批量保存大小（默认1000）
         timeout: 命令执行超时时间（秒），None 表示不设置超时
     
     Returns:
