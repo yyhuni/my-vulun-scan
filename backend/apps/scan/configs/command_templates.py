@@ -74,12 +74,14 @@ PORT_SCAN_COMMANDS = {
 
 SITE_SCAN_COMMANDS = {
     'httpx': {
-        'command': 'httpx -l {input_file} -o {output_file} -json -silent',
+        # 流式输出到 stdout，无需 -o 参数
+        # 输出格式：JSON（-json），每行一个站点结果
+        'command': '$HOME/go/bin/httpx -l {target_file} -status-code -content-type -content-length -location -title -server -body-preview -tech-detect -cdn -vhost -random-agent -no-color -json',
         'optional_flags': {
             'threads': '-threads {threads}',
-            'request_timeout': '-timeout {request_timeout}',  # 重命名，避免和 Flow timeout 冲突
+            'rate_limit': '-rate-limit {rate_limit}',
+            'request_timeout': '-timeout {request_timeout}',  # httpx 单个请求的超时时间（秒）
             'retries': '-retries {retries}',
-            'use_proxy': '-http-proxy {proxy_url}',
         }
     },
 }

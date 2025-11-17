@@ -59,10 +59,12 @@ site_scan:
   tools:
     httpx:
       enabled: true
-      timeout: 300          # Flow 超时时间（秒，必需）
-      # threads: 50         # 可选，线程数
-      # request_timeout: 5  # 可选，httpx 工具的请求超时（秒）
-      # retries: 2          # 可选，重试次数
+      timeout: 3600         # Flow 超时时间（秒，必需）
+      # threads: 50         # 可选，并发线程数（httpx 默认 50）
+      # rate_limit: 150     # 可选，每秒发送的请求数量（httpx 默认 150）
+      # request_timeout: 10  # 可选，单个请求的超时时间（httpx 默认 10）秒
+      # retries: 2          # 可选，请求失败重试次数
+      # proxy: http://127.0.0.1:8080  # 可选，HTTP 代理地址
 
 # ==================== 目录扫描 ====================
 directory_scan:
