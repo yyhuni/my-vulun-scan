@@ -45,6 +45,6 @@ def configure_prefect():
     os.environ.setdefault('PREFECT_TASK_DEFAULT_RETRY_DELAY_SECONDS', str(settings.PREFECT_TASK_DEFAULT_RETRY_DELAY_SECONDS))
 
 
-# Django 启动时自动配置
-configure_prefect()
+# 注意：不在模块级别调用 configure_prefect()
+# 它会在 apps.common.apps.CommonConfig.ready() 中调用
 

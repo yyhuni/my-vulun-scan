@@ -1,49 +1,11 @@
-"""通知服务 - 支持数据库存储和 SSE 实时推送"""
+"""通知服务 - 支持数据库存储和 WebSocket 实时推送"""
 
 import logging
-import json
 import time
-from typing import Generator, Optional
 from .models import Notification
 from .types import NotificationLevel
 
 logger = logging.getLogger(__name__)
-
-
-def get_redis_client():
-    """
-    获取 Redis 客户端实例
-    """
-    try:
-        import redis
-        from django.conf import settings
-        
-        redis_host = getattr(settings, 'REDIS_HOST', 'localhost')
-        redis_port = getattr(settings, 'REDIS_PORT', 6379)
-        redis_db = getattr(settings, 'REDIS_DB', 0)
-        
-        logger.debug(f"连接 Redis: {redis_host}:{redis_port}/{redis_db}")
-        
-        redis_client = redis.Redis(
-            host=redis_host,
-            port=redis_port,
-            db=redis_db,
-            decode_responses=True,
-            socket_connect_timeout=5,
-            socket_timeout=5
-        )
-        
-        # 测试连接
-        redis_client.ping()
-        logger.debug("Redis 连接测试成功")
-        return redis_client
-        
-    except ImportError as e:
-        logger.error(f"Redis 模块未安装: {e}")
-        raise
-    except Exception as e:
-        logger.error(f"Redis 连接失败: {e}")
-        raise
 
 
 def create_notification(
@@ -96,11 +58,11 @@ def create_notification(
                 message=message
             )
             
-            # 2. SSE 实时推送（推送失败不影响通知创建）
+            # 2. WebSocket 实时推送（推送失败不影响通知创建）
             try:
-                _push_to_sse(notification)
+                _push_to_websocket(notification)
             except Exception as push_error:
-                logger.warning(f"SSE 推送失败，但通知已创建 - {title}: {push_error}")
+                logger.warning(f"WebSocket 推送失败，但通知已创建 - {title}: {push_error}")
             
             if attempt > 1:
                 logger.info(f"✓ 通知创建成功（重试 {attempt-1} 次后） - {title}")
@@ -146,17 +108,27 @@ def create_notification(
     raise RuntimeError(error_msg) from last_exception
 
 
-def _push_to_sse(notification: Notification) -> None:
+def _push_to_websocket(notification: Notification) -> None:
     """
-    推送通知到 SSE 频道
+    推送通知到 WebSocket 客户端
+    使用 Django Channels 的 Channel Layer
     """
     try:
-        logger.debug(f"开始推送通知到 SSE - ID: {notification.id}")
+        logger.debug(f"开始推送通知到 WebSocket - ID: {notification.id}")
         
-        redis_client = get_redis_client()
+        from asgiref.sync import async_to_sync
+        from channels.layers import get_channel_layer
+        
+        # 获取 Channel Layer
+        channel_layer = get_channel_layer()
+        
+        if channel_layer is None:
+            logger.warning("Channel Layer 未配置，跳过 WebSocket 推送")
+            return
         
         # 构造通知数据
         data = {
+            'type': 'notification.message',  # 对应 Consumer 的 notification_message 方法
             'id': notification.id,
             'title': notification.title,
             'message': notification.message,
@@ -164,13 +136,15 @@ def _push_to_sse(notification: Notification) -> None:
             'created_at': notification.created_at.isoformat()
         }
         
-        # 发布到 SSE 频道
-        message = json.dumps(data, ensure_ascii=False)
-        result = redis_client.publish('notifications', message)
+        # 发送到通知组（所有连接的客户端）
+        async_to_sync(channel_layer.group_send)(
+            'notifications',  # 组名
+            data
+        )
         
-        logger.debug(f"通知推送成功 - ID: {notification.id}, 订阅者数量: {result}")
+        logger.debug(f"通知推送成功 - ID: {notification.id}")
         
     except ImportError as e:
-        logger.warning(f"Redis 模块未安装，跳过 SSE 推送: {e}")
+        logger.warning(f"Channels 模块未安装，跳过 WebSocket 推送: {e}")
     except Exception as e:
-        logger.warning(f"SSE 推送失败 - ID: {notification.id}: {e}", exc_info=True)
+        logger.warning(f"WebSocket 推送失败 - ID: {notification.id}: {e}", exc_info=True)

@@ -13,7 +13,7 @@ from .views import (
 app_name = 'notifications'
 
 urlpatterns = [
-    # 通知列表和删除
+    # 通知列表
     path('', NotificationCollectionView.as_view(), name='list'),
 
     # 未读数量
@@ -22,9 +22,8 @@ urlpatterns = [
     # 标记全部已读
     path('mark-all-as-read/', NotificationMarkAllAsReadView.as_view(), name='mark-all-as-read'),
     
-    # SSE 实时通知推送
-    path('sse/', views.notifications_sse, name='sse'),
-    
     # 测试通知
     path('test/', views.notifications_test, name='test'),
 ]
+
+# WebSocket 实时通知路由在 routing.py 中定义：ws://host/ws/notifications/

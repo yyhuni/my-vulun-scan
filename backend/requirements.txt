@@ -18,6 +18,11 @@ python-dotenv==1.0.1
 prefect==3.4.25
 redis==5.0.3  # 可选：用于缓存
 
+# WebSocket 支持
+channels==4.0.0
+channels-redis==4.2.0
+daphne==4.1.0
+
 # 测试框架
 pytest==8.0.0
 pytest-django==4.7.0

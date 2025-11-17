@@ -1,5 +1,5 @@
 /**
- * 通知测试组件 - 用于测试 SSE 通知功能
+ * 通知测试组件 - 用于测试 WebSocket 通知功能
  */
 
 "use client"
@@ -43,7 +43,7 @@ export function NotificationTest() {
     <Card className="w-full max-w-2xl">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          SSE 通知测试
+          WebSocket 通知测试
           <Badge variant={isConnected ? "default" : "destructive"}>
             {isConnected ? "已连接" : "未连接"}
           </Badge>
@@ -53,7 +53,7 @@ export function NotificationTest() {
         {/* 控制按钮 */}
         <div className="flex gap-2">
           <Button onClick={connect} disabled={isConnected}>
-            连接 SSE
+            连接 WebSocket
           </Button>
           <Button onClick={disconnect} disabled={!isConnected} variant="outline">
             断开连接

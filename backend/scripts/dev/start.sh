@@ -3,7 +3,7 @@
 # 
 # 功能：
 # - 检查并启动 Prefect Server
-# - 启动 Django 开发服务器
+# - 启动 Daphne ASGI 服务器（支持 HTTP + WebSocket）
 # - 启动 Prefect Deployments（扫描任务 + 清理任务）
 
 set -e
@@ -42,14 +42,35 @@ PIP="$PROJECT_ROOT/.venv/bin/pip"
 # 2. 检查依赖
 echo ""
 echo "检查依赖..."
-if ! $PYTHON -c "import django" 2>/dev/null; then
+if ! $PYTHON -c "import django, channels, daphne" 2>/dev/null; then
     echo -e "${YELLOW}⚠ 缺少依赖，正在安装...${NC}"
     cd "$BACKEND_DIR"
     $PIP install -r requirements.txt
 fi
-echo -e "${GREEN}✓ 依赖已安装${NC}"
+echo -e "${GREEN}✓ 依赖已安装（包含 ASGI 支持）${NC}"
 
-# 3. 检查 Prefect Server
+# 3. 检查 Redis（WebSocket Channel Layer）
+echo ""
+echo "检查 Redis..."
+if ! $PYTHON -c "
+import redis
+try:
+    r = redis.Redis(host='localhost', port=6379, socket_connect_timeout=2)
+    r.ping()
+    print('Redis 连接正常')
+except Exception as e:
+    print(f'Redis 连接失败: {e}')
+    exit(1)
+" 2>/dev/null; then
+    echo -e "${RED}✗ Redis 未运行或连接失败${NC}"
+    echo -e "${YELLOW}提示: WebSocket 功能需要 Redis${NC}"
+    echo "  macOS: brew services start redis"
+    echo "  Linux: sudo systemctl start redis"
+    exit 1
+fi
+echo -e "${GREEN}✓ Redis 已运行${NC}"
+
+# 4. 检查 Prefect Server
 echo ""
 echo "检查 Prefect Server..."
 if ! curl -s http://localhost:4200/api/health > /dev/null 2>&1; then
@@ -75,7 +96,7 @@ else
     echo -e "${GREEN}✓ Prefect Server 已运行${NC}"
 fi
 
-# 4. 检查数据库
+# 5. 检查数据库
 echo ""
 echo "检查数据库连接..."
 cd "$BACKEND_DIR"
@@ -85,41 +106,42 @@ if ! $PYTHON manage.py migrate --check > /dev/null 2>&1; then
 fi
 echo -e "${GREEN}✓ 数据库连接正常${NC}"
 
-# 5. 启动 Django 开发服务器
+# 6. 启动 Daphne ASGI 服务器
 echo ""
-echo "启动 Django 开发服务器..."
-if [ -f "$PID_DIR/django.pid" ]; then
-    OLD_PID=$(cat "$PID_DIR/django.pid")
+echo "启动 Daphne ASGI 服务器（HTTP + WebSocket）..."
+if [ -f "$PID_DIR/daphne.pid" ]; then
+    OLD_PID=$(cat "$PID_DIR/daphne.pid")
     if ps -p $OLD_PID > /dev/null 2>&1; then
-        echo -e "${YELLOW}⚠ Django 已在运行 (PID: $OLD_PID)${NC}"
+        echo -e "${YELLOW}⚠ Daphne 已在运行 (PID: $OLD_PID)${NC}"
     else
-        rm "$PID_DIR/django.pid"
+        rm "$PID_DIR/daphne.pid"
     fi
 fi
 
-if [ ! -f "$PID_DIR/django.pid" ]; then
+if [ ! -f "$PID_DIR/daphne.pid" ]; then
     cd "$BACKEND_DIR"
-    nohup $PYTHON manage.py runserver 8888 > "$PID_DIR/django.log" 2>&1 &
-    echo $! > "$PID_DIR/django.pid"
+    nohup $PROJECT_ROOT/.venv/bin/daphne -b 0.0.0.0 -p 8888 config.asgi:application > "$PID_DIR/daphne.log" 2>&1 &
+    echo $! > "$PID_DIR/daphne.pid"
     sleep 2
     
-    if ps -p $(cat "$PID_DIR/django.pid") > /dev/null 2>&1; then
-        echo -e "${GREEN}✓ Django 已启动${NC}"
-        echo "  访问: http://localhost:8888"
+    if ps -p $(cat "$PID_DIR/daphne.pid") > /dev/null 2>&1; then
+        echo -e "${GREEN}✓ Daphne ASGI 服务器已启动${NC}"
+        echo "  HTTP:      http://localhost:8888"
+        echo "  WebSocket: ws://localhost:8888/ws/notifications/"
     else
-        echo -e "${RED}✗ Django 启动失败${NC}"
-        echo "  查看日志: tail -f $PID_DIR/django.log"
+        echo -e "${RED}✗ Daphne 启动失败${NC}"
+        echo "  查看日志: tail -f $PID_DIR/daphne.log"
         exit 1
     fi
 fi
 
-# 6. 设置运行模式
+# 7. 设置运行模式
 echo ""
 echo "使用本地开发模式（修改代码立即生效）"
 export WORKER_MODE=local
 echo -e "${GREEN}✓ 本地开发模式已启用${NC}"
 
-# 7. 启动 Prefect Deployments
+# 8. 启动 Prefect Deployments
 echo ""
 echo "启动 Prefect Deployments..."
 
@@ -150,7 +172,7 @@ else
     exit 1
 fi
 
-# 8. 显示状态
+# 9. 显示状态
 echo ""
 echo -e "${GREEN}=============================="
 echo -e "  ✓ 所有服务已启动"
@@ -158,18 +180,21 @@ echo -e "==============================${NC}"
 echo ""
 echo "服务列表:"
 echo "  - Prefect Server:  http://localhost:4200"
-echo "  - Django API:      http://localhost:8888"
+echo "  - ASGI Server:     http://localhost:8888"
+echo "    • HTTP API:      http://localhost:8888/api/"
+echo "    • WebSocket:     ws://localhost:8888/ws/notifications/"
+echo "    • Swagger:       http://localhost:8888/swagger/"
 echo "  - Scan Deployment: 运行中 (PID: $(cat $PID_DIR/scan-deployment.pid))"
 echo "  - Cleanup Deploy:  运行中 (PID: $(cat $PID_DIR/cleanup-deployment.pid))"
 echo ""
 echo "日志文件:"
 echo "  - Prefect:  $PID_DIR/prefect-server.log"
-echo "  - Django:   $PID_DIR/django.log"
+echo "  - Daphne:   $PID_DIR/daphne.log"
 echo "  - Scan:     $PID_DIR/scan-deployment.log"
 echo "  - Cleanup:  $PID_DIR/cleanup-deployment.log"
 echo ""
 echo "管理命令:"
-echo "  - 查看状态: ./script/dev/status.sh"
-echo "  - 重启服务: ./script/dev/restart.sh"
-echo "  - 停止服务: ./script/dev/stop.sh"
+echo "  - 查看状态: ./scripts/dev/status.sh"
+echo "  - 重启服务: ./scripts/dev/restart.sh"
+echo "  - 停止服务: ./scripts/dev/stop.sh"
 echo ""

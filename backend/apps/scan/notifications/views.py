@@ -1,16 +1,11 @@
 """
-通知 SSE 视图
+通知系统视图 - REST API 和测试接口
 """
 
-import json
 import logging
-import time
 from typing import Any
-from django.conf import settings
-from django.http import JsonResponse, StreamingHttpResponse
+from django.http import JsonResponse
 from django.utils import timezone
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
 from rest_framework import status
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -22,105 +17,6 @@ from .serializers import NotificationSerializer
 from .types import NotificationLevel
 
 logger = logging.getLogger(__name__)
-
-
-@csrf_exempt
-@require_http_methods(["GET"])
-def notifications_sse(request):
-    """
-    SSE 实时通知推送 - 使用 Redis 订阅
-    """
-    logger.debug("SSE 连接请求开始处理")
-    
-    def event_stream():
-        try:
-            logger.debug("事件流生成器开始执行")
-            
-            from .services import get_redis_client
-            import redis
-            
-            # 获取 Redis 客户端
-            redis_client = get_redis_client()
-            logger.debug("Redis 连接成功")
-            
-            # 发送连接成功消息
-            yield f"data: {json.dumps({'type': 'connected', 'message': '连接成功'}, ensure_ascii=False)}\n\n"
-            logger.debug("已发送连接成功消息")
-            
-            # 订阅通知频道
-            pubsub = redis_client.pubsub()
-            pubsub.subscribe('notifications')
-            logger.debug("已订阅通知频道")
-            
-            # 监听消息
-            heartbeat_interval = getattr(settings, 'SSE_HEARTBEAT_INTERVAL', 15)
-            last_heartbeat = time.monotonic()
-            logger.debug(f"SSE 心跳间隔: {heartbeat_interval}s")
-
-            while True:
-                try:
-                    message = pubsub.get_message(timeout=1)
-                except redis.exceptions.TimeoutError:
-                    # Redis 会在 socket_timeout 到期时抛出超时，忽略并继续
-                    message = None
-                
-                if message:
-                    if message['type'] == 'message':
-                        try:
-                            # 解析通知数据
-                            notification_data = json.loads(message['data'])
-                            
-                            # 构造 SSE 消息（保留通知字段在顶层，便于前端解析）
-                            sse_data = {
-                                'type': 'notification',
-                                **notification_data
-                            }
-                            
-                            yield f"data: {json.dumps(sse_data, ensure_ascii=False)}\n\n"
-                            logger.debug(f"已推送通知 - ID: {notification_data.get('id')}")
-                            last_heartbeat = time.monotonic()
-                            
-                        except json.JSONDecodeError as e:
-                            logger.error(f"解析通知数据失败: {e}")
-                            continue
-                            
-                    elif message['type'] == 'subscribe':
-                        logger.debug(f"订阅成功 - 频道: {message['channel']}")
-                        last_heartbeat = time.monotonic()
-
-                # 无论是否收到通知，周期性发送心跳，避免客户端超时
-                now = time.monotonic()
-                if now - last_heartbeat >= heartbeat_interval:
-                    heartbeat_payload = {
-                        'type': 'heartbeat',
-                        'message': '保持连接'
-                    }
-                    yield f"data: {json.dumps(heartbeat_payload, ensure_ascii=False)}\n\n"
-                    last_heartbeat = now
-                    
-        except ImportError as e:
-            logger.error(f"Redis 模块未安装: {e}")
-            yield f"data: {json.dumps({'type': 'error', 'message': 'Redis 模块未安装'}, ensure_ascii=False)}\n\n"
-            
-        except Exception as e:
-            logger.error(f"事件流生成器异常: {e}", exc_info=True)
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e)}, ensure_ascii=False)}\n\n"
-    
-    try:
-        response = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
-        response['Cache-Control'] = 'no-cache'
-        response['Access-Control-Allow-Origin'] = '*'
-        # 注意：Django 开发服务器不允许设置 Connection 头部
-        
-        logger.debug("SSE 响应创建成功")
-        return response
-        
-    except Exception as e:
-        logger.error(f"创建 SSE 响应失败: {e}", exc_info=True)
-        from django.http import JsonResponse
-        return JsonResponse({
-            'error': f'SSE 服务启动失败: {str(e)}'
-        }, status=500)
 
 
 def notifications_test(request):

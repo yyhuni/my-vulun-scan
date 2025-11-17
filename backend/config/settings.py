@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'drf_yasg',
     'corsheaders',
+    'channels',  # WebSocket 支持
     # 业务应用
     'apps.common',   # 通用工具
     'apps.targets',  # 扫描目标管理
@@ -84,6 +85,9 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'config.wsgi.application'
+
+# ASGI 应用配置（用于 WebSocket）
+ASGI_APPLICATION = 'config.asgi.application'
 
 
 # Database - PostgreSQL 配置
@@ -253,10 +257,22 @@ SCAN_RESULTS_RETENTION_DAYS = int(os.getenv('SCAN_RETENTION_DAYS', '7'))
 
 
 # ==================== Redis 配置 ====================
-# Redis 配置（用于 SSE 实时通知）
+# Redis 配置（用于 WebSocket Channel Layer）
 REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
 REDIS_PORT = int(os.getenv('REDIS_PORT', 6379))
 REDIS_DB = int(os.getenv('REDIS_DB', 0))
+
+# Channels Layer 配置（WebSocket 后端）
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [(REDIS_HOST, REDIS_PORT)],
+            'capacity': 1500,  # 单个通道最大消息数
+            'expiry': 10,  # 消息过期时间（秒）
+        },
+    },
+}
 
 # ==================== 日志配置 ====================
 # 日志配置说明：

@@ -66,10 +66,18 @@ echo "停止 Prefect Deployments..."
 stop_service "扫描任务 Deployment" "scan-deployment"
 stop_service "清理任务 Deployment" "cleanup-deployment"
 
-# 2. 停止 Django
+# 2. 停止 Daphne ASGI 服务器
 echo ""
-echo "停止 Django 开发服务器..."
-stop_service "Django" "django"
+echo "停止 Daphne ASGI 服务器..."
+stop_service "Daphne" "daphne"
+
+# 额外检查：确保端口 8888 被释放
+if lsof -ti:8888 > /dev/null 2>&1; then
+    echo "  发现端口 8888 仍被占用，强制释放..."
+    kill $(lsof -ti:8888) 2>/dev/null || true
+    sleep 1
+    echo -e "${GREEN}✓ 端口 8888 已释放${NC}"
+fi
 
 # 3. 停止 Prefect Worker
 echo ""
