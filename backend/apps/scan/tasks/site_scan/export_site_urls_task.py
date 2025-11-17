@@ -98,22 +98,27 @@ def export_site_urls_task(
                             logger.warning("子域名 %s 的端口号无效: %s，跳过", subdomain_name, port_num)
                             continue
                         
-                        # 写入HTTP和HTTPS URL，标准端口不显示端口号
-                        # HTTP协议：80端口为标准端口，不显示
+                        # 根据端口号和协议的合理匹配生成URL
+                        # 80 端口：只生成 HTTP URL
+                        # 443 端口：只生成 HTTPS URL
+                        # 其他端口：生成 HTTP 和 HTTPS 两个URL（某些服务可能在非标准端口同时支持两种协议）
                         if port_num == 80:
+                            # 80 端口是 HTTP 标准端口，只生成 HTTP URL
                             http_url = f"http://{subdomain_name}"
-                        else:
-                            http_url = f"http://{subdomain_name}:{port_num}"
-                            
-                        # HTTPS协议：443端口为标准端口，不显示
-                        if port_num == 443:
+                            f.write(f"{http_url}\n")
+                            total_urls += 1
+                        elif port_num == 443:
+                            # 443 端口是 HTTPS 标准端口，只生成 HTTPS URL
                             https_url = f"https://{subdomain_name}"
+                            f.write(f"{https_url}\n")
+                            total_urls += 1
                         else:
+                            # 其他端口：生成 HTTP 和 HTTPS 两个URL
+                            http_url = f"http://{subdomain_name}:{port_num}"
                             https_url = f"https://{subdomain_name}:{port_num}"
-                        
-                        f.write(f"{http_url}\n")
-                        f.write(f"{https_url}\n")
-                        total_urls += 2
+                            f.write(f"{http_url}\n")
+                            f.write(f"{https_url}\n")
+                            total_urls += 2
                 
                 # 每处理1000个子域名打印一次进度
                 if subdomain_count % 1000 == 0:
