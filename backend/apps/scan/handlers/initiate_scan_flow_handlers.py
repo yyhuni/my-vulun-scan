@@ -199,6 +199,10 @@ def on_initiate_scan_flow_completed(flow: Flow, flow_run: FlowRun, state: State)
                 scan_id,
                 flow_run.id
             )
+            # 更新缓存统计数据（终态）
+            from apps.scan.services import ScanService
+            service = ScanService()
+            service.update_cached_stats(scan_id)
             return True
         
         # 🔑 原子操作 2：尝试将 RUNNING 更新为 COMPLETED（正常完成）
@@ -218,6 +222,10 @@ def on_initiate_scan_flow_completed(flow: Flow, flow_run: FlowRun, state: State)
                 scan_id,
                 flow_run.id
             )
+            # 更新缓存统计数据（终态）
+            from apps.scan.services import ScanService
+            service = ScanService()
+            service.update_cached_stats(scan_id)
         else:
             # 未更新任何记录，可能是：
             # 1. Scan 不存在
@@ -299,6 +307,10 @@ def on_initiate_scan_flow_failed(flow: Flow, flow_run: FlowRun, state: State) ->
                 scan_id,
                 flow_run.id
             )
+            # 更新缓存统计数据（终态）
+            from apps.scan.services import ScanService
+            service = ScanService()
+            service.update_cached_stats(scan_id)
             return True
         
         # 🔑 原子操作 2：尝试将 RUNNING 更新为 FAILED（正常失败）
@@ -320,6 +332,10 @@ def on_initiate_scan_flow_failed(flow: Flow, flow_run: FlowRun, state: State) ->
                 flow_run.id,
                 error_message
             )
+            # 更新缓存统计数据（终态）
+            from apps.scan.services import ScanService
+            service = ScanService()
+            service.update_cached_stats(scan_id)
         else:
             # 未更新任何记录，可能是：
             # 1. Scan 不存在
@@ -395,6 +411,10 @@ def on_initiate_scan_flow_cancelled(flow: Flow, flow_run: FlowRun, state: State)
                 scan_id,
                 flow_run.id
             )
+            # 更新缓存统计数据（终态）
+            from apps.scan.services import ScanService
+            service = ScanService()
+            service.update_cached_stats(scan_id)
         else:
             # 可能状态不是 CANCELLING（已被其他 handler 处理）
             logger.info(
@@ -477,6 +497,10 @@ def on_initiate_scan_flow_crashed(flow: Flow, flow_run: FlowRun, state: State) -
                 flow_run.id,
                 error_message
             )
+            # 更新缓存统计数据（终态）
+            from apps.scan.services import ScanService
+            service = ScanService()
+            service.update_cached_stats(scan_id)
         else:
             logger.warning(
                 "⚠️ Flow 状态回调：未找到要更新的 Scan 记录 - Scan ID: %s, Flow Run: %s",

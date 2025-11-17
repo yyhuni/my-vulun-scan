@@ -96,6 +96,8 @@ async def monitor_cancellation_task(
                                 "✅ 监控任务：已同步 CANCELLED 状态到数据库 - Scan ID: %s, 检查次数: %d",
                                 scan_id, check_count
                             )
+                            # 更新缓存统计数据（终态）
+                            service.update_cached_stats(scan_id)
                             return "CANCELLED"
                         else:
                             logger.error(
@@ -154,6 +156,8 @@ async def monitor_cancellation_task(
                     "✅ 监控任务：超时后已强制标记为 CANCELLED - Scan ID: %s",
                     scan_id
                 )
+                # 更新缓存统计数据（终态）
+                service.update_cached_stats(scan_id)
             else:
                 logger.error(
                     "❌ 监控任务：超时后强制标记失败 - Scan ID: %s",

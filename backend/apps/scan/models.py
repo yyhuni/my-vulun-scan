@@ -47,6 +47,14 @@ class Scan(models.Model):
 
     error_message = models.CharField(max_length=2000, blank=True, default='', help_text='错误信息')
 
+    # ==================== 缓存统计字段 ====================
+    cached_subdomains_count = models.IntegerField(default=0, help_text='缓存的子域名数量')
+    cached_websites_count = models.IntegerField(default=0, help_text='缓存的网站数量')
+    cached_endpoints_count = models.IntegerField(default=0, help_text='缓存的端点数量')
+    cached_ips_count = models.IntegerField(default=0, help_text='缓存的IP地址数量')
+    cached_directories_count = models.IntegerField(default=0, help_text='缓存的目录数量')
+    stats_updated_at = models.DateTimeField(null=True, blank=True, help_text='统计数据最后更新时间')
+
     class Meta:
         db_table = 'scan'
         verbose_name = '扫描任务'
