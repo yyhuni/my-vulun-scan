@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Subdomain, IPAddress, Port, WebSite
+from .models import Subdomain, IPAddress, Port, WebSite, Directory
 
 
 class PortSerializer(serializers.ModelSerializer):
@@ -82,6 +82,29 @@ class WebSiteSerializer(serializers.ModelSerializer):
             'tech',
             'vhost',
             'subdomain',
+            'created_at',
+        ]
+        read_only_fields = fields
+
+
+class DirectorySerializer(serializers.ModelSerializer):
+    """目录序列化器"""
+    
+    website_url = serializers.CharField(source='website.url', read_only=True)
+    created_at = serializers.DateTimeField(read_only=True)
+    
+    class Meta:
+        model = Directory
+        fields = [
+            'id',
+            'url',
+            'status',
+            'length',
+            'words',
+            'lines',
+            'content_type',
+            'duration',
+            'website_url',
             'created_at',
         ]
         read_only_fields = fields

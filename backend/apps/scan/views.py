@@ -9,7 +9,7 @@ from .serializers import ScanSerializer, ScanHistorySerializer
 from .services.scan_service import ScanService
 from apps.common.definitions import ScanStatus
 from apps.common.pagination import BasePagination
-from apps.asset.serializers import SubdomainListSerializer, IPAddressListSerializer, WebSiteSerializer
+from apps.asset.serializers import SubdomainListSerializer, IPAddressListSerializer, WebSiteSerializer, DirectorySerializer
 
 
 class ScanViewSet(viewsets.ModelViewSet):
@@ -447,6 +447,62 @@ class ScanViewSet(viewsets.ModelViewSet):
 
             if page is not None:
                 serializer = WebSiteSerializer(page, many=True)
+                return paginator.get_paginated_response(serializer.data)
+
+            return Response(
+                {'error': '必须提供分页参数 page 和 pageSize'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        except ObjectDoesNotExist:
+            return Response(
+                {'error': f'扫描 ID {pk} 不存在'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        except (DatabaseError, OperationalError):
+            return Response(
+                {'error': '数据库错误，请稍后重试'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+
+    @action(detail=True, methods=['get'])
+    def directories(self, request, pk=None):
+        """
+        获取扫描关联的所有目录（支持分页）
+
+        URL: GET /api/scans/{id}/directories/?page=1&pageSize=10
+
+        功能:
+        - 返回指定扫描任务发现的所有目录信息
+        - 包含目录的详细信息（URL、状态码、大小、内容类型等）
+        - 支持分页查询
+
+        返回:
+        - results: 目录列表
+        - total: 总记录数
+        - page: 当前页码
+        - page_size: 每页大小
+        - total_pages: 总页数
+        """
+        try:
+            scan_service = ScanService()
+            scan = scan_service.get_scan(scan_id=pk, prefetch_relations=False)
+
+            if not scan:
+                return Response(
+                    {'error': f'扫描 ID {pk} 不存在'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # 获取该扫描的所有目录（按创建时间倒序）
+            queryset = scan.directories.select_related('website').order_by('-created_at')
+
+            paginator = self.paginator
+            page = paginator.paginate_queryset(queryset, request, view=self)
+
+            if page is not None:
+                serializer = DirectorySerializer(page, many=True)
                 return paginator.get_paginated_response(serializer.data)
 
             return Response(
