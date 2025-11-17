@@ -10,7 +10,7 @@ const websiteService = {
     params: { page: number; pageSize: number }
   ): Promise<WebSiteListResponse> => {
     const response = await fetch(
-      `/api/targets/${targetId}/websites/?page=${params.page}&page_size=${params.pageSize}`
+      `/api/targets/${targetId}/websites/?page=${params.page}&pageSize=${params.pageSize}`
     )
     if (!response.ok) {
       throw new Error('获取网站列表失败')
@@ -24,7 +24,7 @@ const websiteService = {
     params: { page: number; pageSize: number }
   ): Promise<WebSiteListResponse> => {
     const response = await fetch(
-      `/api/scans/${scanId}/websites/?page=${params.page}&page_size=${params.pageSize}`
+      `/api/scans/${scanId}/websites/?page=${params.page}&pageSize=${params.pageSize}`
     )
     if (!response.ok) {
       throw new Error('获取网站列表失败')

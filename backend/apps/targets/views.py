@@ -134,7 +134,8 @@ class TargetViewSet(viewsets.ModelViewSet):
                 subdomains_count=Count('subdomains', distinct=True),
                 websites_count=Count('websites', distinct=True),
                 endpoints_count=Count('endpoints', distinct=True),
-                ips_count=Count('ip_addresses', distinct=True)
+                ips_count=Count('ip_addresses', distinct=True),
+                directories_count=Count('directories', distinct=True)
             ).prefetch_related('organizations')
         else:
             # 列表查询：只预加载 organizations

@@ -67,10 +67,11 @@ class TargetDetailSerializer(serializers.ModelSerializer):
         - websites: 网站数量（使用 annotate 的计数字段，避免 N+1 查询）
         - endpoints: 端点数量（使用 annotate 的计数字段，避免 N+1 查询）
         - ips: IP地址数量（使用 annotate 的计数字段，避免 N+1 查询）
+        - directories: 目录数量（使用 annotate 的计数字段，避免 N+1 查询）
         - vulnerabilities: 漏洞统计（暂时返回 0，待后续实现）
         
         性能优化：
-        - 优先使用 ViewSet 中 annotate 的计数字段（subdomains_count, websites_count, endpoints_count, ips_count）
+        - 优先使用 ViewSet 中 annotate 的计数字段（subdomains_count, websites_count, endpoints_count, ips_count, directories_count）
         - 如果注解字段不存在（单个对象查询），降级使用 .count()
         """
         return {
@@ -78,6 +79,7 @@ class TargetDetailSerializer(serializers.ModelSerializer):
             'websites': getattr(obj, 'websites_count', obj.websites.count()),
             'endpoints': getattr(obj, 'endpoints_count', obj.endpoints.count()),
             'ips': getattr(obj, 'ips_count', obj.ip_addresses.count()),
+            'directories': getattr(obj, 'directories_count', obj.directories.count()),
             'vulnerabilities': {
                 'total': 0,
                 'critical': 0,

@@ -10,7 +10,7 @@ const directoryService = {
     params: { page: number; pageSize: number }
   ): Promise<DirectoryListResponse> => {
     const response = await fetch(
-      `/api/targets/${targetId}/directories/?page=${params.page}&page_size=${params.pageSize}`
+      `/api/targets/${targetId}/directories/?page=${params.page}&pageSize=${params.pageSize}`
     )
     if (!response.ok) {
       throw new Error('获取目录列表失败')
@@ -24,7 +24,7 @@ const directoryService = {
     params: { page: number; pageSize: number }
   ): Promise<DirectoryListResponse> => {
     const response = await fetch(
-      `/api/scans/${scanId}/directories/?page=${params.page}&page_size=${params.pageSize}`
+      `/api/scans/${scanId}/directories/?page=${params.page}&pageSize=${params.pageSize}`
     )
     if (!response.ok) {
       throw new Error('获取目录列表失败')

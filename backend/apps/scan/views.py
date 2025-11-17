@@ -44,9 +44,10 @@ class ScanViewSet(viewsets.ModelViewSet):
             subdomains_count=Count('subdomains', distinct=True),  # 子域名数量
             websites_count=Count('websites', distinct=True),      # 网站数量
             endpoints_count=Count('endpoints', distinct=True),    # 端点数量
-            ips_count=Count('ip_addresses', distinct=True)        # IP地址数量
+            ips_count=Count('ip_addresses', distinct=True),       # IP地址数量
+            directories_count=Count('directories', distinct=True) # 目录数量
         ).prefetch_related(
-            'subdomains', 'websites', 'endpoints', 'ip_addresses'  # 用于详情页面
+            'subdomains', 'websites', 'endpoints', 'ip_addresses', 'directories'  # 用于详情页面
         ).order_by('-id').all()  # type: ignore  # pylint: disable=no-member
     
     def get_serializer_class(self):
