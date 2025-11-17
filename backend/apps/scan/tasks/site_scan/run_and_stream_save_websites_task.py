@@ -390,16 +390,20 @@ def _save_batch(
             except (ValueError, TypeError) as e:
                 logger.warning(f"无法解析时间戳 {record.timestamp}: {e}")
         
-        # 标准化 URL，移除默认端口号
-        normalized_url = normalize_url(record.url)
+        # 使用 input 字段（原始扫描的 URL）而不是 url 字段（重定向后的 URL）
+        # 原因：避免多个不同的输入 URL 重定向到同一个 URL 时产生唯一约束冲突
+        # 例如：http://example.com 和 https://example.com 都重定向到 https://example.com
+        # 如果使用 record.url，两条记录会有相同的 url，导致数据库冲突
+        # 如果使用 record.input，两条记录保留原始输入，不会冲突
+        normalized_url = normalize_url(record.input)
         
         # 创建 WebSite DTO
         website_dto = WebSiteDTO(
             scan_id=scan_id,
             target_id=target_id,
             subdomain_id=subdomain.id,
-            url=normalized_url,
-            location=record.location,
+            url=normalized_url,  # 保存原始输入 URL（归一化后）
+            location=record.location,  # location 字段保存重定向信息
             title=record.title[:1000] if record.title else '',
             webserver=record.webserver[:200] if record.webserver else '',
             body_preview=record.body_preview[:1000] if record.body_preview else '',
