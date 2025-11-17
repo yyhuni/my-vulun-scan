@@ -38,10 +38,9 @@ else
     echo -e "${YELLOW}⚠ Prefect Worker 未运行${NC}"
 fi
 
-# 停止其他服务
+# 停止其他服务（包括 Prefect Server）
 if [ -f "$SCRIPT_DIR/stop.sh" ]; then
-    # 使用 yes 自动回答 "y" 来停止 Prefect Server
-    yes | "$SCRIPT_DIR/stop.sh" 2>/dev/null || true
+    "$SCRIPT_DIR/stop.sh" || true
 fi
 
 echo ""

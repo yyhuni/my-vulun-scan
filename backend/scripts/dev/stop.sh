@@ -88,15 +88,17 @@ else
     echo -e "${YELLOW}⚠ Prefect Worker 未运行${NC}"
 fi
 
-# 4. 停止 Prefect Server（可选）
+# 4. 停止 Prefect Server
 echo ""
-read -p "是否停止 Prefect Server? [y/N]: " stop_prefect
+echo "停止 Prefect Server..."
+stop_service "Prefect Server" "prefect-server"
 
-if [ "$stop_prefect" = "y" ] || [ "$stop_prefect" = "Y" ]; then
-    echo "停止 Prefect Server..."
-    stop_service "Prefect Server" "prefect-server"
-else
-    echo -e "${YELLOW}⚠ Prefect Server 保持运行${NC}"
+# 额外检查：清理任何残留的 Prefect Server 进程
+if pgrep -f "prefect server start" > /dev/null 2>&1; then
+    echo "  发现残留的 Prefect Server 进程，正在清理..."
+    pkill -f "prefect server start" 2>/dev/null || true
+    sleep 1
+    echo -e "${GREEN}✓ Prefect Server 残留进程已清理${NC}"
 fi
 
 # 5. 清理空的 PID 目录（如果所有服务都停止了）

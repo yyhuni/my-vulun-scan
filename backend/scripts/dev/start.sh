@@ -73,19 +73,24 @@ echo -e "${GREEN}✓ Redis 已运行${NC}"
 # 4. 检查 Prefect Server
 echo ""
 echo "检查 Prefect Server..."
-if ! curl -s http://localhost:4200/api/health > /dev/null 2>&1; then
+
+# 检查是否有进程在运行
+PREFECT_PID=$(pgrep -f "prefect server start" 2>/dev/null || echo "")
+
+if [ -z "$PREFECT_PID" ]; then
     echo -e "${YELLOW}⚠ Prefect Server 未运行，正在启动...${NC}"
     
     # 启动 Prefect Server（后台）
     nohup $PROJECT_ROOT/.venv/bin/prefect server start > "$PID_DIR/prefect-server.log" 2>&1 &
-    echo $! > "$PID_DIR/prefect-server.pid"
+    NEW_PID=$!
+    echo $NEW_PID > "$PID_DIR/prefect-server.pid"
     
     echo "等待 Prefect Server 启动..."
     sleep 5
     
     # 验证启动
     if curl -s http://localhost:4200/api/health > /dev/null 2>&1; then
-        echo -e "${GREEN}✓ Prefect Server 已启动${NC}"
+        echo -e "${GREEN}✓ Prefect Server 已启动 (PID: $NEW_PID)${NC}"
         echo "  访问: http://localhost:4200"
     else
         echo -e "${RED}✗ Prefect Server 启动失败${NC}"
@@ -93,7 +98,12 @@ if ! curl -s http://localhost:4200/api/health > /dev/null 2>&1; then
         exit 1
     fi
 else
-    echo -e "${GREEN}✓ Prefect Server 已运行${NC}"
+    echo -e "${GREEN}✓ Prefect Server 已运行 (PID: $PREFECT_PID)${NC}"
+    # 创建 PID 文件（如果不存在）
+    if [ ! -f "$PID_DIR/prefect-server.pid" ]; then
+        echo $PREFECT_PID > "$PID_DIR/prefect-server.pid"
+        echo "  已创建 PID 文件"
+    fi
 fi
 
 # 5. 检查数据库
@@ -120,8 +130,8 @@ fi
 
 if [ ! -f "$PID_DIR/daphne.pid" ]; then
     cd "$BACKEND_DIR"
-    # 添加 WebSocket 超时配置：--websocket-timeout 3600（1小时）
-    nohup $PROJECT_ROOT/.venv/bin/daphne -b 0.0.0.0 -p 8888 --websocket-timeout 3600 config.asgi:application > "$PID_DIR/daphne.log" 2>&1 &
+    # 添加 WebSocket 超时配置：--websocket_timeout 3600（1小时）
+    nohup $PROJECT_ROOT/.venv/bin/daphne -b 0.0.0.0 -p 8888 --websocket_timeout 3600 config.asgi:application > "$PID_DIR/daphne.log" 2>&1 &
     echo $! > "$PID_DIR/daphne.pid"
     sleep 2
     
