@@ -22,8 +22,7 @@ class ScanViewSet(viewsets.ModelViewSet):
         
         查询优化策略：
         - select_related: 预加载 target 和 engine（一对一/多对一关系，使用 JOIN）
-        - annotate: 使用数据库聚合计算子域名、网站、端点和IP地址数量（避免 N+1 查询）
-        - prefetch_related: 预加载 subdomains、websites、endpoints 和 ip_addresses（用于详情页面）
+        - annotate (仅列表页): 使用数据库聚合计算统计数量（避免 N+1 查询）
         - order_by: 按 ID 降序排列（最新创建的任务排在最前面）
         
         排序说明：
@@ -31,24 +30,26 @@ class ScanViewSet(viewsets.ModelViewSet):
         - ID 是自增的，代表创建顺序，且永远不为 NULL
         - 确保最新创建的任务（包括未开始的）都排在最前面
         
-        性能优势：
-        - 单次查询完成所有统计计数
-        - 避免 N+1 查询问题
-        - 列表页面性能显著提升
+        性能优化：
+        - 列表页：使用 annotate Count 进行批量统计
+        - 详情页：不使用 annotate，让 serializer 用 .count() 查询（更快）
+        - 原因：多个 Count(distinct=True) 在大数据量时很慢（特别是目录数据）
         """
-        from django.db.models import Count
+        queryset = Scan.objects.select_related('target', 'engine')
         
-        return Scan.objects.select_related(
-            'target', 'engine'
-        ).annotate(
-            subdomains_count=Count('subdomains', distinct=True),  # 子域名数量
-            websites_count=Count('websites', distinct=True),      # 网站数量
-            endpoints_count=Count('endpoints', distinct=True),    # 端点数量
-            ips_count=Count('ip_addresses', distinct=True),       # IP地址数量
-            directories_count=Count('directories', distinct=True) # 目录数量
-        ).prefetch_related(
-            'subdomains', 'websites', 'endpoints', 'ip_addresses', 'directories'  # 用于详情页面
-        ).order_by('-id').all()  # type: ignore  # pylint: disable=no-member
+        # 只在列表页使用 annotate 聚合（批量查询时更高效）
+        # 详情页直接用 .count() 更快（单条记录）
+        if self.action == 'list':
+            from django.db.models import Count
+            queryset = queryset.annotate(
+                subdomains_count=Count('subdomains', distinct=True),
+                websites_count=Count('websites', distinct=True),
+                endpoints_count=Count('endpoints', distinct=True),
+                ips_count=Count('ip_addresses', distinct=True),
+                directories_count=Count('directories', distinct=True)
+            )
+        
+        return queryset.order_by('-id').all()  # type: ignore  # pylint: disable=no-member
     
     def get_serializer_class(self):
         """根据不同的 action 返回不同的序列化器

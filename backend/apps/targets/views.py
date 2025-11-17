@@ -125,21 +125,15 @@ class TargetViewSet(viewsets.ModelViewSet):
         
         查询优化策略：
         - select_related: 预加载一对一/多对一关系
-        - annotate: 使用数据库聚合计算资产数量（避免 N+1 查询）
         - prefetch_related: 预加载多对多关系（organizations）
+        
+        性能优化：
+        - 移除 annotate Count 聚合（在大数据量时很慢）
+        - 让 serializer 直接用 .count() 查询（单条记录时更快）
+        - 原因：多个 Count(distinct=True) 在大数据量时很慢（特别是目录数据）
         """
-        if self.action == 'retrieve':
-            # 单个目标详情：添加统计数据
-            return Target.objects.select_related().annotate(
-                subdomains_count=Count('subdomains', distinct=True),
-                websites_count=Count('websites', distinct=True),
-                endpoints_count=Count('endpoints', distinct=True),
-                ips_count=Count('ip_addresses', distinct=True),
-                directories_count=Count('directories', distinct=True)
-            ).prefetch_related('organizations')
-        else:
-            # 列表查询：只预加载 organizations
-            return Target.objects.prefetch_related('organizations').all()
+        # 列表和详情都使用相同的查询集（详情页的统计交给 serializer 用 .count()）
+        return Target.objects.prefetch_related('organizations').all()
     
     def get_serializer_class(self):
         """根据不同的 action 返回不同的序列化器
