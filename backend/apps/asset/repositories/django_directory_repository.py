@@ -3,18 +3,33 @@ Django ORM 实现的 Directory Repository
 """
 
 import logging
-from typing import List
+from dataclasses import dataclass
+from typing import List, Optional
 from django.db import transaction, IntegrityError, OperationalError, DatabaseError
 
 from apps.asset.models import Directory
-from .directory_repository import DirectoryDTO, DirectoryRepository
 from apps.common.decorators import auto_ensure_db_connection
 
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class DirectoryDTO:
+    """目录数据传输对象"""
+    website_id: int
+    target_id: int
+    scan_id: int
+    url: str
+    status: Optional[int] = None
+    length: Optional[int] = None
+    words: Optional[int] = None
+    lines: Optional[int] = None
+    content_type: str = ''
+    duration: Optional[int] = None
+
+
 @auto_ensure_db_connection
-class DjangoDirectoryRepository(DirectoryRepository):
+class DjangoDirectoryRepository:
     """Django ORM 实现的 Directory Repository"""
 
     def bulk_create_ignore_conflicts(self, items: List[DirectoryDTO]) -> int:

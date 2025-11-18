@@ -3,18 +3,27 @@ Django ORM 实现的 IPAddress Repository
 """
 
 import logging
+from dataclasses import dataclass
 from typing import List
 from django.db import transaction, IntegrityError, OperationalError, DatabaseError
 
 from apps.asset.models import IPAddress
-from .ip_address_repository import IPAddressDTO, IPAddressRepository
 from apps.common.decorators import auto_ensure_db_connection
 
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class IPAddressDTO:
+    """IP地址数据传输对象"""
+    subdomain_id: int
+    ip: str
+    target_id: int
+    scan_id: int = None  # 扫描任务ID（可选）
+
+
 @auto_ensure_db_connection
-class DjangoIPAddressRepository(IPAddressRepository):
+class DjangoIPAddressRepository:
     """Django ORM 实现的 IPAddress Repository"""
 
     def bulk_create_ignore_conflicts(self, items: List[IPAddressDTO]) -> None:

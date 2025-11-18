@@ -1,17 +1,25 @@
 import logging
+from dataclasses import dataclass
 from typing import List, Iterator
 
 from django.db import transaction, IntegrityError, OperationalError, DatabaseError
 
 from apps.asset.models import Subdomain
-from .subdomain_repository import SubdomainRepository, SubdomainDTO
 from apps.common.decorators import auto_ensure_db_connection
 
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class SubdomainDTO:
+    """子域名数据传输对象"""
+    subdomain: str
+    target_id: int
+    scan_id: int = None  # 扫描任务ID（可选）
+
+
 @auto_ensure_db_connection
-class DjangoSubdomainRepository(SubdomainRepository):
+class DjangoSubdomainRepository:
     """基于 Django ORM 的子域名仓储实现。"""
 
     def bulk_create_ignore_conflicts(self, items: List[SubdomainDTO]) -> None:

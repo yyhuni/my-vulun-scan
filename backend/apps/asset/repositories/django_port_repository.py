@@ -3,18 +3,29 @@ Django ORM 实现的 Port Repository
 """
 
 import logging
+from dataclasses import dataclass
 from typing import List
 from django.db import transaction, IntegrityError, OperationalError, DatabaseError
 
 from apps.asset.models import Port
-from .port_repository import PortDTO, PortRepository
 from apps.common.decorators import auto_ensure_db_connection
 
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class PortDTO:
+    """端口数据传输对象"""
+    ip_address_id: int
+    port: int
+    service: str = ''
+    version: str = ''
+    target_id: int = None
+    scan_id: int = None
+
+
 @auto_ensure_db_connection
-class DjangoPortRepository(PortRepository):
+class DjangoPortRepository:
     """Django ORM 实现的 Port Repository"""
 
     def bulk_create_ignore_conflicts(self, items: List[PortDTO]) -> None:

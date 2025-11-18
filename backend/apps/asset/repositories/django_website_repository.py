@@ -3,18 +3,40 @@ Django ORM 实现的 WebSite Repository
 """
 
 import logging
+from dataclasses import dataclass
 from typing import List, Generator, Optional
 from django.db import transaction, IntegrityError, OperationalError, DatabaseError
 
 from apps.asset.models import WebSite
-from .website_repository import WebSiteDTO, WebSiteRepository
 from apps.common.decorators import auto_ensure_db_connection
 
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class WebSiteDTO:
+    """网站数据传输对象"""
+    subdomain_id: int
+    target_id: int
+    scan_id: int
+    url: str
+    title: str = ''
+    status: Optional[int] = None
+    content_length: Optional[int] = None
+    location: str = ''
+    web_server: str = ''
+    content_type: str = ''
+    tech: List[str] = None
+    body_preview: str = ''
+    vhost: Optional[bool] = None
+    
+    def __post_init__(self):
+        if self.tech is None:
+            self.tech = []
+
+
 @auto_ensure_db_connection
-class DjangoWebSiteRepository(WebSiteRepository):
+class DjangoWebSiteRepository:
     """Django ORM 实现的 WebSite Repository"""
 
     def bulk_create_ignore_conflicts(self, items: List[WebSiteDTO]) -> None:
