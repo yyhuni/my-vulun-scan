@@ -12,7 +12,7 @@ from typing import List
 from django.db import IntegrityError, OperationalError, DatabaseError
 
 from apps.asset.services import SubdomainService
-from apps.asset.repositories.subdomain_repository import SubdomainDTO
+from apps.asset.repositories.django_subdomain_repository import SubdomainDTO
 from apps.common.validators import validate_domain
 
 logger = logging.getLogger(__name__)
