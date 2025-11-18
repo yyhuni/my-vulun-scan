@@ -208,51 +208,15 @@ PREFECT_DATABASE_NAME = os.getenv('PREFECT_DATABASE_NAME', 'prefect')
 # Prefect 工作池名称
 PREFECT_DEFAULT_WORK_POOL_NAME = os.getenv('PREFECT_DEFAULT_WORK_POOL_NAME', 'default')
 
-# Prefect task超时配置
-PREFECT_TASK_DEFAULT_TIMEOUT_SECONDS = int(os.getenv('PREFECT_TASK_DEFAULT_TIMEOUT_SECONDS', '3600'))  # 默认超时：1小时
-
-# subprocess 默认超时配置（用于扫描工具命令）
-SUBPROCESS_DEFAULT_TIMEOUT_SECONDS = int(os.getenv('SUBPROCESS_DEFAULT_TIMEOUT_SECONDS', '3600'))  # 默认超时：1小时
-
-# 任务重试配置
-PREFECT_TASK_DEFAULT_RETRIES = int(os.getenv('PREFECT_TASK_DEFAULT_RETRIES', '3'))  # 默认重试次数
-PREFECT_TASK_DEFAULT_RETRY_DELAY_SECONDS = int(os.getenv('PREFECT_TASK_DEFAULT_RETRY_DELAY_SECONDS', '60'))  # 重试延迟：60秒
-
 # Prefect 日志级别
 PREFECT_LOGGING_LEVEL = os.getenv('PREFECT_LOGGING_LEVEL', 'INFO')
 
 
 # ==================== 扫描结果存储和清理配置 ====================
-# 扫描结果存储目录
-# 
-# 说明：
-# - 所有扫描任务的工作空间都创建在此目录下
-# - 清理任务会扫描此目录下的所有子目录
-# - 必须配置，否则扫描任务无法创建工作空间
-# 
-# 配置方式：
-# - 环境变量：SCAN_RESULTS_DIR
-# - 无默认值（必须配置）
-#
-# 示例环境变量：
-# SCAN_RESULTS_DIR=/data/scans
 
 SCAN_RESULTS_DIR = os.getenv('SCAN_RESULTS_DIR')
 
 # 扫描结果保留时间（单位：天）
-# 
-# 说明：
-# - 由 cleanup_old_scans 定时任务使用（每天凌晨执行）
-# - 基于目录修改时间（mtime）判断，不依赖数据库
-# - 所有目录统一保留天数（不区分状态）
-# 
-# 配置方式：
-# - 环境变量优先：SCAN_RETENTION_DAYS
-# - 默认值：7 天
-#
-# 示例环境变量：
-# SCAN_RETENTION_DAYS=14  # 所有扫描保留 14 天
-
 SCAN_RESULTS_RETENTION_DAYS = int(os.getenv('SCAN_RETENTION_DAYS', '7'))
 
 

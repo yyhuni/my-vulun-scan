@@ -36,15 +36,6 @@ def configure_prefect():
     
     # 日志级别
     os.environ.setdefault('PREFECT_LOGGING_LEVEL', settings.PREFECT_LOGGING_LEVEL)
-    
-    # 任务超时配置
-    os.environ.setdefault('PREFECT_TASK_DEFAULT_TIMEOUT_SECONDS', str(settings.PREFECT_TASK_DEFAULT_TIMEOUT_SECONDS))
-    
-    # 重试配置
-    os.environ.setdefault('PREFECT_TASK_DEFAULT_RETRIES', str(settings.PREFECT_TASK_DEFAULT_RETRIES))
-    os.environ.setdefault('PREFECT_TASK_DEFAULT_RETRY_DELAY_SECONDS', str(settings.PREFECT_TASK_DEFAULT_RETRY_DELAY_SECONDS))
 
 
-# 注意：不在模块级别调用 configure_prefect()
-# 它会在 apps.common.apps.CommonConfig.ready() 中调用
 
