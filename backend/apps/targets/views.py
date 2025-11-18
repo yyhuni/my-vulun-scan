@@ -2,6 +2,7 @@ import logging
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.exceptions import ValidationError, NotFound, APIException
 from django.db import transaction
 from django.db.models import Count
 from .models import Organization, Target
@@ -48,11 +49,8 @@ class OrganizationViewSet(viewsets.ModelViewSet):
             serializer = TargetSerializer(page, many=True)
             return paginator.get_paginated_response(serializer.data)
         
-        # 如果没有分页参数，返回错误
-        return Response(
-            {'error': '必须提供分页参数 page 和 pageSize'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
+        # 如果没有分页参数，抛出异常
+        raise ValidationError('必须提供分页参数 page 和 pageSize')
     
     @action(detail=True, methods=['post'])
     def unlink_targets(self, request, pk=None):
@@ -77,16 +75,10 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         target_ids = request.data.get('target_ids', [])
         
         if not target_ids:
-            return Response(
-                {'error': '目标ID列表不能为空'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            raise ValidationError('目标ID列表不能为空')
         
         if not isinstance(target_ids, list):
-            return Response(
-                {'error': 'target_ids 必须是数组'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            raise ValidationError('target_ids 必须是数组')
         
         # 使用事务保护
         with transaction.atomic():
@@ -97,10 +89,7 @@ class OrganizationViewSet(viewsets.ModelViewSet):
             existing_count = len(existing_target_ids)
             
             if existing_count == 0:
-                return Response(
-                    {'error': '未找到要解除关联的目标'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                raise ValidationError('未找到要解除关联的目标')
             
             # 批量解除关联（直接使用 ID，避免查询对象）
             organization.targets.remove(*existing_target_ids)
@@ -144,7 +133,7 @@ class OrganizationViewSet(viewsets.ModelViewSet):
             return response
         
         except Organization.DoesNotExist:
-            return Response({'error': '组织不存在'}, status=404)
+            raise NotFound('组织不存在')
     
     @action(detail=False, methods=['post', 'delete'], url_path='bulk-delete')
     def bulk_delete(self, request):
@@ -178,11 +167,11 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         
         # 参数验证
         if not ids:
-            return Response({'error': '缺少必填参数: ids'}, status=400)
+            raise ValidationError('缺少必填参数: ids')
         if not isinstance(ids, list):
-            return Response({'error': 'ids 必须是数组'}, status=400)
+            raise ValidationError('ids 必须是数组')
         if not all(isinstance(i, int) for i in ids):
-            return Response({'error': 'ids 数组中的所有元素必须是整数'}, status=400)
+            raise ValidationError('ids 数组中的所有元素必须是整数')
         
         try:
             # 调用 Service 层的业务方法（软删除 + 提交 Prefect Flow）
@@ -199,10 +188,10 @@ class OrganizationViewSet(viewsets.ModelViewSet):
             }, status=200)
         
         except ValueError as e:
-            return Response({'error': str(e)}, status=404)
+            raise NotFound(str(e))
         except Exception as e:
             logger.exception("删除组织时发生错误")
-            return Response({'error': '服务器错误，请稍后重试'}, status=500)
+            raise APIException('服务器错误，请稍后重试')
 
 
 class TargetViewSet(viewsets.ModelViewSet):
@@ -288,7 +277,7 @@ class TargetViewSet(viewsets.ModelViewSet):
             return response
         
         except Target.DoesNotExist:
-            return Response({'error': '目标不存在'}, status=404)
+            raise NotFound('目标不存在')
     
     @action(detail=False, methods=['post', 'delete'], url_path='bulk-delete')
     def bulk_delete(self, request):
@@ -325,11 +314,11 @@ class TargetViewSet(viewsets.ModelViewSet):
         
         # 参数验证
         if not ids:
-            return Response({'error': '缺少必填参数: ids'}, status=400)
+            raise ValidationError('缺少必填参数: ids')
         if not isinstance(ids, list):
-            return Response({'error': 'ids 必须是数组'}, status=400)
+            raise ValidationError('ids 必须是数组')
         if not all(isinstance(i, int) for i in ids):
-            return Response({'error': 'ids 数组中的所有元素必须是整数'}, status=400)
+            raise ValidationError('ids 数组中的所有元素必须是整数')
         
         try:
             # 调用 Service 层的业务方法（软删除 + 提交 Prefect Flow）
@@ -346,10 +335,10 @@ class TargetViewSet(viewsets.ModelViewSet):
             }, status=200)
         
         except ValueError as e:
-            return Response({'error': str(e)}, status=404)
+            raise NotFound(str(e))
         except Exception as e:
             logger.exception("删除目标时发生错误")
-            return Response({'error': '服务器错误，请稍后重试'}, status=500)
+            raise APIException('服务器错误，请稍后重试')
     
     @action(detail=False, methods=['post'])
     def batch_create(self, request):
@@ -398,10 +387,7 @@ class TargetViewSet(viewsets.ModelViewSet):
             org_service = OrganizationService()
             organization = org_service.get_organization(organization_id)
             if not organization:
-                return Response(
-                    {'error': f'组织 ID {organization_id} 不存在'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                raise ValidationError(f'组织 ID {organization_id} 不存在')
         
         # 使用事务确保原子性
         with transaction.atomic():
@@ -502,22 +488,13 @@ class TargetViewSet(viewsets.ModelViewSet):
                 return paginator.get_paginated_response(serializer.data)
             
             # 如果没有分页参数，返回错误
-            return Response(
-                {'error': '必须提供分页参数 page 和 pageSize'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            raise ValidationError('必须提供分页参数 page 和 pageSize')
         
         except ObjectDoesNotExist:
-            return Response(
-                {'error': f'目标 ID {pk} 不存在'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            raise NotFound(f'目标 ID {pk} 不存在')
         
         except (DatabaseError, OperationalError):
-            return Response(
-                {'error': '数据库错误，请稍后重试'},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE
-            )
+            raise APIException('数据库错误，请稍后重试')
 
     @action(detail=True, methods=['get'], url_path='ip-addresses')
     def ip_addresses(self, request, pk=None):
@@ -541,22 +518,13 @@ class TargetViewSet(viewsets.ModelViewSet):
                 serializer = IPAddressListSerializer(page, many=True)
                 return paginator.get_paginated_response(serializer.data)
 
-            return Response(
-                {'error': '必须提供分页参数 page 和 pageSize'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            raise ValidationError('必须提供分页参数 page 和 pageSize')
 
         except ObjectDoesNotExist:
-            return Response(
-                {'error': f'目标 ID {pk} 不存在'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            raise NotFound(f'目标 ID {pk} 不存在')
 
         except (DatabaseError, OperationalError):
-            return Response(
-                {'error': '数据库错误，请稍后重试'},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE
-            )
+            raise APIException('数据库错误，请稍后重试')
 
     @action(detail=True, methods=['get'])
     def websites(self, request, pk=None):
@@ -598,22 +566,13 @@ class TargetViewSet(viewsets.ModelViewSet):
                 return paginator.get_paginated_response(serializer.data)
 
             # 如果没有分页参数，返回错误
-            return Response(
-                {'error': '必须提供分页参数 page 和 pageSize'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            raise ValidationError('必须提供分页参数 page 和 pageSize')
 
         except ObjectDoesNotExist:
-            return Response(
-                {'error': f'目标 ID {pk} 不存在'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            raise NotFound(f'目标 ID {pk} 不存在')
 
         except (DatabaseError, OperationalError):
-            return Response(
-                {'error': '数据库错误，请稍后重试'},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE
-            )
+            raise APIException('数据库错误，请稍后重试')
 
     @action(detail=True, methods=['get'])
     def directories(self, request, pk=None):
@@ -655,19 +614,10 @@ class TargetViewSet(viewsets.ModelViewSet):
                 return paginator.get_paginated_response(serializer.data)
 
             # 如果没有分页参数，返回错误
-            return Response(
-                {'error': '必须提供分页参数 page 和 pageSize'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            raise ValidationError('必须提供分页参数 page 和 pageSize')
 
         except ObjectDoesNotExist:
-            return Response(
-                {'error': f'目标 ID {pk} 不存在'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            raise NotFound(f'目标 ID {pk} 不存在')
 
         except (DatabaseError, OperationalError):
-            return Response(
-                {'error': '数据库错误，请稍后重试'},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE
-            )
+            raise APIException('数据库错误，请稍后重试')
