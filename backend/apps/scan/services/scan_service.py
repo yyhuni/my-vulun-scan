@@ -18,6 +18,7 @@ from django.conf import settings
 from django.db import transaction
 from django.db.utils import DatabaseError, IntegrityError, OperationalError
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
+from asgiref.sync import async_to_sync
 
 from apps.scan.models import Scan
 from apps.scan.repositories import DjangoScanRepository
@@ -31,9 +32,9 @@ from apps.common.definitions import ScanStatus
 logger = logging.getLogger(__name__)
 
 
-def _submit_flow_deployment(deployment_name: str, parameters: Dict) -> str:
+async def _submit_flow_deployment_async(deployment_name: str, parameters: Dict) -> str:
     """
-    使用 Prefect 3.x Client API 提交 Flow Run（同步包装）
+    使用 Prefect 3.x Client API 提交 Flow Run（异步版本）
     
     Args:
         deployment_name: Deployment 完整名称（格式: flow_name/deployment_name）
@@ -44,24 +45,45 @@ def _submit_flow_deployment(deployment_name: str, parameters: Dict) -> str:
     
     Raises:
         Exception: 提交失败
-    """
-    async def _submit_async():
-        from prefect import get_client
-        
-        async with get_client() as client:
-            # 1. 读取 Deployment
-            deployment = await client.read_deployment_by_name(deployment_name)
-            
-            # 2. 创建 Flow Run
-            flow_run = await client.create_flow_run_from_deployment(
-                deployment.id,
-                parameters=parameters
-            )
-            
-            return str(flow_run.id)
     
-    # 在同步上下文中运行异步代码
-    return asyncio.run(_submit_async())
+    Note:
+        - 这是异步函数，可以在异步上下文中直接 await
+        - 在同步上下文中使用 _submit_flow_deployment() 包装函数
+    """
+    from prefect import get_client
+    
+    async with get_client() as client:
+        # 1. 读取 Deployment
+        deployment = await client.read_deployment_by_name(deployment_name)
+        
+        # 2. 创建 Flow Run
+        flow_run = await client.create_flow_run_from_deployment(
+            deployment.id,
+            parameters=parameters
+        )
+        
+        return str(flow_run.id)
+
+
+def _submit_flow_deployment(deployment_name: str, parameters: Dict) -> str:
+    """
+    同步包装函数：在同步上下文中提交 Flow Run
+    
+    使用 async_to_sync 而不是 asyncio.run，避免 ASGI 环境中的事件循环冲突。
+    
+    Args:
+        deployment_name: Deployment 完整名称
+        parameters: Flow 参数
+    
+    Returns:
+        Flow Run ID
+    
+    Note:
+        - 使用 async_to_sync 确保 ASGI 兼容性
+        - 如果当前有事件循环，会在新线程中执行
+        - 如果没有事件循环，直接在当前线程执行
+    """
+    return async_to_sync(_submit_flow_deployment_async)(deployment_name, parameters)
 
 
 class ScanService:
@@ -719,7 +741,8 @@ class ScanService:
                         return 0
                 
                 try:
-                    cancelled_count = asyncio.run(_cancel_flows())
+                    # 使用 async_to_sync 而不是 asyncio.run，避免 ASGI 事件循环冲突
+                    cancelled_count = async_to_sync(_cancel_flows)()
                     logger.info(
                         "✓ 已发送取消信号给 %d/%d 个 Flow Run - Scan ID: %s",
                         cancelled_count, len(flow_run_ids), scan_id
