@@ -324,7 +324,7 @@ class TargetViewSet(viewsets.ModelViewSet):
         - 404 Not Found: 未找到目标
         
         注意:
-        - 软删除：数据可恢复（is_deleted=True）
+        - 软删除：数据可恢复（deleted_at 不为 NULL）
         - 硬删除：数据不可恢复（真正从数据库删除）
         - 使用 Prefect Flow 管理删除流程，可在 Prefect UI 查看进度
         """

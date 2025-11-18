@@ -70,10 +70,7 @@ class DjangoOrganizationRepository:
             updated_count = (
                 Organization.objects
                 .filter(id__in=organization_ids)
-                .update(
-                    is_deleted=True,
-                    deleted_at=timezone.now()
-                )
+                .update(deleted_at=timezone.now())
             )
             logger.debug(
                 "批量软删除组织成功 - Count: %s, 更新记录: %s",

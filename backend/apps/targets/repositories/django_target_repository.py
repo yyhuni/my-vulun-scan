@@ -68,10 +68,7 @@ class DjangoTargetRepository:
             updated_count = (
                 Target.objects
                 .filter(id__in=target_ids)
-                .update(
-                    is_deleted=True,
-                    deleted_at=timezone.now()
-                )
+                .update(deleted_at=timezone.now())
             )
             logger.debug(
                 "批量软删除目标成功 - Count: %s, 更新记录: %s",

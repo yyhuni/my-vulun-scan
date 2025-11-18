@@ -6,20 +6,19 @@ class SoftDeleteManager(models.Manager):
     """软删除管理器：默认只返回未删除的记录"""
     
     def get_queryset(self):
-        return super().get_queryset().filter(is_deleted=False)
+        return super().get_queryset().filter(deleted_at__isnull=True)
 
 
 class Organization(models.Model):
     """组织模型"""
 
     id = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=300, unique=True, blank=True, default='', help_text='组织名称')
+    name = models.CharField(max_length=300, blank=True, default='', help_text='组织名称')
     description = models.CharField(max_length=1000, blank=True, default='', help_text='组织描述')
     created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
     
     # ==================== 软删除字段 ====================
-    is_deleted = models.BooleanField(default=False, db_index=True, help_text='是否已删除')
-    deleted_at = models.DateTimeField(null=True, blank=True, help_text='删除时间')
+    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True, help_text='删除时间（NULL表示未删除）')
 
     targets = models.ManyToManyField(
         'Target',
@@ -37,9 +36,16 @@ class Organization(models.Model):
         verbose_name = '组织'
         verbose_name_plural = '组织'
         ordering = ['-created_at']
+        # 联合唯一约束：允许软删除后重新插入同名记录
+        constraints = [
+            models.UniqueConstraint(
+                fields=['name', 'deleted_at'],
+                name='unique_organization_name_not_deleted'
+            ),
+        ]
         indexes = [
             models.Index(fields=['-created_at']),
-            models.Index(fields=['is_deleted', '-created_at']),  # 软删除 + 时间索引
+            models.Index(fields=['deleted_at', '-created_at']),  # 软删除 + 时间索引
         ]
 
     def __str__(self):
@@ -61,7 +67,7 @@ class Target(models.Model):
 
     # ==================== 基本字段 ====================
     id = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=300, unique=True, blank=True, default='', help_text='目标标识（域名/IP/CIDR）')
+    name = models.CharField(max_length=300, blank=True, default='', help_text='目标标识（域名/IP/CIDR）')
 
     type = models.CharField(
         max_length=20,
@@ -76,8 +82,7 @@ class Target(models.Model):
     last_scanned_at = models.DateTimeField(null=True, blank=True, help_text='最后扫描时间')
     
     # ==================== 软删除字段 ====================
-    is_deleted = models.BooleanField(default=False, db_index=True, help_text='是否已删除')
-    deleted_at = models.DateTimeField(null=True, blank=True, help_text='删除时间')
+    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True, help_text='删除时间（NULL表示未删除）')
     
     # ==================== 管理器 ====================
     objects = SoftDeleteManager()  # 默认管理器：只返回未删除的记录
@@ -88,11 +93,18 @@ class Target(models.Model):
         verbose_name = '扫描目标'
         verbose_name_plural = '扫描目标'
         ordering = ['-created_at']
+        # 联合唯一约束：允许软删除后重新插入同名记录
+        constraints = [
+            models.UniqueConstraint(
+                fields=['name', 'deleted_at'],
+                name='unique_target_name_not_deleted'
+            ),
+        ]
         indexes = [
             models.Index(fields=['type']),
             models.Index(fields=['-created_at']),
-            models.Index(fields=['is_deleted', '-created_at']),  # 软删除 + 时间索引
-            models.Index(fields=['is_deleted', 'type']),  # 软删除 + 类型索引
+            models.Index(fields=['deleted_at', '-created_at']),  # 软删除 + 时间索引
+            models.Index(fields=['deleted_at', 'type']),  # 软删除 + 类型索引
         ]
 
     def __str__(self):
