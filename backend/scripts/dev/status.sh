@@ -52,7 +52,7 @@ check_service() {
 # 检查各个服务
 check_service "Prefect Server" "prefect-server" "http://localhost:4200/api/health"
 echo ""
-check_service "Django" "django" "http://localhost:8888"
+check_service "Daphne ASGI 服务器" "daphne" "http://localhost:8888/api/"
 echo ""
 
 # 检查 Prefect Worker（使用 pgrep）
@@ -67,6 +67,11 @@ echo ""
 
 check_service "扫描任务 Deployment" "scan-deployment"
 check_service "清理任务 Deployment" "cleanup-deployment"
+check_service "删除任务 Deployment" "delete-deployment"
+
+echo ""
+echo -e "${YELLOW}注意: Deployment 进程显示'已停止'是正常的，因为使用分离模式部署。${NC}"
+echo -e "${YELLOW}      部署任务已注册到 Prefect Server，由 Worker 执行。${NC}"
 
 # 显示日志文件位置
 echo ""
