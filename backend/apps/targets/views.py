@@ -1,12 +1,14 @@
 import logging
+import asyncio
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from adrf.viewsets import ViewSet as AsyncViewSet
+from asgiref.sync import sync_to_async
 from django.db import transaction
 from django.db.models import Count
 from .models import Organization, Target
 from .serializers import OrganizationSerializer, TargetSerializer, TargetDetailSerializer, BatchCreateTargetSerializer
-from .tasks import async_bulk_delete_targets, async_bulk_delete_organizations
 from .services.target_service import TargetService
 from .services.organization_service import OrganizationService
 from apps.common.normalizer import normalize_target
@@ -17,8 +19,8 @@ from apps.asset.models import Subdomain
 logger = logging.getLogger(__name__)
 
 
-class OrganizationViewSet(viewsets.ModelViewSet):
-    """组织管理 - 增删改查"""
+class OrganizationViewSet(AsyncViewSet, viewsets.ModelViewSet):
+    """组织管理 - 增删改查（ASGI 异步）"""
     serializer_class = OrganizationSerializer
     pagination_class = BasePagination
     
@@ -109,56 +111,46 @@ class OrganizationViewSet(viewsets.ModelViewSet):
             'message': f'成功解除 {existing_count} 个目标的关联'
         })
     
-    def destroy(self, request, *args, **kwargs):
+    async def destroy(self, request, *args, **kwargs):
         """
-        异步删除单个组织（统一使用批量删除逻辑）
+        ASGI 异步删除单个组织（复用批量删除逻辑）
         
         DELETE /api/organizations/{id}/
         
         功能:
-        - 立即返回 202 Accepted 状态，不等待删除完成
-        - 在后台线程中执行删除操作
-        - 发送通知告知删除进度
+        - 复用 bulk_delete 的两阶段删除逻辑
+        - 立即返回 200 OK，软删除完成，硬删除在后台执行
         
         返回:
-        - 202 Accepted: 删除请求已接受，正在后台处理
+        - 200 OK: 软删除完成，硬删除已在后台启动
         - 404 Not Found: 组织不存在
         
         注意:
-        - 删除组织不会删除关联的目标
-        - 只会清除组织与目标的关联关系
-        - 通过通知中心查看删除进度和结果
+        - 两阶段删除：软删除（立即）+ 硬删除（后台）
+        - 硬删除会清理 organization_targets 中间表
+        - 不会删除关联的 Target（多对多关系）
         """
         try:
-            # 获取组织对象（验证是否存在）
-            organization = self.get_object()
-            organization_id = organization.id
-            organization_name = organization.name
+            organization = await sync_to_async(self.get_object)()
+            request.data = {'ids': [organization.id]}
+            response = await self.bulk_delete(request)
             
-            # 使用批量删除逻辑（传入单个ID）
-            async_bulk_delete_organizations([organization_id], [organization_name])
+            if response.status_code == 200:
+                response.data.update({
+                    'message': f'已删除组织: {organization.name}',
+                    'organizationId': organization.id,
+                    'organizationName': organization.name,
+                })
             
-            # 立即返回 202 Accepted
-            return Response(
-                {
-                    'message': '组织删除请求已接受，正在后台处理',
-                    'organizationId': organization_id,
-                    'organizationName': organization_name,
-                    'detail': '删除进度将通过通知中心告知'
-                },
-                status=status.HTTP_202_ACCEPTED
-            )
+            return response
         
         except Organization.DoesNotExist:
-            return Response(
-                {'error': '组织不存在'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({'error': '组织不存在'}, status=404)
     
     @action(detail=False, methods=['post', 'delete'], url_path='bulk-delete')
-    def bulk_delete(self, request):
+    async def bulk_delete(self, request):
         """
-        批量异步删除组织
+        ASGI 异步批量删除组织（两阶段删除）
         
         POST/DELETE /api/organizations/bulk-delete/
         
@@ -168,75 +160,56 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         }
         
         功能:
-        - 立即返回 202 Accepted 状态，不等待删除完成
-        - 在后台线程中批量执行删除操作
-        - 发送通知告知删除进度和结果
+        - 阶段 1：立即软删除（用户立即看不到数据）
+        - 阶段 2：后台硬删除（真正删除数据和中间表）
+        - 立即返回 200 OK，硬删除在后台执行
         
         返回:
-        - 202 Accepted: 删除请求已接受，正在后台处理
+        - 200 OK: 软删除完成，硬删除已在后台启动
         - 400 Bad Request: 参数错误
+        - 404 Not Found: 未找到要删除的组织
         
         注意:
-        - 删除组织不会删除关联的目标
-        - 只会清除组织与目标的关联关系
-        - 通过通知中心查看删除进度和结果
+        - 软删除：用户立即看不到
+        - 硬删除：清理数据库和 organization_targets 中间表
+        - 不会删除关联的 Target（多对多关系）
         """
         ids = request.data.get('ids', [])
         
         # 参数验证
         if not ids:
-            return Response(
-                {'error': '缺少必填参数: ids'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
+            return Response({'error': '缺少必填参数: ids'}, status=400)
         if not isinstance(ids, list):
-            return Response(
-                {'error': 'ids 必须是数组'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
+            return Response({'error': 'ids 必须是数组'}, status=400)
         if not all(isinstance(i, int) for i in ids):
-            return Response(
-                {'error': 'ids 数组中的所有元素必须是整数'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({'error': 'ids 数组中的所有元素必须是整数'}, status=400)
         
-        # 获取组织名称（用于通知显示）- 通过 Service 层
         try:
-            organization_service = OrganizationService()
-            existing_ids, organization_names = organization_service.get_organizations_info(ids)
+            # 调用 Service 层的业务方法
+            result = await sync_to_async(
+                self.org_service.delete_organizations_two_phase
+            )(ids)
             
-            if not existing_ids:
-                return Response(
-                    {'error': '未找到要删除的组织'},
-                    status=status.HTTP_404_NOT_FOUND
-                )
-            
-            # 启动异步批量删除任务
-            async_bulk_delete_organizations(existing_ids, organization_names)
-            
-            return Response(
-                {
-                    'message': f'已接受删除 {len(existing_ids)} 个组织的请求，正在后台处理',
-                    'acceptedCount': len(existing_ids),
-                    'requestedCount': len(ids),
-                    'detail': '删除进度将通过通知中心告知'
-                },
-                status=status.HTTP_202_ACCEPTED
-            )
+            return Response({
+                'message': f"已删除 {result['soft_deleted_count']} 个组织",
+                'deletedCount': result['soft_deleted_count'],
+                'deletedOrganizations': result['organization_names'],
+                'detail': {
+                    'phase1': '软删除完成，用户已看不到数据',
+                    'phase2': '硬删除已在后台执行，将永久清理数据和中间表'
+                }
+            }, status=200)
         
+        except ValueError as e:
+            return Response({'error': str(e)}, status=404)
         except Exception as e:
-            logger.exception("批量删除组织时发生错误")
-            return Response(
-                {'error': '服务器错误，请稍后重试'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            logger.exception("删除组织时发生错误")
+            return Response({'error': '服务器错误，请稍后重试'}, status=500)
 
 
-class TargetViewSet(viewsets.ModelViewSet):
+class TargetViewSet(AsyncViewSet, viewsets.ModelViewSet):
     """
-    目标管理 - 增删改查
+    目标管理 - 增删改查（ASGI 异步）
     
     性能优化说明:
     1. 使用 prefetch_related('organizations') 预加载关联的组织
@@ -284,58 +257,45 @@ class TargetViewSet(viewsets.ModelViewSet):
             return TargetDetailSerializer
         return TargetSerializer
     
-    def destroy(self, request, *args, **kwargs):
+    async def destroy(self, request, *args, **kwargs):
         """
-        异步删除单个目标（统一使用批量删除逻辑）
+        ASGI 异步删除单个目标（复用批量删除逻辑）
         
         DELETE /api/targets/{id}/
         
         功能:
-        - 立即返回 202 Accepted 状态，不等待删除完成
-        - 在后台线程中执行删除操作
-        - 适用于关联数据量大的场景（如40万条记录）
-        - 发送通知告知删除进度
+        - 复用 bulk_delete 的两阶段删除逻辑
+        - 立即返回 200 OK，软删除完成，硬删除在后台执行
         
         返回:
-        - 202 Accepted: 删除请求已接受，正在后台处理
+        - 200 OK: 软删除完成，硬删除已在后台启动
         - 404 Not Found: 目标不存在
         
         注意:
-        - 删除是级联的，会自动删除所有关联数据（子域名、IP、端点、漏洞等）
-        - 删除过程可能需要几分钟，取决于关联数据量
-        - 客户端收到响应后，目标可能还在删除中
-        - 通过通知中心查看删除进度和结果
+        - 两阶段删除：软删除（立即）+ 硬删除（后台）
+        - 硬删除会使用 Django CASCADE 删除所有关联数据
         """
         try:
-            # 获取目标对象（验证是否存在）
-            target = self.get_object()
-            target_id = target.id
-            target_name = target.name
+            target = await sync_to_async(self.get_object)()
+            request.data = {'ids': [target.id]}
+            response = await self.bulk_delete(request)
             
-            # 使用批量删除逻辑（传入单个ID）
-            async_bulk_delete_targets([target_id], [target_name])
+            if response.status_code == 200:
+                response.data.update({
+                    'message': f'已删除目标: {target.name}',
+                    'targetId': target.id,
+                    'targetName': target.name,
+                })
             
-            # 立即返回 202 Accepted
-            return Response(
-                {
-                    'message': '目标删除请求已接受，正在后台处理',
-                    'targetId': target_id,
-                    'targetName': target_name,
-                    'detail': '删除进度将通过通知中心告知'
-                },
-                status=status.HTTP_202_ACCEPTED
-            )
+            return response
         
         except Target.DoesNotExist:
-            return Response(
-                {'error': '目标不存在'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({'error': '目标不存在'}, status=404)
     
     @action(detail=False, methods=['post', 'delete'], url_path='bulk-delete')
-    def bulk_delete(self, request):
+    async def bulk_delete(self, request):
         """
-        批量异步删除目标
+        批量删除目标（两阶段删除策略）
         
         POST/DELETE /api/targets/bulk-delete/
         
@@ -344,71 +304,57 @@ class TargetViewSet(viewsets.ModelViewSet):
             "ids": [1, 2, 3]
         }
         
+        两阶段删除策略：
+        1. 阶段 1（立即）：软删除目标，用户立即看不到数据
+        2. 阶段 2（异步）：后台硬删除，真正清理数据
+        
         功能:
-        - 立即返回 202 Accepted 状态，不等待删除完成
-        - 在后台线程中批量执行删除操作
-        - 发送通知告知删除进度和结果
+        - 立即软删除：用户立即看不到数据（响应快）
+        - 异步硬删除：后台执行，使用 Django CASCADE 自动删除关联数据
+        - 自动重试：Repository 层自动重试数据库连接失败
         
         返回:
-        - 202 Accepted: 删除请求已接受，正在后台处理
+        - 200 OK: 软删除成功，硬删除已在后台执行
         - 400 Bad Request: 参数错误
+        - 404 Not Found: 未找到目标
         
         注意:
-        - 使用级联删除，会同时删除关联的子域名、IP、端点等数据
-        - 删除过程可能需要几分钟，取决于关联数据量
-        - 通过通知中心查看删除进度和结果
+        - 软删除：数据可恢复（is_deleted=True）
+        - 硬删除：数据不可恢复（真正从数据库删除）
+        - 使用 Django CASCADE 自动删除所有关联数据
+        - 使用 ASGI 异步：轻量、快速、无需额外服务
         """
         ids = request.data.get('ids', [])
         
         # 参数验证
         if not ids:
-            return Response(
-                {'error': '缺少必填参数: ids'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
+            return Response({'error': '缺少必填参数: ids'}, status=400)
         if not isinstance(ids, list):
-            return Response(
-                {'error': 'ids 必须是数组'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
+            return Response({'error': 'ids 必须是数组'}, status=400)
         if not all(isinstance(i, int) for i in ids):
-            return Response(
-                {'error': 'ids 数组中的所有元素必须是整数'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({'error': 'ids 数组中的所有元素必须是整数'}, status=400)
         
-        # 获取目标名称（用于通知显示）- 通过 Service 层
         try:
-            target_service = TargetService()
-            existing_ids, target_names = target_service.get_targets_info(ids)
+            # 调用 Service 层的业务方法
+            result = await sync_to_async(
+                self.target_service.delete_targets_two_phase
+            )(ids)
             
-            if not existing_ids:
-                return Response(
-                    {'error': '未找到要删除的目标'},
-                    status=status.HTTP_404_NOT_FOUND
-                )
-            
-            # 启动异步批量删除任务
-            async_bulk_delete_targets(existing_ids, target_names)
-            
-            return Response(
-                {
-                    'message': f'已接受删除 {len(existing_ids)} 个目标的请求，正在后台处理',
-                    'acceptedCount': len(existing_ids),
-                    'requestedCount': len(ids),
-                    'detail': '删除进度将通过通知中心告知'
-                },
-                status=status.HTTP_202_ACCEPTED
-            )
+            return Response({
+                'message': f"已删除 {result['soft_deleted_count']} 个目标",
+                'deletedCount': result['soft_deleted_count'],
+                'deletedTargets': result['target_names'],
+                'detail': {
+                    'phase1': '软删除完成，用户已看不到数据',
+                    'phase2': '硬删除已在后台执行，将永久清理数据'
+                }
+            }, status=200)
         
+        except ValueError as e:
+            return Response({'error': str(e)}, status=404)
         except Exception as e:
-            logger.exception("批量删除目标时发生错误")
-            return Response(
-                {'error': '服务器错误，请稍后重试'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            logger.exception("删除目标时发生错误")
+            return Response({'error': '服务器错误，请稍后重试'}, status=500)
     
     @action(detail=False, methods=['post'])
     def batch_create(self, request):

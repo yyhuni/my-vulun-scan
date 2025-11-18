@@ -6,6 +6,8 @@ Organization Django ORM 仓储实现
 
 import logging
 from typing import List, Tuple, Dict
+from django.db.models import Count
+from django.utils import timezone
 
 from ..models import Organization, Target
 from apps.common.decorators import auto_ensure_db_connection
@@ -49,39 +51,39 @@ class DjangoOrganizationRepository:
             .values_list('id', 'name')
         )
     
-    def bulk_delete_by_ids(self, organization_ids: List[int]) -> Tuple[int, Dict[str, int]]:
+    def bulk_delete_by_ids(self, organization_ids: List[int]) -> int:
         """
-        根据 ID 列表批量删除组织
+        根据 ID 列表批量软删除组织
         
         Args:
             organization_ids: 组织 ID 列表
         
         Returns:
-            (删除的总记录数, {模型名: 删除数量})
-        
-        Raises:
-            DatabaseError: 数据库错误
+            软删除的记录数
         
         Note:
-            - 使用 Django ORM 批量删除
-            - 删除组织不会删除关联的目标（多对多关系）
-            - 只会清除关联关系
+            - 使用软删除：只标记为已删除，不真正删除数据库记录
+            - 保留所有关联数据，可恢复
+            - 不会影响关联的目标（多对多关系保持不变）
         """
         try:
-            deleted_count, deleted_details = (
+            updated_count = (
                 Organization.objects
                 .filter(id__in=organization_ids)
-                .delete()
+                .update(
+                    is_deleted=True,
+                    deleted_at=timezone.now()
+                )
             )
             logger.debug(
-                "批量删除组织成功 - Count: %s, 删除记录: %s",
+                "批量软删除组织成功 - Count: %s, 更新记录: %s",
                 len(organization_ids),
-                deleted_details
+                updated_count
             )
-            return deleted_count, deleted_details
+            return updated_count
         except Exception as e:
             logger.error(
-                "批量删除组织失败 - IDs: %s, 错误: %s",
+                "批量软删除组织失败 - IDs: %s, 错误: %s",
                 organization_ids,
                 e
             )
@@ -118,7 +120,63 @@ class DjangoOrganizationRepository:
         Returns:
             QuerySet: 带统计信息的组织查询集
         """
-        from django.db.models import Count
-        return Organization.objects.annotate(
-            target_count=Count('targets')
+        return (
+            Organization.objects
+            .annotate(targets_count=Count('targets'))
+            .order_by('-created_at')
         )
+    
+    def get_by_ids(self, organization_ids: List[int]) -> List[Organization]:
+        """
+        根据 ID 列表获取组织（只返回未删除的）
+        
+        Args:
+            organization_ids: 组织 ID 列表
+        
+        Returns:
+            Organization 对象列表
+        """
+        return list(Organization.objects.filter(id__in=organization_ids))
+    
+    def hard_delete_by_ids(self, organization_ids: List[int]) -> Tuple[int, Dict[str, int]]:
+        """
+        根据 ID 列表硬删除组织（真正删除数据）
+        
+        Args:
+            organization_ids: 组织 ID 列表
+        
+        Returns:
+            (删除的记录数, 删除详情字典)
+        
+        Note:
+            - 硬删除：从数据库中永久删除
+            - 使用 Django CASCADE 自动删除中间表 organization_targets 的关联记录
+            - 不会删除关联的 Target（多对多关系）
+            - ⚠️ 不可恢复
+            - @auto_ensure_db_connection 自动重试数据库连接失败
+        """
+        try:
+            # 使用 all_objects 管理器，可以删除已软删除的记录
+            deleted_count, deleted_details = (
+                Organization.all_objects
+                .filter(id__in=organization_ids)
+                .delete()
+            )
+            
+            logger.debug(
+                "硬删除组织成功 - Count: %s, 删除记录数: %s, 详情: %s",
+                len(organization_ids),
+                deleted_count,
+                deleted_details
+            )
+            
+            return deleted_count, deleted_details
+            
+        except Exception as e:
+            logger.error(
+                "硬删除组织失败 - IDs: %s, 错误: %s",
+                organization_ids,
+                e
+            )
+            raise
+    

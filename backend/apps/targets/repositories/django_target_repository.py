@@ -6,6 +6,7 @@ Target Django ORM 仓储实现
 
 import logging
 from typing import List, Tuple, Dict
+from django.utils import timezone
 
 from ..models import Target
 from apps.common.decorators import auto_ensure_db_connection
@@ -49,38 +50,38 @@ class DjangoTargetRepository:
             .values_list('id', 'name')
         )
     
-    def bulk_delete_by_ids(self, target_ids: List[int]) -> Tuple[int, Dict[str, int]]:
+    def bulk_delete_by_ids(self, target_ids: List[int]) -> int:
         """
-        根据 ID 列表批量删除目标（级联删除）
+        根据 ID 列表批量软删除目标
         
         Args:
             target_ids: 目标 ID 列表
         
         Returns:
-            (删除的总记录数, {模型名: 删除数量})
-        
-        Raises:
-            DatabaseError: 数据库错误
+            软删除的记录数
         
         Note:
-            - 使用 Django ORM 批量删除，性能优于逐个删除
-            - 自动级联删除所有关联数据（子域名、IP、端点、漏洞等）
+            - 使用软删除：只标记为已删除，不真正删除数据库记录
+            - 保留所有关联数据，可恢复
         """
         try:
-            deleted_count, deleted_details = (
+            updated_count = (
                 Target.objects
                 .filter(id__in=target_ids)
-                .delete()
+                .update(
+                    is_deleted=True,
+                    deleted_at=timezone.now()
+                )
             )
             logger.debug(
-                "批量删除目标成功 - Count: %s, 删除记录: %s",
+                "批量软删除目标成功 - Count: %s, 更新记录: %s",
                 len(target_ids),
-                deleted_details
+                updated_count
             )
-            return deleted_count, deleted_details
+            return updated_count
         except Exception as e:
             logger.error(
-                "批量删除目标失败 - IDs: %s, 错误: %s",
+                "批量软删除目标失败 - IDs: %s, 错误: %s",
                 target_ids,
                 e
             )
@@ -110,3 +111,58 @@ class DjangoTargetRepository:
             name=name,
             defaults={'type': target_type}
         )
+    
+    def get_by_ids(self, target_ids: List[int]) -> List[Target]:
+        """
+        根据 ID 列表获取目标（只返回未删除的）
+        
+        Args:
+            target_ids: 目标 ID 列表
+        
+        Returns:
+            Target 对象列表
+        """
+        return list(Target.objects.filter(id__in=target_ids))
+    
+    def hard_delete_by_ids(self, target_ids: List[int]) -> Tuple[int, Dict[str, int]]:
+        """
+        根据 ID 列表硬删除目标（真正删除数据）
+        
+        Args:
+            target_ids: 目标 ID 列表
+        
+        Returns:
+            (删除的记录数, 删除详情字典)
+        
+        Note:
+            - 硬删除：从数据库中永久删除
+            - 使用 Django CASCADE 自动删除所有关联数据
+            - ⚠️ 不可恢复
+            - @auto_ensure_db_connection 自动重试数据库连接失败
+        """
+        try:
+            # Django delete() 返回 (总删除数, {模型名: 删除数})
+            # 使用 all_objects 管理器，可以删除已软删除的记录
+            deleted_count, deleted_details = (
+                Target.all_objects
+                .filter(id__in=target_ids)
+                .delete()
+            )
+            
+            logger.debug(
+                "硬删除目标成功 - Count: %s, 删除记录数: %s, 详情: %s",
+                len(target_ids),
+                deleted_count,
+                deleted_details
+            )
+            
+            return deleted_count, deleted_details
+            
+        except Exception as e:
+            logger.error(
+                "硬删除目标失败 - IDs: %s, 错误: %s",
+                target_ids,
+                e
+            )
+            raise
+    

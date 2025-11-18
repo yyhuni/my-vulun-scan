@@ -1,4 +1,12 @@
 from django.db import models
+from django.utils import timezone
+
+
+class SoftDeleteManager(models.Manager):
+    """软删除管理器：默认只返回未删除的记录"""
+    
+    def get_queryset(self):
+        return super().get_queryset().filter(is_deleted=False)
 
 
 class Organization(models.Model):
@@ -8,6 +16,10 @@ class Organization(models.Model):
     name = models.CharField(max_length=300, unique=True, blank=True, default='', help_text='组织名称')
     description = models.CharField(max_length=1000, blank=True, default='', help_text='组织描述')
     created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
+    
+    # ==================== 软删除字段 ====================
+    is_deleted = models.BooleanField(default=False, db_index=True, help_text='是否已删除')
+    deleted_at = models.DateTimeField(null=True, blank=True, help_text='删除时间')
 
     targets = models.ManyToManyField(
         'Target',
@@ -15,6 +27,10 @@ class Organization(models.Model):
         blank=True,
         help_text='所属目标列表'
     )
+    
+    # ==================== 管理器 ====================
+    objects = SoftDeleteManager()  # 默认管理器：只返回未删除的记录
+    all_objects = models.Manager()  # 全量管理器：包括已删除的记录（用于硬删除）
 
     class Meta:
         db_table = 'organization'
@@ -23,6 +39,7 @@ class Organization(models.Model):
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['-created_at']),
+            models.Index(fields=['is_deleted', '-created_at']),  # 软删除 + 时间索引
         ]
 
     def __str__(self):
@@ -57,8 +74,14 @@ class Target(models.Model):
     # ==================== 时间戳 ====================
     created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
     last_scanned_at = models.DateTimeField(null=True, blank=True, help_text='最后扫描时间')
-
-
+    
+    # ==================== 软删除字段 ====================
+    is_deleted = models.BooleanField(default=False, db_index=True, help_text='是否已删除')
+    deleted_at = models.DateTimeField(null=True, blank=True, help_text='删除时间')
+    
+    # ==================== 管理器 ====================
+    objects = SoftDeleteManager()  # 默认管理器：只返回未删除的记录
+    all_objects = models.Manager()  # 全量管理器：包括已删除的记录（用于硬删除）
 
     class Meta:
         db_table = 'target'
@@ -68,6 +91,8 @@ class Target(models.Model):
         indexes = [
             models.Index(fields=['type']),
             models.Index(fields=['-created_at']),
+            models.Index(fields=['is_deleted', '-created_at']),  # 软删除 + 时间索引
+            models.Index(fields=['is_deleted', 'type']),  # 软删除 + 类型索引
         ]
 
     def __str__(self):
