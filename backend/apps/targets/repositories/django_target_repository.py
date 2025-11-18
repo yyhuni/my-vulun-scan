@@ -50,7 +50,7 @@ class DjangoTargetRepository:
             .values_list('id', 'name')
         )
     
-    def bulk_delete_by_ids(self, target_ids: List[int]) -> int:
+    def soft_delete_by_ids(self, target_ids: List[int]) -> int:
         """
         根据 ID 列表批量软删除目标
         

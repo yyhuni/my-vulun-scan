@@ -206,7 +206,7 @@ class TargetService:
         logger.info("软删除 %d 个目标", len(target_ids))
         
         try:
-            deleted_count = self.repo.bulk_delete_by_ids(target_ids)
+            deleted_count = self.repo.soft_delete_by_ids(target_ids)
             logger.info("✓ 软删除成功 - 数量: %d", deleted_count)
             return deleted_count
         except Exception as e:
