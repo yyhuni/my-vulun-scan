@@ -169,31 +169,25 @@ echo "  - 启动清理任务..."
 nohup $PYTHON cleanup_deployment.py > "$PID_DIR/cleanup-deployment.log" 2>&1 &
 echo $! > "$PID_DIR/cleanup-deployment.pid"
 
-# 启动删除任务 Deployments
-echo "  - 启动目标删除任务..."
+# 启动删除任务 Deployment（合并版）
+echo "  - 启动删除任务（目标 + 组织）..."
 cd "$BACKEND_DIR/apps/targets/deployments"
-nohup $PYTHON delete_targets_deployment.py > "$PID_DIR/delete-targets-deployment.log" 2>&1 &
-echo $! > "$PID_DIR/delete-targets-deployment.pid"
-
-echo "  - 启动组织删除任务..."
-nohup $PYTHON delete_organizations_deployment.py > "$PID_DIR/delete-organizations-deployment.log" 2>&1 &
-echo $! > "$PID_DIR/delete-organizations-deployment.pid"
+nohup $PYTHON delete_deployment.py > "$PID_DIR/delete-deployment.log" 2>&1 &
+echo $! > "$PID_DIR/delete-deployment.pid"
 
 sleep 2
 
 # 验证所有 Deployments 启动
 if ps -p $(cat "$PID_DIR/scan-deployment.pid") > /dev/null 2>&1 && \
    ps -p $(cat "$PID_DIR/cleanup-deployment.pid") > /dev/null 2>&1 && \
-   ps -p $(cat "$PID_DIR/delete-targets-deployment.pid") > /dev/null 2>&1 && \
-   ps -p $(cat "$PID_DIR/delete-organizations-deployment.pid") > /dev/null 2>&1; then
+   ps -p $(cat "$PID_DIR/delete-deployment.pid") > /dev/null 2>&1; then
     echo -e "${GREEN}✓ 所有 Prefect Deployments 已启动${NC}"
 else
     echo -e "${RED}✗ 部分 Deployments 启动失败${NC}"
     echo "  查看日志:"
     echo "    - tail -f $PID_DIR/scan-deployment.log"
     echo "    - tail -f $PID_DIR/cleanup-deployment.log"
-    echo "    - tail -f $PID_DIR/delete-targets-deployment.log"
-    echo "    - tail -f $PID_DIR/delete-organizations-deployment.log"
+    echo "    - tail -f $PID_DIR/delete-deployment.log"
     exit 1
 fi
 
@@ -213,16 +207,16 @@ echo ""
 echo "Prefect Deployments:"
 echo "  - 扫描任务:          运行中 (PID: $(cat $PID_DIR/scan-deployment.pid))"
 echo "  - 清理任务:          运行中 (PID: $(cat $PID_DIR/cleanup-deployment.pid))"
-echo "  - 目标删除任务:      运行中 (PID: $(cat $PID_DIR/delete-targets-deployment.pid))"
-echo "  - 组织删除任务:      运行中 (PID: $(cat $PID_DIR/delete-organizations-deployment.pid))"
+echo "  - 删除任务:          运行中 (PID: $(cat $PID_DIR/delete-deployment.pid))"
+echo "    • 目标删除:        delete-targets"
+echo "    • 组织删除:        delete-organizations"
 echo ""
 echo "日志文件:"
 echo "  - Prefect:      $PID_DIR/prefect-server.log"
 echo "  - Daphne:       $PID_DIR/daphne.log"
 echo "  - 扫描任务:     $PID_DIR/scan-deployment.log"
 echo "  - 清理任务:     $PID_DIR/cleanup-deployment.log"
-echo "  - 目标删除:     $PID_DIR/delete-targets-deployment.log"
-echo "  - 组织删除:     $PID_DIR/delete-organizations-deployment.log"
+echo "  - 删除任务:     $PID_DIR/delete-deployment.log"
 echo ""
 echo "管理命令:"
 echo "  - 查看状态: ./scripts/dev/status.sh"

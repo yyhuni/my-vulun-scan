@@ -65,8 +65,7 @@ stop_service() {
 echo "停止 Prefect Deployments..."
 stop_service "扫描任务 Deployment" "scan-deployment"
 stop_service "清理任务 Deployment" "cleanup-deployment"
-stop_service "目标删除任务 Deployment" "delete-targets-deployment"
-stop_service "组织删除任务 Deployment" "delete-organizations-deployment"
+stop_service "删除任务 Deployment" "delete-deployment"
 
 # 2. 停止 Daphne ASGI 服务器
 echo ""
