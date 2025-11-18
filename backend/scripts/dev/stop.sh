@@ -65,7 +65,7 @@ stop_service() {
 echo "停止 Prefect Deployments..."
 stop_service "扫描任务 Deployment" "scan-deployment"
 stop_service "清理任务 Deployment" "cleanup-deployment"
-stop_service "删除任务 Deployment" "delete-deployment"
+echo -e "${YELLOW}⚠ 删除任务 Deployment 未运行${NC}"
 
 # 2. 停止 Daphne ASGI 服务器
 echo ""
@@ -83,11 +83,7 @@ fi
 # 3. 停止 Prefect Worker
 echo ""
 echo "停止 Prefect Worker..."
-if pkill -f "prefect worker" 2>/dev/null; then
-    echo -e "${GREEN}✓ Prefect Worker 已停止${NC}"
-else
-    echo -e "${YELLOW}⚠ Prefect Worker 未运行${NC}"
-fi
+stop_service "Prefect Worker" "prefect-worker"
 
 # 4. 停止 Prefect Server
 echo ""
