@@ -81,7 +81,7 @@ case $choice in
         echo "开始测试批次大小..."
         cd "$PROJECT_DIR"
         source "$PROJECT_DIR/../.venv/bin/activate"
-        python manage.py generate_test_data --target xinye.com --count 10000 --test-batch-sizes
+        python manage.py generate_test_data --target test.com --count 10000 --test-batch-sizes
         ;;
     2)
         echo ""
@@ -91,7 +91,7 @@ case $choice in
         cd "$PROJECT_DIR"
         source "$PROJECT_DIR/../.venv/bin/activate"
         python manage.py generate_test_data \
-            --target xinye.com \
+            --target test.com \
             --count 100000 \
             --batch-size "$batch_size" \
             --benchmark
@@ -108,7 +108,7 @@ case $choice in
             cd "$PROJECT_DIR"
             source "$PROJECT_DIR/../.venv/bin/activate"
             python manage.py generate_test_data \
-                --target xinye.com \
+                --target test.com \
                 --count 1000000 \
                 --batch-size "$batch_size" \
                 --benchmark
@@ -165,7 +165,7 @@ case $choice in
         echo "步骤 2：测试批次大小"
         cd "$PROJECT_DIR"
         source "$PROJECT_DIR/../.venv/bin/activate"
-        python manage.py generate_test_data --target xinye.com --count 10000 --test-batch-sizes | tee "$PROJECT_DIR/logs/batch_size_test.txt"
+        python manage.py generate_test_data --target test.com --count 10000 --test-batch-sizes | tee "$PROJECT_DIR/logs/batch_size_test.txt"
         echo ""
         
         # 自动提取最优批次大小
@@ -175,7 +175,7 @@ case $choice in
         
         echo "步骤 3：生成 10 万条数据"
         python manage.py generate_test_data \
-            --target xinye.com \
+            --target test.com \
             --count 100000 \
             --batch-size "$optimal_batch" \
             --benchmark | tee "$PROJECT_DIR/logs/test_results.txt"

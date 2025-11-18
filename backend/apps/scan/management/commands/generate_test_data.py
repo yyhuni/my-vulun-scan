@@ -86,24 +86,20 @@ class Command(BaseCommand):
             self.stdout.write(self.style.ERROR(f'✗ 目标不存在: {target_name}'))
             return
 
-        # 2. 获取或创建扫描任务
-        scan = Scan.objects.filter(target=target).first()
-        if not scan:
-            from apps.engine.models import ScanEngine
-            engine = ScanEngine.objects.first()
-            if not engine:
-                self.stdout.write(self.style.ERROR('✗ 没有可用的扫描引擎'))
-                return
-            
-            scan = Scan.objects.create(
-                target=target,
-                engine=engine,
-                status='completed',
-                results_dir=f'/tmp/test_{target_name}'
-            )
-            self.stdout.write(self.style.SUCCESS(f'✓ 创建测试扫描任务 (ID: {scan.id})'))
-        else:
-            self.stdout.write(self.style.SUCCESS(f'✓ 使用现有扫描任务 (ID: {scan.id})'))
+        # 2. 创建新的测试扫描任务
+        from apps.engine.models import ScanEngine
+        engine = ScanEngine.objects.first()
+        if not engine:
+            self.stdout.write(self.style.ERROR('✗ 没有可用的扫描引擎'))
+            return
+        
+        scan = Scan.objects.create(
+            target=target,
+            engine=engine,
+            status='completed',
+            results_dir=f'/tmp/test_{target_name}_{int(time.time())}'
+        )
+        self.stdout.write(self.style.SUCCESS(f'✓ 创建新测试扫描任务 (ID: {scan.id})'))
 
         # 3. 生成子域名
         self.stdout.write(f'\n[1/5] 生成 {count:,} 个子域名...')
