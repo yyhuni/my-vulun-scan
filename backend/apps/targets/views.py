@@ -90,9 +90,11 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         
         # 使用事务保护
         with transaction.atomic():
-            # 验证目标是否存在且属于该组织
-            existing_targets = organization.targets.filter(id__in=target_ids)
-            existing_count = existing_targets.count()
+            # 验证目标是否存在且属于该组织（只查询 ID，避免加载完整对象）
+            existing_target_ids = list(
+                organization.targets.filter(id__in=target_ids).values_list('id', flat=True)
+            )
+            existing_count = len(existing_target_ids)
             
             if existing_count == 0:
                 return Response(
@@ -100,8 +102,8 @@ class OrganizationViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            # 解除关联
-            organization.targets.remove(*existing_targets)
+            # 批量解除关联（直接使用 ID，避免查询对象）
+            organization.targets.remove(*existing_target_ids)
         
         return Response({
             'unlinked_count': existing_count,

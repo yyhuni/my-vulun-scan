@@ -147,7 +147,6 @@ class TargetService:
             - 阶段 1：软删除（立即），用户立即看不到数据
             - 阶段 2：硬删除（后台），真正删除数据和关联
         """
-        import threading
         
         # 1. 获取目标信息
         existing_ids, target_names = self.get_targets_info(target_ids)
@@ -156,7 +155,7 @@ class TargetService:
             raise ValueError("未找到要删除的目标")
         
         # 2. 软删除
-        soft_count, _ = self.soft_delete_targets(existing_ids)
+        soft_count = self.soft_delete_targets(existing_ids)
         logger.info(f"✓ 软删除完成: {soft_count} 个目标")
         
         # 3. 使用 Prefect Deployment 异步提交删除任务
@@ -190,7 +189,7 @@ class TargetService:
             'hard_delete_scheduled': True
         }
     
-    def soft_delete_targets(self, target_ids: List[int]) -> Tuple[int, List[int]]:
+    def soft_delete_targets(self, target_ids: List[int]) -> int:
         """
         软删除目标
         
@@ -198,15 +197,18 @@ class TargetService:
             target_ids: 目标 ID 列表
         
         Returns:
-            (软删除的记录数, 成功的ID列表)
+            软删除的记录数
+        
+        Note:
+            - 返回值是实际更新的记录数，不是传入的 ID 数量
+            - 如果某些 ID 不存在，返回值会小于传入的 ID 数量
         """
         logger.info("软删除 %d 个目标", len(target_ids))
         
         try:
             deleted_count = self.repo.bulk_delete_by_ids(target_ids)
-            successful_ids = target_ids[:deleted_count] if deleted_count > 0 else []
             logger.info("✓ 软删除成功 - 数量: %d", deleted_count)
-            return deleted_count, successful_ids
+            return deleted_count
         except Exception as e:
             logger.error("软删除失败: %s", e)
             raise
