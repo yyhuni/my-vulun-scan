@@ -65,15 +65,16 @@ echo ""
 # 菜单选择
 echo "请选择操作："
 echo "  1) 测试批次大小（推荐先执行）"
-echo "  2) 生成 10 万条测试数据"
-echo "  3) 生成 100 万条测试数据"
-echo "  4) 启动实时监控（独立运行）"
-echo "  5) 查看测试前基准数据"
-echo "  6) 查看测试后统计数据"
-echo "  7) 完整测试流程（自动化）"
+echo "  2) 生成 1 万条测试数据"
+echo "  3) 生成 10 万条测试数据"
+echo "  4) 生成 100 万条测试数据"
+echo "  5) 启动实时监控（独立运行）"
+echo "  6) 查看测试前基准数据"
+echo "  7) 查看测试后统计数据"
+echo "  8) 完整测试流程（自动化）"
 echo "  0) 退出"
 echo ""
-read -p "请输入选项 (0-7): " choice
+read -p "请输入选项 (0-8): " choice
 
 case $choice in
     1)
@@ -81,25 +82,128 @@ case $choice in
         echo "开始测试批次大小..."
         cd "$PROJECT_DIR"
         source "$PROJECT_DIR/../.venv/bin/activate"
-        python manage.py generate_test_data --target test.com --count 10000 --test-batch-sizes
+        
+        # 自动创建测试目标
+        echo "创建测试目标..."
+        python -c "
+import os
+import django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+django.setup()
+from apps.targets.models import Target, Organization
+
+# 创建默认组织
+org, _ = Organization.objects.get_or_create(
+    name='测试组织',
+    defaults={'description': '性能测试专用组织'}
+)
+
+# 创建测试目标
+for i in range(1, 4):
+    target_name = f'test{i}.com'
+    target, created = Target.objects.get_or_create(
+        name=target_name
+    )
+    if created:
+        # 将目标添加到组织
+        org.targets.add(target)
+        print(f'✓ 创建目标: {target_name}')
+    else:
+        print(f'✓ 目标已存在: {target_name}')
+"
+        echo ""
+        
+        python manage.py generate_test_data --target test1.com --count 10000 --test-batch-sizes
         ;;
     2)
         echo ""
-        read -p "请输入批次大小 (推荐 1000-5000): " batch_size
-        echo ""
-        echo "开始生成 10 万条数据..."
+        echo "使用默认批次大小: 5000"
+        echo "开始生成 1 万条数据..."
         cd "$PROJECT_DIR"
         source "$PROJECT_DIR/../.venv/bin/activate"
+        
+        # 自动创建测试目标
+        echo "创建测试目标..."
+        python -c "
+import os
+import django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+django.setup()
+from apps.targets.models import Target, Organization
+
+# 创建默认组织
+org, _ = Organization.objects.get_or_create(
+    name='测试组织',
+    defaults={'description': '性能测试专用组织'}
+)
+
+# 创建测试目标
+for i in range(1, 4):
+    target_name = f'test{i}.com'
+    target, created = Target.objects.get_or_create(
+        name=target_name
+    )
+    if created:
+        # 将目标添加到组织
+        org.targets.add(target)
+        print(f'✓ 创建目标: {target_name}')
+    else:
+        print(f'✓ 目标已存在: {target_name}')
+"
+        echo ""
+        
         python manage.py generate_test_data \
-            --target test.com \
-            --count 100000 \
-            --batch-size "$batch_size" \
+            --target test1.com \
+            --count 10000 \
+            --batch-size 5000 \
             --benchmark
         ;;
     3)
         echo ""
-        read -p "请输入批次大小 (推荐 2000-5000): " batch_size
+        echo "使用默认批次大小: 5000"
+        echo "开始生成 10 万条数据..."
+        cd "$PROJECT_DIR"
+        source "$PROJECT_DIR/../.venv/bin/activate"
+        
+        # 自动创建测试目标
+        echo "创建测试目标..."
+        python -c "
+import os
+import django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+django.setup()
+from apps.targets.models import Target, Organization
+
+# 创建默认组织
+org, _ = Organization.objects.get_or_create(
+    name='测试组织',
+    defaults={'description': '性能测试专用组织'}
+)
+
+# 创建测试目标
+for i in range(1, 4):
+    target_name = f'test{i}.com'
+    target, created = Target.objects.get_or_create(
+        name=target_name
+    )
+    if created:
+        # 将目标添加到组织
+        org.targets.add(target)
+        print(f'✓ 创建目标: {target_name}')
+    else:
+        print(f'✓ 目标已存在: {target_name}')
+"
         echo ""
+        
+        python manage.py generate_test_data \
+            --target test2.com \
+            --count 100000 \
+            --batch-size 5000 \
+            --benchmark
+        ;;
+    4)
+        echo ""
+        echo "使用默认批次大小: 5000"
         echo "⚠️  警告：这将生成 100 万条数据，可能需要 2-4 小时"
         read -p "确认继续? (y/N): " confirm
         if [[ $confirm == [yY] ]]; then
@@ -107,14 +211,45 @@ case $choice in
             echo "开始生成 100 万条数据..."
             cd "$PROJECT_DIR"
             source "$PROJECT_DIR/../.venv/bin/activate"
+            
+            # 自动创建测试目标
+            echo "创建测试目标..."
+            python -c "
+import os
+import django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+django.setup()
+from apps.targets.models import Target, Organization
+
+# 创建默认组织
+org, _ = Organization.objects.get_or_create(
+    name='测试组织',
+    defaults={'description': '性能测试专用组织'}
+)
+
+# 创建测试目标
+for i in range(1, 4):
+    target_name = f'test{i}.com'
+    target, created = Target.objects.get_or_create(
+        name=target_name
+    )
+    if created:
+        # 将目标添加到组织
+        org.targets.add(target)
+        print(f'✓ 创建目标: {target_name}')
+    else:
+        print(f'✓ 目标已存在: {target_name}')
+"
+            echo ""
+            
             python manage.py generate_test_data \
-                --target test.com \
+                --target test3.com \
                 --count 1000000 \
-                --batch-size "$batch_size" \
+                --batch-size 5000 \
                 --benchmark
         fi
         ;;
-    4)
+    5)
         echo ""
         read -p "刷新间隔（秒，推荐 2-5）: " interval
         interval=${interval:-2}
@@ -124,7 +259,7 @@ case $choice in
         sleep 2
         "$SCRIPT_DIR/monitor_pg_performance.sh" xingrin "$interval"
         ;;
-    5)
+    6)
         echo ""
         echo "记录测试前基准数据..."
         mkdir -p "$PROJECT_DIR/logs"
@@ -136,7 +271,7 @@ case $choice in
             less "$PROJECT_DIR/logs/stats_before.txt"
         fi
         ;;
-    6)
+    7)
         echo ""
         echo "记录测试后统计数据..."
         mkdir -p "$PROJECT_DIR/logs"
@@ -150,44 +285,75 @@ case $choice in
             diff "$PROJECT_DIR/logs/stats_before.txt" "$PROJECT_DIR/logs/stats_after.txt" || true
         fi
         ;;
-    7)
+    8)
         echo ""
         echo "========================================"
         echo "  完整自动化测试流程"
         echo "========================================"
         echo ""
-        echo "步骤 1：记录测试前基准数据"
+        echo "步骤 1：创建测试目标"
+        cd "$PROJECT_DIR"
+        source "$PROJECT_DIR/../.venv/bin/activate"
+        python -c "
+import os
+import django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+django.setup()
+from apps.targets.models import Target, Organization
+
+# 创建默认组织
+org, _ = Organization.objects.get_or_create(
+    name='测试组织',
+    defaults={'description': '性能测试专用组织'}
+)
+
+# 创建测试目标
+for i in range(1, 4):
+    target_name = f'test{i}.com'
+    target, created = Target.objects.get_or_create(
+        name=target_name
+    )
+    if created:
+        # 将目标添加到组织
+        org.targets.add(target)
+        print(f'✓ 创建目标: {target_name}')
+    else:
+        print(f'✓ 目标已存在: {target_name}')
+"
+        echo "✓ 完成"
+        echo ""
+        
+        echo "步骤 2：记录测试前基准数据"
         mkdir -p "$PROJECT_DIR/logs"
         psql -d "$PGDATABASE" -f "$SCRIPT_DIR/pg_stats_before_test.sql" > "$PROJECT_DIR/logs/stats_before.txt" 2>&1
         echo "✓ 完成"
         echo ""
         
-        echo "步骤 2：测试批次大小"
-        cd "$PROJECT_DIR"
-        source "$PROJECT_DIR/../.venv/bin/activate"
-        python manage.py generate_test_data --target test.com --count 10000 --test-batch-sizes | tee "$PROJECT_DIR/logs/batch_size_test.txt"
+        echo "步骤 3：测试批次大小"
+        python manage.py generate_test_data --target test1.com --count 10000 --test-batch-sizes | tee "$PROJECT_DIR/logs/batch_size_test.txt"
         echo ""
         
-        # 自动提取最优批次大小
-        optimal_batch=$(grep "推荐批次大小:" "$PROJECT_DIR/logs/batch_size_test.txt" | awk '{print $2}')
+        # 自动提取最优批次大小，如果没有找到则使用默认值5000
+        optimal_batch=$(grep "推荐批次大小:" "$PROJECT_DIR/logs/batch_size_test.txt" | awk '{print $2}' || echo "5000")
+        optimal_batch=${optimal_batch:-5000}
         echo "✓ 自动选择最优批次: $optimal_batch"
         echo ""
         
-        echo "步骤 3：生成 10 万条数据"
+        echo "步骤 4：生成 10 万条数据"
         python manage.py generate_test_data \
-            --target test.com \
+            --target test3.com \
             --count 100000 \
             --batch-size "$optimal_batch" \
             --benchmark | tee "$PROJECT_DIR/logs/test_results.txt"
         echo ""
         
-        echo "步骤 4：记录测试后统计"
+        echo "步骤 5：记录测试后统计"
         psql -d "$PGDATABASE" -f "$SCRIPT_DIR/pg_stats_after_test.sql" > "$PROJECT_DIR/logs/stats_after.txt" 2>&1
         echo "✓ 完成"
         echo ""
         
         # 生成性能报告
-        echo "步骤 5：生成性能报告"
+        echo "步骤 6：生成性能报告"
         report_file="$PROJECT_DIR/logs/performance_report.txt"
         
         echo "========================================" > "$report_file"
