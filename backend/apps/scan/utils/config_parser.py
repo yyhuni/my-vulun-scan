@@ -141,9 +141,9 @@ def parse_enabled_tools(
                 
                 # 调用回调函数计算实际的 timeout
                 try:
-                    # 使用 kwargs 调用计算函数
+                    # 使用 kwargs 调用计算函数，并传入工具配置
                     kwargs = timeout_calculator_kwargs or {}
-                    calculated_timeout = timeout_calculator(**kwargs)
+                    calculated_timeout = timeout_calculator(tool_config=config, **kwargs)
                     
                     if not isinstance(calculated_timeout, int) or calculated_timeout <= 0:
                         raise ValueError(

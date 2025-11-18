@@ -32,47 +32,127 @@ from apps.scan.utils import config_parser, build_scan_command
 logger = logging.getLogger(__name__)
 
 
-def calculate_timeout_by_line_count(file_path: str, base_per_time: int = 120) -> int:
+def calculate_port_scan_timeout(
+    tool_config: dict,
+    file_path: str,
+    base_per_pair: float = 0.02
+) -> int:
     """
-    根据文件行数计算 timeout
+    根据目标数量和端口数量计算超时时间
     
-    使用 wc -l 统计文件行数，根据行数和每行基础时间计算 timeout
+    计算公式：超时时间 = 目标数 × 端口数 × base_per_pair
+    超时范围：60秒 ~ 2天（172800秒）
     
     Args:
-        file_path: 要统计行数的文件路径
-        base_per_time: 每行的基础时间（秒），默认120秒（端口扫描较慢）
+        tool_config: 工具配置字典，包含端口配置（ports, top-ports等）
+        file_path: 目标文件路径（域名/IP列表）
+        base_per_pair: 每个"端口-目标对"的基础时间（秒），默认 0.02秒
     
     Returns:
-        int: 计算出的超时时间（秒）
+        int: 计算出的超时时间（秒），范围：60 ~ 172800
     
     Example:
-        timeout = calculate_timeout_by_line_count('/path/to/domains.txt', base_per_time=120)
+        # 100个目标 × 100个端口 × 0.02秒 = 200秒
+        # 10个目标 × 1000个端口 × 0.02秒 = 200秒
+        timeout = calculate_port_scan_timeout(
+            tool_config={'top-ports': 100},
+            file_path='/path/to/domains.txt'
+        )
     """
     try:
-        # 使用 wc -l 快速统计行数
+        # 1. 统计目标数量
         result = subprocess.run(
             ['wc', '-l', file_path],
             capture_output=True,
             text=True,
             check=True
         )
-        # wc -l 输出格式：行数 + 空格 + 文件名
-        line_count = int(result.stdout.strip().split()[0])
+        target_count = int(result.stdout.strip().split()[0])
         
-        # 计算 timeout：行数 × 每行基础时间
-        timeout = line_count * base_per_time
+        # 2. 解析端口数量
+        port_count = _parse_port_count(tool_config)
+        
+        # 3. 计算超时时间
+        # 总工作量 = 目标数 × 端口数
+        total_work = target_count * port_count
+        timeout = int(total_work * base_per_pair)
+        
+        # 4. 设置合理的上下限
+        min_timeout = 60       # 最小 60 秒
+        max_timeout = 172800   # 最大 2 天（2 × 24 × 3600）
+        timeout = max(min_timeout, min(timeout, max_timeout))
         
         logger.info(
-            f"timeout 自动计算: 文件={file_path}, "
-            f"行数={line_count}, 每行时间={base_per_time}秒, timeout={timeout}秒"
+            f"计算端口扫描 timeout - "
+            f"目标数: {target_count}, "
+            f"端口数: {port_count}, "
+            f"总工作量: {total_work}, "
+            f"超时: {timeout}秒"
         )
-        
         return timeout
         
     except Exception as e:
-        # 如果 wc -l 失败，使用默认值
-        logger.warning(f"wc -l 计算行数失败: {e}，使用默认 timeout: 600秒")
+        logger.warning(f"计算 timeout 失败: {e}，使用默认值 600秒")
         return 600
+
+
+def _parse_port_count(tool_config: dict) -> int:
+    """
+    从工具配置中解析端口数量
+    
+    优先级：
+    1. top-ports: N  → 返回 N
+    2. ports: "80,443,8080"  → 返回逗号分隔的数量
+    3. ports: "1-1000"  → 返回范围的大小
+    4. ports: "1-65535"  → 返回 65535
+    5. 默认  → 返回 100（naabu 默认扫描 top 100）
+    
+    Args:
+        tool_config: 工具配置字典
+    
+    Returns:
+        int: 端口数量
+    """
+    # 1. 检查 top-ports 配置
+    if 'top-ports' in tool_config:
+        top_ports = tool_config['top-ports']
+        if isinstance(top_ports, int) and top_ports > 0:
+            return top_ports
+        logger.warning(f"top-ports 配置无效: {top_ports}，使用默认值")
+    
+    # 2. 检查 ports 配置
+    if 'ports' in tool_config:
+        ports_str = str(tool_config['ports']).strip()
+        
+        # 2.1 逗号分隔的端口列表：80,443,8080
+        if ',' in ports_str:
+            port_list = [p.strip() for p in ports_str.split(',') if p.strip()]
+            return len(port_list)
+        
+        # 2.2 端口范围：1-1000
+        if '-' in ports_str:
+            try:
+                start, end = ports_str.split('-', 1)
+                start_port = int(start.strip())
+                end_port = int(end.strip())
+                
+                if 1 <= start_port <= end_port <= 65535:
+                    return end_port - start_port + 1
+                logger.warning(f"端口范围无效: {ports_str}，使用默认值")
+            except ValueError:
+                logger.warning(f"端口范围解析失败: {ports_str}，使用默认值")
+        
+        # 2.3 单个端口
+        try:
+            port = int(ports_str)
+            if 1 <= port <= 65535:
+                return 1
+        except ValueError:
+            logger.warning(f"端口配置解析失败: {ports_str}，使用默认值")
+    
+    # 3. 默认值：naabu 默认扫描 top 100 端口
+    return 100
+
 
 def _setup_port_scan_directory(scan_workspace_dir: str) -> Path:
     """
@@ -363,13 +443,15 @@ def port_scan_flow(
         logger.info("Step 2: 解析配置，获取启用的工具")
         
         # 解析配置，传入 timeout 计算函数和参数
+        # timeout 会根据 目标数 × 端口数 自动计算
         enabled_tools = config_parser.parse_enabled_tools(
             scan_type='port_scan',
             engine_config=engine_config,
-            timeout_calculator=calculate_timeout_by_line_count,
+            timeout_calculator=calculate_port_scan_timeout,
             timeout_calculator_kwargs={
                 'file_path': domains_file,
-                'base_per_time': 60  # 每个域名 60秒
+                # 可选：调整基础速率（默认 0.02秒/端口-目标对）
+                # 'base_per_pair': 0.02
             }
         )
         
