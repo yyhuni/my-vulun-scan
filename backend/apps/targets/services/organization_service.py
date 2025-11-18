@@ -20,6 +20,37 @@ class OrganizationService:
         """初始化服务，注入 Repository 依赖"""
         self.repo = DjangoOrganizationRepository()
     
+    # ==================== Prefect 任务提交 ====================
+    
+    async def _submit_delete_flow(self, deployment_name: str, parameters: Dict) -> str:
+        """
+        使用 Prefect Client API 提交删除 Flow Run（异步版本）
+        
+        Args:
+            deployment_name: Deployment 完整名称（格式: flow_name/deployment_name）
+            parameters: Flow 参数
+        
+        Returns:
+            Flow Run ID
+        
+        Note:
+            - 这是异步函数，需要在异步上下文中调用
+            - 在同步上下文中使用 async_to_sync 包装
+        """
+        from prefect import get_client
+        
+        async with get_client() as client:
+            # 1. 读取 Deployment
+            deployment = await client.read_deployment_by_name(deployment_name)
+            
+            # 2. 创建 Flow Run
+            flow_run = await client.create_flow_run_from_deployment(
+                deployment.id,
+                parameters=parameters
+            )
+            
+            return str(flow_run.id)
+    
     # ==================== 查询操作 ====================
     
     def get_organization(self, organization_id: int) -> Organization | None:
@@ -98,8 +129,7 @@ class OrganizationService:
             - 阶段 1：软删除（立即），用户立即看不到数据
             - 阶段 2：硬删除（后台），真正删除数据和中间表
         """
-        import asyncio
-        from asgiref.sync import sync_to_async
+        import threading
         
         # 1. 获取组织信息
         existing_ids, organization_names = self.get_organizations_info(organization_ids)
@@ -111,17 +141,30 @@ class OrganizationService:
         soft_count, _ = self.soft_delete_organizations(existing_ids)
         logger.info(f"✓ 软删除完成: {soft_count} 个组织")
         
-        # 3. 后台硬删除
-        async def _bg_hard_delete():
-            try:
-                count, _ = await sync_to_async(
-                    self.hard_delete_organizations
-                )(existing_ids)
-                logger.info(f"✓ 硬删除完成: {count} 条记录，组织: {', '.join(organization_names)}")
-            except Exception as e:
-                logger.error(f"❌ 硬删除失败 - {', '.join(organization_names)}: {e}")
+        # 3. 使用 Prefect Deployment 异步提交删除任务
+        logger.info(f"🔵 提交 Prefect 删除任务 - 组织: {', '.join(organization_names)}")
         
-        asyncio.create_task(_bg_hard_delete())
+        try:
+            from asgiref.sync import async_to_sync
+            
+            # 准备 Flow 参数
+            flow_kwargs = {
+                'organization_ids': existing_ids,
+                'organization_names': organization_names
+            }
+            
+            # 使用 Prefect Client API 异步提交任务
+            flow_run_id = async_to_sync(self._submit_delete_flow)(
+                deployment_name="delete-organizations/delete-organizations",
+                parameters=flow_kwargs
+            )
+            
+            logger.info(f"✓ Prefect 删除任务已提交 - Flow Run ID: {flow_run_id}")
+            
+        except Exception as e:
+            logger.error(f"❌ 提交 Prefect 任务失败: {e}", exc_info=True)
+            # 如果 Prefect 提交失败，记录错误但不阻止软删除完成
+            logger.warning("硬删除可能未成功提交，请检查 Prefect 服务状态")
         
         return {
             'soft_deleted_count': soft_count,
@@ -164,7 +207,6 @@ class OrganizationService:
             - 从数据库中永久删除
             - Django CASCADE 自动删除 organization_targets 中间表记录
             - 不会删除关联的 Target（多对多）
-            - ⚠️ 不可恢复
         """
         logger.info("硬删除 %d 个组织", len(organization_ids))
         

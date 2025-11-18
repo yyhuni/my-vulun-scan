@@ -2,7 +2,6 @@
 Django==5.2.7
 djangorestframework==3.15.2
 djangorestframework-camel-case==1.4.2
-adrf==0.1.6  # Async Django REST Framework
 psycopg2-binary==2.9.10
 
 # API 文档

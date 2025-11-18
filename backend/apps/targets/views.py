@@ -1,10 +1,7 @@
 import logging
-import asyncio
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from adrf.viewsets import ViewSet as AsyncViewSet
-from asgiref.sync import sync_to_async
 from django.db import transaction
 from django.db.models import Count
 from .models import Organization, Target
@@ -19,8 +16,8 @@ from apps.asset.models import Subdomain
 logger = logging.getLogger(__name__)
 
 
-class OrganizationViewSet(AsyncViewSet, viewsets.ModelViewSet):
-    """组织管理 - 增删改查（ASGI 异步）"""
+class OrganizationViewSet(viewsets.ModelViewSet):
+    """组织管理 - 增删改查"""
     serializer_class = OrganizationSerializer
     pagination_class = BasePagination
     
@@ -111,9 +108,9 @@ class OrganizationViewSet(AsyncViewSet, viewsets.ModelViewSet):
             'message': f'成功解除 {existing_count} 个目标的关联'
         })
     
-    async def destroy(self, request, *args, **kwargs):
+    def destroy(self, request, *args, **kwargs):
         """
-        ASGI 异步删除单个组织（复用批量删除逻辑）
+        删除单个组织（复用批量删除逻辑）
         
         DELETE /api/organizations/{id}/
         
@@ -126,14 +123,14 @@ class OrganizationViewSet(AsyncViewSet, viewsets.ModelViewSet):
         - 404 Not Found: 组织不存在
         
         注意:
-        - 两阶段删除：软删除（立即）+ 硬删除（后台）
+        - 两阶段删除：软删除（立即）+ 硬删除（后台 Prefect）
         - 硬删除会清理 organization_targets 中间表
         - 不会删除关联的 Target（多对多关系）
         """
         try:
-            organization = await sync_to_async(self.get_object)()
+            organization = self.get_object()
             request.data = {'ids': [organization.id]}
-            response = await self.bulk_delete(request)
+            response = self.bulk_delete(request)
             
             if response.status_code == 200:
                 response.data.update({
@@ -148,9 +145,9 @@ class OrganizationViewSet(AsyncViewSet, viewsets.ModelViewSet):
             return Response({'error': '组织不存在'}, status=404)
     
     @action(detail=False, methods=['post', 'delete'], url_path='bulk-delete')
-    async def bulk_delete(self, request):
+    def bulk_delete(self, request):
         """
-        ASGI 异步批量删除组织（两阶段删除）
+        批量删除组织（两阶段删除）
         
         POST/DELETE /api/organizations/bulk-delete/
         
@@ -161,11 +158,11 @@ class OrganizationViewSet(AsyncViewSet, viewsets.ModelViewSet):
         
         功能:
         - 阶段 1：立即软删除（用户立即看不到数据）
-        - 阶段 2：后台硬删除（真正删除数据和中间表）
-        - 立即返回 200 OK，硬删除在后台执行
+        - 阶段 2：Prefect 硬删除（真正删除数据和中间表）
+        - 立即返回 200 OK，硬删除提交到 Prefect
         
         返回:
-        - 200 OK: 软删除完成，硬删除已在后台启动
+        - 200 OK: 软删除完成，硬删除已提交到 Prefect
         - 400 Bad Request: 参数错误
         - 404 Not Found: 未找到要删除的组织
         
@@ -173,6 +170,7 @@ class OrganizationViewSet(AsyncViewSet, viewsets.ModelViewSet):
         - 软删除：用户立即看不到
         - 硬删除：清理数据库和 organization_targets 中间表
         - 不会删除关联的 Target（多对多关系）
+        - 使用 Prefect Flow 管理删除流程，可在 Prefect UI 查看进度
         """
         ids = request.data.get('ids', [])
         
@@ -185,10 +183,8 @@ class OrganizationViewSet(AsyncViewSet, viewsets.ModelViewSet):
             return Response({'error': 'ids 数组中的所有元素必须是整数'}, status=400)
         
         try:
-            # 调用 Service 层的业务方法
-            result = await sync_to_async(
-                self.org_service.delete_organizations_two_phase
-            )(ids)
+            # 调用 Service 层的业务方法（软删除 + 提交 Prefect Flow）
+            result = self.org_service.delete_organizations_two_phase(ids)
             
             return Response({
                 'message': f"已删除 {result['soft_deleted_count']} 个组织",
@@ -196,7 +192,7 @@ class OrganizationViewSet(AsyncViewSet, viewsets.ModelViewSet):
                 'deletedOrganizations': result['organization_names'],
                 'detail': {
                     'phase1': '软删除完成，用户已看不到数据',
-                    'phase2': '硬删除已在后台执行，将永久清理数据和中间表'
+                    'phase2': '硬删除已提交到 Prefect，将在后台执行'
                 }
             }, status=200)
         
@@ -207,9 +203,9 @@ class OrganizationViewSet(AsyncViewSet, viewsets.ModelViewSet):
             return Response({'error': '服务器错误，请稍后重试'}, status=500)
 
 
-class TargetViewSet(AsyncViewSet, viewsets.ModelViewSet):
+class TargetViewSet(viewsets.ModelViewSet):
     """
-    目标管理 - 增删改查（ASGI 异步）
+    目标管理 - 增删改查
     
     性能优化说明:
     1. 使用 prefetch_related('organizations') 预加载关联的组织
@@ -257,9 +253,9 @@ class TargetViewSet(AsyncViewSet, viewsets.ModelViewSet):
             return TargetDetailSerializer
         return TargetSerializer
     
-    async def destroy(self, request, *args, **kwargs):
+    def destroy(self, request, *args, **kwargs):
         """
-        ASGI 异步删除单个目标（复用批量删除逻辑）
+        删除单个目标（复用批量删除逻辑）
         
         DELETE /api/targets/{id}/
         
@@ -272,13 +268,13 @@ class TargetViewSet(AsyncViewSet, viewsets.ModelViewSet):
         - 404 Not Found: 目标不存在
         
         注意:
-        - 两阶段删除：软删除（立即）+ 硬删除（后台）
-        - 硬删除会使用 Django CASCADE 删除所有关联数据
+        - 两阶段删除：软删除（立即）+ 硬删除（后台 Prefect）
+        - 硬删除会使用分批删除策略处理大数据量
         """
         try:
-            target = await sync_to_async(self.get_object)()
+            target = self.get_object()
             request.data = {'ids': [target.id]}
-            response = await self.bulk_delete(request)
+            response = self.bulk_delete(request)
             
             if response.status_code == 200:
                 response.data.update({
@@ -293,7 +289,7 @@ class TargetViewSet(AsyncViewSet, viewsets.ModelViewSet):
             return Response({'error': '目标不存在'}, status=404)
     
     @action(detail=False, methods=['post', 'delete'], url_path='bulk-delete')
-    async def bulk_delete(self, request):
+    def bulk_delete(self, request):
         """
         批量删除目标（两阶段删除策略）
         
@@ -306,23 +302,22 @@ class TargetViewSet(AsyncViewSet, viewsets.ModelViewSet):
         
         两阶段删除策略：
         1. 阶段 1（立即）：软删除目标，用户立即看不到数据
-        2. 阶段 2（异步）：后台硬删除，真正清理数据
+        2. 阶段 2（后台）：Prefect Flow 硬删除，真正清理数据
         
         功能:
         - 立即软删除：用户立即看不到数据（响应快）
-        - 异步硬删除：后台执行，使用 Django CASCADE 自动删除关联数据
-        - 自动重试：Repository 层自动重试数据库连接失败
+        - Prefect 硬删除：后台执行，使用分批删除策略处理大数据量
+        - 自动重试：Prefect Task 自动重试失败的删除操作
         
         返回:
-        - 200 OK: 软删除成功，硬删除已在后台执行
+        - 200 OK: 软删除成功，硬删除已提交到 Prefect
         - 400 Bad Request: 参数错误
         - 404 Not Found: 未找到目标
         
         注意:
         - 软删除：数据可恢复（is_deleted=True）
         - 硬删除：数据不可恢复（真正从数据库删除）
-        - 使用 Django CASCADE 自动删除所有关联数据
-        - 使用 ASGI 异步：轻量、快速、无需额外服务
+        - 使用 Prefect Flow 管理删除流程，可在 Prefect UI 查看进度
         """
         ids = request.data.get('ids', [])
         
@@ -335,10 +330,8 @@ class TargetViewSet(AsyncViewSet, viewsets.ModelViewSet):
             return Response({'error': 'ids 数组中的所有元素必须是整数'}, status=400)
         
         try:
-            # 调用 Service 层的业务方法
-            result = await sync_to_async(
-                self.target_service.delete_targets_two_phase
-            )(ids)
+            # 调用 Service 层的业务方法（软删除 + 提交 Prefect Flow）
+            result = self.target_service.delete_targets_two_phase(ids)
             
             return Response({
                 'message': f"已删除 {result['soft_deleted_count']} 个目标",
@@ -346,7 +339,7 @@ class TargetViewSet(AsyncViewSet, viewsets.ModelViewSet):
                 'deletedTargets': result['target_names'],
                 'detail': {
                     'phase1': '软删除完成，用户已看不到数据',
-                    'phase2': '硬删除已在后台执行，将永久清理数据'
+                    'phase2': '硬删除已提交到 Prefect，将在后台执行'
                 }
             }, status=200)
         

@@ -7,7 +7,6 @@ trigger: always_on
 3.前端所有路由加上末尾斜杠，以匹配 django 的 DRF 规则
 4.网页测试可以用 curl
 8.所有前端 api 接口都应该写在@services 中，所有 type 类型都应该写在@types 中
-
 10.前端的加载等逻辑用 React Query来实现，自动管理
 17.所有业务操作的 toast 都放在 hook 中
 19.目前后端项目，去不用做安全漏洞方面的相关的代码
