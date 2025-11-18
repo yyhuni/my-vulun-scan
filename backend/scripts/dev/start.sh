@@ -149,7 +149,6 @@ fi
 # 7. 设置运行模式
 echo ""
 echo "使用本地开发模式（修改代码立即生效）"
-export WORKER_MODE=local
 echo -e "${GREEN}✓ 本地开发模式已启用${NC}"
 
 # 8. 启动 Prefect Deployments
