@@ -48,9 +48,14 @@ export interface TargetDetail extends Target {
  */
 export interface TargetsResponse {
   results: Target[]
-  count: number
-  next: string | null
-  previous: string | null
+  total: number        // 后端返回 total，不是 count
+  page: number         // 当前页码
+  pageSize: number     // 每页大小
+  totalPages: number   // 总页数
+  // 兼容字段（为了向后兼容）
+  count?: number       // 可选，等同于 total
+  next?: string | null
+  previous?: string | null
 }
 
 /**

@@ -39,13 +39,18 @@ export function AllTargetsDetailView() {
   const [initiateScanDialogOpen, setInitiateScanDialogOpen] = useState(false)
   const [targetToScan, setTargetToScan] = useState<Target | null>(null)
 
+  // 处理分页状态变化
+  const handlePaginationChange = React.useCallback((newPagination: { pageIndex: number, pageSize: number }) => {
+    setPagination(newPagination)
+  }, [])
+
   // 使用 API hooks
   const { data, isLoading, error } = useTargets(pagination.pageIndex + 1, pagination.pageSize)
   const deleteTargetMutation = useDeleteTarget()
   const batchDeleteMutation = useBatchDeleteTargets()
 
   const targets = data?.results || []
-  const totalCount = data?.count || 0
+  const totalCount = data?.total || 0
 
   // 处理添加目标
   const handleAddTarget = useCallback(() => {
@@ -151,6 +156,11 @@ export function AllTargetsDetailView() {
         searchPlaceholder="搜索目标名称..."
         searchColumn="name"
         addButtonText="添加目标"
+        // 分页相关属性
+        pagination={pagination}
+        onPaginationChange={handlePaginationChange}
+        totalCount={totalCount}
+        manualPagination={true}
       />
 
       {/* 添加目标对话框 */}

@@ -63,6 +63,11 @@ interface TargetsDataTableProps {
   searchPlaceholder?: string
   searchColumn?: string
   addButtonText?: string
+  // 分页相关属性
+  pagination?: { pageIndex: number, pageSize: number }
+  onPaginationChange?: (pagination: { pageIndex: number, pageSize: number }) => void
+  totalCount?: number
+  manualPagination?: boolean
 }
 
 /**
@@ -80,15 +85,36 @@ export function TargetsDataTable({
   searchPlaceholder = "搜索目标...",
   searchColumn = "name",
   addButtonText = "添加目标",
+  pagination: externalPagination,
+  onPaginationChange,
+  totalCount,
+  manualPagination = false,
 }: TargetsDataTableProps) {
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({})
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [sorting, setSorting] = React.useState<SortingState>([])
-  const [pagination, setPagination] = React.useState<{ pageIndex: number, pageSize: number }>({
+  // 使用外部分页状态或内部状态
+  const [internalPagination, setInternalPagination] = React.useState<{ pageIndex: number, pageSize: number }>({
     pageIndex: 0,
     pageSize: 10,
   })
+  
+  const pagination = externalPagination || internalPagination
+  
+  // 处理分页状态变化
+  const handlePaginationChange = React.useCallback((updaterOrValue: any) => {
+    if (onPaginationChange) {
+      // 如果是函数，先计算新值
+      const newPagination = typeof updaterOrValue === 'function' 
+        ? updaterOrValue(pagination) 
+        : updaterOrValue
+      onPaginationChange(newPagination)
+    } else {
+      // 使用内部状态
+      setInternalPagination(updaterOrValue)
+    }
+  }, [onPaginationChange, pagination])
 
   const validData = React.useMemo(() => {
     const filtered = (data || []).filter(item => item && typeof item.id !== 'undefined' && item.id !== null)
@@ -111,13 +137,16 @@ export function TargetsDataTable({
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
-    onPaginationChange: setPagination,
+    onPaginationChange: handlePaginationChange,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    getPaginationRowModel: manualPagination ? undefined : getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
+    // 手动分页配置
+    manualPagination,
+    pageCount: manualPagination && totalCount ? Math.ceil(totalCount / pagination.pageSize) : undefined,
   })
 
   React.useEffect(() => {
@@ -251,7 +280,7 @@ export function TargetsDataTable({
         {/* 选中行信息 */}
         <div className="flex-1 text-sm text-muted-foreground">
           已选择 {table.getFilteredSelectedRowModel().rows.length} 个，共{" "}
-          {table.getFilteredRowModel().rows.length} 个
+          {manualPagination && totalCount ? totalCount : table.getFilteredRowModel().rows.length} 个
         </div>
 
         {/* 分页控制器 */}
@@ -283,7 +312,7 @@ export function TargetsDataTable({
           {/* 页码信息 */}
           <div className="flex w-[100px] items-center justify-center text-sm font-medium">
             第 {table.getState().pagination.pageIndex + 1} 页，共{" "}
-            {table.getPageCount()} 页
+            {manualPagination && totalCount ? Math.ceil(totalCount / pagination.pageSize) : table.getPageCount()} 页
           </div>
 
           {/* 分页按钮 */}

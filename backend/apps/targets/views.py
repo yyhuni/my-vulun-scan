@@ -120,20 +120,29 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         """
         try:
             organization = self.get_object()
-            request.data = {'ids': [organization.id]}
-            response = self.bulk_delete(request)
             
-            if response.status_code == 200:
-                response.data.update({
-                    'message': f'已删除组织: {organization.name}',
-                    'organizationId': organization.id,
-                    'organizationName': organization.name,
-                })
+            # 直接调用 Service 层的业务方法（软删除 + 提交 Prefect Flow）
+            result = self.org_service.delete_organizations_two_phase([organization.id])
             
-            return response
+            return Response({
+                'message': f'已删除组织: {organization.name}',
+                'organizationId': organization.id,
+                'organizationName': organization.name,
+                'deletedCount': result['soft_deleted_count'],
+                'deletedOrganizations': result['organization_names'],
+                'detail': {
+                    'phase1': '软删除完成，用户已看不到数据',
+                    'phase2': '硬删除已提交到 Prefect，将在后台执行'
+                }
+            }, status=200)
         
         except Organization.DoesNotExist:
             raise NotFound('组织不存在')
+        except ValueError as e:
+            raise NotFound(str(e))
+        except Exception as e:
+            logger.exception("删除组织时发生错误")
+            raise APIException('服务器错误，请稍后重试')
     
     @action(detail=False, methods=['post', 'delete'], url_path='bulk-delete')
     def bulk_delete(self, request):
@@ -264,20 +273,29 @@ class TargetViewSet(viewsets.ModelViewSet):
         """
         try:
             target = self.get_object()
-            request.data = {'ids': [target.id]}
-            response = self.bulk_delete(request)
             
-            if response.status_code == 200:
-                response.data.update({
-                    'message': f'已删除目标: {target.name}',
-                    'targetId': target.id,
-                    'targetName': target.name,
-                })
+            # 直接调用 Service 层的业务方法（软删除 + 提交 Prefect Flow）
+            result = self.target_service.delete_targets_two_phase([target.id])
             
-            return response
+            return Response({
+                'message': f'已删除目标: {target.name}',
+                'targetId': target.id,
+                'targetName': target.name,
+                'deletedCount': result['soft_deleted_count'],
+                'deletedTargets': result['target_names'],
+                'detail': {
+                    'phase1': '软删除完成，用户已看不到数据',
+                    'phase2': '硬删除已提交到 Prefect，将在后台执行'
+                }
+            }, status=200)
         
         except Target.DoesNotExist:
             raise NotFound('目标不存在')
+        except ValueError as e:
+            raise NotFound(str(e))
+        except Exception as e:
+            logger.exception("删除目标时发生错误")
+            raise APIException('服务器错误，请稍后重试')
     
     @action(detail=False, methods=['post', 'delete'], url_path='bulk-delete')
     def bulk_delete(self, request):

@@ -63,10 +63,10 @@ export function useTargets(
         return {
           ...response,
           results: filteredResults,
-          count: filteredResults.length,
-          // 为兼容性添加额外字段
-          targets: filteredResults,
           total: filteredResults.length,
+          // 为兼容性添加额外字段
+          count: filteredResults.length,  // 兼容字段
+          targets: filteredResults,
           page: actualPage,
           pageSize: actualPageSize,
           totalPages: Math.ceil(filteredResults.length / actualPageSize),
@@ -77,10 +77,13 @@ export function useTargets(
       return {
         ...response,
         targets: response.results,
-        total: response.count,
-        page: actualPage,
-        pageSize: actualPageSize,
-        totalPages: Math.ceil(response.count / actualPageSize),
+        // 后端返回 total，不是 count
+        count: response.total,  // 兼容字段，使用 total 值
+        // 保持原有字段
+        total: response.total,
+        page: response.page,
+        pageSize: response.pageSize,
+        totalPages: response.totalPages,
       }
     },
   })
