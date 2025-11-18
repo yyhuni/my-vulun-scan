@@ -58,7 +58,7 @@ export async function deleteTarget(id: number): Promise<void> {
 export async function batchDeleteTargets(
   data: BatchDeleteTargetsRequest
 ): Promise<BatchDeleteTargetsResponse> {
-  const response = await api.post<BatchDeleteTargetsResponse>('/targets/batch-delete/', data)
+  const response = await api.post<BatchDeleteTargetsResponse>('/targets/bulk-delete/', data)
   return response.data
 }
 

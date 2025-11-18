@@ -89,7 +89,7 @@ export function AllTargetsDetailView() {
 
     try {
       await batchDeleteMutation.mutateAsync({
-        targetIds: selectedTargets.map((t) => t.id),
+        ids: selectedTargets.map((t) => t.id),
       })
       setBulkDeleteDialogOpen(false)
       setSelectedTargets([])

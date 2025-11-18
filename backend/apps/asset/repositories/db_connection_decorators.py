@@ -89,14 +89,14 @@ def auto_ensure_db_connection(cls):
     return cls
 
 
-def _check_and_reconnect(max_retries=5):
+def _check_and_reconnect(max_retries=3):
     """
     检查数据库连接健康状态，必要时使用指数退避重新连接
     
     策略：
-    1. 尝试执行简单查询测试连接
-    2. 如果失败，使用指数退避策略重试（最多5次）
-    3. 每次重试的等待时间：2^attempt 秒 (1s, 2s, 4s, 8s, 16s)
+    1. 对于远程数据库，减少健康检查频率
+    2. 如果失败，使用指数退避策略重试（最多3次）
+    3. 每次重试的等待时间：1.5^attempt 秒 (1.5s, 2.25s, 3.375s)
     
     异常处理：
     - 连接失效时自动重连
@@ -105,6 +105,14 @@ def _check_and_reconnect(max_retries=5):
     - 达到最大重试次数后抛出异常
     """
     last_error = None
+    
+    # 对于远程数据库，先尝试轻量级检查
+    try:
+        # 只检查连接是否存在，不执行查询
+        if connection.connection is not None and not connection.connection.closed:
+            return  # 连接看起来正常，跳过详细检查
+    except Exception:
+        pass  # 如果检查失败，继续完整检查
     
     for attempt in range(max_retries):
         try:
@@ -130,10 +138,10 @@ def _check_and_reconnect(max_retries=5):
             except Exception:
                 pass  # 忽略关闭时的错误
             
-            # 如果还有重试机会，使用指数退避等待
+            # 如果还有重试机会，使用较短的等待时间
             if attempt < max_retries - 1:
-                delay = 2 ** attempt  # 指数退避: 1, 2, 4, 8, 16 秒
-                logger.info(f"等待 {delay} 秒后重试...")
+                delay = 1.5 ** attempt  # 较短退避: 1.5, 2.25, 3.375 秒
+                logger.info(f"等待 {delay:.1f} 秒后重试...")
                 time.sleep(delay)
             else:
                 # 最后一次尝试也失败，抛出异常

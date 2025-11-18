@@ -108,7 +108,7 @@ DATABASES = {
         # - 60-120: 推荐值（平衡性能和资源占用）
         # - 300+: 适合长时间任务（减少连接重建开销）
         # - None: 永久连接（仅适合专用连接池，不推荐）
-        'CONN_MAX_AGE': int(os.getenv('DB_CONN_MAX_AGE', '0')),  # 长时间任务使用 0，确保连接稳定性
+        'CONN_MAX_AGE': int(os.getenv('DB_CONN_MAX_AGE', '300')),  # 远程数据库使用 300 秒，减少重连开销
         
         # PostgreSQL 特定选项 - 针对远程数据库优化
         'OPTIONS': {

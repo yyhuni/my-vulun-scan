@@ -210,6 +210,25 @@ export function TargetsDataTable({
                 })}
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* 批量删除按钮 */}
+          {onBulkDelete && (
+            <Button 
+              onClick={onBulkDelete}
+              size="sm"
+              variant="outline"
+              disabled={table.getFilteredSelectedRowModel().rows.length === 0}
+              className={
+                table.getFilteredSelectedRowModel().rows.length === 0
+                  ? "text-muted-foreground"
+                  : "text-destructive hover:text-destructive hover:bg-destructive/10"
+              }
+            >
+              <IconTrash/>
+              批量删除
+            </Button>
+          )}
+
           {/* 添加新目标按钮 */}
           {onAddNew && (
             <Button onClick={onAddNew} onMouseEnter={onAddHover} size="sm">

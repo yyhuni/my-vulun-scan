@@ -78,7 +78,7 @@ export interface UpdateTargetRequest {
  * 批量删除目标的请求参数
  */
 export interface BatchDeleteTargetsRequest {
-  targetIds: number[]
+  ids: number[]
 }
 
 /**

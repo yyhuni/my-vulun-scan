@@ -31,15 +31,15 @@ if __name__ == "__main__":
     print(f"  部署名称: delete-organizations")
     print(f"  模式: 本地开发 (serve)")
     print(f"  触发: 按需调用（API触发）")
-    print(f"  并发限制: 1 (同时只能执行1个删除任务)")
+    print(f"  并发限制: 3 (同时最多执行3个删除任务)")
     print("=" * 60)
     print(f"\n服务持续运行中... (按 Ctrl+C 停止)")
     print(f"访问 Prefect UI: http://localhost:4200\n")
     
-    # 启动服务，限制并发为1
+    # 启动服务，限制并发为3
     delete_organizations_flow.serve(
         name="delete-organizations",
         tags=["organizations", "delete", "maintenance"],
         description="批量删除组织及其关联数据（软删除后的硬删除）",
-        limit=1,  # 同时只能执行1个删除任务，避免资源竞争
+        limit=3,  # 同时最多执行3个删除任务，平衡性能和资源占用
     )
