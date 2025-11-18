@@ -197,21 +197,6 @@ CORS_ALLOW_CREDENTIALS = True
 # ==================== CSRF 配置 ====================
 CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000').split(',')
 
-# ==================== Prefect 配置 ====================
-# Prefect API 服务器地址
-PREFECT_API_URL = os.getenv('PREFECT_API_URL', 'http://localhost:4200/api')
-
-# Prefect 数据库配置（使用独立的 prefect 数据库）
-# 注意：需要在 PostgreSQL 中创建 prefect 数据库
-PREFECT_DATABASE_NAME = os.getenv('PREFECT_DATABASE_NAME', 'prefect')
-
-# Prefect 工作池名称
-PREFECT_DEFAULT_WORK_POOL_NAME = os.getenv('PREFECT_DEFAULT_WORK_POOL_NAME', 'default')
-
-# Prefect 日志级别
-PREFECT_LOGGING_LEVEL = os.getenv('PREFECT_LOGGING_LEVEL', 'INFO')
-
-
 # ==================== 扫描结果存储和清理配置 ====================
 
 SCAN_RESULTS_DIR = os.getenv('SCAN_RESULTS_DIR')

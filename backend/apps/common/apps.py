@@ -6,6 +6,5 @@ class CommonConfig(AppConfig):
     name = 'apps.common'  # 因为在 apps/ 目录下
     
     def ready(self):
-        """应用就绪时调用，初始化 Prefect 配置"""
-        from config.prefect import configure_prefect
-        configure_prefect()
+        """应用就绪时调用"""
+        pass
