@@ -80,8 +80,10 @@ PREFECT_PID=$(pgrep -f "prefect server start" 2>/dev/null || echo "")
 if [ -z "$PREFECT_PID" ]; then
     echo -e "${YELLOW}⚠ Prefect Server 未运行，正在启动...${NC}"
     
-    # 启动 Prefect Server（后台）
+    # 启动 Prefect Server（后台，切换到 backend 目录读取 .env）
+    cd "$BACKEND_DIR"
     nohup $PROJECT_ROOT/.venv/bin/prefect server start > "$PID_DIR/prefect-server.log" 2>&1 &
+    cd "$SCRIPT_DIR"  # 切换回脚本目录
     NEW_PID=$!
     echo $NEW_PID > "$PID_DIR/prefect-server.pid"
     
@@ -159,19 +161,18 @@ DEPLOYMENT_DIR="$BACKEND_DIR/apps/scan/deployments"
 
 # 启动扫描任务 Deployment
 echo "  - 启动扫描任务..."
-cd "$DEPLOYMENT_DIR"
-nohup $PYTHON initiate_scan_deployment.py > "$PID_DIR/scan-deployment.log" 2>&1 &
+cd "$BACKEND_DIR"  # 切换到 backend 目录读取 .env
+nohup $PYTHON apps/scan/deployments/initiate_scan_deployment.py > "$PID_DIR/scan-deployment.log" 2>&1 &
 echo $! > "$PID_DIR/scan-deployment.pid"
 
 # 启动清理任务 Deployment
 echo "  - 启动清理任务..."
-nohup $PYTHON cleanup_deployment.py > "$PID_DIR/cleanup-deployment.log" 2>&1 &
+nohup $PYTHON apps/scan/deployments/cleanup_deployment.py > "$PID_DIR/cleanup-deployment.log" 2>&1 &
 echo $! > "$PID_DIR/cleanup-deployment.pid"
 
 # 启动删除任务 Deployment（合并版）
 echo "  - 启动删除任务（目标 + 组织）..."
-cd "$BACKEND_DIR/apps/targets/deployments"
-nohup $PYTHON delete_deployment.py > "$PID_DIR/delete-deployment.log" 2>&1 &
+nohup $PYTHON apps/targets/deployments/delete_deployment.py > "$PID_DIR/delete-deployment.log" 2>&1 &
 echo $! > "$PID_DIR/delete-deployment.pid"
 
 sleep 2
