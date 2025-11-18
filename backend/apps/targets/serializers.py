@@ -153,7 +153,16 @@ class OrganizationSerializer(serializers.ModelSerializer):
 
 
 class BatchCreateTargetSerializer(serializers.Serializer):
-    """批量创建目标的序列化器"""
+    """
+    批量创建目标的序列化器
+    
+    安全限制：
+    - 最多支持 1000 个目标的批量创建
+    - 防止恶意用户提交大量数据导致服务器过载
+    """
+    
+    # 批量创建的最大数量限制
+    MAX_BATCH_SIZE = 1000
     
     # 目标列表
     targets = serializers.ListField(
@@ -172,6 +181,12 @@ class BatchCreateTargetSerializer(serializers.Serializer):
         """验证目标列表"""
         if not value:
             raise serializers.ValidationError("目标列表不能为空")
+        
+        # 检查数量限制，防止服务器过载
+        if len(value) > self.MAX_BATCH_SIZE:
+            raise serializers.ValidationError(
+                f"批量创建最多支持 {self.MAX_BATCH_SIZE} 个目标，当前提交了 {len(value)} 个"
+            )
         
         # 验证每个目标的必填字段
         for idx, target in enumerate(value):

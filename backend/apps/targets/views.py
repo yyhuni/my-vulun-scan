@@ -367,7 +367,9 @@ class TargetViewSet(viewsets.ModelViewSet):
             "organization_id": 1  // 可选，关联到指定组织
         }
         
-        注意：type 会根据 name 自动检测（域名/IP/CIDR）
+        限制：
+        - 最多支持 1000 个目标的批量创建
+        - type 会根据 name 自动检测（域名/IP/CIDR）
         
         返回：
         {
