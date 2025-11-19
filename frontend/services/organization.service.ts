@@ -86,13 +86,34 @@ export class OrganizationService {
     return response.data
   }
   /**
-   * 删除组织
+   * 删除组织（使用单独的 DELETE API）
    * 
    * @param id - 组织ID，number类型
-   * @returns Promise<void>
+   * @returns Promise<删除响应>
    */
-  static async deleteOrganization(id: number): Promise<void> {
-    await api.delete(`/organizations/${id}/`)
+  static async deleteOrganization(id: number): Promise<{
+    message: string
+    organizationId: number
+    organizationName: string
+    deletedCount: number
+    deletedOrganizations: string[]
+    detail: {
+      phase1: string
+      phase2: string
+    }
+  }> {
+    const response = await api.delete<{
+      message: string
+      organizationId: number
+      organizationName: string
+      deletedCount: number
+      deletedOrganizations: string[]
+      detail: {
+        phase1: string
+        phase2: string
+      }
+    }>(`/organizations/${id}/`)
+    return response.data
   }
 
   /**

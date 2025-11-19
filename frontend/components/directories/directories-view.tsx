@@ -18,6 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { LoadingSpinner } from "@/components/loading-spinner"
 
 export function DirectoriesView({
   targetId,
@@ -33,6 +34,7 @@ export function DirectoriesView({
   const [selectedDirectories, setSelectedDirectories] = useState<Directory[]>([])
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [directoryToDelete, setDirectoryToDelete] = useState<Directory | null>(null)
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
 
   const deleteDirectoryMutation = useDeleteDirectory()
   const bulkDeleteMutation = useBulkDeleteDirectories()
@@ -107,22 +109,23 @@ export function DirectoriesView({
       }
     : undefined
 
-  const handleBulkDelete = useCallback(async () => {
+  const handleBulkDelete = () => {
     if (selectedDirectories.length === 0) {
-      toast.error("请选择要删除的目录")
       return
     }
+    setBulkDeleteDialogOpen(true)
+  }
 
-    try {
-      const directoryIds = selectedDirectories.map(directory => directory.id)
-      await bulkDeleteMutation.mutateAsync(directoryIds)
-      toast.success(`成功删除 ${selectedDirectories.length} 个目录`)
-      setSelectedDirectories([])
-    } catch (error) {
-      console.error("批量删除失败:", error)
-      toast.error("删除失败，请重试")
-    }
-  }, [selectedDirectories, bulkDeleteMutation])
+  const confirmBulkDelete = async () => {
+    if (selectedDirectories.length === 0) return
+
+    const directoryIds = selectedDirectories.map(directory => directory.id)
+
+    setBulkDeleteDialogOpen(false)
+    setSelectedDirectories([])
+
+    bulkDeleteMutation.mutate(directoryIds)
+  }
 
   const handleSelectionChange = useCallback((selectedRows: Directory[]) => {
     setSelectedDirectories(selectedRows)
@@ -184,6 +187,44 @@ export function DirectoriesView({
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               删除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 批量删除确认对话框 */}
+      <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认批量删除</AlertDialogTitle>
+            <AlertDialogDescription>
+              此操作无法撤销。这将永久删除以下 {selectedDirectories.length} 个目录及其相关数据。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="mt-2 p-2 bg-muted rounded-md max-h-96 overflow-y-auto">
+            <ul className="text-sm space-y-1">
+              {selectedDirectories.map((directory) => (
+                <li key={directory.id} className="flex items-center">
+                  <span className="font-medium font-mono">{directory.url}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmBulkDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={bulkDeleteMutation.isPending}
+            >
+              {bulkDeleteMutation.isPending ? (
+                <>
+                  <LoadingSpinner/>
+                  删除中...
+                </>
+              ) : (
+                `删除 ${selectedDirectories.length} 个目录`
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -64,14 +64,30 @@ export class SubdomainService {
     return response.data
   }
 
-  /** 删除单个子域名（复用批量删除接口） */
+  /** 删除单个子域名（使用单独的 DELETE API） */
   static async deleteSubdomain(id: number): Promise<{
     message: string
+    subdomainId: number
+    subdomainName: string
     deletedCount: number
-    requestedIds: number[]
-    cascadeDeleted: Record<string, number>
+    deletedSubdomains: string[]
+    detail: {
+      phase1: string
+      phase2: string
+    }
   }> {
-    return this.bulkDeleteSubdomains([id])
+    const response = await api.delete<{
+      message: string
+      subdomainId: number
+      subdomainName: string
+      deletedCount: number
+      deletedSubdomains: string[]
+      detail: {
+        phase1: string
+        phase2: string
+      }
+    }>(`/subdomains/${id}/`)
+    return response.data
   }
 
   /** 批量删除子域名（别名，兼容旧代码） */

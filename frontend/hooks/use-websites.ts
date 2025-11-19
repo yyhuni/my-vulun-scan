@@ -52,14 +52,25 @@ const websiteService = {
     return response.json()
   },
 
-  // 删除单个网站（复用批量删除接口）
+  // 删除单个网站（使用单独的 DELETE API）
   deleteWebSite: async (websiteId: number): Promise<{
     message: string
+    websiteId: number
+    websiteUrl: string
     deletedCount: number
-    requestedIds: number[]
-    cascadeDeleted: Record<string, number>
+    deletedWebSites: string[]
+    detail: {
+      phase1: string
+      phase2: string
+    }
   }> => {
-    return websiteService.bulkDeleteWebSites([websiteId])
+    const response = await fetch(`/api/websites/${websiteId}/`, {
+      method: 'DELETE',
+    })
+    if (!response.ok) {
+      throw new Error('删除网站失败')
+    }
+    return response.json()
   },
 }
 
@@ -89,7 +100,7 @@ export function useScanWebSites(
   })
 }
 
-// 删除单个网站（使用统一的批量删除接口）
+// 删除单个网站（使用单独的 DELETE API）
 export function useDeleteWebSite() {
   const queryClient = useQueryClient()
 
@@ -101,20 +112,12 @@ export function useDeleteWebSite() {
     onSuccess: (response, id) => {
       toast.dismiss(`delete-website-${id}`)
       
-      // 显示级联删除信息
-      const cascadeInfo = Object.entries(response.cascadeDeleted || {})
-        .filter(([key, count]) => key !== 'asset.WebSite' && count > 0)
-        .map(([key, count]) => {
-          const modelName = key.split('.')[1]
-          return `${modelName}: ${count}`
-        })
-        .join(', ')
-      
-      if (cascadeInfo) {
-        toast.success(`网站已成功删除（级联删除: ${cascadeInfo}）`)
-      } else {
-        toast.success('网站已成功删除')
-      }
+      // 显示删除信息（单个删除 API 返回两阶段信息）
+      const { websiteUrl, detail } = response
+      toast.success(`网站 "${websiteUrl}" 已成功删除`, {
+        description: `${detail.phase1}；${detail.phase2}`,
+        duration: 4000
+      })
       
       // 刷新相关查询
       queryClient.invalidateQueries({ queryKey: ['target-websites'] })

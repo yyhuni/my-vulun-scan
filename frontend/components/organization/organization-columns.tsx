@@ -77,7 +77,7 @@ function OrganizationRowActions({
           className="text-destructive focus:text-destructive"
         >
           <Trash2 />
-          Delete Organization
+          Delete
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

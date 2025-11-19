@@ -144,7 +144,7 @@ export function useBatchDeleteSubdomainsFromOrganization() {
   })
 }
 
-// 删除单个子域名（使用统一的批量删除接口）
+// 删除单个子域名（使用单独的 DELETE API）
 export function useDeleteSubdomain() {
   const queryClient = useQueryClient()
 
@@ -156,20 +156,12 @@ export function useDeleteSubdomain() {
     onSuccess: (response, id) => {
       toast.dismiss(`delete-subdomain-${id}`)
       
-      // 显示级联删除信息
-      const cascadeInfo = Object.entries(response.cascadeDeleted || {})
-        .filter(([key, count]) => key !== 'asset.Subdomain' && count > 0)
-        .map(([key, count]) => {
-          const modelName = key.split('.')[1]
-          return `${modelName}: ${count}`
-        })
-        .join(', ')
-      
-      if (cascadeInfo) {
-        toast.success(`子域名已成功删除（级联删除: ${cascadeInfo}）`)
-      } else {
-        toast.success('子域名已成功删除')
-      }
+      // 显示删除信息（单个删除 API 返回两阶段信息）
+      const { subdomainName, detail } = response
+      toast.success(`子域名 "${subdomainName}" 已成功删除`, {
+        description: `${detail.phase1}；${detail.phase2}`,
+        duration: 4000
+      })
       
       queryClient.invalidateQueries({ queryKey: ['subdomains'] })
       queryClient.invalidateQueries({ queryKey: ['targets'] })

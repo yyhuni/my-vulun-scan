@@ -50,7 +50,7 @@ export function useScanIPAddresses(
   })
 }
 
-// 删除单个 IP 地址（使用统一的批量删除接口）
+// 删除单个 IP 地址（使用单独的 DELETE API）
 export function useDeleteIPAddress() {
   const queryClient = useQueryClient()
 
@@ -62,20 +62,12 @@ export function useDeleteIPAddress() {
     onSuccess: (response, id) => {
       toast.dismiss(`delete-ip-${id}`)
       
-      // 显示级联删除信息
-      const cascadeInfo = Object.entries(response.cascadeDeleted || {})
-        .filter(([key, count]) => key !== 'asset.IPAddress' && count > 0)
-        .map(([key, count]) => {
-          const modelName = key.split('.')[1]
-          return `${modelName}: ${count}`
-        })
-        .join(', ')
-      
-      if (cascadeInfo) {
-        toast.success(`IP 地址已成功删除（级联删除: ${cascadeInfo}）`)
-      } else {
-        toast.success('IP 地址已成功删除')
-      }
+      // 显示删除信息（单个删除 API 返回两阶段信息）
+      const { ipAddress, detail } = response
+      toast.success(`IP 地址 "${ipAddress}" 已成功删除`, {
+        description: `${detail.phase1}；${detail.phase2}`,
+        duration: 4000
+      })
       
       // 刷新所有 IP 地址相关的查询
       queryClient.invalidateQueries({ queryKey: ipAddressKeys.all })

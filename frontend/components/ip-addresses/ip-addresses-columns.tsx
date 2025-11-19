@@ -163,7 +163,7 @@ function IPAddressRowActions({
           className="text-destructive focus:text-destructive"
         >
           <Trash2 />
-          Delete IP Address
+          Delete
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -179,7 +179,7 @@ export function TargetsDataTable({
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
                 <IconLayoutColumns />
-                列
+                Columns
                 <IconChevronDown />
               </Button>
             </DropdownMenuTrigger>
@@ -319,7 +319,7 @@ export function TargetsDataTable({
                 <SelectValue placeholder={table.getState().pagination.pageSize} />
               </SelectTrigger>
               <SelectContent side="top">
-                {[10, 20, 50, 100, 500, 1000].map((pageSize) => (
+                {[10, 20, 50, 100, 200, 500, 1000].map((pageSize) => (
                   <SelectItem key={pageSize} value={`${pageSize}`}>
                     {pageSize}
                   </SelectItem>
@@ -342,7 +342,7 @@ export function TargetsDataTable({
               onClick={() => table.setPageIndex(0)}
               disabled={!table.getCanPreviousPage()}
             >
-              <span className="sr-only">第一页</span>
+              <span className="sr-only">First page</span>
               <IconChevronsLeft />
             </Button>
             <Button
@@ -351,7 +351,7 @@ export function TargetsDataTable({
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
             >
-              <span className="sr-only">上一页</span>
+              <span className="sr-only">Previous page</span>
               <IconChevronLeft />
             </Button>
             <Button
@@ -360,7 +360,7 @@ export function TargetsDataTable({
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
             >
-              <span className="sr-only">下一页</span>
+              <span className="sr-only">Next page</span>
               <IconChevronRight />
             </Button>
             <Button
@@ -369,7 +369,7 @@ export function TargetsDataTable({
               onClick={() => table.setPageIndex(table.getPageCount() - 1)}
               disabled={!table.getCanNextPage()}
             >
-              <span className="sr-only">最后一页</span>
+              <span className="sr-only">Last page</span>
               <IconChevronsRight />
             </Button>
           </div>

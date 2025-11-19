@@ -165,7 +165,7 @@ export function DirectoriesDataTable({
                 onClick={onBulkDelete}
               >
                 <IconTrash className="mr-2 h-4 w-4" />
-                删除 ({table.getFilteredSelectedRowModel().rows.length})
+                Delete ({table.getFilteredSelectedRowModel().rows.length})
               </Button>
             )}
 
@@ -174,12 +174,12 @@ export function DirectoriesDataTable({
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
                   <IconLayoutColumns className="mr-2 h-4 w-4" />
-                  列
+                  Columns
                   <IconChevronDown className="ml-2 h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-[200px]">
-                <DropdownMenuLabel>显示列</DropdownMenuLabel>
+                <DropdownMenuLabel>Toggle Columns</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {table
                   .getAllColumns()
@@ -307,7 +307,7 @@ export function DirectoriesDataTable({
                   <SelectValue placeholder={tablePagination.pageSize} />
                 </SelectTrigger>
                 <SelectContent side="top">
-                  {[10, 20, 30, 40, 50].map((pageSize) => (
+                  {[10, 20, 50, 100, 200, 500, 1000].map((pageSize) => (
                     <SelectItem key={pageSize} value={`${pageSize}`}>
                       {pageSize}
                     </SelectItem>
@@ -354,7 +354,7 @@ export function DirectoriesDataTable({
                   }}
                   disabled={!table.getCanPreviousPage()}
                 >
-                  <span className="sr-only">上一页</span>
+                  <span className="sr-only">Previous page</span>
                   <IconChevronLeft className="h-4 w-4" />
                 </Button>
                 <Button
@@ -371,7 +371,7 @@ export function DirectoriesDataTable({
                   }}
                   disabled={!table.getCanNextPage()}
                 >
-                  <span className="sr-only">下一页</span>
+                  <span className="sr-only">Next page</span>
                   <IconChevronRight className="h-4 w-4" />
                 </Button>
                 <Button

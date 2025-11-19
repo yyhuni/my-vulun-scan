@@ -46,10 +46,31 @@ export async function updateTarget(id: number, data: UpdateTargetRequest): Promi
 }
 
 /**
- * 删除单个目标
+ * 删除单个目标（使用单独的 DELETE API）
  */
-export async function deleteTarget(id: number): Promise<void> {
-  await api.delete(`/targets/${id}/`)
+export async function deleteTarget(id: number): Promise<{
+  message: string
+  targetId: number
+  targetName: string
+  deletedCount: number
+  deletedTargets: string[]
+  detail: {
+    phase1: string
+    phase2: string
+  }
+}> {
+  const response = await api.delete<{
+    message: string
+    targetId: number
+    targetName: string
+    deletedCount: number
+    deletedTargets: string[]
+    detail: {
+      phase1: string
+      phase2: string
+    }
+  }>(`/targets/${id}/`)
+  return response.data
 }
 
 /**

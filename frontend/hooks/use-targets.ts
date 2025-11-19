@@ -139,18 +139,31 @@ export function useUpdateTarget() {
 }
 
 /**
- * 删除目标
+ * 删除目标（使用单独的 DELETE API）
  */
 export function useDeleteTarget() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (id: number) => deleteTarget(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['targets'] })
-      toast.success('目标删除成功')
+    onMutate: (id) => {
+      toast.loading('正在删除目标...', { id: `delete-target-${id}` })
     },
-    onError: (error: Error) => {
+    onSuccess: (response, id) => {
+      toast.dismiss(`delete-target-${id}`)
+      
+      // 显示删除信息（单个删除 API 返回两阶段信息）
+      const { targetName, detail } = response
+      toast.success(`目标 "${targetName}" 已成功删除`, {
+        description: `${detail.phase1}；${detail.phase2}`,
+        duration: 4000
+      })
+      
+      queryClient.invalidateQueries({ queryKey: ['targets'] })
+      queryClient.invalidateQueries({ queryKey: ['organizations'] })
+    },
+    onError: (error: Error, id) => {
+      toast.dismiss(`delete-target-${id}`)
       toast.error(`删除失败: ${error.message}`)
     },
   })

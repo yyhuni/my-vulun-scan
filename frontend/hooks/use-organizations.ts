@@ -208,8 +208,12 @@ export function useDeleteOrganization() {
       // 关闭加载提示
       toast.dismiss(`delete-${deletedId}`)
       
-      // 显示成功提示
-      toast.success('删除成功')
+      // 显示删除信息（单个删除 API 返回两阶段信息）
+      const { organizationName, detail } = response
+      toast.success(`组织 "${organizationName}" 已成功删除`, {
+        description: `${detail.phase1}；${detail.phase2}`,
+        duration: 4000
+      })
     },
     onError: (error: any, deletedId, context) => {
       // 关闭加载提示

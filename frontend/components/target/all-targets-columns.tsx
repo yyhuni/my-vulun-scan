@@ -155,7 +155,7 @@ function TargetRowActions({
           className="text-destructive focus:text-destructive"
         >
           <Trash2 />
-          Delete Target
+          Delete
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

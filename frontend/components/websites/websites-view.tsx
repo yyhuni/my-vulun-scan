@@ -34,6 +34,7 @@ export function WebSitesView({
   const [selectedWebSites, setSelectedWebSites] = useState<WebSite[]>([])
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [websiteToDelete, setWebsiteToDelete] = useState<WebSite | null>(null)
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
 
   const deleteWebSiteMutation = useDeleteWebSite()
   const bulkDeleteMutation = useBulkDeleteWebSites()
@@ -108,22 +109,23 @@ export function WebSitesView({
       }
     : undefined
 
-  const handleBulkDelete = useCallback(async () => {
+  const handleBulkDelete = () => {
     if (selectedWebSites.length === 0) {
-      toast.error("请选择要删除的网站")
       return
     }
+    setBulkDeleteDialogOpen(true)
+  }
 
-    try {
-      const websiteIds = selectedWebSites.map(website => website.id)
-      await bulkDeleteMutation.mutateAsync(websiteIds)
-      toast.success(`成功删除 ${selectedWebSites.length} 个网站`)
-      setSelectedWebSites([]) // 清空选择
-    } catch (error) {
-      console.error("批量删除失败:", error)
-      toast.error("删除失败，请重试")
-    }
-  }, [selectedWebSites, bulkDeleteMutation])
+  const confirmBulkDelete = async () => {
+    if (selectedWebSites.length === 0) return
+
+    const websiteIds = selectedWebSites.map(website => website.id)
+
+    setBulkDeleteDialogOpen(false)
+    setSelectedWebSites([])
+
+    bulkDeleteMutation.mutate(websiteIds)
+  }
 
   const handleSelectionChange = useCallback((selectedRows: WebSite[]) => {
     setSelectedWebSites(selectedRows)
@@ -205,6 +207,44 @@ export function WebSitesView({
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               删除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 批量删除确认对话框 */}
+      <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认批量删除</AlertDialogTitle>
+            <AlertDialogDescription>
+              此操作无法撤销。这将永久删除以下 {selectedWebSites.length} 个网站及其相关数据。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="mt-2 p-2 bg-muted rounded-md max-h-96 overflow-y-auto">
+            <ul className="text-sm space-y-1">
+              {selectedWebSites.map((website) => (
+                <li key={website.id} className="flex items-center">
+                  <span className="font-medium font-mono">{website.url}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmBulkDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={bulkDeleteMutation.isPending}
+            >
+              {bulkDeleteMutation.isPending ? (
+                <>
+                  <LoadingSpinner/>
+                  删除中...
+                </>
+              ) : (
+                `删除 ${selectedWebSites.length} 个网站`
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

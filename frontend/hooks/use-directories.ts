@@ -52,14 +52,25 @@ const directoryService = {
     return response.json()
   },
 
-  // 删除单个目录（复用批量删除接口）
+  // 删除单个目录（使用单独的 DELETE API）
   deleteDirectory: async (directoryId: number): Promise<{
     message: string
+    directoryId: number
+    directoryUrl: string
     deletedCount: number
-    requestedIds: number[]
-    cascadeDeleted: Record<string, number>
+    deletedDirectories: string[]
+    detail: {
+      phase1: string
+      phase2: string
+    }
   }> => {
-    return directoryService.bulkDeleteDirectories([directoryId])
+    const response = await fetch(`/api/directories/${directoryId}/`, {
+      method: 'DELETE',
+    })
+    if (!response.ok) {
+      throw new Error('删除目录失败')
+    }
+    return response.json()
   },
 }
 
@@ -89,7 +100,7 @@ export function useScanDirectories(
   })
 }
 
-// 删除单个目录（使用统一的批量删除接口）
+// 删除单个目录（使用单独的 DELETE API）
 export function useDeleteDirectory() {
   const queryClient = useQueryClient()
 
@@ -100,7 +111,13 @@ export function useDeleteDirectory() {
     },
     onSuccess: (response, id) => {
       toast.dismiss(`delete-directory-${id}`)
-      toast.success('目录已成功删除')
+      
+      // 显示删除信息（单个删除 API 返回两阶段信息）
+      const { directoryUrl, detail } = response
+      toast.success(`目录 "${directoryUrl}" 已成功删除`, {
+        description: `${detail.phase1}；${detail.phase2}`,
+        duration: 4000
+      })
       
       // 刷新相关查询
       queryClient.invalidateQueries({ queryKey: ['target-directories'] })

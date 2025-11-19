@@ -44,13 +44,29 @@ export class IPAddressService {
     return response.data
   }
 
-  /** 删除单个 IP 地址（复用批量删除接口） */
+  /** 删除单个 IP 地址（使用单独的 DELETE API） */
   static async deleteIPAddress(ipId: number): Promise<{
     message: string
+    ipAddressId: number
+    ipAddress: string
     deletedCount: number
-    requestedIds: number[]
-    cascadeDeleted: Record<string, number>
+    deletedIPAddresses: string[]
+    detail: {
+      phase1: string
+      phase2: string
+    }
   }> {
-    return this.bulkDeleteIPAddresses([ipId])
+    const response = await api.delete<{
+      message: string
+      ipAddressId: number
+      ipAddress: string
+      deletedCount: number
+      deletedIPAddresses: string[]
+      detail: {
+        phase1: string
+        phase2: string
+      }
+    }>(`/ip-addresses/${ipId}/`)
+    return response.data
   }
 }

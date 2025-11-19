@@ -137,7 +137,7 @@ function SubdomainRowActions({
           className="text-destructive focus:text-destructive"
         >
           <Trash2 />
-          Delete Subdomain
+          Delete
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
