@@ -89,3 +89,11 @@ directory_scan:
       # request_timeout: 10                    # HTTP request timeout in seconds (default: 10)
       # match_codes: 200,201,301,302,401,403   # Match HTTP status codes, comma separated
       # rate: 0                                # Rate of requests per second (default: 0)
+
+# ==================== URL 获取 ====================
+url_fetch:
+  tools:
+    waymore:
+      enabled: true
+      timeout: 600      # 10 分钟（必需）
+                        # waymore 从历史归档中获取 URL，通常需要较长时间

@@ -106,6 +106,20 @@ DIRECTORY_SCAN_COMMANDS = {
 }
 
 
+# ==================== URL 获取 ====================
+
+URL_FETCH_COMMANDS = {
+    'waymore': {
+        # 从目标域名获取历史 URL
+        # -i: 输入域名
+        # -mode U: URL 模式
+        # -oU: 输出文件
+        'command': 'waymore -i {target} -mode U -oU {output_file}',
+        'optional_flags': {}
+    },
+}
+
+
 # ==================== 工具映射 ====================
 
 COMMAND_TEMPLATES = {
@@ -113,6 +127,7 @@ COMMAND_TEMPLATES = {
     'port_scan': PORT_SCAN_COMMANDS,
     'site_scan': SITE_SCAN_COMMANDS,
     'directory_scan': DIRECTORY_SCAN_COMMANDS,
+    'url_fetch': URL_FETCH_COMMANDS,
 }
 
 
