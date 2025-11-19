@@ -33,13 +33,18 @@ from apps.scan.utils import config_parser, build_scan_command
 logger = logging.getLogger(__name__)
 
 
-def calculate_timeout_by_line_count(file_path: str, base_per_time: int = 1) -> int:
+def calculate_timeout_by_line_count(
+    tool_config: dict,
+    file_path: str, 
+    base_per_time: int = 1
+) -> int:
     """
     根据文件行数计算 timeout
     
     使用 wc -l 统计文件行数，根据行数和每行基础时间计算 timeout
     
     Args:
+        tool_config: 工具配置字典（此函数未使用，但保持接口一致性）
         file_path: 要统计行数的文件路径
         base_per_time: 每行的基础时间（秒），默认1秒
     
@@ -47,7 +52,11 @@ def calculate_timeout_by_line_count(file_path: str, base_per_time: int = 1) -> i
         int: 计算出的超时时间（秒）
     
     Example:
-        timeout = calculate_timeout_by_line_count('/path/to/urls.txt', base_per_time=2)
+        timeout = calculate_timeout_by_line_count(
+            tool_config={},
+            file_path='/path/to/urls.txt', 
+            base_per_time=2
+        )
     """
     try:
         # 使用 wc -l 快速统计行数

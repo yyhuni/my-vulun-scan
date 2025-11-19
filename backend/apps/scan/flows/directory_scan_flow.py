@@ -34,6 +34,85 @@ from apps.scan.utils import config_parser, build_scan_command
 logger = logging.getLogger(__name__)
 
 
+def calculate_directory_scan_timeout(
+    tool_config: dict,
+    base_per_word: float = 0.02,
+    min_timeout: int = 60,
+    max_timeout: int = 7200
+) -> int:
+    """
+    根据字典行数计算目录扫描超时时间
+    
+    计算公式：超时时间 = 字典行数 × 每个单词基础时间
+    超时范围：60秒 ~ 2小时（7200秒）
+    
+    Args:
+        tool_config: 工具配置字典，包含 wordlist 路径
+        base_per_word: 每个单词的基础时间（秒），默认 0.02秒（20ms）
+        min_timeout: 最小超时时间（秒），默认 60秒
+        max_timeout: 最大超时时间（秒），默认 7200秒（2小时）
+    
+    Returns:
+        int: 计算出的超时时间（秒），范围：60 ~ 7200
+    
+    Example:
+        # 1000行字典 × 0.02秒 = 20秒 → 限制为60秒（最小值）
+        # 10000行字典 × 0.02秒 = 200秒
+        # 500000行字典 × 0.02秒 = 10000秒 → 限制为7200秒（最大值）
+        timeout = calculate_directory_scan_timeout(
+            tool_config={'wordlist': '/path/to/wordlist.txt'}
+        )
+    """
+    try:
+        # 从 tool_config 中获取 wordlist 路径
+        wordlist_path = tool_config.get('wordlist')
+        if not wordlist_path:
+            logger.warning("工具配置中未指定 wordlist，使用默认超时: %d秒", min_timeout)
+            return min_timeout
+        
+        # 展开用户目录（~）
+        wordlist_path = os.path.expanduser(wordlist_path)
+        
+        # 检查文件是否存在
+        if not os.path.exists(wordlist_path):
+            logger.warning("字典文件不存在: %s，使用默认超时: %d秒", wordlist_path, min_timeout)
+            return min_timeout
+        
+        # 使用 wc -l 快速统计字典行数
+        result = subprocess.run(
+            ['wc', '-l', wordlist_path],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        # wc -l 输出格式：行数 + 空格 + 文件名
+        line_count = int(result.stdout.strip().split()[0])
+        
+        # 计算超时时间
+        timeout = int(line_count * base_per_word)
+        
+        # 设置合理的上下限
+        timeout = max(min_timeout, min(timeout, max_timeout))
+        
+        logger.info(
+            "目录扫描超时计算 - 字典: %s, 行数: %d, 基础时间: %.3f秒/词, 计算超时: %d秒",
+            wordlist_path, line_count, base_per_word, timeout
+        )
+        
+        return timeout
+        
+    except subprocess.CalledProcessError as e:
+        logger.error("统计字典行数失败: %s", e)
+        # 失败时返回默认超时
+        return min_timeout
+    except (ValueError, IndexError) as e:
+        logger.error("解析字典行数失败: %s", e)
+        return min_timeout
+    except Exception as e:
+        logger.error("计算超时时间异常: %s", e)
+        return min_timeout
+
+
 def _setup_directory_scan_directory(scan_workspace_dir: str) -> Path:
     """
     创建并验证目录扫描工作目录
@@ -326,7 +405,11 @@ def directory_scan_flow(
         logger.info("Step 2: 解析配置，获取启用的工具")
         enabled_tools = config_parser.parse_enabled_tools(
             scan_type='directory_scan',
-            engine_config=engine_config
+            engine_config=engine_config,
+            timeout_calculator=calculate_directory_scan_timeout,
+            timeout_calculator_kwargs={
+                'base_per_word': 0.02  # 每个单词 20ms
+            }
         )
         
         if not enabled_tools:
