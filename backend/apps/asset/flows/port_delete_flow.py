@@ -4,8 +4,21 @@
 使用 Prefect 编排端口的批量删除流程
 """
 
+import os
+import sys
 import logging
 from typing import List
+
+# 添加项目根目录到 Python 路径
+current_dir = os.path.dirname(os.path.abspath(__file__))
+backend_dir = os.path.join(current_dir, '../../..')
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
+# 配置 Django（确保在 Prefect 执行环境中也能正常工作）
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+import django
+django.setup()
 
 from prefect import flow
 from prefect.task_runners import ConcurrentTaskRunner
