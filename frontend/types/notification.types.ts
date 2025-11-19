@@ -51,6 +51,9 @@ export interface GetNotificationsResponse {
   results: BackendNotification[]
   total: number
   page: number
-  page_size: number
-  total_pages: number
+  pageSize: number      // 后端返回 camelCase 格式
+  totalPages: number    // 后端返回 camelCase 格式
+  // 兼容字段（向后兼容）
+  page_size?: number
+  total_pages?: number
 }

@@ -42,7 +42,7 @@ export function useOrganizations(
       // 处理 DRF 分页响应格式
       const page = params.page || 1
       const pageSize = params.pageSize || 10
-      const total = response.count || 0
+      const total = response.total || response.count || 0
       const totalPages = Math.ceil(total / pageSize)
       
       return {

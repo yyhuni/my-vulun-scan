@@ -241,6 +241,10 @@ export function useCommands(params: GetCommandsRequest = {}) {
       return {
         commands,
         page,
+        pageSize,
+        total: totalCount,
+        totalPages,
+        // 兼容字段（向后兼容）
         page_size: pageSize,
         total_count: totalCount,
         total_pages: totalPages,

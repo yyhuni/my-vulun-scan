@@ -85,10 +85,15 @@ start_all() {
         "cleanup-deployment.log" \
         "cleanup-deployment.pid"
     
-    start_deployment "删除任务" \
-        "apps/targets/deployments/delete_deployment.py" \
-        "delete-deployment.log" \
-        "delete-deployment.pid"
+    start_deployment "Targets 删除任务" \
+        "apps/targets/deployments/register.py" \
+        "targets-delete-deployment.log" \
+        "targets-delete-deployment.pid"
+    
+    start_deployment "Asset 删除任务" \
+        "apps/asset/deployments/register.py" \
+        "asset-delete-deployment.log" \
+        "asset-delete-deployment.pid"
     
     echo ""
     echo -e "${GREEN}✓ 所有 Deployments 启动完成${NC}"
@@ -177,11 +182,15 @@ case "${1:-all}" in
         ;;
     delete|-d|--delete)
         echo ""
-        echo "启动删除任务 Deployment..."
-        start_deployment "删除任务" \
-            "apps/targets/deployments/delete_deployment.py" \
-            "delete-deployment.log" \
-            "delete-deployment.pid"
+        echo "启动删除任务 Deployments..."
+        start_deployment "Targets 删除任务" \
+            "apps/targets/deployments/register.py" \
+            "targets-delete-deployment.log" \
+            "targets-delete-deployment.pid"
+        start_deployment "Asset 删除任务" \
+            "apps/asset/deployments/register.py" \
+            "asset-delete-deployment.log" \
+            "asset-delete-deployment.pid"
         ;;
     status|--status)
         show_status

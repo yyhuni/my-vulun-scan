@@ -3,6 +3,8 @@ from dataclasses import dataclass
 from typing import List, Iterator
 
 from django.db import transaction, IntegrityError, OperationalError, DatabaseError
+from django.utils import timezone
+from typing import Tuple, Dict
 
 from apps.asset.models import Subdomain
 from apps.common.decorators import auto_ensure_db_connection
@@ -152,16 +154,96 @@ class DjangoSubdomainRepository:
         """
         return Subdomain.objects.all()
     
-    def bulk_delete_by_ids(self, subdomain_ids: List[int]) -> tuple:
+    def soft_delete_by_ids(self, subdomain_ids: List[int]) -> int:
         """
-        批量删除子域名
+        根据 ID 列表批量软删除子域名
         
         Args:
             subdomain_ids: 子域名 ID 列表
-            
+        
         Returns:
-            tuple: (删除数量, 级联删除的对象统计)
+            软删除的记录数
+        
+        Note:
+            - 使用软删除：只标记为已删除，不真正删除数据库记录
+            - 保留所有关联数据，可恢复
         """
-        return Subdomain.objects.filter(id__in=subdomain_ids).delete()
+        try:
+            updated_count = (
+                Subdomain.objects
+                .filter(id__in=subdomain_ids)
+                .update(deleted_at=timezone.now())
+            )
+            logger.debug(
+                "批量软删除子域名成功 - Count: %s, 更新记录: %s",
+                len(subdomain_ids),
+                updated_count
+            )
+            return updated_count
+        except Exception as e:
+            logger.error(
+                "批量软删除子域名失败 - IDs: %s, 错误: %s",
+                subdomain_ids,
+                e
+            )
+            raise
+    
+    def hard_delete_by_ids(self, subdomain_ids: List[int]) -> Tuple[int, Dict[str, int]]:
+        """
+        根据 ID 列表硬删除子域名（使用数据库级 CASCADE）
+        
+        Args:
+            subdomain_ids: 子域名 ID 列表
+        
+        Returns:
+            (删除的记录数, 删除详情字典)
+        
+        Strategy:
+            使用数据库级 CASCADE 删除，性能最优
+        
+        Note:
+            - 硬删除：从数据库中永久删除
+            - 数据库自动处理所有外键级联删除
+            - 不触发 Django 信号（pre_delete/post_delete）
+        """
+        try:
+            batch_size = 1000  # 每批处理1000个子域名
+            total_deleted = 0
+            
+            logger.debug(f"开始批量删除 {len(subdomain_ids)} 个子域名（数据库 CASCADE）...")
+            
+            # 分批处理子域名ID，避免单次删除过多
+            for i in range(0, len(subdomain_ids), batch_size):
+                batch_ids = subdomain_ids[i:i + batch_size]
+                
+                # 直接删除子域名，数据库自动级联删除所有关联数据
+                count, _ = Subdomain.all_objects.filter(id__in=batch_ids).delete()
+                total_deleted += count
+                
+                logger.debug(f"批次删除完成: {len(batch_ids)} 个子域名，删除 {count} 条记录")
+            
+            # 由于使用数据库 CASCADE，无法获取详细统计
+            deleted_details = {
+                'subdomains': len(subdomain_ids),
+                'total': total_deleted,
+                'note': 'Database CASCADE - detailed stats unavailable'
+            }
+            
+            logger.debug(
+                "批量硬删除成功（CASCADE）- 子域名数: %s, 总删除记录: %s",
+                len(subdomain_ids),
+                total_deleted
+            )
+            
+            return total_deleted, deleted_details
+        
+        except Exception as e:
+            logger.error(
+                "批量硬删除失败（CASCADE）- 子域名数: %s, 错误: %s",
+                len(subdomain_ids),
+                str(e),
+                exc_info=True
+            )
+            raise
 
 

@@ -39,12 +39,15 @@ export const CategoryNameMap: Record<string, string> = {
 }
 
 // 工具列表响应类型（api-client.ts 会自动转换为 camelCase）
-export interface ToolsResponse {
+export interface GetToolsResponse {
   tools: Tool[]
   total: number
   page: number
-  pageSize: number      // 后端: page_size
-  totalPages: number    // 后端: total_pages
+  pageSize: number      // 后端返回 camelCase 格式
+  totalPages: number    // 后端返回 camelCase 格式
+  // 兼容字段（向后兼容）
+  page_size?: number
+  total_pages?: number
 }
 
 // 创建工具请求类型

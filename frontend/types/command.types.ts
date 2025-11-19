@@ -30,9 +30,13 @@ export interface GetCommandsRequest {
 export interface GetCommandsResponse {
   commands: Command[]
   page: number
-  page_size: number
-  total_count: number
-  total_pages: number
+  pageSize: number      // 后端返回 camelCase 格式
+  total: number         // 统一使用 total 字段
+  totalPages: number    // 后端返回 camelCase 格式
+  // 兼容字段（向后兼容）
+  page_size?: number
+  total_count?: number
+  total_pages?: number
 }
 
 /**

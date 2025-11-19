@@ -33,8 +33,11 @@ export interface GetEndpointsResponse {
   endpoints: Endpoint[]
   total: number
   page: number
-  pageSize: number      // 后端: page_size
-  totalPages: number    // 后端: total_pages
+  pageSize: number      // 后端返回 camelCase 格式
+  totalPages: number    // 后端返回 camelCase 格式
+  // 兼容字段（向后兼容）
+  page_size?: number
+  total_pages?: number
 }
 
 // 创建 Endpoint 请求参数

@@ -170,10 +170,15 @@ echo "  - 启动清理任务..."
 nohup $PYTHON apps/scan/deployments/cleanup_deployment.py > "$PID_DIR/cleanup-deployment.log" 2>&1 &
 echo $! > "$PID_DIR/cleanup-deployment.pid"
 
-# 启动删除任务 Deployment（合并版）
-echo "  - 启动删除任务（目标 + 组织）..."
-nohup $PYTHON apps/targets/deployments/delete_deployment.py > "$PID_DIR/delete-deployment.log" 2>&1 &
-echo $! > "$PID_DIR/delete-deployment.pid"
+# 注册 Targets 删除任务 Deployments（目标 + 组织）
+echo "  - 注册 Targets 删除任务..."
+nohup $PYTHON apps/targets/deployments/register.py > "$PID_DIR/targets-delete-deployment.log" 2>&1 &
+echo $! > "$PID_DIR/targets-delete-deployment.pid"
+
+# 注册 Asset 删除任务 Deployments（子域名等）
+echo "  - 注册 Asset 删除任务..."
+nohup $PYTHON apps/asset/deployments/register.py > "$PID_DIR/asset-delete-deployment.log" 2>&1 &
+echo $! > "$PID_DIR/asset-delete-deployment.pid"
 
 sleep 2
 
