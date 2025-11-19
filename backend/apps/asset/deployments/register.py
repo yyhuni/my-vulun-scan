@@ -17,12 +17,10 @@ import django
 django.setup()
 
 from .subdomain_deployment import create_subdomain_deployment
-# 未来导入其他 deployments:
-# from .website_deployment import create_website_deployment
-# from .ip_address_deployment import create_ip_address_deployment
-# from .endpoint_deployment import create_endpoint_deployment
-# from .port_deployment import create_port_deployment
-# from .directory_deployment import create_directory_deployment
+from .website_deployment import create_website_deployment
+from .ip_address_deployment import create_ip_address_deployment
+from .port_deployment import create_port_deployment
+from .directory_deployment import create_directory_deployment
 
 
 def register_all_deployments():
@@ -49,10 +47,41 @@ def register_all_deployments():
         )
         print("   ✅ delete-subdomains 部署成功")
         
-        # 未来添加其他 deployments:
-        # print("\n2. 部署 delete-websites...")
-        # website_deployment = create_website_deployment()
-        # website_deployment.deploy(...)
+        # 2. 部署 WebSite 删除 Deployment
+        print("\n2. 部署 delete-websites...")
+        website_deployment = create_website_deployment()
+        website_deployment.deploy(
+            name="delete-websites",
+            work_pool_name=work_pool_name,
+        )
+        print("   ✅ delete-websites 部署成功")
+        
+        # 3. 部署 IPAddress 删除 Deployment
+        print("\n3. 部署 delete-ip-addresses...")
+        ip_deployment = create_ip_address_deployment()
+        ip_deployment.deploy(
+            name="delete-ip-addresses",
+            work_pool_name=work_pool_name,
+        )
+        print("   ✅ delete-ip-addresses 部署成功")
+        
+        # 4. 部署 Port 删除 Deployment
+        print("\n4. 部署 delete-ports...")
+        port_deployment = create_port_deployment()
+        port_deployment.deploy(
+            name="delete-ports",
+            work_pool_name=work_pool_name,
+        )
+        print("   ✅ delete-ports 部署成功")
+        
+        # 5. 部署 Directory 删除 Deployment
+        print("\n5. 部署 delete-directories...")
+        directory_deployment = create_directory_deployment()
+        directory_deployment.deploy(
+            name="delete-directories",
+            work_pool_name=work_pool_name,
+        )
+        print("   ✅ delete-directories 部署成功")
         
         print("\n" + "=" * 60)
         print("✅ 所有 Asset Deployments 注册成功！")
@@ -60,12 +89,10 @@ def register_all_deployments():
         
         print(f"\n📋 部署信息:")
         print(f"  - delete-subdomains")
-        # 未来添加:
-        # print(f"  - delete-websites")
-        # print(f"  - delete-ip-addresses")
-        # print(f"  - delete-endpoints")
-        # print(f"  - delete-ports")
-        # print(f"  - delete-directories")
+        print(f"  - delete-websites")
+        print(f"  - delete-ip-addresses")
+        print(f"  - delete-ports")
+        print(f"  - delete-directories")
         print(f"  目标工作池: {work_pool_name}")
         print(f"\n🎯 管理命令:")
         print(f"  查看 Deployments: prefect deployment ls")
@@ -87,13 +114,10 @@ if __name__ == "__main__":
     
     运行此脚本将注册：
     1. delete-subdomains - 子域名删除 Deployment
-    
-    未来扩展：
     2. delete-websites - 网站删除 Deployment
     3. delete-ip-addresses - IP地址删除 Deployment
-    4. delete-endpoints - 端点删除 Deployment
-    5. delete-ports - 端口删除 Deployment
-    6. delete-directories - 目录删除 Deployment
+    4. delete-ports - 端口删除 Deployment
+    5. delete-directories - 目录删除 Deployment
     
     注意：需要先启动 Prefect Server
     """

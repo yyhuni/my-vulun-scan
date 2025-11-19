@@ -6,6 +6,8 @@ import logging
 from dataclasses import dataclass
 from typing import List
 from django.db import transaction, IntegrityError, OperationalError, DatabaseError
+from django.utils import timezone
+from typing import Tuple, Dict
 
 from apps.asset.models import IPAddress
 from apps.common.decorators import auto_ensure_db_connection
@@ -20,6 +22,83 @@ class IPAddressDTO:
     ip: str
     target_id: int
     scan_id: int = None  # 扫描任务ID（可选）
+
+    
+    def soft_delete_by_ids(self, ip_address_ids: List[int]) -> int:
+        """
+        根据 ID 列表批量软删除IPAddress
+        
+        Args:
+            ip_address_ids: IPAddress ID 列表
+        
+        Returns:
+            软删除的记录数
+        """
+        try:
+            updated_count = (
+                IPAddress.objects
+                .filter(id__in=ip_address_ids)
+                .update(deleted_at=timezone.now())
+            )
+            logger.debug(
+                "批量软删除IPAddress成功 - Count: %s, 更新记录: %s",
+                len(ip_address_ids),
+                updated_count
+            )
+            return updated_count
+        except Exception as e:
+            logger.error(
+                "批量软删除IPAddress失败 - IDs: %s, 错误: %s",
+                ip_address_ids,
+                e
+            )
+            raise
+    
+    def hard_delete_by_ids(self, ip_address_ids: List[int]) -> Tuple[int, Dict[str, int]]:
+        """
+        根据 ID 列表硬删除IPAddress（使用数据库级 CASCADE）
+        
+        Args:
+            ip_address_ids: IPAddress ID 列表
+        
+        Returns:
+            (删除的记录数, 删除详情字典)
+        """
+        try:
+            batch_size = 1000
+            total_deleted = 0
+            
+            logger.debug(f"开始批量删除 {len(ip_address_ids)} 个IPAddress（数据库 CASCADE）...")
+            
+            for i in range(0, len(ip_address_ids), batch_size):
+                batch_ids = ip_address_ids[i:i + batch_size]
+                count, _ = IPAddress.all_objects.filter(id__in=batch_ids).delete()
+                total_deleted += count
+                logger.debug(f"批次删除完成: {len(batch_ids)} 个IPAddress，删除 {count} 条记录")
+            
+            deleted_details = {
+                'ip_addresses': len(ip_address_ids),
+                'total': total_deleted,
+                'note': 'Database CASCADE - detailed stats unavailable'
+            }
+            
+            logger.debug(
+                "批量硬删除成功（CASCADE）- IPAddress数: %s, 总删除记录: %s",
+                len(ip_address_ids),
+                total_deleted
+            )
+            
+            return total_deleted, deleted_details
+        
+        except Exception as e:
+            logger.error(
+                "批量硬删除失败（CASCADE）- IPAddress数: %s, 错误: %s",
+                len(ip_address_ids),
+                str(e),
+                exc_info=True
+            )
+            raise
+
 
 
 @auto_ensure_db_connection
@@ -125,15 +204,3 @@ class DjangoIPAddressRepository:
             QuerySet: IP 地址查询集
         """
         return IPAddress.objects.all()
-    
-    def bulk_delete_by_ids(self, ip_address_ids: List[int]) -> tuple:
-        """
-        批量删除 IP 地址
-        
-        Args:
-            ip_address_ids: IP 地址 ID 列表
-            
-        Returns:
-            tuple: (删除数量, 级联删除的对象统计)
-        """
-        return IPAddress.objects.filter(id__in=ip_address_ids).delete()
