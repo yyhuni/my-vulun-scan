@@ -25,6 +25,86 @@ class PortDTO:
     target_id: int = None
     scan_id: int = None
 
+
+
+@auto_ensure_db_connection
+class DjangoPortRepository:
+    """Django ORM 实现的 Port Repository"""
+
+    def bulk_create_ignore_conflicts(self, items: List[PortDTO]) -> None:
+        """
+        批量创建 Port，忽略冲突
+        
+        Args:
+            items: Port DTO 列表
+            
+        Raises:
+            IntegrityError: 数据完整性错误
+            OperationalError: 数据库操作错误
+            DatabaseError: 数据库错误
+        """
+        if not items:
+            return
+
+        try:
+            # 转换为 Django 模型对象
+            port_objects = [
+                Port(
+                    ip_address_id=item.ip_address_id,
+                    subdomain_id=item.subdomain_id,
+                    number=item.number,
+                    service_name=item.service_name
+                )
+                for item in items
+            ]
+
+            with transaction.atomic():
+                # 批量插入，忽略冲突
+                Port.objects.bulk_create(
+                    port_objects,
+                    ignore_conflicts=True,
+                )
+
+            logger.debug(f"成功处理 {len(items)} 条 Port 记录")
+
+        except IntegrityError as e:
+            logger.error(
+                f"批量插入 Port 失败 - 数据完整性错误: {e}, "
+                f"记录数: {len(items)}"
+            )
+            raise
+
+        except OperationalError as e:
+            logger.error(
+                f"批量插入 Port 失败 - 数据库操作错误: {e}, "
+                f"记录数: {len(items)}"
+            )
+            raise
+
+        except DatabaseError as e:
+            logger.error(
+                f"批量插入 Port 失败 - 数据库错误: {e}, "
+                f"记录数: {len(items)}"
+            )
+            raise
+
+        except Exception as e:
+            logger.error(
+                f"批量插入 Port 失败 - 未知错误: {e}, "
+                f"记录数: {len(items)}, "
+                f"错误类型: {type(e).__name__}",
+                exc_info=True
+            )
+            raise
+    
+    def get_all(self):
+        """
+        获取所有端口
+        
+        Returns:
+            QuerySet: 端口查询集
+        """
+        return Port.objects.all()
     
     def soft_delete_by_ids(self, port_ids: List[int]) -> int:
         """
@@ -97,78 +177,6 @@ class PortDTO:
                 "批量硬删除失败（CASCADE）- Port数: %s, 错误: %s",
                 len(port_ids),
                 str(e),
-                exc_info=True
-            )
-            raise
-
-
-
-@auto_ensure_db_connection
-class DjangoPortRepository:
-    """Django ORM 实现的 Port Repository"""
-
-    def bulk_create_ignore_conflicts(self, items: List[PortDTO]) -> None:
-        """
-        批量创建 Port，忽略冲突
-        
-        Args:
-            items: Port DTO 列表
-            
-        Raises:
-            IntegrityError: 数据完整性错误
-            OperationalError: 数据库操作错误
-            DatabaseError: 数据库错误
-        """
-        if not items:
-            return
-
-        try:
-            # 转换为 Django 模型对象
-            port_objects = [
-                Port(
-                    ip_address_id=item.ip_address_id,
-                    subdomain_id=item.subdomain_id,
-                    number=item.number,
-                    service_name=item.service_name
-                )
-                for item in items
-            ]
-
-            with transaction.atomic():
-                # 批量插入，忽略冲突
-                Port.objects.bulk_create(
-                    port_objects,
-                    ignore_conflicts=True,
-                )
-
-            logger.debug(f"成功处理 {len(items)} 条 Port 记录")
-
-        except IntegrityError as e:
-            logger.error(
-                f"批量插入 Port 失败 - 数据完整性错误: {e}, "
-                f"记录数: {len(items)}"
-            )
-            raise
-
-        except OperationalError as e:
-            logger.error(
-                f"批量插入 Port 失败 - 数据库操作错误: {e}, "
-                f"记录数: {len(items)}"
-            )
-            raise
-
-        except DatabaseError as e:
-            logger.error(
-                f"批量插入 Port 失败 - 数据库错误: {e}, "
-                f"记录数: {len(items)}"
-            )
-            raise
-
-        except Exception as e:
-            logger.error(
-                f"批量插入 Port 失败 - 未知错误: {e}, "
-                f"记录数: {len(items)}, "
-                f"错误类型: {type(e).__name__}",
                 exc_info=True
             )
             raise

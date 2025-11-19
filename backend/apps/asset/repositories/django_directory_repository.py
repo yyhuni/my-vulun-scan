@@ -29,82 +29,6 @@ class DirectoryDTO:
     content_type: str = ''
     duration: Optional[int] = None
 
-    
-    def soft_delete_by_ids(self, directory_ids: List[int]) -> int:
-        """
-        根据 ID 列表批量软删除Directory
-        
-        Args:
-            directory_ids: Directory ID 列表
-        
-        Returns:
-            软删除的记录数
-        """
-        try:
-            updated_count = (
-                Directory.objects
-                .filter(id__in=directory_ids)
-                .update(deleted_at=timezone.now())
-            )
-            logger.debug(
-                "批量软删除Directory成功 - Count: %s, 更新记录: %s",
-                len(directory_ids),
-                updated_count
-            )
-            return updated_count
-        except Exception as e:
-            logger.error(
-                "批量软删除Directory失败 - IDs: %s, 错误: %s",
-                directory_ids,
-                e
-            )
-            raise
-    
-    def hard_delete_by_ids(self, directory_ids: List[int]) -> Tuple[int, Dict[str, int]]:
-        """
-        根据 ID 列表硬删除Directory（使用数据库级 CASCADE）
-        
-        Args:
-            directory_ids: Directory ID 列表
-        
-        Returns:
-            (删除的记录数, 删除详情字典)
-        """
-        try:
-            batch_size = 1000
-            total_deleted = 0
-            
-            logger.debug(f"开始批量删除 {len(directory_ids)} 个Directory（数据库 CASCADE）...")
-            
-            for i in range(0, len(directory_ids), batch_size):
-                batch_ids = directory_ids[i:i + batch_size]
-                count, _ = Directory.all_objects.filter(id__in=batch_ids).delete()
-                total_deleted += count
-                logger.debug(f"批次删除完成: {len(batch_ids)} 个Directory，删除 {count} 条记录")
-            
-            deleted_details = {
-                'directories': len(directory_ids),
-                'total': total_deleted,
-                'note': 'Database CASCADE - detailed stats unavailable'
-            }
-            
-            logger.debug(
-                "批量硬删除成功（CASCADE）- Directory数: %s, 总删除记录: %s",
-                len(directory_ids),
-                total_deleted
-            )
-            
-            return total_deleted, deleted_details
-        
-        except Exception as e:
-            logger.error(
-                "批量硬删除失败（CASCADE）- Directory数: %s, 错误: %s",
-                len(directory_ids),
-                str(e),
-                exc_info=True
-            )
-            raise
-
 
 
 @auto_ensure_db_connection
@@ -252,3 +176,78 @@ class DjangoDirectoryRepository:
             QuerySet: 目录查询集
         """
         return Directory.objects.all()
+    
+    def soft_delete_by_ids(self, directory_ids: List[int]) -> int:
+        """
+        根据 ID 列表批量软删除Directory
+        
+        Args:
+            directory_ids: Directory ID 列表
+        
+        Returns:
+            软删除的记录数
+        """
+        try:
+            updated_count = (
+                Directory.objects
+                .filter(id__in=directory_ids)
+                .update(deleted_at=timezone.now())
+            )
+            logger.debug(
+                "批量软删除Directory成功 - Count: %s, 更新记录: %s",
+                len(directory_ids),
+                updated_count
+            )
+            return updated_count
+        except Exception as e:
+            logger.error(
+                "批量软删除Directory失败 - IDs: %s, 错误: %s",
+                directory_ids,
+                e
+            )
+            raise
+    
+    def hard_delete_by_ids(self, directory_ids: List[int]) -> Tuple[int, Dict[str, int]]:
+        """
+        根据 ID 列表硬删除Directory（使用数据库级 CASCADE）
+        
+        Args:
+            directory_ids: Directory ID 列表
+        
+        Returns:
+            (删除的记录数, 删除详情字典)
+        """
+        try:
+            batch_size = 1000
+            total_deleted = 0
+            
+            logger.debug(f"开始批量删除 {len(directory_ids)} 个Directory（数据库 CASCADE）...")
+            
+            for i in range(0, len(directory_ids), batch_size):
+                batch_ids = directory_ids[i:i + batch_size]
+                count, _ = Directory.all_objects.filter(id__in=batch_ids).delete()
+                total_deleted += count
+                logger.debug(f"批次删除完成: {len(batch_ids)} 个Directory，删除 {count} 条记录")
+            
+            deleted_details = {
+                'directories': len(directory_ids),
+                'total': total_deleted,
+                'note': 'Database CASCADE - detailed stats unavailable'
+            }
+            
+            logger.debug(
+                "批量硬删除成功（CASCADE）- Directory数: %s, 总删除记录: %s",
+                len(directory_ids),
+                total_deleted
+            )
+            
+            return total_deleted, deleted_details
+        
+        except Exception as e:
+            logger.error(
+                "批量硬删除失败（CASCADE）- Directory数: %s, 错误: %s",
+                len(directory_ids),
+                str(e),
+                exc_info=True
+            )
+            raise
