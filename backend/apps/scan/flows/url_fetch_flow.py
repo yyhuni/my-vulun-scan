@@ -102,6 +102,64 @@ def _export_website_urls(target_id: int, url_fetch_dir: Path) -> tuple[str, int]
     return websites_file, website_count
 
 
+def _get_tool_input_type(tool_name: str) -> str:
+    """
+    获取工具的输入类型
+    
+    Args:
+        tool_name: 工具名称
+        
+    Returns:
+        str: 'domain' 或 'url'
+    """
+    from apps.scan.configs.command_templates import get_command_template
+    
+    template = get_command_template('url_fetch', tool_name)
+    if not template:
+        return 'url'  # 默认为站点级别
+    
+    return template.get('input_type', 'url')
+
+
+def _extract_unique_domains_from_websites(websites_file: str, url_fetch_dir: Path) -> tuple[str, int]:
+    """
+    从网站列表中提取唯一域名
+    
+    Args:
+        websites_file: 网站列表文件（完整 URL）
+        url_fetch_dir: URL 获取目录
+        
+    Returns:
+        tuple: (domains_file, domain_count)
+    """
+    from urllib.parse import urlparse
+    
+    domains = set()
+    
+    # 读取网站 URL 并提取域名
+    with open(websites_file, 'r') as f:
+        for line in f:
+            url = line.strip()
+            if url:
+                try:
+                    parsed = urlparse(url)
+                    domain = parsed.netloc or parsed.path  # 处理有无协议的情况
+                    if domain:
+                        domains.add(domain)
+                except Exception as e:
+                    logger.warning("解析 URL 失败: %s - %s", url, e)
+    
+    # 写入域名文件
+    domains_file = str(url_fetch_dir / 'domains.txt')
+    with open(domains_file, 'w') as f:
+        for domain in sorted(domains):
+            f.write(f"{domain}\n")
+    
+    logger.info("✓ 提取唯一域名 - 总数: %d, 文件: %s", len(domains), domains_file)
+    
+    return domains_file, len(domains)
+
+
 def _run_fetchers_sequentially(
     enabled_tools: dict,
     websites_file: str,
@@ -117,6 +175,10 @@ def _run_fetchers_sequentially(
     - 避免多个工具同时获取同一站点
     - 减少目标站点压力
     - 第一个工具获取后，后续工具可以跳过已获取的 URL
+    
+    根据工具的 input_type 自动选择输入：
+    - domain: 使用域名列表（自动去重）
+    - url: 使用站点 URL 列表
     
     Args:
         enabled_tools: 已启用的工具配置字典
@@ -140,6 +202,20 @@ def _run_fetchers_sequentially(
     # 生成时间戳
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     
+    # 检查是否有需要域名输入的工具，提前提取域名
+    domains_file = None
+    domain_count = 0
+    need_domains = any(
+        _get_tool_input_type(tool_name) == 'domain'
+        for tool_name in enabled_tools.keys()
+    )
+    
+    if need_domains:
+        logger.info("检测到域名级别工具，提取唯一域名...")
+        domains_file, domain_count = _extract_unique_domains_from_websites(
+            websites_file, url_fetch_dir
+        )
+    
     result_files = []
     failed_tools = []
     
@@ -147,19 +223,42 @@ def _run_fetchers_sequentially(
     for tool_name, tool_config in enabled_tools.items():
         logger.info("使用工具: %s", tool_name)
         
-        # 1. 生成输出文件路径
+        # 1. 根据工具类型选择输入文件
+        input_type = _get_tool_input_type(tool_name)
+        if input_type == 'domain':
+            input_file = domains_file
+            input_count = domain_count
+            logger.info("  输入类型: 域名级别, 唯一域名数: %d", input_count)
+        else:
+            input_file = websites_file
+            input_count = 0  # TODO: 从 websites_file 读取行数
+            logger.info("  输入类型: 站点级别")
+        
+        # 2. 生成输出文件路径
         short_uuid = uuid.uuid4().hex[:4]
         output_file = str(url_fetch_dir / f"{tool_name}_{timestamp}_{short_uuid}.txt")
         
-        # 2. 构建命令
+        # 3. 构建命令参数（根据输入类型）
+        if input_type == 'domain':
+            # 域名级别：逐个域名执行（因为 waymore 不支持文件输入）
+            # TODO: 实现逐个域名执行的逻辑
+            command_params = {
+                'target': '{domain}',  # 占位符，实际执行时替换
+                'output_file': output_file
+            }
+        else:
+            # 站点级别：使用文件输入
+            command_params = {
+                'url': '{url}',  # 占位符，从文件读取每个 URL
+                'output_file': output_file
+            }
+        
+        # 4. 构建命令
         try:
             command = build_scan_command(
                 tool_name=tool_name,
-                scan_type='url_fetch',  # TODO: 添加到 command_templates.py
-                command_params={
-                    'input_file': websites_file,  # 网站列表作为输入
-                    'output_file': output_file    # 获取的 URL 输出
-                },
+                scan_type='url_fetch',
+                command_params=command_params,
                 tool_config=tool_config
             )
         except Exception as e:
@@ -167,20 +266,24 @@ def _run_fetchers_sequentially(
             failed_tools.append({'tool': tool_name, 'reason': f'命令构建失败: {e}'})
             continue
         
-        # 3. 获取超时时间
+        # 5. 获取超时时间
         timeout = tool_config.get('timeout', 3600)
         
         logger.info(
-            "执行获取 - 工具: %s, 超时: %d秒, 输出: %s",
-            tool_name, timeout, output_file
+            "执行获取 - 工具: %s, 输入: %s, 超时: %d秒, 输出: %s",
+            tool_name, input_type, timeout, output_file
         )
         
-        # 4. 执行获取任务
+        # 6. 执行获取任务
         try:
-            # TODO: 调用获取任务
+            # TODO: 调用获取任务，需要支持两种模式：
+            # - domain 模式：逐个域名执行（for loop）
+            # - url 模式：逐个站点执行（for loop）
             # result = run_url_fetcher_task(
             #     tool=tool_name,
             #     command=command,
+            #     input_file=input_file,
+            #     input_type=input_type,
             #     timeout=timeout,
             #     output_file=output_file
             # )
@@ -198,7 +301,7 @@ def _run_fetchers_sequentially(
             logger.error("工具 %s 执行失败: %s", tool_name, e)
             failed_tools.append({'tool': tool_name, 'reason': str(e)})
     
-    # 5. 检查是否有成功的工具
+    # 7. 检查是否有成功的工具
     if not result_files:
         error_msg = (
             f"所有 URL 获取工具均失败 - 目标: {target_name}\n"
@@ -208,7 +311,7 @@ def _run_fetchers_sequentially(
         )
         raise RuntimeError(error_msg)
     
-    # 6. 计算成功的工具列表
+    # 8. 计算成功的工具列表
     successful_tool_names = [
         name for name in enabled_tools.keys()
         if name not in [f['tool'] for f in failed_tools]

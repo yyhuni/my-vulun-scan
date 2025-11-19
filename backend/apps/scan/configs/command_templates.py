@@ -110,12 +110,27 @@ DIRECTORY_SCAN_COMMANDS = {
 
 URL_FETCH_COMMANDS = {
     'waymore': {
-        # 从目标域名获取历史 URL
+        # 从目标域名获取历史 URL（输入：域名）
         # -i: 输入域名
         # -mode U: URL 模式
         # -oU: 输出文件
         'command': 'waymore -i {target} -mode U -oU {output_file}',
-        'optional_flags': {}
+        'optional_flags': {},
+        'input_type': 'domain'  # 输入类型：domain（域名级别，自动去重）
+    },
+    
+    'katana': {
+        # 爬取站点 URL（输入：站点 URL）
+        # -u: 输入 URL
+        # -d: 爬取深度
+        # -o: 输出文件
+        'command': '$HOME/go/bin/katana -u {url} -o {output_file} -silent -jsonl',
+        'optional_flags': {
+            'depth': '-d {depth}',              # 爬取深度（默认 2）
+            'threads': '-c {threads}',          # 并发数（默认 10）
+            'rate_limit': '-rl {rate_limit}',   # 每秒请求数
+        },
+        'input_type': 'url'  # 输入类型：url（站点级别，每个站点单独处理）
     },
 }
 
