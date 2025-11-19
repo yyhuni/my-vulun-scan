@@ -30,7 +30,7 @@ def on_scan_flow_running(flow: Flow, flow_run: FlowRun, state: State) -> None:
         target_name = flow_params.get('target_name', 'unknown')
         
         from apps.scan.notifications import create_notification, NotificationLevel
-        message = f"任务：{flow.name}\n状态：已开始执行"
+        message = f"任务：{flow.name}\n"
         create_notification(
             title=target_name,
             message=message,
@@ -56,23 +56,23 @@ def on_scan_flow_completed(flow: Flow, flow_run: FlowRun, state: State) -> None:
     """
     logger.info("✅ 扫描流程完成 - Flow: %s, Run ID: %s", flow.name, flow_run.id)
     
-    try:
-        # 提取流程参数
-        flow_params = flow_run.parameters or {}
-        target_name = flow_params.get('target_name', 'unknown')
+    # try:
+    #     # 提取流程参数
+    #     flow_params = flow_run.parameters or {}
+    #     target_name = flow_params.get('target_name', 'unknown')
         
-        from apps.scan.notifications import create_notification, NotificationLevel
-        message = f"任务：{flow.name}\n状态：已成功完成"
-        create_notification(
-            title=target_name,
-            message=message,
-            level=NotificationLevel.LOW
-        )
+    #     from apps.scan.notifications import create_notification, NotificationLevel
+    #     message = f"任务：{flow.name}\n状态：已成功完成"
+    #     create_notification(
+    #         title=target_name,
+    #         message=message,
+    #         level=NotificationLevel.LOW
+    #     )
         
-        logger.info(f"✓ 扫描完成通知已发送 - Target: {target_name}, Flow: {flow.name}")
+    #     logger.info(f"✓ 扫描完成通知已发送 - Target: {target_name}, Flow: {flow.name}")
         
-    except Exception as e:
-        logger.error(f"发送扫描完成通知失败 - Flow: {flow.name}: {e}")
+    # except Exception as e:
+    #     logger.error(f"发送扫描完成通知失败 - Flow: {flow.name}: {e}")
 
 
 def on_scan_flow_failed(flow: Flow, flow_run: FlowRun, state: State) -> None:

@@ -135,7 +135,7 @@ def on_initiate_scan_flow_running(flow: Flow, flow_run: FlowRun, state: State) -
     logger.info("准备发送扫描开始通知 - Scan ID: %s, Target: %s", scan_id, target_name)
     try:
         from apps.scan.notifications import create_notification, NotificationLevel
-        message = f"目标：{target_name}\n扫描引擎：{engine_name}\n状态：已开始执行"
+        message = f"目标：{target_name}\n扫描引擎：{engine_name}\n状态：开始执行"
         create_notification(
             title="扫描流程",
             message=message,
