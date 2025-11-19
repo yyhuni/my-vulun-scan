@@ -23,14 +23,15 @@ class WebSiteDTO:
     scan_id: int
     url: str
     title: str = ''
-    status: Optional[int] = None
+    status_code: Optional[int] = None
     content_length: Optional[int] = None
     location: str = ''
-    web_server: str = ''
+    webserver: str = ''
     content_type: str = ''
     tech: List[str] = None
     body_preview: str = ''
     vhost: Optional[bool] = None
+    created_at: str = None
     
     def __post_init__(self):
         if self.tech is None:

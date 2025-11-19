@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SubdomainDTO:
     """子域名数据传输对象"""
-    subdomain: str
+    name: str
     target_id: int
     scan_id: int = None  # 扫描任务ID（可选）
 

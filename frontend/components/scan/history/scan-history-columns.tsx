@@ -241,7 +241,7 @@ function ScanRowActions({
           className="text-destructive focus:text-destructive"
         >
           <Trash2 />
-          Delete Scan Results
+          delete
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

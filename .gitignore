@@ -109,7 +109,7 @@ logs/
 results/
 
 # 开发脚本运行时文件（进程 ID 和启动日志）
-backend/script/dev/.pids/
+backend/scripts/dev/.pids/
 
 # ============================
 # 临时文件

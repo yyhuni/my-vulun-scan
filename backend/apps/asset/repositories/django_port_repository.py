@@ -19,9 +19,9 @@ logger = logging.getLogger(__name__)
 class PortDTO:
     """端口数据传输对象"""
     ip_address_id: int
-    port: int
-    service: str = ''
-    version: str = ''
+    number: int
+    subdomain_id: int = None
+    service_name: str = ''
     target_id: int = None
     scan_id: int = None
 

@@ -31,7 +31,7 @@ from psycopg2 import InterfaceError
 
 from apps.asset.repositories.django_website_repository import DjangoWebSiteRepository
 from apps.asset.repositories.django_directory_repository import DjangoDirectoryRepository
-from apps.asset.repositories.directory_repository import DirectoryDTO
+from apps.asset.repositories.django_directory_repository import DirectoryDTO
 from apps.scan.utils import execute_stream
 
 logger = logging.getLogger(__name__)
