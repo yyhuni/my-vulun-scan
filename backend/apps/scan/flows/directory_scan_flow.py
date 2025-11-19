@@ -170,7 +170,8 @@ def _export_site_urls(target_id: int, directory_scan_dir: Path) -> tuple[str, in
     
     if site_count == 0:
         logger.warning("目标下没有站点，无法执行目录扫描")
-        raise ValueError("目标下没有站点，无法执行目录扫描")
+        # 不抛出异常，由上层决定如何处理
+        # raise ValueError("目标下没有站点，无法执行目录扫描")
     
     return sites_file, site_count
 
@@ -400,6 +401,21 @@ def directory_scan_flow(
         
         # Step 1: 导出站点 URL
         sites_file, site_count = _export_site_urls(target_id, directory_scan_dir)
+        
+        if site_count == 0:
+            logger.warning("目标下没有站点，跳过目录扫描")
+            return {
+                'success': True,
+                'scan_id': scan_id,
+                'target': target_name,
+                'scan_workspace_dir': scan_workspace_dir,
+                'sites_file': sites_file,
+                'site_count': 0,
+                'total_directories': 0,
+                'processed_sites': 0,
+                'failed_sites_count': 0,
+                'executed_tasks': ['export_sites']
+            }
         
         # Step 2: 解析配置，获取启用的工具
         logger.info("Step 2: 解析配置，获取启用的工具")

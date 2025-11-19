@@ -268,14 +268,31 @@ def subdomain_discovery_flow(
         # ==================== 参数验证 ====================
         if scan_id is None:
             raise ValueError("scan_id 不能为空")
-        if not target_name:
-            raise ValueError("target_name 不能为空")
         if target_id is None:
             raise ValueError("target_id 不能为空")
         if not scan_workspace_dir:
             raise ValueError("scan_workspace_dir 不能为空")
         if not engine_config:
             raise ValueError("engine_config 不能为空")
+        
+        # 如果未提供目标域名，跳过扫描
+        if not target_name:
+            logger.warning("未提供目标域名，跳过子域名发现扫描")
+            return {
+                'success': True,
+                'scan_id': scan_id,
+                'target': '',
+                'scan_workspace_dir': scan_workspace_dir,
+                'total': 0,
+                'executed_tasks': [],
+                'tool_stats': {
+                    'total': 0,
+                    'successful': 0,
+                    'failed': 0,
+                    'successful_tools': [],
+                    'failed_tools': []
+                }
+            }
         
         logger.info(
             "="*60 + "\n" +
@@ -295,7 +312,27 @@ def subdomain_discovery_flow(
         
         # Step 0: 准备工作
         result_dir = _setup_subdomain_directory(scan_workspace_dir)
-        target_name = _validate_and_normalize_target(target_name)
+        
+        # 验证并规范化目标域名
+        try:
+            target_name = _validate_and_normalize_target(target_name)
+        except ValueError as e:
+            logger.warning("目标域名无效，跳过子域名发现扫描: %s", e)
+            return {
+                'success': True,
+                'scan_id': scan_id,
+                'target': target_name,
+                'scan_workspace_dir': scan_workspace_dir,
+                'total': 0,
+                'executed_tasks': [],
+                'tool_stats': {
+                    'total': 0,
+                    'successful': 0,
+                    'failed': 0,
+                    'successful_tools': [],
+                    'failed_tools': []
+                }
+            }
         
         # Step 1: 解析配置，获取启用的工具
         logger.info("Step 1: 解析配置，获取启用的工具")

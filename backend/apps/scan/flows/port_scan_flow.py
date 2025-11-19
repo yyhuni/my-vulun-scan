@@ -214,7 +214,8 @@ def _export_target_domains(target_id: int, port_scan_dir: Path) -> tuple[str, in
     
     if domain_count == 0:
         logger.warning("目标下没有域名，无法执行端口扫描")
-        raise ValueError("目标下没有域名，无法执行端口扫描")
+        # 不抛出异常，由上层决定如何处理
+        # raise ValueError("目标下没有域名，无法执行端口扫描")
     
     return domains_file, domain_count
 
@@ -441,6 +442,27 @@ def port_scan_flow(
         
         # Step 1: 导出目标域名
         domains_file, domain_count = _export_target_domains(target_id, port_scan_dir)
+        
+        if domain_count == 0:
+            logger.warning("目标下没有域名，跳过端口扫描")
+            return {
+                'success': True,
+                'scan_id': scan_id,
+                'target': target_name,
+                'scan_workspace_dir': scan_workspace_dir,
+                'domains_file': domains_file,
+                'domain_count': 0,
+                'processed_records': 0,
+                'executed_tasks': ['export_domains'],
+                'tool_stats': {
+                    'total': 0,
+                    'successful': 0,
+                    'failed': 0,
+                    'successful_tools': [],
+                    'failed_tools': [],
+                    'details': {}
+                }
+            }
         
         # Step 2: 解析配置，获取启用的工具
         logger.info("Step 2: 解析配置，获取启用的工具")

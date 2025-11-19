@@ -145,7 +145,8 @@ def _export_site_urls(target_id: int, site_scan_dir: Path) -> tuple[str, int, in
     
     if total_urls == 0:
         logger.warning("目标下没有可用的站点URL，无法执行站点扫描")
-        raise ValueError("目标下没有可用的站点URL，无法执行站点扫描")
+        # 不抛出异常，由上层决定如何处理
+        # raise ValueError("目标下没有可用的站点URL，无法执行站点扫描")
     
     return urls_file, total_urls, subdomain_count, port_count
 
@@ -396,6 +397,32 @@ def site_scan_flow(
         urls_file, total_urls, subdomain_count, port_count = _export_site_urls(
             target_id, site_scan_dir
         )
+        
+        if total_urls == 0:
+            logger.warning("目标下没有可用的站点URL，跳过站点扫描")
+            return {
+                'success': True,
+                'scan_id': scan_id,
+                'target': target_name,
+                'scan_workspace_dir': scan_workspace_dir,
+                'urls_file': urls_file,
+                'total_urls': 0,
+                'subdomain_count': subdomain_count,
+                'port_count': port_count,
+                'processed_records': 0,
+                'created_websites': 0,
+                'skipped_no_subdomain': 0,
+                'skipped_failed': 0,
+                'executed_tasks': ['export_site_urls'],
+                'tool_stats': {
+                    'total': 0,
+                    'successful': 0,
+                    'failed': 0,
+                    'successful_tools': [],
+                    'failed_tools': [],
+                    'details': {}
+                }
+            }
         
         # Step 2: 解析配置，获取启用的工具
         logger.info("Step 2: 解析配置，获取启用的工具")
