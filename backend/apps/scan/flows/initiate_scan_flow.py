@@ -16,6 +16,9 @@
 - Handlers: 状态管理（apps/scan/handlers/）
 """
 
+# Django 环境初始化（导入即生效）
+from apps.common.prefect_django_setup import setup_django_for_prefect
+
 from prefect import flow
 from pathlib import Path
 import logging

@@ -10,6 +10,9 @@
 - 配置由 YAML 解析
 """
 
+# Django 环境初始化（导入即生效）
+from apps.common.prefect_django_setup import setup_django_for_prefect
+
 import logging
 import os
 import subprocess
