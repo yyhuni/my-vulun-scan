@@ -23,6 +23,7 @@ import {
   IconChevronsRight,
   IconLayoutColumns,
   IconTrash,
+  IconDownload,
 } from "@tabler/icons-react"
 
 import { Button } from "@/components/ui/button"
@@ -32,6 +33,7 @@ import {
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
@@ -66,6 +68,9 @@ interface DirectoriesDataTableProps {
   onPaginationChange?: (pagination: { pageIndex: number; pageSize: number }) => void
   onBulkDelete?: () => void
   onSelectionChange?: (selectedRows: Directory[]) => void
+  // 下载回调函数
+  onDownloadAll?: () => void
+  onDownloadSelected?: () => void
 }
 
 export function DirectoriesDataTable({
@@ -79,6 +84,8 @@ export function DirectoriesDataTable({
   onPaginationChange,
   onBulkDelete,
   onSelectionChange,
+  onDownloadAll,
+  onDownloadSelected,
 }: DirectoriesDataTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -157,18 +164,6 @@ export function DirectoriesDataTable({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* 批量删除按钮 */}
-            {onBulkDelete && table.getFilteredSelectedRowModel().rows.length > 0 && (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={onBulkDelete}
-              >
-                <IconTrash className="mr-2 h-4 w-4" />
-                Delete ({table.getFilteredSelectedRowModel().rows.length})
-              </Button>
-            )}
-
             {/* 列可见性控制 */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -212,6 +207,56 @@ export function DirectoriesDataTable({
                   })}
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* 下载按钮 */}
+            {(onDownloadAll || onDownloadSelected) && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <IconDownload />
+                    Download
+                    <IconChevronDown />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64">
+                  <DropdownMenuLabel>Download Options</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {onDownloadAll && (
+                    <DropdownMenuItem onClick={onDownloadAll}>
+                      <IconDownload className="h-4 w-4" />
+                      Download All Directories
+                    </DropdownMenuItem>
+                  )}
+                  {onDownloadSelected && (
+                    <DropdownMenuItem 
+                      onClick={onDownloadSelected}
+                      disabled={table.getFilteredSelectedRowModel().rows.length === 0}
+                    >
+                      <IconDownload className="h-4 w-4" />
+                      Download Selected Directories
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
+            {/* 批量删除按钮 */}
+            {onBulkDelete && (
+              <Button 
+                onClick={onBulkDelete}
+                size="sm"
+                variant="outline"
+                disabled={table.getFilteredSelectedRowModel().rows.length === 0}
+                className={
+                  table.getFilteredSelectedRowModel().rows.length === 0
+                    ? "text-muted-foreground"
+                    : "text-destructive hover:text-destructive hover:bg-destructive/10"
+                }
+              >
+                <IconTrash />
+                Delete
+              </Button>
+            )}
           </div>
         </div>
       </div>

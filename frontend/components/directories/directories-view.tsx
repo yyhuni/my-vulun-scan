@@ -131,6 +131,24 @@ export function DirectoriesView({
     setSelectedDirectories(selectedRows)
   }, [])
 
+  // 处理下载所有目录
+  const handleDownloadAll = () => {
+    // TODO: 实现下载所有目录功能
+    console.log('下载所有目录')
+    toast.info("下载功能开发中...")
+  }
+
+  // 处理下载选中的目录
+  const handleDownloadSelected = () => {
+    // TODO: 实现下载选中的目录功能
+    console.log('下载选中的目录:', selectedDirectories)
+    if (selectedDirectories.length === 0) {
+      toast.error("请选择要下载的目录")
+      return
+    }
+    toast.info("下载功能开发中...")
+  }
+
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
@@ -149,7 +167,7 @@ export function DirectoriesView({
   if (isLoading) {
     return (
       <DataTableSkeleton
-        toolbarButtonCount={2}
+        toolbarButtonCount={3}
         rows={6}
         columns={9}
       />
@@ -169,6 +187,8 @@ export function DirectoriesView({
         onPaginationChange={setPagination}
         onBulkDelete={handleBulkDelete}
         onSelectionChange={handleSelectionChange}
+        onDownloadAll={handleDownloadAll}
+        onDownloadSelected={handleDownloadSelected}
       />
 
       {/* 删除确认对话框 */}
