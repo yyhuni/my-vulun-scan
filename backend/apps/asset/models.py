@@ -4,6 +4,13 @@ from django.contrib.postgres.fields import ArrayField
 from django.core.validators import MinValueValidator, MaxValueValidator
 
 
+class SoftDeleteManager(models.Manager):
+    """软删除管理器：默认只返回未删除的记录"""
+    
+    def get_queryset(self):
+        return super().get_queryset().filter(deleted_at__isnull=True)
+
+
 class Subdomain(models.Model):
     """子域名模型"""
 
@@ -24,6 +31,9 @@ class Subdomain(models.Model):
     )
     name = models.CharField(max_length=1000, help_text='子域名名称')
     created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间，也就是首次发现时间')
+    
+    # ==================== 软删除字段 ====================
+    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True, help_text='删除时间（NULL表示未删除）')
     cname = ArrayField(
         models.CharField(max_length=255),
         blank=True,
@@ -40,6 +50,10 @@ class Subdomain(models.Model):
         default='',
         help_text='CDN提供商名称（如cloudflare, akamai等）'
     )
+    
+    # ==================== 管理器 ====================
+    objects = SoftDeleteManager()  # 默认管理器：只返回未删除的记录
+    all_objects = models.Manager()  # 全量管理器：包括已删除的记录（用于硬删除）
 
     class Meta:
         db_table = 'subdomain'
@@ -52,11 +66,12 @@ class Subdomain(models.Model):
             models.Index(fields=['target']),     # 优化从target_id快速查找下面的子域名
             models.Index(fields=['scan']),         # 优化从scan_id快速查找下面的子域名
             models.Index(fields=['name']),            # 优化从name快速查找子域名，搜索场景
+            models.Index(fields=['deleted_at', '-created_at']),  # 软删除 + 时间索引
         ]
         constraints = [
             models.UniqueConstraint(
-                fields=['name', 'target'],   # 唯一约束，确保一个目标下不能有重复的子域名
-                name='unique_name_target'
+                fields=['name', 'target', 'deleted_at'],   # 唯一约束，允许软删除后重新插入同名记录
+                name='unique_name_target_not_deleted'
             )
         ]
 
@@ -136,6 +151,13 @@ class Endpoint(models.Model):
         default=list,
         help_text='匹配的GF模式列表，用于识别敏感端点（如api, debug, config等）'
     )
+    
+    # ==================== 软删除字段 ====================
+    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True, help_text='删除时间（NULL表示未删除）')
+    
+    # ==================== 管理器 ====================
+    objects = SoftDeleteManager()  # 默认管理器：只返回未删除的记录
+    all_objects = models.Manager()  # 全量管理器：包括已删除的记录（用于硬删除）
 
     class Meta:
         db_table = 'endpoint'
@@ -146,11 +168,12 @@ class Endpoint(models.Model):
             models.Index(fields=['-created_at']),
             models.Index(fields=['scan']),         # 优化从scan_id快速查找下面的端点
             models.Index(fields=['target']),     # 优化从target_id快速查找下面的端点
+            models.Index(fields=['deleted_at', '-created_at']),  # 软删除 + 时间索引
         ]
         constraints = [
             models.UniqueConstraint(
-                fields=['url', 'website'],   # 唯一约束，确保一个站点下不能有重复的端点
-                name='unique_url_website'
+                fields=['url', 'website', 'deleted_at'],   # 唯一约束，允许软删除后重新插入同名记录
+                name='unique_url_website_not_deleted'
             )
         ]
 
@@ -238,6 +261,13 @@ class WebSite(models.Model):
         blank=True,
         help_text='是否支持虚拟主机'
     )
+    
+    # ==================== 软删除字段 ====================
+    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True, help_text='删除时间（NULL表示未删除）')
+    
+    # ==================== 管理器 ====================
+    objects = SoftDeleteManager()  # 默认管理器：只返回未删除的记录
+    all_objects = models.Manager()  # 全量管理器：包括已删除的记录（用于硬删除）
 
     class Meta:
         db_table = 'website'
@@ -249,11 +279,12 @@ class WebSite(models.Model):
             models.Index(fields=['url']),  # URL索引，优化查询性能
             models.Index(fields=['target']),     # 优化从target_id快速查找下面的站点
             models.Index(fields=['scan']),         # 优化从scan_id快速查找下面的站点
+            models.Index(fields=['deleted_at', '-created_at']),  # 软删除 + 时间索引
         ]
         constraints = [
             models.UniqueConstraint(
-                fields=['url', 'subdomain'],   # 唯一约束，确保一个子域名下不能有重复的站点
-                name='unique_url_subdomain'
+                fields=['url', 'subdomain', 'deleted_at'],   # 唯一约束，允许软删除后重新插入同名记录
+                name='unique_url_subdomain_not_deleted'
             )
         ]
 
@@ -309,6 +340,13 @@ class IPAddress(models.Model):
         default='',
         help_text='反向解析（如域名）'
     )
+    
+    # ==================== 软删除字段 ====================
+    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True, help_text='删除时间（NULL表示未删除）')
+    
+    # ==================== 管理器 ====================
+    objects = SoftDeleteManager()  # 默认管理器：只返回未删除的记录
+    all_objects = models.Manager()  # 全量管理器：包括已删除的记录（用于硬删除）
 
     class Meta:
         db_table = 'ip_address'
@@ -319,11 +357,12 @@ class IPAddress(models.Model):
             models.Index(fields=['-created_at']),
             models.Index(fields=['target']),     # 优化从target_id快速查找下面的IP地址
             models.Index(fields=['scan']),         # 优化从scan_id快速查找下面的IP地址
+            models.Index(fields=['deleted_at', '-created_at']),  # 软删除 + 时间索引
         ]
         constraints = [
             models.UniqueConstraint(
-                fields=['subdomain', 'ip'],
-                name='unique_ip_subdomain'   # 唯一约束，确保一个子域名下没有有重复的IP
+                fields=['subdomain', 'ip', 'deleted_at'],   # 唯一约束，允许软删除后重新插入同名记录
+                name='unique_ip_subdomain_not_deleted'
             ),
         ]
 
@@ -378,6 +417,13 @@ class Port(models.Model):
         help_text='是否为不常见端口'
     )
     created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
+    
+    # ==================== 软删除字段 ====================
+    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True, help_text='删除时间（NULL表示未删除）')
+    
+    # ==================== 管理器 ====================
+    objects = SoftDeleteManager()  # 默认管理器：只返回未删除的记录
+    all_objects = models.Manager()  # 全量管理器：包括已删除的记录（用于硬删除）
 
     class Meta:
         db_table = 'port'
@@ -386,11 +432,12 @@ class Port(models.Model):
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['-created_at']),
+            models.Index(fields=['deleted_at', '-created_at']),  # 软删除 + 时间索引
         ]
         constraints = [
             models.UniqueConstraint(
-                fields=['ip_address', 'number'],    
-                name='unique_port_ip'   # 唯一约束，确保一个IP下没有有重复的端口
+                fields=['ip_address', 'number', 'deleted_at'],   # 唯一约束，允许软删除后重新插入同名记录
+                name='unique_port_ip_not_deleted'
             ),
         ]
 
@@ -465,6 +512,13 @@ class Directory(models.Model):
     )
     
     created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
+    
+    # ==================== 软删除字段 ====================
+    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True, help_text='删除时间（NULL表示未删除）')
+    
+    # ==================== 管理器 ====================
+    objects = SoftDeleteManager()  # 默认管理器：只返回未删除的记录
+    all_objects = models.Manager()  # 全量管理器：包括已删除的记录（用于硬删除）
 
     class Meta:
         db_table = 'directory'
@@ -475,11 +529,12 @@ class Directory(models.Model):
             models.Index(fields=['-created_at']),
             models.Index(fields=['scan']),         # 优化从scan_id快速查找下面的目录
             models.Index(fields=['target']),     # 优化从target_id快速查找下面的目录
+            models.Index(fields=['deleted_at', '-created_at']),  # 软删除 + 时间索引
         ]
         constraints = [
             models.UniqueConstraint(
-                fields=['website', 'url'],    
-                name='unique_directory_url_website'   # 唯一约束，确保一个站点下没有重复的目录 URL
+                fields=['website', 'url', 'deleted_at'],   # 唯一约束，允许软删除后重新插入同名记录
+                name='unique_directory_url_website_not_deleted'
             ),
         ]
 
