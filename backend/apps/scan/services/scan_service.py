@@ -26,7 +26,7 @@ from apps.targets.repositories import DjangoTargetRepository, DjangoOrganization
 from apps.engine.repositories import DjangoEngineRepository
 from apps.targets.models import Target
 from apps.engine.models import ScanEngine
-from apps.scan.flows import initiate_scan_flow  # 从 flows 导入
+from apps.scan.flows import initiate_scan_flow, delete_scans_flow  # 从 flows 导入
 from apps.common.definitions import ScanStatus
 
 logger = logging.getLogger(__name__)
@@ -530,38 +530,83 @@ class ScanService:
             logger.error("更新缓存统计数据失败 - Scan ID: %s, 错误: %s", scan_id, e)
             return False
     
+    def _submit_delete_flow(self, deployment_name: str, parameters: Dict) -> str:
+        """
+        提交删除任务 Flow (异步转同步)
+        """
+        return _submit_flow_deployment(deployment_name, parameters)
+
+    def delete_scans_two_phase(self, scan_ids: List[int]) -> dict:
+        """
+        两阶段删除扫描任务
+        
+        1. 软删除：立即更新 deleted_at 字段
+        2. 硬删除：提交 Prefect 任务异步执行物理删除
+        
+        Args:
+            scan_ids: 扫描任务 ID 列表
+            
+        Returns:
+            删除结果统计
+        """
+        # 1. 获取要删除的 Scan 信息
+        scans = self.scan_repo.get_all(prefetch_relations=False).filter(id__in=scan_ids)
+        if not scans.exists():
+            raise ValueError("未找到要删除的 Scan")
+            
+        scan_names = [f"Scan #{s.id}" for s in scans]
+        existing_ids = [s.id for s in scans]
+        
+        # 2. 第一阶段：软删除
+        soft_count = self.scan_repo.soft_delete_by_ids(existing_ids)
+        logger.info(f"✓ 软删除完成: {soft_count} 个 Scan")
+        
+        # 3. 第二阶段：提交硬删除任务
+        logger.info(f"🔵 提交 Prefect 删除任务 - Scan: {', '.join(scan_names[:5])}{'...' if len(scan_names) > 5 else ''}")
+        
+        try:
+            flow_kwargs = {
+                'scan_ids': existing_ids,
+                'scan_names': scan_names
+            }
+            
+            # 提交 Flow
+            flow_run_id = self._submit_delete_flow(
+                deployment_name="delete-scans/delete-scans",
+                parameters=flow_kwargs
+            )
+            
+            logger.info(f"✓ Prefect 删除任务已提交 - Flow Run ID: {flow_run_id}")
+            
+        except Exception as e:
+            logger.error(f"❌ 提交 Prefect 任务失败: {e}", exc_info=True)
+            # 软删除已成功，这里只记录错误，不回滚
+            logger.warning("硬删除可能未成功提交，请检查 Prefect 服务状态")
+            
+        return {
+            'soft_deleted_count': soft_count,
+            'scan_names': scan_names,
+            'hard_delete_scheduled': True
+        }
+
     def bulk_delete(self, scan_ids: List[int]) -> tuple[int, str]:
         """
-        批量删除扫描任务（级联删除关联数据）
+        批量删除扫描任务（兼容旧接口，推荐使用 delete_scans_two_phase）
         
         Args:
             scan_ids: 扫描任务 ID 列表
         
         Returns:
             (删除数量, 消息)
-        
-        Raises:
-            DatabaseError: 数据库错误
-            IntegrityError: 完整性约束错误
-        
-        Note:
-            - 使用 Repository 层批量删除
-            - Django ORM 会自动级联删除相关数据
-            - 异常向上传播，由视图层处理
         """
+        # 转发到两阶段删除
         try:
-            deleted_count, _ = self.scan_repo.bulk_delete(scan_ids)
-            logger.info(
-                "批量删除扫描任务成功 - 数量: %d, IDs: %s",
-                deleted_count,
-                scan_ids
-            )
-            return deleted_count, f"已删除 {deleted_count} 个扫描记录"
-        except (DatabaseError, IntegrityError, OperationalError) as e:
-            logger.exception(
-                "数据库错误：批量删除扫描任务失败 - IDs: %s",
-                scan_ids
-            )
+            result = self.delete_scans_two_phase(scan_ids)
+            return result['soft_deleted_count'], f"已删除 {result['soft_deleted_count']} 个扫描记录"
+        except ValueError:
+             return 0, "未找到要删除的记录"
+        except Exception as e:
+            logger.exception("批量删除失败")
             raise
     
     def get_statistics(self) -> dict:

@@ -7,7 +7,7 @@ Scan 数据访问层 Django ORM 实现
 from __future__ import annotations
 
 import logging
-from typing import List
+from typing import List, Tuple, Dict
 from datetime import datetime
 
 from django.db import transaction, DatabaseError
@@ -134,27 +134,82 @@ class DjangoScanRepository:
         return created_scans
     
     
-    def bulk_delete(self, scan_ids: List[int]) -> tuple[int, dict]:
+    def soft_delete_by_ids(self, scan_ids: List[int]) -> int:
         """
-        批量删除扫描任务（级联删除关联数据）
+        根据 ID 列表批量软删除 Scan
         
         Args:
-            scan_ids: 扫描任务 ID 列表
+            scan_ids: Scan ID 列表
         
         Returns:
-            (删除数量, 删除详情字典)
-        
-        Note:
-            Django ORM 的 delete() 方法会自动级联删除相关联的对象
-            返回值格式: (总删除数量, {'model_name': 删除数量, ...})
+            软删除的记录数
         """
-        deleted_count, deleted_details = Scan.objects.filter(id__in=scan_ids).delete()  # type: ignore  # pylint: disable=no-member
-        logger.debug(
-            "批量删除 Scan - 删除数量: %d, 详情: %s",
-            deleted_count,
-            deleted_details
-        )
-        return deleted_count, deleted_details
+        try:
+            updated_count = (
+                Scan.objects
+                .filter(id__in=scan_ids)
+                .update(deleted_at=timezone.now())
+            )
+            logger.debug(
+                "批量软删除 Scan 成功 - Count: %s, 更新记录: %s",
+                len(scan_ids),
+                updated_count
+            )
+            return updated_count
+        except Exception as e:
+            logger.error(
+                "批量软删除 Scan 失败 - IDs: %s, 错误: %s",
+                scan_ids,
+                e
+            )
+            raise
+
+    def hard_delete_by_ids(self, scan_ids: List[int]) -> Tuple[int, Dict[str, int]]:
+        """
+        根据 ID 列表硬删除 Scan（使用数据库级 CASCADE）
+        
+        Args:
+            scan_ids: Scan ID 列表
+        
+        Returns:
+            (删除的记录数, 删除详情字典)
+        """
+        try:
+            batch_size = 1000
+            total_deleted = 0
+            
+            logger.debug(f"开始批量删除 {len(scan_ids)} 个 Scan（数据库 CASCADE）...")
+            
+            for i in range(0, len(scan_ids), batch_size):
+                batch_ids = scan_ids[i:i + batch_size]
+                count, _ = Scan.all_objects.filter(id__in=batch_ids).delete()
+                total_deleted += count
+                logger.debug(f"批次删除完成: {len(batch_ids)} 个 Scan，删除 {count} 条记录")
+            
+            deleted_details = {
+                'scans': len(scan_ids),
+                'total': total_deleted,
+                'note': 'Database CASCADE - detailed stats unavailable'
+            }
+            
+            logger.debug(
+                "批量硬删除成功（CASCADE）- Scan数: %s, 总删除记录: %s",
+                len(scan_ids),
+                total_deleted
+            )
+            
+            return total_deleted, deleted_details
+        
+        except Exception as e:
+            logger.error(
+                "批量硬删除失败（CASCADE）- Scan数: %s, 错误: %s",
+                len(scan_ids),
+                str(e),
+                exc_info=True
+            )
+            raise
+    
+
     
     # ==================== 查询操作 ====================
     

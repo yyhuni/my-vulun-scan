@@ -1,8 +1,12 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.exceptions import NotFound, APIException
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db.utils import DatabaseError, IntegrityError, OperationalError
+import logging
+
+logger = logging.getLogger(__name__)
 
 from .models import Scan
 from .serializers import ScanSerializer, ScanHistorySerializer
@@ -46,6 +50,37 @@ class ScanViewSet(viewsets.ModelViewSet):
         if self.action in ['list', 'retrieve']:
             return ScanHistorySerializer
         return ScanSerializer
+
+    def destroy(self, request, *args, **kwargs):
+        """
+        删除单个扫描任务（两阶段删除）
+        
+        1. 软删除：立即对用户不可见
+        2. 硬删除：后台异步执行
+        """
+        try:
+            scan = self.get_object()
+            scan_service = ScanService()
+            result = scan_service.delete_scans_two_phase([scan.id])
+            
+            return Response({
+                'message': f'已删除扫描任务: Scan #{scan.id}',
+                'scanId': scan.id,
+                'deletedCount': result['soft_deleted_count'],
+                'deletedScans': result['scan_names'],
+                'detail': {
+                    'phase1': '软删除完成，用户已看不到数据',
+                    'phase2': '硬删除已提交到 Prefect，将在后台执行'
+                }
+            }, status=status.HTTP_200_OK)
+            
+        except Scan.DoesNotExist:
+            raise NotFound('扫描任务不存在')
+        except ValueError as e:
+            raise NotFound(str(e))
+        except Exception as e:
+            logger.exception("删除扫描任务时发生错误")
+            raise APIException('服务器错误，请稍后重试')
     
     @action(detail=False, methods=['post'])
     def initiate(self, request):
@@ -160,24 +195,27 @@ class ScanViewSet(viewsets.ModelViewSet):
             )
         
         try:
-            # 使用 Service 层批量删除（级联删除关联数据）
+            # 使用 Service 层批量删除（两阶段删除）
             scan_service = ScanService()
-            deleted_count, message = scan_service.bulk_delete(ids)
+            result = scan_service.delete_scans_two_phase(ids)
             
-            return Response(
-                {
-                    'message': message,
-                    'deletedCount': deleted_count
-                },
-                status=status.HTTP_200_OK
-            )
-        
-        except (DatabaseError, IntegrityError, OperationalError):
-            # 数据库错误
-            return Response(
-                {'error': '数据库错误，请稍后重试'},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE
-            )
+            return Response({
+                'message': f"已删除 {result['soft_deleted_count']} 个扫描任务",
+                'deletedCount': result['soft_deleted_count'],
+                'deletedScans': result['scan_names'],
+                'detail': {
+                    'phase1': '软删除完成，用户已看不到数据',
+                    'phase2': '硬删除已提交到 Prefect，将在后台执行'
+                }
+            }, status=status.HTTP_200_OK)
+            
+        except ValueError as e:
+            # 未找到记录
+            raise NotFound(str(e))
+            
+        except Exception as e:
+            logger.exception("批量删除扫描任务时发生错误")
+            raise APIException('服务器错误，请稍后重试')
     
     @action(detail=False, methods=['get'])
     def statistics(self, request):
