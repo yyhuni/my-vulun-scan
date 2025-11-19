@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 @flow(
-    name="delete-ip_addresses",
+    name="delete-ip-addresses",
     task_runner=ConcurrentTaskRunner(),
     log_prints=True
 )

@@ -172,13 +172,19 @@ echo $! > "$PID_DIR/cleanup-deployment.pid"
 
 # 注册 Targets 删除任务 Deployments（目标 + 组织）
 echo "  - 注册 Targets 删除任务..."
-nohup $PYTHON apps/targets/deployments/register.py > "$PID_DIR/targets-delete-deployment.log" 2>&1 &
+cd "$BACKEND_DIR"
+nohup $PYTHON -m apps.targets.deployments.register > "$PID_DIR/targets-delete-deployment.log" 2>&1 &
 echo $! > "$PID_DIR/targets-delete-deployment.pid"
 
 # 注册 Asset 删除任务 Deployments（子域名等）
 echo "  - 注册 Asset 删除任务..."
-nohup $PYTHON apps/asset/deployments/register.py > "$PID_DIR/asset-delete-deployment.log" 2>&1 &
+nohup $PYTHON -m apps.asset.deployments.register > "$PID_DIR/asset-delete-deployment.log" 2>&1 &
 echo $! > "$PID_DIR/asset-delete-deployment.pid"
+
+# 注册 Scan 删除任务 Deployments
+echo "  - 注册 Scan 删除任务..."
+nohup $PYTHON -m apps.scan.deployments.register > "$PID_DIR/scan-delete-deployment.log" 2>&1 &
+echo $! > "$PID_DIR/scan-delete-deployment.pid"
 
 sleep 2
 
@@ -197,6 +203,17 @@ if grep -q "✅ 清理任务 Deployment 部署成功！" "$PID_DIR/cleanup-deplo
 fi
 
 if grep -q "✅ 所有 Deployments 部署成功！" "$PID_DIR/delete-deployment.log" 2>/dev/null; then
+    DELETE_SUCCESS=true
+fi
+
+# 检查 Targets 和 Asset 删除任务日志
+if grep -q "✅" "$PID_DIR/targets-delete-deployment.log" 2>/dev/null; then
+    DELETE_SUCCESS=true
+fi
+if grep -q "✅" "$PID_DIR/asset-delete-deployment.log" 2>/dev/null; then
+    DELETE_SUCCESS=true
+fi
+if grep -q "✅" "$PID_DIR/scan-delete-deployment.log" 2>/dev/null; then
     DELETE_SUCCESS=true
 fi
 

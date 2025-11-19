@@ -37,20 +37,16 @@ def register_all_deployments():
         
         # 1. 部署 Target 删除 Deployment
         print("\n1. 部署 delete-targets...")
+        print("\n1. 部署 delete-targets...")
         target_deployment = create_target_deployment()
-        target_deployment.deploy(
-            name="delete-targets",
-            work_pool_name=work_pool_name,
-        )
+        target_deployment.apply()
         print("   ✅ delete-targets 部署成功")
         
         # 2. 部署 Organization 删除 Deployment
         print("\n2. 部署 delete-organizations...")
+        print("\n2. 部署 delete-organizations...")
         org_deployment = create_organization_deployment()
-        org_deployment.deploy(
-            name="delete-organizations",
-            work_pool_name=work_pool_name,
-        )
+        org_deployment.apply()
         print("   ✅ delete-organizations 部署成功")
         
         print("\n" + "=" * 60)

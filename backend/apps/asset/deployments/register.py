@@ -41,46 +41,31 @@ def register_all_deployments():
         # 1. 部署 Subdomain 删除 Deployment
         print("\n1. 部署 delete-subdomains...")
         subdomain_deployment = create_subdomain_deployment()
-        subdomain_deployment.deploy(
-            name="delete-subdomains",
-            work_pool_name=work_pool_name,
-        )
+        subdomain_deployment.apply()
         print("   ✅ delete-subdomains 部署成功")
         
         # 2. 部署 WebSite 删除 Deployment
         print("\n2. 部署 delete-websites...")
         website_deployment = create_website_deployment()
-        website_deployment.deploy(
-            name="delete-websites",
-            work_pool_name=work_pool_name,
-        )
+        website_deployment.apply()
         print("   ✅ delete-websites 部署成功")
         
         # 3. 部署 IPAddress 删除 Deployment
         print("\n3. 部署 delete-ip-addresses...")
         ip_deployment = create_ip_address_deployment()
-        ip_deployment.deploy(
-            name="delete-ip-addresses",
-            work_pool_name=work_pool_name,
-        )
+        ip_deployment.apply()
         print("   ✅ delete-ip-addresses 部署成功")
         
         # 4. 部署 Port 删除 Deployment
         print("\n4. 部署 delete-ports...")
         port_deployment = create_port_deployment()
-        port_deployment.deploy(
-            name="delete-ports",
-            work_pool_name=work_pool_name,
-        )
+        port_deployment.apply()
         print("   ✅ delete-ports 部署成功")
         
         # 5. 部署 Directory 删除 Deployment
         print("\n5. 部署 delete-directories...")
         directory_deployment = create_directory_deployment()
-        directory_deployment.deploy(
-            name="delete-directories",
-            work_pool_name=work_pool_name,
-        )
+        directory_deployment.apply()
         print("   ✅ delete-directories 部署成功")
         
         print("\n" + "=" * 60)
