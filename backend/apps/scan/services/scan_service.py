@@ -589,25 +589,6 @@ class ScanService:
             'hard_delete_scheduled': True
         }
 
-    def bulk_delete(self, scan_ids: List[int]) -> tuple[int, str]:
-        """
-        批量删除扫描任务（兼容旧接口，推荐使用 delete_scans_two_phase）
-        
-        Args:
-            scan_ids: 扫描任务 ID 列表
-        
-        Returns:
-            (删除数量, 消息)
-        """
-        # 转发到两阶段删除
-        try:
-            result = self.delete_scans_two_phase(scan_ids)
-            return result['soft_deleted_count'], f"已删除 {result['soft_deleted_count']} 个扫描记录"
-        except ValueError:
-             return 0, "未找到要删除的记录"
-        except Exception as e:
-            logger.exception("批量删除失败")
-            raise
     
     def get_statistics(self) -> dict:
         """
