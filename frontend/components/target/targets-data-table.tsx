@@ -99,15 +99,15 @@ export function TargetsDataTable({
     pageIndex: 0,
     pageSize: 10,
   })
-  
+
   const pagination = externalPagination || internalPagination
-  
+
   // 处理分页状态变化
   const handlePaginationChange = React.useCallback((updaterOrValue: any) => {
     if (onPaginationChange) {
       // 如果是函数，先计算新值
-      const newPagination = typeof updaterOrValue === 'function' 
-        ? updaterOrValue(pagination) 
+      const newPagination = typeof updaterOrValue === 'function'
+        ? updaterOrValue(pagination)
         : updaterOrValue
       onPaginationChange(newPagination)
     } else {
@@ -213,7 +213,7 @@ export function TargetsDataTable({
 
           {/* 批量删除按钮 */}
           {onBulkDelete && (
-            <Button 
+            <Button
               onClick={onBulkDelete}
               size="sm"
               variant="outline"
@@ -224,8 +224,8 @@ export function TargetsDataTable({
                   : "text-destructive hover:text-destructive hover:bg-destructive/10"
               }
             >
-              <IconTrash/>
-              批量删除
+              <IconTrash />
+              删除
             </Button>
           )}
 
@@ -252,9 +252,9 @@ export function TargetsDataTable({
                       {header.isPlaceholder
                         ? null
                         : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
                     </TableHead>
                   )
                 })}
