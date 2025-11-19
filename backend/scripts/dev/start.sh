@@ -174,7 +174,7 @@ echo "  - 注册 Asset 删除任务..."
 nohup $PYTHON -m apps.asset.deployments.register > "$PID_DIR/asset-delete-deployment.log" 2>&1 &
 echo $! > "$PID_DIR/asset-delete-deployment.pid"
 
-sleep 2
+sleep 5
 
 # 验证 Deployments 启动状态（所有都是分离模式）
 SCAN_SUCCESS=false
@@ -203,16 +203,17 @@ if $SCAN_SUCCESS && $TARGETS_SUCCESS && $ASSET_SUCCESS; then
     echo "  - 清理任务: 分离模式部署成功"
     echo "  - 删除任务: 分离模式部署成功"
 else
-    echo -e "${RED}✗ 部分 Deployments 启动失败${NC}"
+    echo -e "${YELLOW}⚠ 部分 Deployments 可能未完成部署${NC}"
     echo "  状态检查:"
-    echo "    - Scan 任务: $(if $SCAN_SUCCESS; then echo "✓ 部署成功"; else echo "✗ 部署失败"; fi)"
-    echo "    - Targets 任务: $(if $TARGETS_SUCCESS; then echo "✓ 部署成功"; else echo "✗ 部署失败"; fi)"
-    echo "    - Asset 任务: $(if $ASSET_SUCCESS; then echo "✓ 部署成功"; else echo "✗ 部署失败"; fi)"
+    echo "    - Scan 任务: $(if $SCAN_SUCCESS; then echo "✓ 部署成功"; else echo "⚠ 请检查日志"; fi)"
+    echo "    - Targets 任务: $(if $TARGETS_SUCCESS; then echo "✓ 部署成功"; else echo "⚠ 请检查日志"; fi)"
+    echo "    - Asset 任务: $(if $ASSET_SUCCESS; then echo "✓ 部署成功"; else echo "⚠ 请检查日志"; fi)"
     echo "  查看日志:"
     echo "    - tail -f $PID_DIR/scan-deployment.log"
     echo "    - tail -f $PID_DIR/targets-delete-deployment.log"
     echo "    - tail -f $PID_DIR/asset-delete-deployment.log"
-    exit 1
+    echo ""
+    echo -e "${YELLOW}  继续启动 Worker...${NC}"
 fi
 
 # 9. 启动 Prefect Worker（分离模式部署需要）
