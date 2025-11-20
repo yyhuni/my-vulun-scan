@@ -83,11 +83,19 @@ class Endpoint(models.Model):
     """端点模型"""
 
     id = models.AutoField(primary_key=True)
+    website = models.ForeignKey(
+        'WebSite',  # 使用字符串引用
+        on_delete=models.CASCADE,
+        related_name='endpoints',
+        help_text='所属的站点（主关联字段，表示所属关系，不能为空）'
+    )
     target = models.ForeignKey(
         'targets.Target',  # 使用字符串引用
         on_delete=models.CASCADE,
         related_name='endpoints',
-        help_text='所属的扫描目标（主关联字段，表示所属关系）'
+        null=True,
+        blank=True,
+        help_text='所属的扫描目标（冗余字段，用于快速查询）'
     )
     scan = models.ForeignKey(
         'scan.Scan',  # 使用字符串引用
@@ -97,6 +105,7 @@ class Endpoint(models.Model):
         blank=True,
         help_text='所属的扫描任务（冗余字段，用于快速查询）'
     )
+    
     url = models.CharField(
         max_length=2000,
         help_text='完整的HTTP URL（如 http://api.example.com/v1/users）'
@@ -165,15 +174,16 @@ class Endpoint(models.Model):
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['-created_at']),
-            models.Index(fields=['scan']),         # 优化从scan_id快速查找下面的端点
-            models.Index(fields=['target']),       # 优化从target_id快速查找下面的端点
+            models.Index(fields=['website']),      # 优化主关联查询（website.endpoints.all()）
+            models.Index(fields=['scan']),         # 优化从scan_id快速查找下面的端点（冗余字段）
+            models.Index(fields=['target']),       # 优化从target_id快速查找下面的端点（冗余字段）
             models.Index(fields=['host']),         # 优化通过 host 查询端点
             models.Index(fields=['deleted_at', '-created_at']),  # 软删除 + 时间索引
         ]
         constraints = [
             models.UniqueConstraint(
-                fields=['url', 'target', 'deleted_at'],   # 唯一约束，允许软删除后重新插入同名记录
-                name='unique_url_target_not_deleted'
+                fields=['url', 'website', 'deleted_at'],   # 唯一约束：同一站点不允许重复URL
+                name='unique_url_website_not_deleted'
             )
         ]
 
