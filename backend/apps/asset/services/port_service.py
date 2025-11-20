@@ -95,7 +95,7 @@ class PortService:
             }
             
             flow_run_id = async_to_sync(self._submit_delete_flow)(
-                deployment_name="delete-ports/delete-ports",
+                deployment_name="delete-ports/delete-ports-on-demand",
                 parameters=flow_kwargs
             )
             

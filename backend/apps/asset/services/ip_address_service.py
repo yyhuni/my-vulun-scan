@@ -95,7 +95,7 @@ class IPAddressService:
             }
             
             flow_run_id = async_to_sync(self._submit_delete_flow)(
-                deployment_name="delete-ip-addresses/delete-ip-addresses",
+                deployment_name="delete-ip-addresses/delete-ip-addresses-on-demand",
                 parameters=flow_kwargs
             )
             

@@ -49,10 +49,10 @@ def register_all_deployments():
         print("   ✅ cleanup-old-scans-daily 部署成功")
         
         # 3. 部署 Scan 删除 Deployment
-        print("\n3. 部署 delete-scans...")
+        print("\n3. 部署 delete-scans-on-demand...")
         delete_deployment = create_scan_delete_deployment()
         delete_deployment.apply()
-        print("   ✅ delete-scans 部署成功")
+        print("   ✅ delete-scans-on-demand 部署成功")
         
         print("\n" + "=" * 60)
         print("✅ 所有 Scan Deployments 注册成功！")
@@ -61,7 +61,7 @@ def register_all_deployments():
         print(f"\n📋 部署信息:")
         print(f"  - initiate-scan-on-demand (按需扫描)")
         print(f"  - cleanup-old-scans-daily (定时清理，每天凌晨2:00)")
-        print(f"  - delete-scans (扫描删除)")
+        print(f"  - delete-scans-on-demand (按需删除)")
         print(f"  目标工作池: {work_pool_name}")
         print(f"\n🎯 管理命令:")
         print(f"  查看 Deployments: prefect deployment ls")
@@ -81,9 +81,9 @@ if __name__ == "__main__":
     注册所有 Scan Deployments
     
     运行此脚本将注册：
-    1. initiate-scan-on-demand - 扫描初始化 Deployment
+    1. initiate-scan-on-demand - 扫描初始化 Deployment（按需）
     2. cleanup-old-scans-daily - 清理任务 Deployment（定时）
-    3. delete-scans - Scan 删除 Deployment
+    3. delete-scans-on-demand - Scan 删除 Deployment（按需）
     
     注意：需要先启动 Prefect Server
     """

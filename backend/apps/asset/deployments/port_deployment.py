@@ -21,9 +21,9 @@ def create_port_deployment():
         source=".",
         entrypoint="apps/asset/flows/port_delete_flow.py:delete_ports_flow"
     ).to_deployment(
-        name="delete-ports",
+        name="delete-ports-on-demand",
         work_pool_name=work_pool_name,
-        tags=["asset", "port", "delete", "maintenance"],
+        tags=["asset", "port", "delete", "on-demand", "maintenance"],
         description="批量删除端口及其关联数据（软删除后的硬删除）",
     )
 

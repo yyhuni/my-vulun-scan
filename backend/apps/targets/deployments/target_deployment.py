@@ -21,9 +21,9 @@ def create_target_deployment():
         source=".",
         entrypoint="apps/targets/flows/delete_targets_flow.py:delete_targets_flow"
     ).to_deployment(
-        name="delete-targets",
+        name="delete-targets-on-demand",
         work_pool_name=work_pool_name,
-        tags=["targets", "delete", "maintenance"],
+        tags=["targets", "delete", "on-demand", "maintenance"],
         description="批量删除目标及其关联数据（软删除后的硬删除）",
     )
 

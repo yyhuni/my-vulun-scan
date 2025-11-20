@@ -23,9 +23,9 @@ def create_scan_delete_deployment():
         source=".",
         entrypoint="apps/scan/flows/scan_delete_flow.py:delete_scans_flow"
     ).to_deployment(
-        name="delete-scans",
+        name="delete-scans-on-demand",
         work_pool_name=work_pool_name,
-        tags=["scan", "delete", "async"],
+        tags=["scan", "delete", "on-demand", "async"],
         description="批量删除扫描任务（两阶段删除）",
     )
 

@@ -21,9 +21,9 @@ def create_organization_deployment():
         source=".",
         entrypoint="apps/targets/flows/delete_organizations_flow.py:delete_organizations_flow"
     ).to_deployment(
-        name="delete-organizations",
+        name="delete-organizations-on-demand",
         work_pool_name=work_pool_name,
-        tags=["organizations", "delete", "maintenance"],
+        tags=["organizations", "delete", "on-demand", "maintenance"],
         description="批量删除组织及其关联数据（软删除后的硬删除）",
     )
 

@@ -21,9 +21,9 @@ def create_directory_deployment():
         source=".",
         entrypoint="apps/asset/flows/directory_delete_flow.py:delete_directories_flow"
     ).to_deployment(
-        name="delete-directories",
+        name="delete-directories-on-demand",
         work_pool_name=work_pool_name,
-        tags=["asset", "directory", "delete", "maintenance"],
+        tags=["asset", "directory", "delete", "on-demand", "maintenance"],
         description="批量删除目录及其关联数据（软删除后的硬删除）",
     )
 

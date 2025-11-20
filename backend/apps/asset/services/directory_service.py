@@ -95,7 +95,7 @@ class DirectoryService:
             }
             
             flow_run_id = async_to_sync(self._submit_delete_flow)(
-                deployment_name="delete-directories/delete-directories",
+                deployment_name="delete-directories/delete-directories-on-demand",
                 parameters=flow_kwargs
             )
             

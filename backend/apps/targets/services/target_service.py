@@ -172,7 +172,7 @@ class TargetService:
             
             # 使用 Prefect Client API 异步提交任务
             flow_run_id = async_to_sync(self._submit_delete_flow)(
-                deployment_name="delete-targets/delete-targets",
+                deployment_name="delete-targets/delete-targets-on-demand",
                 parameters=flow_kwargs
             )
             

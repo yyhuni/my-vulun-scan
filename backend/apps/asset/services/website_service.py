@@ -95,7 +95,7 @@ class WebSiteService:
             }
             
             flow_run_id = async_to_sync(self._submit_delete_flow)(
-                deployment_name="delete-websites/delete-websites",
+                deployment_name="delete-websites/delete-websites-on-demand",
                 parameters=flow_kwargs
             )
             

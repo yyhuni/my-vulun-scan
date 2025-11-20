@@ -134,7 +134,7 @@ class SubdomainService:
             
             # 使用 Prefect Client API 异步提交任务
             flow_run_id = async_to_sync(self._submit_delete_flow)(
-                deployment_name="delete-subdomains/delete-subdomains",
+                deployment_name="delete-subdomains/delete-subdomains-on-demand",
                 parameters=flow_kwargs
             )
             

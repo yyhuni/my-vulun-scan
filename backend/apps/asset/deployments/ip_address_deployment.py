@@ -21,9 +21,9 @@ def create_ip_address_deployment():
         source=".",
         entrypoint="apps/asset/flows/ip_address_delete_flow.py:delete_ip_addresses_flow"
     ).to_deployment(
-        name="delete-ip-addresses",
+        name="delete-ip-addresses-on-demand",
         work_pool_name=work_pool_name,
-        tags=["asset", "ip_address", "delete", "maintenance"],
+        tags=["asset", "ip_address", "delete", "on-demand", "maintenance"],
         description="批量删除IP地址及其关联数据（软删除后的硬删除）",
     )
 

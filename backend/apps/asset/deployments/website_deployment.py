@@ -21,9 +21,9 @@ def create_website_deployment():
         source=".",
         entrypoint="apps/asset/flows/website_delete_flow.py:delete_websites_flow"
     ).to_deployment(
-        name="delete-websites",
+        name="delete-websites-on-demand",
         work_pool_name=work_pool_name,
-        tags=["asset", "website", "delete", "maintenance"],
+        tags=["asset", "website", "delete", "on-demand", "maintenance"],
         description="批量删除网站及其关联数据（软删除后的硬删除）",
     )
 
