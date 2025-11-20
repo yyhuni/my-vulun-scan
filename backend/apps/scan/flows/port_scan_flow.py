@@ -272,6 +272,11 @@ def _run_scans_sequentially(
         # 2. 获取超时时间（已在 config_parser 中验证）
         config_timeout = tool_config['timeout']
         
+        # 2.1 生成日志文件路径（类似子域名扫描）
+        from datetime import datetime
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        log_file = port_scan_dir / f"{tool_name}_{timestamp}.log"
+        
         # 3. 执行扫描任务
         logger.info("开始执行 %s 扫描（超时: %d秒）...", tool_name, config_timeout)
         
@@ -280,12 +285,14 @@ def _run_scans_sequentially(
             # 注意：端口扫描是流式输出到 stdout，不使用 output_file
             result = run_and_stream_save_ports_task(
                 cmd=command,
+                tool_name=tool_name,  # 工具名称
                 scan_id=scan_id,
                 target_id=target_id,
                 cwd=str(port_scan_dir),
                 shell=True,
                 batch_size=1000,
-                timeout=config_timeout
+                timeout=config_timeout,
+                log_file=str(log_file)  # 新增：日志文件路径
             )
             
             tool_stats[tool_name] = {
@@ -304,7 +311,7 @@ def _run_scans_sequentially(
             # 注意：流式处理任务超时时，已解析的数据已保存到数据库
             reason = f"执行超时（配置: {config_timeout}秒）"
             failed_tools.append({'tool': tool_name, 'reason': reason})
-            logger.error(
+            logger.warning(
                 "⚠️ 工具 %s 执行超时 - 超时配置: %d秒\n"
                 "注意：超时前已解析的端口数据已保存到数据库，但扫描未完全完成。",
                 tool_name, config_timeout

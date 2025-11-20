@@ -473,9 +473,11 @@ def _parse_and_validate_line(line: str) -> Optional[HttpxRecord]:
 
 def _parse_httpx_stream_output(
     cmd: str,
+    tool_name: str,
     cwd: Optional[str] = None,
     shell: bool = False,
-    timeout: Optional[int] = None
+    timeout: Optional[int] = None,
+    log_file: Optional[str] = None
 ) -> Generator[HttpxRecord, None, None]:
     """
     流式解析 httpx 站点扫描命令输出
@@ -499,8 +501,8 @@ def _parse_httpx_stream_output(
     valid_records = 0
     
     try:
-        # 使用 execute_stream 获取实时输出流（带超时控制）
-        for line in execute_stream(cmd=cmd, cwd=cwd, shell=shell, timeout=timeout):
+        # 使用 execute_stream 获取实时输出流（带工具名、超时控制和日志文件）
+        for line in execute_stream(cmd=cmd, tool_name=tool_name, cwd=cwd, shell=shell, timeout=timeout, log_file=log_file):
             total_lines += 1
             
             # 解析并验证单行数据
@@ -560,15 +562,17 @@ def _validate_task_parameters(cmd: str, target_id: int, scan_id: int, cwd: Optio
         raise ValueError(f"工作目录不存在: {cwd}")
 
 
-def _initialize_task_resources(cmd: str, cwd: Optional[str], shell: bool, timeout: Optional[int]) -> tuple:
+def _initialize_task_resources(cmd: str, tool_name: str, cwd: Optional[str], shell: bool, timeout: Optional[int], log_file: Optional[str] = None) -> tuple:
     """
     初始化任务资源
     
     Args:
         cmd: 扫描命令
+        tool_name: 工具名称
         cwd: 工作目录
         shell: 是否使用shell
         timeout: 超时时间
+        log_file: 日志文件路径（可选）
         
     Returns:
         tuple: (subdomain_cache, data_generator)
@@ -576,8 +580,8 @@ def _initialize_task_resources(cmd: str, cwd: Optional[str], shell: bool, timeou
     # 使用 LRU 缓存，自动淘汰最少使用的条目
     subdomain_cache = LRUCache(maxsize=MAX_SUBDOMAIN_CACHE_SIZE)
     
-    # 创建流式解析生成器（带超时控制）
-    data_generator = _parse_httpx_stream_output(cmd=cmd, cwd=cwd, shell=shell, timeout=timeout)
+    # 创建流式解析生成器（带工具名、超时控制和日志文件）
+    data_generator = _parse_httpx_stream_output(cmd=cmd, tool_name=tool_name, cwd=cwd, shell=shell, timeout=timeout, log_file=log_file)
     
     return subdomain_cache, data_generator
 
@@ -761,12 +765,14 @@ def _cleanup_resources(data_generator) -> None:
 )
 def run_and_stream_save_websites_task(
     cmd: str,
+    tool_name: str,
     scan_id: int,
     target_id: int,
     cwd: Optional[str] = None,
     shell: bool = False,
     batch_size: int = 1000,
-    timeout: Optional[int] = None
+    timeout: Optional[int] = None,
+    log_file: Optional[str] = None
 ) -> dict:
     """
     执行 httpx 站点扫描命令并流式保存结果到数据库
@@ -817,7 +823,7 @@ def run_and_stream_save_websites_task(
         _validate_task_parameters(cmd, target_id, scan_id, cwd)
         
         # 2. 初始化资源
-        subdomain_cache, data_generator = _initialize_task_resources(cmd, cwd, shell, timeout)
+        subdomain_cache, data_generator = _initialize_task_resources(cmd, tool_name, cwd, shell, timeout, log_file)
         services = ServiceSet.create_default()
         
         # 3. 流式处理记录并分批保存

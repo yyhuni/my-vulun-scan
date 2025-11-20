@@ -82,7 +82,7 @@ def run_subdomain_discovery_task(
         return str(output_file_path)
         
     except RuntimeError:
-        # 直接向上抛出（已在 run_scan_command 中记录日志）
+        # 直接向上抛出（已在 execute_and_wait 中记录日志）
         raise
     except Exception as e:
         error_msg = f"扫描工具 {tool} 执行异常: {e}"

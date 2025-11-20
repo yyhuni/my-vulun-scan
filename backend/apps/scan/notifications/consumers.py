@@ -49,7 +49,7 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         # 启动服务端心跳（可选：防止中间件超时）
         # self.heartbeat_task = asyncio.create_task(self._heartbeat_loop())
         
-        logger.info(f"WebSocket 连接已建立 - Channel: {self.channel_name}")
+        logger.debug(f"WebSocket 连接已建立 - Channel: {self.channel_name}")
     
     async def disconnect(self, close_code):
         """
@@ -70,7 +70,7 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             self.channel_name
         )
         
-        logger.info(f"WebSocket 连接已断开 - Channel: {self.channel_name}, Code: {close_code}")
+        logger.debug(f"WebSocket 连接已断开 - Channel: {self.channel_name}, Code: {close_code}")
     
     async def receive(self, text_data):
         """

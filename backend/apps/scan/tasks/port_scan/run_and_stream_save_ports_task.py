@@ -402,9 +402,11 @@ def _parse_and_validate_line(line: str) -> Optional[PortScanRecord]:
 
 def _parse_naabu_stream_output(
     cmd: str,
+    tool_name: str,
     cwd: Optional[str] = None,
     shell: bool = False,
-    timeout: Optional[int] = None
+    timeout: Optional[int] = None,
+    log_file: Optional[str] = None
 ) -> Generator[PortScanRecord, None, None]:
     """
     流式解析 naabu 端口扫描命令输出
@@ -414,9 +416,11 @@ def _parse_naabu_stream_output(
     
     Args:
         cmd: naabu 端口扫描命令（如: "naabu -l domains.txt -json"）
+        tool_name: 工具名称（如: "naabu"）
         cwd: 工作目录
         shell: 是否使用 shell 执行
         timeout: 命令执行超时时间（秒），None 表示不设置超时
+        log_file: 日志文件路径（可选）
     
     Yields:
         PortScanRecord: 每次 yield 一条解析后的端口记录，格式：
@@ -432,8 +436,8 @@ def _parse_naabu_stream_output(
     error_lines = 0
     
     try:
-        # 使用 execute_stream 获取实时输出流（带超时控制）
-        for line in execute_stream(cmd=cmd, cwd=cwd, shell=shell, timeout=timeout):
+        # 使用 execute_stream 获取实时输出流（带工具名、超时控制和日志文件）
+        for line in execute_stream(cmd=cmd, tool_name=tool_name, cwd=cwd, shell=shell, timeout=timeout, log_file=log_file):
             total_lines += 1
             
             try:
@@ -513,15 +517,17 @@ def _validate_task_parameters(cmd: str, target_id: int, scan_id: int, cwd: Optio
         raise ValueError(f"工作目录不存在: {cwd}")
 
 
-def _initialize_task_resources(cmd: str, cwd: Optional[str], shell: bool, timeout: Optional[int]) -> tuple:
+def _initialize_task_resources(cmd: str, tool_name: str, cwd: Optional[str], shell: bool, timeout: Optional[int], log_file: Optional[str] = None) -> tuple:
     """
     初始化任务资源
     
     Args:
         cmd: 扫描命令
+        tool_name: 工具名称
         cwd: 工作目录
         shell: 是否使用shell
         timeout: 超时时间
+        log_file: 日志文件路径（可选）
         
     Returns:
         tuple: (subdomain_cache, data_generator)
@@ -529,8 +535,8 @@ def _initialize_task_resources(cmd: str, cwd: Optional[str], shell: bool, timeou
     # 使用 LRU 缓存，自动淘汰最少使用的条目
     subdomain_cache = LRUCache(maxsize=MAX_SUBDOMAIN_CACHE_SIZE)
     
-    # 创建流式解析生成器（带超时控制）
-    data_generator = _parse_naabu_stream_output(cmd=cmd, cwd=cwd, shell=shell, timeout=timeout)
+    # 创建流式解析生成器（带工具名、超时控制和日志文件）
+    data_generator = _parse_naabu_stream_output(cmd=cmd, tool_name=tool_name, cwd=cwd, shell=shell, timeout=timeout, log_file=log_file)
     
     return subdomain_cache, data_generator
 
@@ -744,12 +750,14 @@ def _cleanup_resources(data_generator) -> None:
 )
 def run_and_stream_save_ports_task(
     cmd: str,
+    tool_name: str,
     scan_id: int,
     target_id: int,
     cwd: Optional[str] = None,
     shell: bool = False,
     batch_size: int = 1000,
-    timeout: Optional[int] = None
+    timeout: Optional[int] = None,
+    log_file: Optional[str] = None
 ) -> dict:
     """
     执行端口扫描命令并流式保存结果到数据库
@@ -762,12 +770,14 @@ def run_and_stream_save_ports_task(
     
     Args:
         cmd: 端口扫描命令（如: "naabu -l domains.txt -json"）
+        tool_name: 工具名称（如: "naabu"）
         scan_id: 扫描任务 ID
         target_id: 目标 ID
         cwd: 工作目录（可选）
         shell: 是否使用 shell 执行（默认 False）
         batch_size: 批量保存大小（默认1000）
         timeout: 命令执行超时时间（秒），None 表示不设置超时
+        log_file: 日志文件路径（可选）
     
     Returns:
         dict: {
@@ -801,7 +811,7 @@ def run_and_stream_save_ports_task(
         _validate_task_parameters(cmd, target_id, scan_id, cwd)
         
         # 2. 初始化资源
-        subdomain_cache, data_generator = _initialize_task_resources(cmd, cwd, shell, timeout)
+        subdomain_cache, data_generator = _initialize_task_resources(cmd, tool_name, cwd, shell, timeout, log_file)
         services = ServiceSet.create_default()
         
         # 3. 流式处理记录并分批保存

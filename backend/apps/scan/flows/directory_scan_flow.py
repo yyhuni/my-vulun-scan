@@ -249,17 +249,24 @@ def _run_scans_sequentially(
             # ffuf 逐个站点扫描，timeout 就是单个站点的超时时间
             site_timeout = tool_config.get('timeout', 300)
             
+            # 生成日志文件路径
+            from datetime import datetime
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            log_file = directory_scan_dir / f"{tool_name}_{timestamp}_{idx}.log"
+            
             try:
                 # 直接调用 task（串行执行）
                 result = run_and_stream_save_directories_task(
                     cmd=command,
+                    tool_name=tool_name,  # 新增：工具名称
                     scan_id=scan_id,
                     target_id=target_id,
                     site_url=site_url,
                     cwd=str(directory_scan_dir),
                     shell=True,
                     batch_size=1000,
-                    timeout=site_timeout
+                    timeout=site_timeout,
+                    log_file=str(log_file)  # 新增：日志文件路径
                 )
                 
                 total_directories += result.get('created_directories', 0)
@@ -274,8 +281,9 @@ def _run_scans_sequentially(
             except subprocess.TimeoutExpired as exc:
                 # 超时异常单独处理
                 failed_sites.append(site_url)
-                logger.error(
-                    "✗ [%d/%d] 站点扫描超时: %s - 超时配置: %d秒",
+                logger.warning(
+                    "⚠️ [%d/%d] 站点扫描超时: %s - 超时配置: %d秒\n"
+                    "注意：超时前已解析的目录数据已保存到数据库，但扫描未完全完成。",
                     idx, len(sites), site_url, site_timeout
                 )
             except Exception as exc:

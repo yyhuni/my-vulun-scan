@@ -13,7 +13,7 @@ __all__ = [
     # 目录清理
     'remove_directory',
     # 命令构建
-    'build_scan_command',    # 扫描工具命令构建（基于 Jinja2）
+    'build_scan_command',    # 扫描工具命令构建（基于 f-string）
     # 命令执行
     'execute_and_wait',      # 等待式执行（文件输出）
     'execute_stream',        # 流式执行（实时处理）

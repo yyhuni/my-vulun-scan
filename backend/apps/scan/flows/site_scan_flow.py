@@ -199,15 +199,19 @@ def _run_scans_sequentially(
             failed_tools.append({'tool': tool_name, 'reason': reason})
             continue
         
-        # 2. 计算超时时间
-        # 优先使用动态计算（基于 URL 数量），其次使用配置文件的 timeout
-        config_timeout = tool_config.get('timeout', 3600)
-        dynamic_timeout = calculate_timeout(total_urls)
-        timeout = max(dynamic_timeout, config_timeout)  # 取两者中较大的值
+        # 2. 获取超时时间（动态计算）
+        config_timeout = tool_config.get('timeout', 300)
+        timeout = calculate_timeout_by_line_count(tool_config, urls_file, base_per_time=1)
+        timeout = max(timeout, config_timeout)  # 取更大值保证安全
+        
+        # 2.1 生成日志文件路径（类似端口扫描）
+        from datetime import datetime
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        log_file = site_scan_dir / f"{tool_name}_{timestamp}.log"
         
         logger.info(
-            "开始执行 %s 扫描 - URL数量: %d, 动态超时: %d秒, 配置超时: %d秒, 最终超时: %d秒",
-            tool_name, total_urls, dynamic_timeout, config_timeout, timeout
+            "开始执行 %s 站点扫描 - URL数: %d, 动态超时: %ds, 配置超时: %ds, 最终超时: %ds",
+            tool_name, total_urls, timeout, config_timeout, timeout
         )
         
         # 3. 执行扫描任务
@@ -215,12 +219,14 @@ def _run_scans_sequentially(
             # 流式执行扫描并实时保存结果
             result = run_and_stream_save_websites_task(
                 cmd=command,
+                tool_name=tool_name,  # 新增：工具名称
                 scan_id=scan_id,
                 target_id=target_id,
                 cwd=str(site_scan_dir),
                 shell=True,
                 batch_size=1000,
-                timeout=timeout
+                timeout=timeout,
+                log_file=str(log_file)  # 新增：日志文件路径
             )
             
             tool_stats[tool_name] = {
@@ -238,7 +244,17 @@ def _run_scans_sequentially(
                 result.get('skipped_no_subdomain', 0) + result.get('skipped_failed', 0)
             )
             
+        except subprocess.TimeoutExpired as exc:
+            # 超时异常单独处理
+            reason = f"执行超时（配置: {timeout}秒）"
+            failed_tools.append({'tool': tool_name, 'reason': reason})
+            logger.warning(
+                "⚠️ 工具 %s 执行超时 - 超时配置: %d秒\n"
+                "注意：超时前已解析的站点数据已保存到数据库，但扫描未完全完成。",
+                tool_name, timeout
+            )
         except Exception as exc:
+            # 其他异常
             failed_tools.append({'tool': tool_name, 'reason': str(exc)})
             logger.error("工具 %s 执行失败: %s", tool_name, exc, exc_info=True)
     

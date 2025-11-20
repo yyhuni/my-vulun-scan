@@ -88,9 +88,11 @@ def _parse_and_validate_line(line: str) -> Optional[dict]:
 
 def _parse_ffuf_stream_output(
     cmd: str,
+    tool_name: str,
     cwd: Optional[str] = None,
     shell: bool = False,
-    timeout: Optional[int] = None
+    timeout: Optional[int] = None,
+    log_file: Optional[str] = None
 ) -> Generator[dict, None, None]:
     """
     流式解析 ffuf 目录扫描命令输出
@@ -114,8 +116,8 @@ def _parse_ffuf_stream_output(
     valid_records = 0
     
     try:
-        # 使用 execute_stream 获取实时输出流（带超时控制）
-        for line in execute_stream(cmd=cmd, cwd=cwd, shell=shell, timeout=timeout):
+        # 使用 execute_stream 获取实时输出流（带工具名、超时控制和日志文件）
+        for line in execute_stream(cmd=cmd, tool_name=tool_name, cwd=cwd, shell=shell, timeout=timeout, log_file=log_file):
             total_lines += 1
             
             # 解析并验证单行数据
@@ -288,13 +290,15 @@ def _save_batch(
 )
 def run_and_stream_save_directories_task(
     cmd: str,
+    tool_name: str,
     scan_id: int,
     target_id: int,
     site_url: str,
     cwd: Optional[str] = None,
     shell: bool = False,
     batch_size: int = 1000,
-    timeout: Optional[int] = None
+    timeout: Optional[int] = None,
+    log_file: Optional[str] = None
 ) -> dict:
     """
     执行 ffuf 目录扫描命令并流式保存结果到数据库
@@ -345,7 +349,7 @@ def run_and_stream_save_directories_task(
         logger.info("找到站点: %s (ID: %d)", site_url, website_id)
         
         # 2. 初始化资源
-        data_generator = _parse_ffuf_stream_output(cmd=cmd, cwd=cwd, shell=shell, timeout=timeout)
+        data_generator = _parse_ffuf_stream_output(cmd=cmd, tool_name=tool_name, cwd=cwd, shell=shell, timeout=timeout, log_file=log_file)
         
         # 3. 流式处理记录并分批保存
         total_records = 0

@@ -7,9 +7,11 @@
 """
 
 import logging
+import os
 import re
 import subprocess
 import threading
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional, Generator
 
@@ -18,6 +20,11 @@ logger = logging.getLogger(__name__)
 # 常量定义
 GRACEFUL_SHUTDOWN_TIMEOUT = 5  # 进程优雅退出的超时时间（秒）
 MAX_LOG_TAIL_LINES = 1000  # 日志文件读取的最大行数
+
+# 命令日志配置（从环境变量读取）
+# ENABLE_COMMAND_LOGGING=true: 输出所有内容（命令输出+错误）到log_file_path
+# ENABLE_COMMAND_LOGGING=false: 只输出错误到log_file_path
+ENABLE_COMMAND_LOGGING = os.getenv('ENABLE_COMMAND_LOGGING', 'false').lower() == 'true'
 
 
 class CommandExecutor:
@@ -29,6 +36,54 @@ class CommandExecutor:
     2. execute_stream() - 流式执行（适合实时处理）
     """
     
+    def _write_command_info_header(self, log_file: Path, tool_name: str, command: str, duration: float, returncode: int, success: bool):
+        """
+        在日志文件开头写入命令信息
+        
+        Args:
+            log_file: 日志文件路径
+            tool_name: 工具名称
+            command: 执行的命令
+            duration: 执行时间
+            returncode: 退出码
+            success: 是否成功
+        """
+        if not ENABLE_COMMAND_LOGGING:
+            return
+        
+        try:
+            # 读取原有内容
+            original_content = ""
+            if log_file.exists():
+                with open(log_file, 'r', encoding='utf-8') as f:
+                    original_content = f.read()
+            
+            # 在开头写入命令信息
+            with open(log_file, 'w', encoding='utf-8') as f:
+                # 命令信息头部
+                f.write(f"{command}\n")
+                f.write(f"\n{'='*60}\n")
+                f.write(f"# 命令执行信息\n")
+                f.write(f"# 时间: {datetime.now().isoformat()}\n")
+                f.write(f"# 工具: {tool_name}\n")
+                f.write(f"# 执行时间: {duration:.2f}秒\n")
+                f.write(f"# 退出码: {returncode}\n")
+                f.write(f"# 成功: {'Yes' if success else 'No'}\n")
+                f.write(f"\n{'='*60}\n")
+                f.write(f"工具输出：\n")
+                f.write(f"{'='*60}\n\n")
+                
+                # 原有内容
+                if original_content.strip():
+                    f.write(original_content)
+                else:
+                    f.write("（无输出）\n")
+            
+            logger.info(f"📝 {tool_name} 日志: {log_file.name} (执行时间: {duration:.2f}秒)")
+            
+        except Exception as e:
+            logger.warning(f"无法写入命令信息头: {e}")
+
     def execute_and_wait(
         self,
         tool_name: str,
@@ -71,6 +126,9 @@ class CommandExecutor:
         # 准备日志文件
         log_file_path = Path(log_file) if log_file else None
         
+        # 记录开始时间（用于计算执行时间）
+        start_time = datetime.now()
+        
         try:
             logger.debug("执行命令: %s", command)
             if log_file_path:
@@ -79,20 +137,34 @@ class CommandExecutor:
                 logger.debug("日志输出: 丢弃")
             
             # 执行扫描
-            # stdout 始终丢弃，stderr 根据 log_file 决定
+            # 简化策略：ENABLE_COMMAND_LOGGING 控制输出策略
             if log_file_path:
-                # 捕获 stderr 到日志文件
-                with open(log_file_path, 'w', encoding='utf-8', buffering=1) as log_f:
-                    result = subprocess.run(
-                        command,
-                        shell=True,
-                        stdout=subprocess.DEVNULL,
-                        stderr=log_f,
-                        timeout=timeout,
-                        check=False
-                    )
+                # 有日志文件路径
+                if ENABLE_COMMAND_LOGGING:
+                    # 输出所有内容（命令输出 + 错误）到日志文件
+                    with open(log_file_path, 'w', encoding='utf-8', buffering=1) as log_f:
+                        result = subprocess.run(
+                            command,
+                            shell=True,
+                            stdout=log_f,
+                            stderr=subprocess.STDOUT,  # 合并到 stdout
+                            timeout=timeout,
+                            check=False,
+                            text=True
+                        )
+                else:
+                    # 只输出错误到日志文件（原有逻辑）
+                    with open(log_file_path, 'w', encoding='utf-8', buffering=1) as log_f:
+                        result = subprocess.run(
+                            command,
+                            shell=True,
+                            stdout=subprocess.DEVNULL,
+                            stderr=log_f,
+                            timeout=timeout,
+                            check=False
+                        )
             else:
-                # 丢弃 stderr
+                # 无日志文件路径：丢弃所有输出
                 result = subprocess.run(
                     command,
                     shell=True,
@@ -106,27 +178,44 @@ class CommandExecutor:
             returncode = result.returncode
             success = (returncode == 0)
             
+            # 计算执行时间
+            duration = (datetime.now() - start_time).total_seconds()
+            
+            # 在日志文件开头添加命令信息（如果开启且有日志文件）
+            if log_file_path and ENABLE_COMMAND_LOGGING:
+                self._write_command_info_header(log_file_path, tool_name, command, duration, returncode, success)
+            command_log_file = str(log_file_path) if log_file_path else None
+            
             if not success:
                 # 命令执行失败，尝试读取错误日志
                 error_output = ""
                 if log_file_path:
                     error_output = self._read_log_tail(log_file_path, max_lines=MAX_LOG_TAIL_LINES)
                 logger.warning(
-                    "扫描工具 %s 返回非零状态码: %d%s",
-                    tool_name, returncode,
+                    "扫描工具 %s 返回非零状态码: %d (执行时间: %.2f秒)%s",
+                    tool_name, returncode, duration,
                     f"\n错误输出:\n{error_output}" if error_output else ""
                 )
             else:
-                logger.info("✓ 扫描工具 %s 执行完成", tool_name)
+                logger.info("✓ 扫描工具 %s 执行完成 (执行时间: %.2f秒)", tool_name, duration)
             
             return {
                 'success': success,
                 'returncode': returncode,
-                'log_file': str(log_file_path) if log_file_path else None
+                'log_file': str(log_file_path) if log_file_path else None,
+                'command_log_file': command_log_file,  # 同 log_file（兼容性）
+                'duration': duration  # 新增：执行时间
             }
             
         except subprocess.TimeoutExpired as e:
-            error_msg = f"扫描工具 {tool_name} 执行超时（{timeout}秒）"
+            # 计算超时时的执行时间
+            duration = (datetime.now() - start_time).total_seconds()
+            
+            # 在日志文件开头添加超时信息
+            if log_file_path and ENABLE_COMMAND_LOGGING:
+                self._write_command_info_header(log_file_path, tool_name, command, duration, -1, False)
+            
+            error_msg = f"扫描工具 {tool_name} 执行超时（{timeout}秒，实际执行: {duration:.2f}秒）"
             logger.error(error_msg)
             # 超时时日志文件已保留
             if log_file_path and log_file_path.exists():
@@ -146,11 +235,13 @@ class CommandExecutor:
     def execute_stream(
         self,
         cmd: str,
+        tool_name: str,
         cwd: Optional[str] = None,
         shell: bool = False,
         encoding: str = 'utf-8',
         suffix_char: Optional[str] = None,
-        timeout: Optional[int] = None
+        timeout: Optional[int] = None,
+        log_file: Optional[str] = None
     ) -> Generator[str, None, None]:
         """
         流式执行：逐行返回输出
@@ -159,11 +250,13 @@ class CommandExecutor:
         
         Args:
             cmd: 要执行的命令
+            tool_name: 工具名称（用于日志记录）
             cwd: 工作目录
             shell: 是否使用 shell 执行
             encoding: 编码格式
             suffix_char: 末尾后缀字符（用于移除）
             timeout: 命令执行超时时间（秒），None 表示不设置超时
+            log_file: 日志文件路径（可选）
         
         Yields:
             str: 每行输出的内容（已处理：去空白、去ANSI、去后缀）
@@ -172,20 +265,61 @@ class CommandExecutor:
             subprocess.TimeoutExpired: 命令执行超时
         """
         logger.info(f"执行命令: {cmd}")
-
+        
+        # 记录开始时间（用于命令日志）
+        start_time = datetime.now()
+        
+        # 准备日志文件路径
+        log_file_path = Path(log_file) if log_file else None
+        if log_file_path:
+            logger.debug(f"日志文件: {log_file_path}")
+        else:
+            logger.debug("日志输出: 丢弃")
+        
         # 根据是否使用shell来格式化命令
         command = cmd if shell else cmd.split()
+        
+        # 日志文件句柄
+        log_file_handle = None
 
-        # 启动子进程，以流式方式捕获输出
-        process = subprocess.Popen(
-            command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,  # 将错误输出合并到标准输出
-            cwd=cwd,
-            universal_newlines=True,  # 文本模式，自动处理换行符
-            encoding=encoding,
-            shell=shell
-        )
+        # 启动子进程，根据日志策略决定输出方向
+        if log_file_path:
+            # 打开日志文件
+            log_file_handle = open(log_file_path, 'w', encoding='utf-8', buffering=1)
+            
+            if ENABLE_COMMAND_LOGGING:
+                # 输出所有内容到日志文件，同时流式返回
+                process = subprocess.Popen(
+                    command,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,  # 合并错误输出
+                    cwd=cwd,
+                    universal_newlines=True,
+                    encoding=encoding,
+                    shell=shell
+                )
+            else:
+                # 只输出错误到日志文件
+                process = subprocess.Popen(
+                    command,
+                    stdout=subprocess.PIPE,
+                    stderr=log_file_handle,  # 错误直接写入日志文件
+                    cwd=cwd,
+                    universal_newlines=True,
+                    encoding=encoding,
+                    shell=shell
+                )
+        else:
+            # 无日志文件：正常流式输出
+            process = subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                cwd=cwd,
+                universal_newlines=True,
+                encoding=encoding,
+                shell=shell
+            )
             
         # 超时控制：使用 Timer 在指定时间后终止进程
         timed_out_event = threading.Event()
@@ -226,6 +360,11 @@ class CommandExecutor:
                 if suffix_char and line.endswith(suffix_char):
                     line = line[:-1]
                 
+                # 如果开启命令日志且有日志文件，同时写入日志文件
+                if log_file_handle and ENABLE_COMMAND_LOGGING:
+                    log_file_handle.write(line + '\n')
+                    log_file_handle.flush()
+                
                 # 直接返回行内容，由调用者负责解析
                 yield line
         
@@ -248,32 +387,37 @@ class CommandExecutor:
                     # 极端情况：进程仍未退出，强制终止
                     logger.warning("进程在超时后仍未退出，强制终止")
                     process.kill()
-                    exit_code = process.wait()
-            elif process.poll() is None:
-                # 正常情况：进程还在运行，需要手动清理
-                logger.debug("进程仍在运行，执行优雅终止")
-                process.terminate()
+                    exit_code = -1  # 超时退出码
+            else:
+                # 正常结束：等待进程自然结束
                 try:
                     exit_code = process.wait(timeout=GRACEFUL_SHUTDOWN_TIMEOUT)
                 except subprocess.TimeoutExpired:
-                    # 优雅终止失败，强制杀死
-                    logger.warning("进程未响应 terminate 信号，强制 kill")
+                    # 程序未能在预期时间内结束，强制终止
+                    logger.warning(
+                        "程序未能在%d秒内自然结束，强制终止: %s",
+                        GRACEFUL_SHUTDOWN_TIMEOUT, cmd
+                    )
                     process.kill()
-                    exit_code = process.wait()
-            else:
-                # 进程已经正常结束
-                exit_code = process.returncode
-                logger.debug("进程已正常结束，退出码: %s", exit_code)
+                    exit_code = -2  # 强制终止退出码
             
-            # 3. 如果是超时导致的终止，抛出标准异常
-            # 注意：对于流式处理任务（如端口扫描），超时时已处理的数据已保存到数据库
-            # 这是预期行为：流式处理允许部分数据保存，即使任务未完全完成
-            if timed_out_event.is_set():
-                raise subprocess.TimeoutExpired(cmd, timeout if timeout else 0)
+            # 3. 关闭进程流
+            if process.stdout:
+                process.stdout.close()
+            if process.stderr:
+                process.stderr.close()
             
-            # 4. 记录异常退出的情况（非超时）
-            if exit_code is not None and exit_code != 0:
-                logger.warning("命令执行失败，退出码: %s", exit_code)
+            # 4. 关闭日志文件句柄
+            if log_file_handle:
+                log_file_handle.close()
+            
+            # 5. 在日志文件开头添加命令信息（如果开启且有日志文件）
+            if log_file_path and ENABLE_COMMAND_LOGGING:
+                duration = (datetime.now() - start_time).total_seconds()
+                success = not timed_out_event.is_set() and (exit_code == 0 if exit_code is not None else True)
+                
+                # 写入命令信息头部
+                self._write_command_info_header(log_file_path, tool_name, cmd, duration, exit_code or 0, success)
     
     def _read_log_tail(self, log_file: Path, max_lines: int = MAX_LOG_TAIL_LINES) -> str:
         """
@@ -335,7 +479,7 @@ def execute_and_wait(
         log_file: 日志文件路径（可选）
     
     Returns:
-        执行结果字典
+        执行结果字典（包含 duration 字段）
     
     Raises:
         RuntimeError: 执行失败或超时
@@ -345,11 +489,13 @@ def execute_and_wait(
 
 def execute_stream(
     cmd: str,
+    tool_name: str,
     cwd: Optional[str] = None,
     shell: bool = False,
     encoding: str = 'utf-8',
     suffix_char: Optional[str] = None,
-    timeout: Optional[int] = None
+    timeout: Optional[int] = None,
+    log_file: Optional[str] = None
 ) -> Generator[str, None, None]:
     """
     流式执行命令（快捷函数）
@@ -358,11 +504,13 @@ def execute_stream(
     
     Args:
         cmd: 要执行的命令
+        tool_name: 工具名称
         cwd: 工作目录
         shell: 是否使用 shell 执行
         encoding: 编码格式
         suffix_char: 末尾后缀字符
         timeout: 命令执行超时时间（秒）
+        log_file: 日志文件路径（可选）
     
     Yields:
         str: 每行输出的内容
@@ -370,4 +518,4 @@ def execute_stream(
     Raises:
         subprocess.TimeoutExpired: 命令执行超时
     """
-    return _executor.execute_stream(cmd, cwd, shell, encoding, suffix_char, timeout)
+    return _executor.execute_stream(cmd, tool_name, cwd, shell, encoding, suffix_char, timeout, log_file)
