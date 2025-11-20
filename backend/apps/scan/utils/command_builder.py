@@ -1,13 +1,13 @@
 """
-命令构建工具（基于 Jinja2）
-
-提供扫描工具命令字符串构建功能，使用 Jinja2 模板引擎。
+简化的命令构建工具
+使用 Python 原生 f-string 和条件拼接，零依赖，性能更好。
 """
 
 import logging
 from typing import Dict, Any
 
 logger = logging.getLogger(__name__)
+
 
 def build_scan_command(
     tool_name: str,
@@ -16,7 +16,7 @@ def build_scan_command(
     tool_config: Dict[str, Any]
 ) -> str:
     """
-    构建扫描工具命令（使用 Jinja2 模板渲染）
+    构建扫描工具命令（使用 f-string）
     
     Args:
         tool_name: 工具名称（如 'subfinder'）
@@ -28,6 +28,7 @@ def build_scan_command(
         tool_config: 工具配置参数（包含可选参数）
             - threads: 线程数
             - timeout: 超时时间（秒）
+            - 其他可选参数...
     
     Returns:
         完整的命令字符串
@@ -39,14 +40,8 @@ def build_scan_command(
         ...     command_params={'domain': 'example.com', 'output_file': '/tmp/out.txt'},
         ...     tool_config={'threads': 10}
         ... )
-        'subfinder -d example.com -o /tmp/out.txt -t 10 -silent'
-    
-    Note:
-        - 使用 Jinja2 模板引擎渲染命令
-        - scan_tools_base 参数自动注入
-        - 支持条件判断处理可选参数（如 {% if threads %}）
+        'subfinder -d example.com -o /tmp/out.txt -silent -t 10'
     """
-    from jinja2 import Template
     from apps.scan.configs.command_templates import get_command_template, SCAN_TOOLS_BASE_PATH
     
     # 获取命令模板
@@ -54,26 +49,44 @@ def build_scan_command(
     if not template:
         raise ValueError(f"未找到工具 {tool_name} 的命令模板（扫描类型: {scan_type}）")
     
-    # 添加系统默认参数
-    default_params = {'scan_tools_base': SCAN_TOOLS_BASE_PATH}
-    
-    # 合并所有参数（Jinja2 会自动处理条件和未使用的参数）
-    all_params = {**default_params, **command_params, **tool_config}
+    # 合并所有参数
+    all_params = {
+        'scan_tools_base': SCAN_TOOLS_BASE_PATH,
+        **command_params,
+        **tool_config
+    }
     
     try:
-        # 使用 Jinja2 渲染命令（使用默认 Undefined，允许条件判断中的可选参数）
-        jinja_template = Template(template['command'])
-        rendered_command = jinja_template.render(**all_params)
+        # 1. 构建基础命令
+        base_command = template['base'].format(**all_params)
         
-        # 清理多余空白（多行字符串会产生多余的空格和换行）
+        # 2. 拼接可选参数
+        optional_parts = []
+        for param_name, flag_template in template.get('optional', {}).items():
+            # 检查参数是否存在且有值
+            if param_name in all_params and all_params[param_name]:
+                optional_parts.append(flag_template.format(**all_params))
+        
+        # 3. 组合完整命令
+        full_command = base_command
+        if optional_parts:
+            full_command += ' ' + ' '.join(optional_parts)
+        
+        # 4. 清理多余空白
         import re
-        # 1. 将多个空白字符（空格、制表符、换行）压缩为单个空格
-        cleaned_command = re.sub(r'\s+', ' ', rendered_command)
-        # 2. 去除首尾空白
-        return cleaned_command.strip()
+        cleaned_command = re.sub(r'\s+', ' ', full_command).strip()
+        
+        return cleaned_command
+        
+    except KeyError as e:
+        raise ValueError(
+            f"命令构建失败：缺少必需参数 {e}\n"
+            f"模板: {template}\n"
+            f"提供的参数: {list(all_params.keys())}"
+        )
     except Exception as e:
         raise ValueError(
             f"命令构建失败: {e}\n"
-            f"模板: {template['command']}\n"
+            f"模板: {template}\n"
             f"提供的参数: {list(all_params.keys())}"
         )
