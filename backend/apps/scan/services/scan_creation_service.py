@@ -43,26 +43,20 @@ class ScanCreationService:
     - 处理创建过程中的错误
     """
     
-    def __init__(
-        self,
-        scan_repository=None,
-        target_repository=None,
-        organization_repository=None,
-        engine_repository=None
-    ):
+    def __init__(self):
         """
         初始化服务
-        
-        Args:
-            scan_repository: Scan Repository 实例（用于依赖注入）
-            target_repository: Target Repository 实例（用于依赖注入）
-            organization_repository: Organization Repository 实例（用于依赖注入）
-            engine_repository: Engine Repository 实例（用于依赖注入）
+        Note:
+            移除了依赖注入，因为：
+            1. 项目没有单元测试需求
+            2. 不会更换数据库实现
+            3. 所有调用都是直接实例化
+            4. 减少不必要的复杂度
         """
-        self.scan_repo = scan_repository or DjangoScanRepository()
-        self.target_repo = target_repository or DjangoTargetRepository()
-        self.organization_repo = organization_repository or DjangoOrganizationRepository()
-        self.engine_repo = engine_repository or DjangoEngineRepository()
+        self.scan_repo = DjangoScanRepository()
+        self.target_repo = DjangoTargetRepository()
+        self.organization_repo = DjangoOrganizationRepository()
+        self.engine_repo = DjangoEngineRepository()
     
     def prepare_initiate_scan(
         self,

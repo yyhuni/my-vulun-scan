@@ -29,14 +29,11 @@ class ScanStateService:
     - 状态验证
     """
     
-    def __init__(self, scan_repository=None):
+    def __init__(self):
         """
         初始化服务
-        
-        Args:
-            scan_repository: Scan Repository 实例（用于依赖注入）
         """
-        self.scan_repo = scan_repository or DjangoScanRepository()
+        self.scan_repo = DjangoScanRepository()
     
     def update_status(
         self, 

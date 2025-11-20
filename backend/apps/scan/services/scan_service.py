@@ -107,21 +107,9 @@ class ScanService:
         ScanStatus.CANCELLED
     }
     
-    def __init__(
-        self,
-        scan_repository = None,
-        target_repository = None,
-        organization_repository = None,
-        engine_repository = None
-    ):
+    def __init__(self):
         """
         初始化服务
-        
-        Args:
-            scan_repository: Scan Repository 实例（用于依赖注入）
-            target_repository: Target Repository 实例（用于依赖注入）
-            organization_repository: Organization Repository 实例（用于依赖注入）
-            engine_repository: Engine Repository 实例（用于依赖注入）
         """
         # 初始化子服务
         from apps.scan.services.scan_creation_service import ScanCreationService
@@ -129,18 +117,13 @@ class ScanService:
         from apps.scan.services.scan_control_service import ScanControlService
         from apps.scan.services.scan_stats_service import ScanStatsService
         
-        self.creation_service = ScanCreationService(
-            scan_repository, target_repository, organization_repository, engine_repository
-        )
-        self.state_service = ScanStateService(scan_repository)
-        self.control_service = ScanControlService(scan_repository)
-        self.stats_service = ScanStatsService(scan_repository)
+        self.creation_service = ScanCreationService()
+        self.state_service = ScanStateService()
+        self.control_service = ScanControlService()
+        self.stats_service = ScanStatsService()
         
-        # 保留 Repository 实例（用于 get_scan 方法）
-        self.scan_repo = scan_repository or DjangoScanRepository()
-        self.target_repo = target_repository or DjangoTargetRepository()
-        self.organization_repo = organization_repository or DjangoOrganizationRepository()
-        self.engine_repo = engine_repository or DjangoEngineRepository()
+        # 保留 ScanRepository（用于 get_scan 方法）
+        self.scan_repo = DjangoScanRepository()
     
     def get_scan(self, scan_id: int, prefetch_relations: bool) -> Scan | None:
         """
