@@ -145,7 +145,9 @@ class ScanService:
         target_id: int | None = None,
         engine_id: int | None = None
     ) -> tuple[List[Target], ScanEngine]:
-        """准备发起扫描任务（委托给 ScanCreationService）"""
+        """
+        为创建扫描任务做准备，返回所需的目标列表和扫描引擎
+        """
         return self.creation_service.prepare_initiate_scan(
             organization_id, target_id, engine_id
         )

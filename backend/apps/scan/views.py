@@ -103,7 +103,7 @@ class ScanViewSet(viewsets.ModelViewSet):
         engine_id = request.data.get('engine_id')
         
         try:
-            # 使用 Service 层准备扫描任务（查询和验证）
+            # 步骤1：准备扫描所需的数据（验证参数、查询资源、返回目标列表和引擎）
             scan_service = ScanService()
             targets, engine = scan_service.prepare_initiate_scan(
                 organization_id=organization_id,
@@ -111,7 +111,7 @@ class ScanViewSet(viewsets.ModelViewSet):
                 engine_id=engine_id
             )
             
-            # 使用 Service 层批量创建扫描任务
+            # 步骤2：批量创建扫描记录并提交 Prefect Flow
             created_scans = scan_service.create_scans(
                 targets=targets,
                 engine=engine

@@ -65,9 +65,13 @@ class ScanCreationService:
         engine_id: int | None = None
     ) -> tuple[List[Target], ScanEngine]:
         """
-        准备发起扫描任务（查询和验证）
+        准备扫描任务所需的数据
         
-        负责所有数据库查询和业务验证逻辑，供视图层调用。
+        职责：
+            1. 参数验证（必填项、互斥参数）
+            2. 资源查询（Engine、Organization、Target）
+            3. 业务逻辑判断（组织下是否有目标）
+            4. 返回准备好的目标列表和扫描引擎
         
         Args:
             organization_id: 组织ID（可选）
@@ -75,10 +79,10 @@ class ScanCreationService:
             engine_id: 扫描引擎ID（必填）
         
         Returns:
-            (目标列表, 扫描引擎对象)
+            (目标列表, 扫描引擎对象) - 供 create_scans 方法使用
         
         Raises:
-            ValidationError: 参数验证失败
+            ValidationError: 参数验证失败或业务规则不满足
             ObjectDoesNotExist: 资源不存在（Organization/Target/ScanEngine）
         
         Note:
