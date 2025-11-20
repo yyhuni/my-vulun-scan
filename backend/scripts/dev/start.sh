@@ -88,10 +88,23 @@ if [ -z "$PREFECT_PID" ]; then
     echo $NEW_PID > "$PID_DIR/prefect-server.pid"
     
     echo "等待 Prefect Server 启动..."
-    sleep 5
     
-    # 验证启动
-    if curl -s http://localhost:4200/api/health > /dev/null 2>&1; then
+    # 使用重试机制验证启动（最多等待 30 秒）
+    MAX_RETRIES=15
+    RETRY_COUNT=0
+    SERVER_STARTED=false
+    
+    while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+        if curl -s http://localhost:4200/api/health > /dev/null 2>&1; then
+            SERVER_STARTED=true
+            break
+        fi
+        RETRY_COUNT=$((RETRY_COUNT + 1))
+        echo "  尝试 $RETRY_COUNT/$MAX_RETRIES..."
+        sleep 2
+    done
+    
+    if $SERVER_STARTED; then
         echo -e "${GREEN}✓ Prefect Server 已启动 (PID: $NEW_PID)${NC}"
         echo "  访问: http://localhost:4200"
     else

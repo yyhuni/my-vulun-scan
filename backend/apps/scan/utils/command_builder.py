@@ -44,9 +44,9 @@ def build_scan_command(
     Note:
         - 使用 Jinja2 模板引擎渲染命令
         - scan_tools_base 参数自动注入
-        - StrictUndefined 模式：缺少必需参数时自动报错
+        - 支持条件判断处理可选参数（如 {% if threads %}）
     """
-    from jinja2 import Template, StrictUndefined
+    from jinja2 import Template
     from apps.scan.configs.command_templates import get_command_template, SCAN_TOOLS_BASE_PATH
     
     # 获取命令模板
@@ -61,8 +61,8 @@ def build_scan_command(
     all_params = {**default_params, **command_params, **tool_config}
     
     try:
-        # 使用 Jinja2 渲染命令（StrictUndefined: 缺少变量时自动报错）
-        jinja_template = Template(template['command'], undefined=StrictUndefined)
+        # 使用 Jinja2 渲染命令（使用默认 Undefined，允许条件判断中的可选参数）
+        jinja_template = Template(template['command'])
         rendered_command = jinja_template.render(**all_params)
         
         # 清理多余空白（多行字符串会产生多余的空格和换行）

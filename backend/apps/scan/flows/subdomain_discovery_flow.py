@@ -162,7 +162,7 @@ def _run_scans_parallel(
     # 2. 检查是否有任何工具成功提交
     if not futures:
         error_msg = (
-            f"所有扫描工具均无法启动 - 目标: {target_name}.\n"
+            f"所有扫描工具均无法启动 - 目标: {domain_name}.\n"
             f"失败详情:\n" + "\n".join(f"  - {f}" for f in failures)
         )
         raise RuntimeError(error_msg)
@@ -191,7 +191,7 @@ def _run_scans_parallel(
     # 4. 检查是否有成功的工具
     if not result_files:
         error_msg = (
-            f"所有扫描工具均失败 - 目标: {target_name}.\n"
+            f"所有扫描工具均失败 - 目标: {domain_name}.\n"
             f"失败详情:\n" + "\n".join(f"  - {f}" for f in failures)
         )
         raise RuntimeError(error_msg)
