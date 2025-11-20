@@ -210,6 +210,7 @@ class ScanCreationService:
             try:
                 # 生成 Scan 工作空间目录路径
                 scan_workspace_dir = self._generate_scan_workspace_dir()
+                # 目标绑定到scan
                 scan = Scan(
                     target=target,
                     engine=engine,
@@ -279,7 +280,7 @@ class ScanCreationService:
                     parameters=flow_kwargs
                 )
                 
-                # 保存 flow_run_id 到数据库，供后续停止操作使用（使用仓储层以保证并发安全）
+                # 保存 flow_run_id 到数据库，供后续停止操作使用
                 if self.scan_repo.append_flow_run_id(scan.id, flow_run_id):
                     current_flow_ids = list(scan.flow_run_ids or [])
                     current_flow_ids.append(flow_run_id)
