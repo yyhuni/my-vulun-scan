@@ -89,16 +89,16 @@ def _validate_and_normalize_target(target_name: str) -> str:
 
 def _run_scans_parallel(
     enabled_tools: dict,
-    target_name: str,
+    domain_name: str,
     result_dir: Path
 ) -> tuple[list, list, list]:
     """
-    并行执行子域名扫描任务
+    并行运行所有启用的子域名扫描工具
     
     Args:
-        enabled_tools: 已启用的工具配置字典
-        target_name: 目标域名
-        result_dir: 结果目录
+        enabled_tools: 启用的工具配置字典 {'tool_name': {'timeout': 600, ...}}
+        domain_name: 目标域名
+        result_dir: 结果输出目录
         
     Returns:
         tuple: (result_files, failed_tools, successful_tool_names)
@@ -132,7 +132,7 @@ def _run_scans_parallel(
                 tool_name=tool_name,
                 scan_type='subdomain_discovery',
                 command_params={
-                    'target': target_name,      # 对应 {target}
+                    'domain': domain_name,      # 对应 {domain}
                     'output_file': output_file  # 对应 {output_file}
                 },
                 tool_config=tool_config
@@ -294,15 +294,6 @@ def subdomain_discovery_flow(
                 }
             }
         
-        logger.info(
-            "="*60 + "\n" +
-            "开始子域名发现扫描\n" +
-            f"  Scan ID: {scan_id}\n" +
-            f"  Target: {target_name}\n" +
-            f"  Workspace: {scan_workspace_dir}\n" +
-            "="*60
-        )
-        
         # 导入任务函数
         from apps.scan.tasks.subdomain_discovery import (
             run_subdomain_discovery_task,
@@ -315,7 +306,7 @@ def subdomain_discovery_flow(
         
         # 验证并规范化目标域名
         try:
-            target_name = _validate_and_normalize_target(target_name)
+            domain_name = _validate_and_normalize_target(target_name)
         except ValueError as e:
             logger.warning("目标域名无效，跳过子域名发现扫描: %s", e)
             return {
@@ -333,6 +324,16 @@ def subdomain_discovery_flow(
                     'failed_tools': []
                 }
             }
+        
+        # 验证成功后打印日志（使用规范化后的域名）
+        logger.info(
+            "="*60 + "\n" +
+            "开始子域名发现扫描\n" +
+            f"  Scan ID: {scan_id}\n" +
+            f"  Domain: {domain_name}\n" +
+            f"  Workspace: {scan_workspace_dir}\n" +
+            "="*60
+        )
         
         # Step 1: 解析配置，获取启用的工具
         logger.info("Step 1: 解析配置，获取启用的工具")
@@ -353,7 +354,7 @@ def subdomain_discovery_flow(
         logger.info("Step 2: 并行运行扫描工具")
         result_files, failed_tools, successful_tool_names = _run_scans_parallel(
             enabled_tools=enabled_tools,
-            target_name=target_name,
+            domain_name=domain_name,
             result_dir=result_dir
         )
         
@@ -385,7 +386,7 @@ def subdomain_discovery_flow(
         return {
             'success': True,
             'scan_id': scan_id,
-            'target': target_name,
+            'target': domain_name,
             'scan_workspace_dir': scan_workspace_dir,
             'total': processed_domains,
             'executed_tasks': executed_tasks,

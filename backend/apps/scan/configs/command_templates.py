@@ -1,12 +1,23 @@
-"""
-扫描工具命令模板
+"""扫描工具命令模板（Jinja2 格式）
 
 定义所有扫描工具的命令模板。
 
 架构：
-- 基础命令：必需参数的命令模板（如 subfinder -d {target} -o {output_file}）
-- 可选参数：用户配置中存在才拼接（如 threads: 10 → -t 10）
-- YAML 配置：提供所有参数值和超时时间
+- 使用 Jinja2 模板语法：{{ variable }}
+- 条件语法：{% if condition %} ... {% endif %}
+- 注释语法：{# 注释内容 #}（渲染时自动移除）
+- 空白控制：{%- 去除左侧空白，-%} 去除右侧空白
+- 基础命令：必需参数的命令模板（如 subfinder -d {{ domain }} -o {{ output_file }}）
+- 可选参数：使用条件语句（如 {% if threads %} -t {{ threads }}{% endif %}）
+- 系统参数：scan_tools_base 由系统自动注入
+
+示例：
+    'subfinder': {
+        'command': '''
+            subfinder -d {{ domain }} -o {{ output_file }} -silent
+            {%- if threads %} -t {{ threads }}{% endif %}  {# 可选：线程数 #}
+        '''
+    }
 """
 
 import os
@@ -19,34 +30,38 @@ SCAN_TOOLS_BASE_PATH = os.getenv('SCAN_TOOLS_PATH', '/opt/github')
 
 SUBDOMAIN_DISCOVERY_COMMANDS = {
     'subfinder': {
-        'command': 'subfinder -d {target} -o {output_file} -silent',
-        'optional_flags': {
-            'threads': '-t {threads}',
-        }
+        'command': '''
+            subfinder -d {{ domain }} -o {{ output_file }} -silent
+            {%- if threads %} -t {{ threads }}{% endif %}
+        '''
     },
     
     'amass_passive': {
-        'command': 'amass enum -passive -d {target} -o {output_file}',
-        'optional_flags': {}
+        'command': 'amass enum -passive -d {{ domain }} -o {{ output_file }}'
     },
     
     'amass_active': {
-        'command': 'amass enum -active -d {target} -o {output_file} -brute',
-        'optional_flags': {
-            'wordlist': '-w {wordlist}',
-        }
+        'command': '''
+            amass enum -active -d {{ domain }} -o {{ output_file }} -brute
+            {%- if wordlist %} -w {{ wordlist }}{% endif %}
+        '''
     },
     
     'sublist3r': {
-        'command': f'python3 {SCAN_TOOLS_BASE_PATH}/Sublist3r/sublist3r.py -d {{target}} -o {{output_file}}',
-        'optional_flags': {
-            'threads': '-t {threads}',
-        }
+        'command': '''
+            python3 {{ scan_tools_base }}/Sublist3r/sublist3r.py 
+                -d {{ domain }} 
+                -o {{ output_file }}
+            {%- if threads %} -t {{ threads }}{% endif %}
+        '''
     },
     
     'oneforall': {
-        'command': f'python3 {SCAN_TOOLS_BASE_PATH}/OneForAll/oneforall.py --target {{target}} run && cut -d\',\' -f6 {SCAN_TOOLS_BASE_PATH}/OneForAll/results/{{target}}.csv | tail -n +2 > {{output_file}} && rm -rf {SCAN_TOOLS_BASE_PATH}/OneForAll/results/{{target}}.csv',
-        'optional_flags': {}
+        'command': '''
+            python3 {{ scan_tools_base }}/OneForAll/oneforall.py --target {{ domain }} run && 
+            cut -d',' -f6 {{ scan_tools_base }}/OneForAll/results/{{ domain }}.csv | tail -n +2 > {{ output_file }} && 
+            rm -rf {{ scan_tools_base }}/OneForAll/results/{{ domain }}.csv
+        '''
     },
 }
 
@@ -55,17 +70,18 @@ SUBDOMAIN_DISCOVERY_COMMANDS = {
 
 PORT_SCAN_COMMANDS = {
     'naabu_active': {
-        'command': 'naabu -exclude-cdn -warm-up-time 5 -retries 1 -verify -timeout 5000 -list {target_file} -json -silent',
-        'optional_flags': {
-            'threads': '-c {threads}',
-            'ports': '-p {ports}',
-            'rate': '-rate {rate}',
-        }
+        'command': '''
+            naabu -exclude-cdn -warm-up-time 5 -retries 1 -verify -timeout 5000 
+                -list {{ target_file }} 
+                -json -silent
+            {%- if threads %} -c {{ threads }}{% endif %}  {# 并发线程数 #}
+            {%- if ports %} -p {{ ports }}{% endif %}      {# 端口范围（如 80,443,1-65535）#}
+            {%- if rate %} -rate {{ rate }}{% endif %}     {# 每秒包数 #}
+        '''
     },
     
     'naabu_passive': {
-        'command': 'naabu -list {target_file} -passive -json -silent',
-        'optional_flags': {}
+        'command': 'naabu -list {{ target_file }} -passive -json -silent'
     },
 }
 
@@ -74,15 +90,18 @@ PORT_SCAN_COMMANDS = {
 
 SITE_SCAN_COMMANDS = {
     'httpx': {
-        # 流式输出到 stdout，无需 -o 参数
-        # 输出格式：JSON（-json），每行一个站点结果
-        'command': '$HOME/go/bin/httpx -l {target_file} -status-code -content-type -content-length -location -title -server -body-preview -tech-detect -cdn -vhost -random-agent -no-color -json',
-        'optional_flags': {
-            'threads': '-threads {threads}',
-            'rate_limit': '-rate-limit {rate_limit}',
-            'request_timeout': '-timeout {request_timeout}',  # httpx 单个请求的超时时间（秒）
-            'retries': '-retries {retries}',
-        }
+        'command': '''
+            $HOME/go/bin/httpx 
+                -l {{ target_file }} 
+                -status-code -content-type -content-length 
+                -location -title -server -body-preview 
+                -tech-detect -cdn -vhost 
+                -random-agent -no-color -json
+            {%- if threads %} -threads {{ threads }}{% endif %}              {# 并发线程数 #}
+            {%- if rate_limit %} -rate-limit {{ rate_limit }}{% endif %}     {# 速率限制 #}
+            {%- if request_timeout %} -timeout {{ request_timeout }}{% endif %} {# 请求超时（秒）#}
+            {%- if retries %} -retries {{ retries }}{% endif %}              {# 重试次数 #}
+        '''
     },
 }
 
@@ -91,17 +110,14 @@ SITE_SCAN_COMMANDS = {
 
 DIRECTORY_SCAN_COMMANDS = {
     'ffuf': {
-        # 流式输出到 stdout，使用 -json 输出 JSON 格式
-        # 扫描目标 URL 的目录，使用 FUZZ 关键字作为字典替换位置
-        'command': 'ffuf -u {url}/FUZZ -se -ac -sf -json',
-        'optional_flags': {
-            'wordlist': '-w {wordlist}',                 # 词表文件路径（必需）
-            'delay': '-p {delay}',                       # Seconds of `delay` between requests, or a range of random delay. For example "0.1" or "0.1-2.0"
-            'threads': '-t {threads}',                   # Number of concurrent threads. (default: 40)
-            'request_timeout': '-timeout {request_timeout}',  # HTTP request timeout in seconds. (default: 10)
-            'match_codes': '-mc {match_codes}',          # 匹配的状态码（如 200,201,301,302,401,403）
-            'rate': '-rate {rate}',                      # Rate of requests per second (default: 0)
-        }
+        'command': '''
+            ffuf -u {{ url }}/FUZZ -se -ac -sf -json -w {{ wordlist }}
+            {%- if delay %} -p {{ delay }}{% endif %}                           {# 请求间延迟（秒）#}
+            {%- if threads %} -t {{ threads }}{% endif %}                       {# 并发线程数（默认40）#}
+            {%- if request_timeout %} -timeout {{ request_timeout }}{% endif %} {# 请求超时（秒）#}
+            {%- if match_codes %} -mc {{ match_codes }}{% endif %}              {# 匹配状态码 #}
+            {%- if rate %} -rate {{ rate }}{% endif %}                          {# 每秒请求数 #}
+        '''
     },
 }
 
@@ -110,27 +126,21 @@ DIRECTORY_SCAN_COMMANDS = {
 
 URL_FETCH_COMMANDS = {
     'waymore': {
-        # 从目标域名获取历史 URL（输入：域名）
-        # -i: 输入域名
-        # -mode U: URL 模式
-        # -oU: 输出文件
-        'command': 'waymore -i {target} -mode U -oU {output_file}',
-        'optional_flags': {},
-        'input_type': 'domain'  # 输入类型：domain（域名级别，自动去重）
+        'command': 'waymore -i {{ target }} -mode U -oU {{ output_file }}',
+        'input_type': 'domain'
     },
     
     'katana': {
-        # 爬取站点 URL（输入：站点 URL）
-        # -u: 输入 URL
-        # -d: 爬取深度
-        # -o: 输出文件
-        'command': '$HOME/go/bin/katana -u {url} -o {output_file} -silent -jsonl',
-        'optional_flags': {
-            'depth': '-d {depth}',              # 爬取深度（默认 2）
-            'threads': '-c {threads}',          # 并发数（默认 10）
-            'rate_limit': '-rl {rate_limit}',   # 每秒请求数
-        },
-        'input_type': 'url'  # 输入类型：url（站点级别，每个站点单独处理）
+        'command': '''
+            $HOME/go/bin/katana 
+                -u {{ url }} 
+                -o {{ output_file }} 
+                -silent -jsonl
+            {%- if depth %} -d {{ depth }}{% endif %}
+            {%- if threads %} -c {{ threads }}{% endif %}
+            {%- if rate_limit %} -rl {{ rate_limit }}{% endif %}
+        ''',
+        'input_type': 'url'
     },
 }
 
