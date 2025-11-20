@@ -70,7 +70,7 @@ def export_sites_task(
         logger.info(
             "✓ 站点 URL 导出完成 - 总数: %d, 文件: %s (%.2f KB)",
             total_count,
-            output_file,
+            str(output_path),  # 使用绝对路径
             output_path.stat().st_size / 1024
         )
 

@@ -122,9 +122,9 @@ def _run_scans_parallel(
     
     # 1. 构建命令并提交并行任务
     for tool_name, tool_config in enabled_tools.items():
-        # 1.1 生成唯一的输出文件路径
+        # 1.1 生成唯一的输出文件路径（绝对路径）
         short_uuid = uuid.uuid4().hex[:4]
-        output_file = f"{result_dir}/{tool_name}_{timestamp}_{short_uuid}.txt"
+        output_file = str(result_dir / f"{tool_name}_{timestamp}_{short_uuid}.txt")
         
         # 1.2 构建完整命令（变量替换）
         try:

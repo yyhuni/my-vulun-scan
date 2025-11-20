@@ -217,7 +217,7 @@ def _export_target_domains(target_id: int, port_scan_dir: Path) -> tuple[str, in
         # 不抛出异常，由上层决定如何处理
         # raise ValueError("目标下没有域名，无法执行端口扫描")
     
-    return domains_file, domain_count
+    return export_result['output_file'], domain_count
 
 
 def _run_scans_sequentially(

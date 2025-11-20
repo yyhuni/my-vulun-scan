@@ -63,7 +63,7 @@ def run_subdomain_discovery_task(
         if not output_file_path.exists():
             logger.warning(
                 "扫描工具 %s 未生成结果文件: %s (returncode: %d)",
-                tool, output_file_path, result['returncode']
+                tool, str(output_file_path), result['returncode']  # 强制转换为字符串
             )
             return ""
         
@@ -75,7 +75,7 @@ def run_subdomain_discovery_task(
         
         logger.info(
             "✓ 扫描完成: %s - 结果文件: %s (%.2f KB)",
-            tool, output_file_path.name, file_size / 1024
+            tool, str(output_file_path), file_size / 1024  # 使用绝对路径
         )
         
         # 返回结果文件路径

@@ -129,7 +129,7 @@ def export_site_urls_task(
             subdomain_count,
             port_count,
             total_urls,
-            output_file,
+            str(output_path),  # 使用绝对路径
             output_path.stat().st_size / 1024
         )
         

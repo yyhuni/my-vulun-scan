@@ -199,7 +199,17 @@ CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:3000,
 
 # ==================== 扫描结果存储和清理配置 ====================
 
-SCAN_RESULTS_DIR = os.getenv('SCAN_RESULTS_DIR')
+# 扫描结果存储目录（智能路径配置）
+_scan_results_dir_env = os.getenv('SCAN_RESULTS_DIR')
+if _scan_results_dir_env:
+    # 使用环境变量指定的路径（支持相对和绝对路径）
+    if os.path.isabs(_scan_results_dir_env):
+        SCAN_RESULTS_DIR = _scan_results_dir_env  # 绝对路径
+    else:
+        SCAN_RESULTS_DIR = str(BASE_DIR / _scan_results_dir_env)  # 相对路径转绝对路径
+else:
+    # 默认使用项目目录下的 results 文件夹
+    SCAN_RESULTS_DIR = str(BASE_DIR / 'results')
 
 # 扫描结果保留时间（单位：天）
 SCAN_RESULTS_RETENTION_DAYS = int(os.getenv('SCAN_RETENTION_DAYS', '7'))

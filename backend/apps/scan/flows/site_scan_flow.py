@@ -148,7 +148,7 @@ def _export_site_urls(target_id: int, site_scan_dir: Path) -> tuple[str, int, in
         # 不抛出异常，由上层决定如何处理
         # raise ValueError("目标下没有可用的站点URL，无法执行站点扫描")
     
-    return urls_file, total_urls, subdomain_count, port_count
+    return export_result['output_file'], total_urls, subdomain_count, port_count
 
 
 def _run_scans_sequentially(
