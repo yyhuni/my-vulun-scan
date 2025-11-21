@@ -517,30 +517,6 @@ def _validate_task_parameters(cmd: str, target_id: int, scan_id: int, cwd: Optio
         raise ValueError(f"工作目录不存在: {cwd}")
 
 
-def _initialize_task_resources(cmd: str, tool_name: str, cwd: Optional[str], shell: bool, timeout: Optional[int], log_file: Optional[str] = None) -> tuple:
-    """
-    初始化任务资源
-    
-    Args:
-        cmd: 扫描命令
-        tool_name: 工具名称
-        cwd: 工作目录
-        shell: 是否使用shell
-        timeout: 超时时间
-        log_file: 日志文件路径（可选）
-        
-    Returns:
-        tuple: (subdomain_cache, data_generator)
-    """
-    # 使用 LRU 缓存，自动淘汰最少使用的条目
-    subdomain_cache = LRUCache(maxsize=MAX_SUBDOMAIN_CACHE_SIZE)
-    
-    # 创建流式解析生成器（带工具名、超时控制和日志文件）
-    data_generator = _parse_naabu_stream_output(cmd=cmd, tool_name=tool_name, cwd=cwd, shell=shell, timeout=timeout, log_file=log_file)
-    
-    return subdomain_cache, data_generator
-
-
 def _accumulate_batch_stats(total_stats: dict, batch_result: dict) -> None:
     """
     累加批次统计信息
@@ -811,7 +787,8 @@ def run_and_stream_save_ports_task(
         _validate_task_parameters(cmd, target_id, scan_id, cwd)
         
         # 2. 初始化资源
-        subdomain_cache, data_generator = _initialize_task_resources(cmd, tool_name, cwd, shell, timeout, log_file)
+        subdomain_cache = LRUCache(maxsize=MAX_SUBDOMAIN_CACHE_SIZE)
+        data_generator = _parse_naabu_stream_output(cmd, tool_name, cwd, shell, timeout, log_file)
         services = ServiceSet.create_default()
         
         # 3. 流式处理记录并分批保存

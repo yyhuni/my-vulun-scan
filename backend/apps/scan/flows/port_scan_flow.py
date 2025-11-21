@@ -252,6 +252,7 @@ def _run_scans_sequentially(
     processed_records = 0
     failed_tools = []      # 记录失败的工具（含原因）
     
+    # for循环执行工具：按顺序串行运行每个启用的端口扫描工具
     for tool_name, tool_config in enabled_tools.items():
         # 1. 构建完整命令（变量替换）
         try:
@@ -259,9 +260,9 @@ def _run_scans_sequentially(
                 tool_name=tool_name,
                 scan_type='port_scan',
                 command_params={
-                    'target_file': domains_file  # 对应 {target_file}
+                    'domains_file': domains_file  # 对应 {domains_file}
                 },
-                tool_config=tool_config
+                tool_config=tool_config     #yaml的工具配置
             )
         except Exception as e:
             reason = f"命令构建失败: {str(e)}"
@@ -269,10 +270,10 @@ def _run_scans_sequentially(
             failed_tools.append({'tool': tool_name, 'reason': reason})
             continue
         
-        # 2. 获取超时时间（已在 config_parser 中验证）
+        # 2. 获取超时时间
         config_timeout = tool_config['timeout']
         
-        # 2.1 生成日志文件路径（类似子域名扫描）
+        # 2.1 生成日志文件路径
         from datetime import datetime
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         log_file = port_scan_dir / f"{tool_name}_{timestamp}.log"
@@ -447,7 +448,7 @@ def port_scan_flow(
         # Step 0: 创建工作目录
         port_scan_dir = _setup_port_scan_directory(scan_workspace_dir)
         
-        # Step 1: 导出目标域名
+        # Step 1: 导出目标域名列表到文件
         domains_file, domain_count = _export_target_domains(target_id, port_scan_dir)
         
         if domain_count == 0:

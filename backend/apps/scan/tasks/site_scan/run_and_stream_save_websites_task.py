@@ -338,7 +338,6 @@ def _save_batch(
     skipped_failed = 0
     
     # ========== Step 1: 批量查询 Subdomain（读操作，无需事务）==========
-    # Repository 装饰器会自动处理数据库连接健康检查
     # 收集当前批次所有 host
     hosts = {record.host for record in batch}
     
@@ -560,30 +559,6 @@ def _validate_task_parameters(cmd: str, target_id: int, scan_id: int, cwd: Optio
     # 验证工作目录（如果指定）
     if cwd and not Path(cwd).exists():
         raise ValueError(f"工作目录不存在: {cwd}")
-
-
-def _initialize_task_resources(cmd: str, tool_name: str, cwd: Optional[str], shell: bool, timeout: Optional[int], log_file: Optional[str] = None) -> tuple:
-    """
-    初始化任务资源
-    
-    Args:
-        cmd: 扫描命令
-        tool_name: 工具名称
-        cwd: 工作目录
-        shell: 是否使用shell
-        timeout: 超时时间
-        log_file: 日志文件路径（可选）
-        
-    Returns:
-        tuple: (subdomain_cache, data_generator)
-    """
-    # 使用 LRU 缓存，自动淘汰最少使用的条目
-    subdomain_cache = LRUCache(maxsize=MAX_SUBDOMAIN_CACHE_SIZE)
-    
-    # 创建流式解析生成器（带工具名、超时控制和日志文件）
-    data_generator = _parse_httpx_stream_output(cmd=cmd, tool_name=tool_name, cwd=cwd, shell=shell, timeout=timeout, log_file=log_file)
-    
-    return subdomain_cache, data_generator
 
 
 def _accumulate_batch_stats(total_stats: dict, batch_result: dict) -> None:
@@ -823,7 +798,8 @@ def run_and_stream_save_websites_task(
         _validate_task_parameters(cmd, target_id, scan_id, cwd)
         
         # 2. 初始化资源
-        subdomain_cache, data_generator = _initialize_task_resources(cmd, tool_name, cwd, shell, timeout, log_file)
+        subdomain_cache = LRUCache(maxsize=MAX_SUBDOMAIN_CACHE_SIZE)
+        data_generator = _parse_httpx_stream_output(cmd, tool_name, cwd, shell, timeout, log_file)
         services = ServiceSet.create_default()
         
         # 3. 流式处理记录并分批保存
