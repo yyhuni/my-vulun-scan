@@ -165,6 +165,9 @@ def _save_batch_with_retry(batch: List[str], scan_id: int, target_id: int, batch
         - 新域名：插入 (INSERT)
         - 重复域名：忽略（不更新，因为没有探测数据）
     """
+    # 调试日志：记录传入的参数
+    logger.info(f"[调试] _save_batch_with_retry 接收的参数: scan_id={scan_id}, target_id={target_id}, batch_size={len(batch)}")
+    
     service = SubdomainService()
     items = [
         SubdomainDTO(
@@ -174,6 +177,11 @@ def _save_batch_with_retry(batch: List[str], scan_id: int, target_id: int, batch
         )
         for domain in batch
     ]
+    
+    # 调试日志：记录第一个DTO的内容
+    if items:
+        first_item = items[0]
+        logger.info(f"[调试] 第一个 SubdomainDTO: name={first_item.name}, scan_id={first_item.scan_id}, target_id={first_item.target_id}")
     
     for attempt in range(max_retries):
         try:

@@ -36,7 +36,7 @@ class CommandExecutor:
     2. execute_stream() - 流式执行（适合实时处理）
     """
     
-    def _write_command_info_header(self, log_file: Path, tool_name: str, command: str, duration: float, returncode: int, success: bool):
+    def _write_command_info_header(self, log_file: Path, tool_name: str, command: str, duration: float, returncode: int, success: bool, timeout: Optional[int] = None):
         """
         在日志文件开头写入命令信息
         
@@ -47,6 +47,7 @@ class CommandExecutor:
             duration: 执行时间
             returncode: 退出码
             success: 是否成功
+            timeout: 超时时间（秒）
         """
         if not ENABLE_COMMAND_LOGGING:
             return
@@ -66,6 +67,8 @@ class CommandExecutor:
                 f.write(f"# 命令执行信息\n")
                 f.write(f"# 时间: {datetime.now().isoformat()}\n")
                 f.write(f"# 工具: {tool_name}\n")
+                if timeout is not None:
+                    f.write(f"# 超时时间: {timeout}秒\n")
                 f.write(f"# 执行时间: {duration:.2f}秒\n")
                 f.write(f"# 退出码: {returncode}\n")
                 f.write(f"# 成功: {'Yes' if success else 'No'}\n")
@@ -183,7 +186,7 @@ class CommandExecutor:
             
             # 在日志文件开头添加命令信息（如果开启且有日志文件）
             if log_file_path and ENABLE_COMMAND_LOGGING:
-                self._write_command_info_header(log_file_path, tool_name, command, duration, returncode, success)
+                self._write_command_info_header(log_file_path, tool_name, command, duration, returncode, success, timeout)
             command_log_file = str(log_file_path) if log_file_path else None
             
             if not success:
@@ -213,7 +216,7 @@ class CommandExecutor:
             
             # 在日志文件开头添加超时信息
             if log_file_path and ENABLE_COMMAND_LOGGING:
-                self._write_command_info_header(log_file_path, tool_name, command, duration, -1, False)
+                self._write_command_info_header(log_file_path, tool_name, command, duration, -1, False, timeout)
             
             error_msg = f"扫描工具 {tool_name} 执行超时（{timeout}秒，实际执行: {duration:.2f}秒）"
             logger.error(error_msg)
@@ -417,7 +420,7 @@ class CommandExecutor:
                 success = not timed_out_event.is_set() and (exit_code == 0 if exit_code is not None else True)
                 
                 # 写入命令信息头部
-                self._write_command_info_header(log_file_path, tool_name, cmd, duration, exit_code or 0, success)
+                self._write_command_info_header(log_file_path, tool_name, cmd, duration, exit_code or 0, success, timeout)
     
     def _read_log_tail(self, log_file: Path, max_lines: int = MAX_LOG_TAIL_LINES) -> str:
         """
