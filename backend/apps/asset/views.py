@@ -39,7 +39,7 @@ class IPAddressViewSet(viewsets.ModelViewSet):
         - 404 Not Found: IP 地址不存在
         """
         try:
-            from apps.asset.models import IPAddress
+            from apps.asset.models.asset_models import IPAddress
             from rest_framework.exceptions import NotFound, APIException
             
             instance = self.get_object()
@@ -158,7 +158,7 @@ class SubdomainViewSet(viewsets.ModelViewSet):
         - 硬删除会使用分批删除策略处理大数据量
         """
         try:
-            from apps.asset.models import Subdomain
+            from apps.asset.models.asset_models import Subdomain
             from rest_framework.exceptions import NotFound, APIException
             
             subdomain = self.get_object()
@@ -278,7 +278,7 @@ class WebSiteViewSet(viewsets.ModelViewSet):
         - 404 Not Found: 站点不存在
         """
         try:
-            from apps.asset.models import WebSite
+            from apps.asset.models.asset_models import WebSite
             from rest_framework.exceptions import NotFound, APIException
             
             instance = self.get_object()
@@ -393,7 +393,7 @@ class DirectoryViewSet(viewsets.ModelViewSet):
         - 404 Not Found: 目录不存在
         """
         try:
-            from apps.asset.models import Directory
+            from apps.asset.models.asset_models import Directory
             from rest_framework.exceptions import NotFound, APIException
             
             instance = self.get_object()

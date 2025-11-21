@@ -2,7 +2,7 @@ import logging
 from typing import Tuple, List, Dict
 
 from apps.asset.repositories.django_subdomain_repository import DjangoSubdomainRepository, SubdomainDTO
-from apps.asset.models import Subdomain
+from apps.asset.models.asset_models import Subdomain
 
 logger = logging.getLogger(__name__)
 
@@ -206,7 +206,7 @@ class SubdomainService:
         return deleted_count, details
     
     # ==================== 创建操作 ====================
-    
+
     def bulk_create_ignore_conflicts(self, items: List[SubdomainDTO]) -> None:
         """
         批量创建子域名，忽略冲突

@@ -12,7 +12,7 @@ from .services.organization_service import OrganizationService
 from apps.common.normalizer import normalize_target
 from apps.common.validators import detect_target_type
 from apps.common.pagination import BasePagination
-from apps.asset.models import Subdomain
+from apps.asset.models.asset_models import Subdomain
 
 logger = logging.getLogger(__name__)
 
@@ -486,7 +486,7 @@ class TargetViewSet(viewsets.ModelViewSet):
         - total_pages: 总页数
         """
         from apps.asset.serializers import SubdomainListSerializer
-        from apps.asset.models import Subdomain
+        from apps.asset.models.asset_models import Subdomain
         from django.core.exceptions import ObjectDoesNotExist
         from django.db import DatabaseError, OperationalError
         
@@ -564,7 +564,7 @@ class TargetViewSet(viewsets.ModelViewSet):
         - total_pages: 总页数
         """
         from apps.asset.serializers import WebSiteSerializer
-        from apps.asset.models import WebSite
+        from apps.asset.models.asset_models import WebSite
         from django.core.exceptions import ObjectDoesNotExist
         from django.db import DatabaseError, OperationalError
 
@@ -612,7 +612,7 @@ class TargetViewSet(viewsets.ModelViewSet):
         - total_pages: 总页数
         """
         from apps.asset.serializers import DirectorySerializer
-        from apps.asset.models import Directory
+        from apps.asset.models.asset_models import Directory
         from django.core.exceptions import ObjectDoesNotExist
         from django.db import DatabaseError, OperationalError
 

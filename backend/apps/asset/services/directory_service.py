@@ -1,7 +1,7 @@
 import logging
 from typing import Tuple
 
-from apps.asset.models import Directory
+from apps.asset.models.asset_models import Directory
 from apps.asset.repositories.django_directory_repository import DjangoDirectoryRepository
 
 logger = logging.getLogger(__name__)

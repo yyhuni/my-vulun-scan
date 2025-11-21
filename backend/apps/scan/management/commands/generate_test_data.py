@@ -16,7 +16,7 @@ from django.db import transaction, connection
 from django.utils import timezone
 from apps.targets.models import Target
 from apps.scan.models import Scan
-from apps.asset.models import Subdomain, IPAddress, Port, WebSite, Directory
+from apps.asset.models.asset_models import Subdomain, IPAddress, Port, WebSite, Directory
 
 
 class Command(BaseCommand):

@@ -1,7 +1,7 @@
 import logging
 from typing import Tuple, List
 
-from apps.asset.models import Port
+from apps.asset.models.asset_models import Port
 from apps.asset.repositories.django_port_repository import DjangoPortRepository, PortDTO
 
 logger = logging.getLogger(__name__)

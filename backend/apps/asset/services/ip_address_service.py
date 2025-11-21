@@ -1,7 +1,7 @@
 import logging
 from typing import Tuple, List
 
-from apps.asset.models import IPAddress
+from apps.asset.models.asset_models import IPAddress
 from apps.asset.repositories.django_ip_address_repository import DjangoIPAddressRepository, IPAddressDTO
 
 logger = logging.getLogger(__name__)

@@ -8,7 +8,7 @@ from pathlib import Path
 from prefect import task
 from django.db import models
 
-from apps.asset.models import Subdomain, Port
+from apps.asset.models.asset_models import Subdomain, Port
 
 logger = logging.getLogger(__name__)
 

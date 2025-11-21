@@ -9,7 +9,7 @@ from django.db import transaction, IntegrityError, OperationalError, DatabaseErr
 from django.utils import timezone
 from typing import Tuple, Dict
 
-from apps.asset.models import IPAddress
+from apps.asset.models.asset_models import IPAddress
 from apps.common.decorators import auto_ensure_db_connection
 
 logger = logging.getLogger(__name__)
