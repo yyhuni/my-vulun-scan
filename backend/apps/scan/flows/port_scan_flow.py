@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 def calculate_port_scan_timeout(
     tool_config: dict,
     file_path: str,
-    base_per_pair: float = 0.02
+    base_per_pair: float = 0.5
 ) -> int:
     """
     根据目标数量和端口数量计算超时时间
@@ -49,14 +49,14 @@ def calculate_port_scan_timeout(
     Args:
         tool_config: 工具配置字典，包含端口配置（ports, top-ports等）
         file_path: 目标文件路径（域名/IP列表）
-        base_per_pair: 每个"端口-目标对"的基础时间（秒），默认 0.02秒
+        base_per_pair: 每个"端口-目标对"的基础时间（秒），默认 0.5秒
     
     Returns:
         int: 计算出的超时时间（秒），范围：60 ~ 172800
     
     Example:
-        # 100个目标 × 100个端口 × 0.02秒 = 200秒
-        # 10个目标 × 1000个端口 × 0.02秒 = 200秒
+        # 100个目标 × 100个端口 × 0.5秒 = 5000秒
+        # 10个目标 × 1000个端口 × 0.5秒 = 5000秒
         timeout = calculate_port_scan_timeout(
             tool_config={'top-ports': 100},
             file_path='/path/to/domains.txt'
@@ -475,15 +475,15 @@ def port_scan_flow(
         logger.info("Step 2: 解析配置，获取启用的工具")
         
         # 解析配置，传入 timeout 计算函数和参数
-        # timeout 会根据 目标数 × 端口数 自动计算
+        # timeout 会根据 目标数 × 端口数 × 0.5秒 自动计算
         enabled_tools = config_parser.parse_enabled_tools(
             scan_type='port_scan',
             engine_config=engine_config,
             timeout_calculator=calculate_port_scan_timeout,
             timeout_calculator_kwargs={
                 'file_path': domains_file,
-                # 可选：调整基础速率（默认 0.02秒/端口-目标对）
-                # 'base_per_pair': 0.02
+                # 可选：调整基础速率（默认 0.5秒/端口-目标对）
+                # 'base_per_pair': 0.5
             }
         )
         
