@@ -36,11 +36,12 @@ class Organization(models.Model):
         verbose_name = '组织'
         verbose_name_plural = '组织'
         ordering = ['-created_at']
-        # 联合唯一约束：允许软删除后重新插入同名记录
+        # 部分唯一约束：只对未删除记录生效
         constraints = [
             models.UniqueConstraint(
-                fields=['name', 'deleted_at'],
-                name='unique_organization_name_not_deleted'
+                fields=['name'],
+                condition=models.Q(deleted_at__isnull=True),
+                name='unique_organization_name_active'
             ),
         ]
         indexes = [
@@ -93,11 +94,12 @@ class Target(models.Model):
         verbose_name = '扫描目标'
         verbose_name_plural = '扫描目标'
         ordering = ['-created_at']
-        # 联合唯一约束：允许软删除后重新插入同名记录
+        # 部分唯一约束：只对未删除记录生效
         constraints = [
             models.UniqueConstraint(
-                fields=['name', 'deleted_at'],
-                name='unique_target_name_not_deleted'
+                fields=['name'],
+                condition=models.Q(deleted_at__isnull=True),
+                name='unique_target_name_active'
             ),
         ]
         indexes = [

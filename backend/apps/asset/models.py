@@ -69,9 +69,11 @@ class Subdomain(models.Model):
             models.Index(fields=['deleted_at', '-created_at']),  # 软删除 + 时间索引
         ]
         constraints = [
+            # 部分唯一约束：只对未删除记录生效
             models.UniqueConstraint(
-                fields=['name', 'target', 'deleted_at'],   # 唯一约束，允许软删除后重新插入同名记录
-                name='unique_name_target_not_deleted'
+                fields=['name', 'target'],
+                condition=models.Q(deleted_at__isnull=True),
+                name='unique_name_target_active'
             )
         ]
 
@@ -181,9 +183,11 @@ class Endpoint(models.Model):
             models.Index(fields=['deleted_at', '-created_at']),  # 软删除 + 时间索引
         ]
         constraints = [
+            # 部分唯一约束：只对未删除记录生效
             models.UniqueConstraint(
-                fields=['url', 'website', 'deleted_at'],   # 唯一约束：同一站点不允许重复URL
-                name='unique_url_website_not_deleted'
+                fields=['url', 'website'],
+                condition=models.Q(deleted_at__isnull=True),
+                name='unique_url_website_active'
             )
         ]
 
@@ -292,9 +296,11 @@ class WebSite(models.Model):
             models.Index(fields=['deleted_at', '-created_at']),  # 软删除 + 时间索引
         ]
         constraints = [
+            # 部分唯一约束：只对未删除记录生效
             models.UniqueConstraint(
-                fields=['url', 'subdomain', 'deleted_at'],   # 唯一约束，允许软删除后重新插入同名记录
-                name='unique_url_subdomain_not_deleted'
+                fields=['url', 'subdomain'],
+                condition=models.Q(deleted_at__isnull=True),
+                name='unique_url_subdomain_active'
             )
         ]
 
@@ -370,9 +376,11 @@ class IPAddress(models.Model):
             models.Index(fields=['deleted_at', '-created_at']),  # 软删除 + 时间索引
         ]
         constraints = [
+            # 部分唯一约束：只对未删除记录生效
             models.UniqueConstraint(
-                fields=['subdomain', 'ip', 'deleted_at'],   # 唯一约束，允许软删除后重新插入同名记录
-                name='unique_ip_subdomain_not_deleted'
+                fields=['subdomain', 'ip'],
+                condition=models.Q(deleted_at__isnull=True),
+                name='unique_ip_subdomain_active'
             ),
         ]
 
@@ -445,9 +453,11 @@ class Port(models.Model):
             models.Index(fields=['deleted_at', '-created_at']),  # 软删除 + 时间索引
         ]
         constraints = [
+            # 部分唯一约束：只对未删除记录生效
             models.UniqueConstraint(
-                fields=['ip_address', 'number', 'deleted_at'],   # 唯一约束，允许软删除后重新插入同名记录
-                name='unique_port_ip_not_deleted'
+                fields=['ip_address', 'number'],
+                condition=models.Q(deleted_at__isnull=True),
+                name='unique_port_ip_active'
             ),
         ]
 
@@ -542,9 +552,11 @@ class Directory(models.Model):
             models.Index(fields=['deleted_at', '-created_at']),  # 软删除 + 时间索引
         ]
         constraints = [
+            # 部分唯一约束：只对未删除记录生效
             models.UniqueConstraint(
-                fields=['website', 'url', 'deleted_at'],   # 唯一约束，允许软删除后重新插入同名记录
-                name='unique_directory_url_website_not_deleted'
+                fields=['website', 'url'],
+                condition=models.Q(deleted_at__isnull=True),
+                name='unique_directory_url_website_active'
             ),
         ]
 
