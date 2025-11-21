@@ -223,8 +223,8 @@ def _save_batch(
     skipped_no_subdomain = 0
     skipped_no_ip = 0
     
-    # ========== Step 1: 批量查询 Subdomain（读操作，无需事务）==========
-    # 收集当前批次所有 host
+    # ========== Step 1: 批量查询 Subdomain ID（host字符串 → subdomain_id转换）==========
+    # 收集当前批次所有 host（字符串形式的域名）
     hosts = {record['host'] for record in batch}
     
     # 先从缓存命中
@@ -241,7 +241,7 @@ def _save_batch(
             if host not in subdomain_cache:
                 subdomain_cache[host] = None
     
-    # 构建 subdomain_map（只包含缓存中存在且值不为 None 的）
+    # 构建 subdomain_map（host → Subdomain对象映射，用于后续获取ID）
     subdomain_map = {h: subdomain_cache[h] for h in hosts if h in subdomain_cache and subdomain_cache[h] is not None}
     
     # ========== Step 2: 准备 IPAddress 数据（内存操作，无需事务）==========
