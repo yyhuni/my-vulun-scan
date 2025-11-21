@@ -35,7 +35,31 @@ class WebSiteService:
             )
             return str(flow_run.id)
     
+    # ==================== 创建操作 ====================
+    
+    def bulk_create_ignore_conflicts(self, website_dtos: List[WebSiteDTO]) -> None:
+        """
+        批量创建网站记录，忽略冲突（用于扫描任务）
+        
+        Args:
+            website_dtos: WebSiteDTO 列表
+        """
+        return self.repo.bulk_create_ignore_conflicts(website_dtos)
+    
     # ==================== 查询操作 ====================
+    
+    def get_by_url(self, url: str, target_id: int) -> int:
+        """
+        根据 URL 和 target_id 查找网站 ID
+        
+        Args:
+            url: 网站 URL
+            target_id: 目标 ID
+            
+        Returns:
+            int: 网站 ID，如果不存在返回 None
+        """
+        return self.repo.get_by_url(url=url, target_id=target_id)
     
     def get_websites_info(self, website_ids: list[int]) -> tuple[list[int], list[str]]:
         """获取WebSite信息（ID 和名称）"""

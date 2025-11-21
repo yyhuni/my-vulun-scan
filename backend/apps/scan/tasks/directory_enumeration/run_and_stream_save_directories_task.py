@@ -29,12 +29,31 @@ from typing import Generator, Optional
 from django.db import IntegrityError, OperationalError, DatabaseError
 from psycopg2 import InterfaceError
 
-from apps.asset.repositories.django_website_repository import DjangoWebSiteRepository
-from apps.asset.repositories.django_directory_repository import DjangoDirectoryRepository
+from apps.asset.services import WebSiteService, DirectoryService
 from apps.asset.repositories.django_directory_repository import DirectoryDTO
 from apps.scan.utils import execute_stream
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ServiceSet:
+    """
+    Service 集合，用于依赖注入
+    
+    提供目录扫描所需的 Service 实例，便于测试时注入 Mock 对象
+    """
+    website: WebSiteService
+    directory: DirectoryService
+    
+    @classmethod
+    def create_default(cls) -> 'ServiceSet':
+        """创建默认的 Service 集合"""
+        return cls(
+            website=WebSiteService(),
+            directory=DirectoryService()
+        )
 
 
 def _parse_and_validate_line(line: str) -> Optional[dict]:
@@ -156,6 +175,7 @@ def _save_batch_with_retry(
     scan_id: int,
     target_id: int,
     batch_num: int,
+    services: ServiceSet,
     max_retries: int = 3
 ) -> dict:
     """
@@ -167,6 +187,7 @@ def _save_batch_with_retry(
         scan_id: 扫描任务ID
         target_id: 目标ID
         batch_num: 批次编号
+        services: Service 集合（必须，依赖注入）
         max_retries: 最大重试次数
     
     Returns:
@@ -177,7 +198,7 @@ def _save_batch_with_retry(
     """
     for attempt in range(max_retries):
         try:
-            count = _save_batch(batch, website_id, scan_id, target_id, batch_num)
+            count = _save_batch(batch, website_id, scan_id, target_id, batch_num, services)
             return {
                 'success': True,
                 'created_directories': count
@@ -234,7 +255,8 @@ def _save_batch(
     website_id: int,
     scan_id: int,
     target_id: int,
-    batch_num: int
+    batch_num: int,
+    services: ServiceSet
 ) -> int:
     """
     保存一个批次的数据到数据库
@@ -248,6 +270,7 @@ def _save_batch(
         scan_id: 扫描任务 ID
         target_id: 目标 ID
         batch_num: 批次编号（用于日志）
+        services: Service 集合（依赖注入）
     
     Returns:
         int: 创建的记录数
@@ -256,7 +279,7 @@ def _save_batch(
         logger.debug("批次 %d 为空，跳过处理", batch_num)
         return 0
     
-    # 准备 Directory DTO 数据（Repository 装饰器会自动处理数据库连接健康检查）
+    # 准备 Directory DTO 数据（Service 装饰器会自动处理数据库连接健康检查）
     directory_dtos = []
     
     for record in batch:
@@ -275,10 +298,9 @@ def _save_batch(
             )
         )
     
-    # 使用 Repository 批量插入（忽略已存在的记录）
+    # 使用 Service 批量插入（忽略已存在的记录）
     if directory_dtos:
-        directory_repo = DjangoDirectoryRepository()
-        directory_repo.bulk_create_ignore_conflicts(directory_dtos)
+        services.directory.bulk_create_ignore_conflicts(directory_dtos)
     
     return len(directory_dtos)
 
@@ -338,9 +360,11 @@ def run_and_stream_save_directories_task(
     data_generator = None
     
     try:
-        # 1. 查找站点（使用 Repository）
-        website_repo = DjangoWebSiteRepository()
-        website_id = website_repo.get_by_url(url=site_url, target_id=target_id)
+        # 1. 初始化服务
+        services = ServiceSet.create_default()
+        
+        # 2. 查找站点（使用 Service）
+        website_id = services.website.get_by_url(url=site_url, target_id=target_id)
         
         if website_id is None:
             logger.error("站点不存在: %s", site_url)
@@ -348,10 +372,10 @@ def run_and_stream_save_directories_task(
         
         logger.info("找到站点: %s (ID: %d)", site_url, website_id)
         
-        # 2. 初始化资源
+        # 3. 初始化资源
         data_generator = _parse_ffuf_stream_output(cmd=cmd, tool_name=tool_name, cwd=cwd, shell=shell, timeout=timeout, log_file=log_file)
         
-        # 3. 流式处理记录并分批保存
+        # 4. 流式处理记录并分批保存
         total_records = 0
         batch_num = 0
         failed_batches = []
@@ -376,7 +400,7 @@ def run_and_stream_save_directories_task(
             if len(batch) >= batch_size:
                 batch_num += 1
                 result = _save_batch_with_retry(
-                    batch, website_id, scan_id, target_id, batch_num
+                    batch, website_id, scan_id, target_id, batch_num, services
                 )
                 
                 total_created += result.get('created_directories', 0)
@@ -398,7 +422,7 @@ def run_and_stream_save_directories_task(
         if batch:
             batch_num += 1
             result = _save_batch_with_retry(
-                batch, website_id, scan_id, target_id, batch_num
+                batch, website_id, scan_id, target_id, batch_num, services
             )
             total_created += result.get('created_directories', 0)
             

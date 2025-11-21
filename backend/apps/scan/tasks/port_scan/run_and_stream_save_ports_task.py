@@ -88,7 +88,7 @@ def _save_batch_with_retry(
         target_id: 目标ID
         batch_num: 批次编号
         subdomain_cache: 子域名缓存
-        repositories: Repository 集合（必须，依赖注入）
+        services: Service 集合（必须，依赖注入）
         max_retries: 最大重试次数
     
     Returns:
@@ -167,19 +167,19 @@ def _save_batch(
     target_id: int, 
     batch_num: int, 
     subdomain_cache: LRUCache,
-    repositories  # Repository集合（依赖注入）
+    services: ServiceSet  # Service集合（依赖注入）
 ) -> dict:
     """
-    保存一个批次的数据到数据库（使用 Repository 模式）
+    保存一个批次的数据到数据库（使用 Service 模式）
     
     数据关系链：
         Subdomain (已存在) → IPAddress (待创建/已存在) → Port (待创建)
     
     处理流程（4次数据库操作）：
-        1. 查询 Subdomain：根据域名批量查询（Repository）
-        2. 创建 IPAddress：批量插入 IP 记录，ignore_conflicts（Repository，独立短事务）
-        3. 查询 IPAddress：获取刚创建的 IP 记录（Repository）
-        4. 创建 Port：批量插入端口记录，ignore_conflicts（Repository，独立短事务）
+        1. 查询 Subdomain：根据域名批量查询（Service）
+        2. 创建 IPAddress：批量插入 IP 记录，ignore_conflicts（Service，独立短事务）
+        3. 查询 IPAddress：获取刚创建的 IP 记录（Service）
+        4. 创建 Port：批量插入端口记录，ignore_conflicts（Service，独立短事务）
     
     Args:
         batch: 数据批次，list of {'host', 'ip', 'port'}
@@ -187,7 +187,7 @@ def _save_batch(
         target_id: 目标 ID
         batch_num: 批次编号（用于日志）
         subdomain_cache: 子域名缓存字典
-        repositories: Repository 集合（依赖注入）
+        services: Service 集合（依赖注入）
     
     Returns:
         dict: 包含创建和跳过记录的统计信息
@@ -282,7 +282,7 @@ def _save_batch(
         subdomain_ids = {subdomain_id for subdomain_id, _ in ip_set}
         ip_addrs = {ip_addr for _, ip_addr in ip_set}
         
-        # 使用 Repository 批量查询
+        # 使用 Service 批量查询
         # 注：上方的 bulk_create 是同步阻塞操作，执行到这里时数据已提交
         # 如果查不到，说明数据本身不存在（如 subdomain 不在库中），而非延迟问题
         ip_map = ip_service.get_by_subdomain_and_ips(subdomain_ids, ip_addrs)

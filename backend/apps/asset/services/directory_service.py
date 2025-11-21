@@ -35,6 +35,17 @@ class DirectoryService:
             )
             return str(flow_run.id)
     
+    # ==================== 创建操作 ====================
+    
+    def bulk_create_ignore_conflicts(self, directory_dtos: list) -> None:
+        """
+        批量创建目录记录，忽略冲突（用于扫描任务）
+        
+        Args:
+            directory_dtos: DirectoryDTO 列表
+        """
+        return self.repo.bulk_create_ignore_conflicts(directory_dtos)
+    
     # ==================== 查询操作 ====================
     
     def get_directories_info(self, directory_ids: list[int]) -> tuple[list[int], list[str]]:

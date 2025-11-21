@@ -294,8 +294,8 @@ def _save_batch(
         Subdomain (已存在) → WebSite (待创建)
     
     处理流程（2次数据库操作）：
-        1. 查询 Subdomain：根据域名批量查询（Repository）
-        2. 创建 WebSite：批量插入站点记录，ignore_conflicts（Repository，独立短事务）
+        1. 查询 Subdomain：根据域名批量查询（Service）
+        2. 创建 WebSite：批量插入站点记录，ignore_conflicts（Service，独立短事务）
     
     Args:
         batch: 数据批次，list of HttpxRecord
