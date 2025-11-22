@@ -1,21 +1,21 @@
 """
-基于 stream_command 的流式端口扫描任务
+基于 stream_command 的流式端口扫描任务（简化版）
 
 主要功能：
     1. 实时执行端口扫描命令（如 naabu）
     2. 流式处理命令输出，实时解析为 PortScanRecord
-    3. 批量保存到数据库，复用现有的字段校验与统计逻辑
+    3. 批量保存到数据库（HostPortAssociation + HostPortAssociationSnapshot）
     4. 避免生成大量临时文件，提高效率
 
 数据流向：
     命令执行 → 流式输出 → 实时解析 → 批量保存 → 数据库
     
     输入：扫描命令及参数
-    输出：Port 和 IPAddress 记录
+    输出：HostPortAssociation（资产表）+ HostPortAssociationSnapshot（快照表）
 
 优化策略：
     - 使用 stream_command 实时处理输出
-    - 复用现有的 _save_batch_with_retry 逻辑
+    - 直接存储 host + ip + port 组合，不维护复杂关系
     - 流式处理避免内存溢出
     - 批量操作减少数据库交互
 """
@@ -32,11 +32,7 @@ from psycopg2 import InterfaceError
 from cachetools import LRUCache
 from dataclasses import dataclass
 
-
-from apps.asset.services import SubdomainService, IPAddressService, PortService
-from apps.asset.dtos import IPAddressDTO, PortDTO
 from .types import PortScanRecord
-
 from apps.scan.utils import execute_stream
 from apps.common.validators import validate_port
 
@@ -55,17 +51,14 @@ class ServiceSet:
     
     提供所有需要的 Service 实例，便于测试时注入 Mock 对象
     """
-    subdomain: SubdomainService
-    ip_address: IPAddressService
-    port: PortService
+    snapshot: 'HostPortAssociationSnapshotsService'
     
     @classmethod
     def create_default(cls) -> 'ServiceSet':
         """创建默认的 Service 集合"""
+        from apps.asset.services.snapshot import HostPortAssociationSnapshotsService
         return cls(
-            subdomain=SubdomainService(),
-            ip_address=IPAddressService(),
-            port=PortService()
+            snapshot=HostPortAssociationSnapshotsService()
         )
 
 
@@ -86,40 +79,22 @@ def _save_batch_with_retry(
         scan_id: 扫描任务ID
         target_id: 目标ID
         batch_num: 批次编号
-        subdomain_cache: 子域名缓存
-        services: Service 集合（必须，依赖注入）
+        subdomain_cache: 未使用（保留参数兼容性）
+        services: Service 集合（必须，包含 HostPortAssociationSnapshotsService）
         max_retries: 最大重试次数
     
     Returns:
-        dict: {
-            'success': bool,
-            'created_ips': int,
-            'created_ports': int, 
-            'skipped_no_subdomain': int,
-            'skipped_no_ip': int
-        }
+        dict: {'success': bool}
     """
     for attempt in range(max_retries):
         try:
-            stats = _save_batch(batch, scan_id, target_id, batch_num, subdomain_cache, services)
-            return {
-                'success': True,
-                'created_ips': stats.get('created_ips', 0),
-                'created_ports': stats.get('created_ports', 0),
-                'skipped_no_subdomain': stats.get('skipped_no_subdomain', 0),
-                'skipped_no_ip': stats.get('skipped_no_ip', 0)
-            }
+            result = _save_batch(batch, scan_id, target_id, batch_num, subdomain_cache, services)
+            return result  # {'success': True}
         
         except IntegrityError as e:
             # 数据完整性错误，不应重试（IntegrityError 是 DatabaseError 的子类，需先处理）
             logger.error("批次 %d 数据完整性错误，跳过: %s", batch_num, str(e)[:100])
-            return {
-                'success': False,
-                'created_ips': 0,
-                'created_ports': 0,
-                'skipped_no_subdomain': 0,
-                'skipped_no_ip': 0
-            }
+            return {'success': False}
         
         except (OperationalError, DatabaseError) as e:
             # 数据库连接/操作错误，可重试
@@ -132,32 +107,14 @@ def _save_batch_with_retry(
                 time.sleep(wait_time)
             else:
                 logger.error("批次 %d 保存失败（已重试 %d 次）: %s", batch_num, max_retries, e)
-                return {
-                    'success': False,
-                    'created_ips': 0,
-                    'created_ports': 0,
-                    'skipped_no_subdomain': 0,
-                    'skipped_no_ip': 0
-                }
+                return {'success': False}
         
         except Exception as e:
             # 其他未知错误
             logger.error("批次 %d 未知错误: %s", batch_num, e, exc_info=True)
-            return {
-                'success': False,
-                'created_ips': 0,
-                'created_ports': 0,
-                'skipped_no_subdomain': 0,
-                'skipped_no_ip': 0
-            }
+            return {'success': False}
     
-    return {
-        'success': False,
-        'created_ips': 0,
-        'created_ports': 0,
-        'skipped_no_subdomain': 0,
-        'skipped_no_ip': 0
-    }
+    return {'success': False}
 
 
 def _save_batch(
@@ -169,27 +126,28 @@ def _save_batch(
     services: ServiceSet  # Service集合（依赖注入）
 ) -> dict:
     """
-    保存一个批次的数据到数据库（使用 Service 模式）
+    保存一个批次的端口扫描数据到数据库（使用 Service 架构）
     
-    数据关系链：
-        Subdomain (已存在) → IPAddress (待创建/已存在) → Port (待创建)
+    数据存储：
+        使用 HostPortAssociationSnapshotsService.save_and_sync()
+        自动保存到快照表并同步到资产表
     
-    处理流程（4次数据库操作）：
-        1. 查询 Subdomain：根据域名批量查询（Service）
-        2. 创建 IPAddress：批量插入 IP 记录，ignore_conflicts（Service，独立短事务）
-        3. 查询 IPAddress：获取刚创建的 IP 记录（Service）
-        4. 创建 Port：批量插入端口记录，ignore_conflicts（Service，独立短事务）
+    处理流程：
+        1. 构建 HostPortAssociationSnapshotDTO 列表
+        2. 调用 service.save_and_sync() 统一处理
+           - 保存到快照表（scan_id）
+           - 同步到资产表（target_id）
     
     Args:
         batch: 数据批次，list of {'host', 'ip', 'port'}
         scan_id: 扫描任务 ID
         target_id: 目标 ID
         batch_num: 批次编号（用于日志）
-        subdomain_cache: 子域名缓存字典
-        services: Service 集合（依赖注入）
+        subdomain_cache: 未使用（保留参数兼容性）
+        services: Service 集合（包含 HostPortAssociationSnapshotsService）
     
     Returns:
-        dict: 包含创建和跳过记录的统计信息
+        dict: {'success': bool}
     
     Raises:
         TypeError: batch 参数类型错误
@@ -199,144 +157,41 @@ def _save_batch(
     
     Note:
         此函数不包含重试逻辑，由外层 _save_batch_with_retry 负责重试
+    
+    Strategy:
+        使用 bulk_create + ignore_conflicts
+        - 新记录：插入
+        - 重复记录：忽略（不更新）
     """
+    from apps.asset.dtos.snapshot import HostPortAssociationSnapshotDTO
+    
     # 参数验证
     if not isinstance(batch, list):
         raise TypeError(f"batch 必须是 list 类型，实际: {type(batch).__name__}")
     
     if not batch:
         logger.debug("批次 %d 为空，跳过处理", batch_num)
-        return {
-            'created_ips': 0,
-            'created_ports': 0,
-            'skipped_no_subdomain': 0,
-            'skipped_no_ip': 0
-        }
+        return {'success': True}
     
-    # 使用注入的 Service 实例
-    subdomain_service = services.subdomain
-    ip_service = services.ip_address
-    port_service = services.port
-    association_service = services.subdomain_ip_association
-    
-    # 统计变量
-    skipped_no_subdomain = 0
-    skipped_no_ip = 0
-    
-    # ========== Step 1: 批量查询 Subdomain ID（host字符串 → subdomain_id转换）==========
-    # 收集当前批次所有 host（字符串形式的域名）
-    hosts = {record['host'] for record in batch}
-    
-    # 先从缓存命中
-    cached_hosts = hosts & set(subdomain_cache.keys())
-    
-    # 对未命中的一次性批量查库
-    missing_hosts = hosts - cached_hosts
-    if missing_hosts:
-        new_data = subdomain_service.get_by_names_and_target_id(missing_hosts, target_id)
-        # 查到的写回缓存
-        subdomain_cache.update(new_data)
-        # 查不到的也标记为 None，避免重复查询
-        for host in missing_hosts:
-            if host not in subdomain_cache:
-                subdomain_cache[host] = None
-    
-    # 构建 subdomain_map（host → Subdomain对象映射，用于后续获取ID）
-    subdomain_map = {h: subdomain_cache[h] for h in hosts if h in subdomain_cache and subdomain_cache[h] is not None}
-    
-    # ========== Step 2: 准备数据（内存操作，无需事务）==========
-    # 提取所有唯一的 IP 地址
-    ip_addrs_set = set()
-    # 提取所有 (subdomain_id, ip) 组合用于关联
-    subdomain_ip_pairs = []
-    
-    for record in batch:
-        host = record['host']
-        ip_addr = record['ip']
-        
-        subdomain = subdomain_map.get(host)
-        if not subdomain:
-            skipped_no_subdomain += 1
-            continue
-        
-        ip_addrs_set.add(ip_addr)
-        subdomain_ip_pairs.append((subdomain.id, ip_addr))
-    
-    # ========== Step 3: 批量创建 IPAddress（只创建 IP 记录）==========
-    ip_items = [
-        IPAddressDTO(ip=ip_addr)
-        for ip_addr in ip_addrs_set
+    # 构建 DTO 列表（包含完整的业务上下文）
+    items = [
+        HostPortAssociationSnapshotDTO(
+            scan_id=scan_id,
+            target_id=target_id,  # 包含 target_id 用于同步到资产表
+            host=record['host'],
+            ip=record['ip'],
+            port=record['port']
+        )
+        for record in batch
     ]
     
-    # 批量插入（忽略已存在的记录）
-    if ip_items:
-        ip_service.bulk_create_ignore_conflicts(ip_items)
+    # 调用 Service 统一处理（保存快照 + 同步资产）
+    # DTO 已包含 target_id，无需额外传参
+    services.snapshot.save_and_sync(items)
     
-    # ========== Step 4: 批量查询 IPAddress（获取 ID 用于创建关联）==========
-    ip_map = {}
-    if ip_addrs_set:
-        ip_map = ip_service.get_by_ips(ip_addrs_set)
+    logger.debug("批次 %d: 已处理 %d 条记录", batch_num, len(batch))
     
-    # ========== Step 5: 创建 SubdomainIPAssociation 关联（纯资产表，多对多关系）==========
-    association_items = []
-    for subdomain_id, ip_addr in subdomain_ip_pairs:
-        ip_obj = ip_map.get(ip_addr)
-        if ip_obj:
-            association_items.append(
-                SubdomainIPAssociationDTO(
-                    subdomain_id=subdomain_id,
-                    ip_address_id=ip_obj.id
-                )
-            )
-    
-    # 批量创建关联记录（忽略重复）
-    if association_items:
-        association_service.bulk_create_ignore_conflicts(association_items)
-    
-    # ========== Step 6: 批量创建 Port（Repository 内部独立短事务）==========
-    port_items = []
-    
-    for record in batch:
-        host = record['host']
-        ip_addr = record['ip']
-        port_num = record['port']
-        
-        subdomain = subdomain_map.get(host)
-        if not subdomain:
-            continue
-        
-        # 从映射中获取 IPAddress 对象
-        ip_obj = ip_map.get(ip_addr)
-        
-        if not ip_obj:
-            skipped_no_ip += 1
-            logger.warning(
-                "批次 %d: 未找到 IP (%s, %s)，跳过端口 %d",
-                batch_num, host, ip_addr, port_num
-            )
-            continue
-        
-        port_items.append(
-            PortDTO(
-                ip_address_id=ip_obj.id,
-                subdomain_id=subdomain.id,
-                number=port_num,
-                service_name=''  # 可以后续添加服务识别
-            )
-        )
-    
-    # 批量插入 Port（忽略重复）
-    if port_items:
-        port_service.bulk_create_ignore_conflicts(port_items)
-    
-    # LRU 缓存会自动管理淘汰，无需手动检查
-    
-    return {
-        'created_ips': len(ip_items),
-        'created_ports': len(port_items),
-        'skipped_no_subdomain': skipped_no_subdomain,
-        'skipped_no_ip': skipped_no_ip
-    }
+    return {'success': True}
 
 def _parse_and_validate_line(line: str) -> Optional[PortScanRecord]:
     """
@@ -423,9 +278,9 @@ def _parse_naabu_stream_output(
     Yields:
         PortScanRecord: 每次 yield 一条解析后的端口记录，格式：
         {
-            'host': str,          # 域名
-            'ip': str,            # IP地址  
-            'port': int,          # 端口号
+            'host': str,   # 域名
+            'ip': str,     # IP地址  
+            'port': int,   # 端口号
         }
     """
     logger.info("开始流式解析 naabu 端口扫描命令输出 - 命令: %s", cmd)

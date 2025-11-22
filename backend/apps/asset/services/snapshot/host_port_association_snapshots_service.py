@@ -1,0 +1,63 @@
+"""主机端口关联快照服务"""
+
+import logging
+from typing import List
+
+from apps.asset.dtos.snapshot import HostPortAssociationSnapshotDTO
+from apps.asset.repositories.snapshot import DjangoHostPortAssociationSnapshotRepository
+
+logger = logging.getLogger(__name__)
+
+
+class HostPortAssociationSnapshotsService:
+    """主机端口关联快照服务 - 负责主机端口关联快照数据的业务逻辑"""
+    
+    def __init__(self):
+        self.snapshot_repo = DjangoHostPortAssociationSnapshotRepository()
+    
+    def save_and_sync(self, items: List[HostPortAssociationSnapshotDTO]) -> None:
+        """
+        保存主机端口关联快照并同步到资产表（统一入口）
+        
+        流程：
+        1. 保存到快照表（完整记录，包含 scan_id）
+        2. 同步到资产表（去重，不包含 scan_id）
+        
+        Args:
+            items: 主机端口关联快照 DTO 列表（必须包含 target_id）
+        
+        Note:
+            target_id 已经包含在 DTO 中，无需额外传参。
+        """
+        logger.debug("保存主机端口关联快照 - 数量: %d", len(items))
+        
+        if not items:
+            logger.debug("快照数据为空，跳过保存")
+            return
+        
+        try:
+            # 步骤 1: 保存到快照表
+            logger.debug("步骤 1: 保存到快照表")
+            self.snapshot_repo.save_snapshots(items)
+            
+            # 步骤 2: 转换为资产 DTO 并保存到资产表
+            # 注意：去重是通过数据库的 UNIQUE 约束 + ignore_conflicts 实现的
+            # - 新记录：插入资产表
+            # - 已存在的记录：自动跳过
+            logger.debug("步骤 2: 同步到资产表")
+            asset_items = [item.to_asset_dto() for item in items]
+            
+            from apps.asset.repositories.asset import DjangoHostPortAssociationRepository
+            asset_repo = DjangoHostPortAssociationRepository()
+            asset_repo.bulk_create_ignore_conflicts(asset_items)
+            
+            logger.info("主机端口关联快照和资产数据保存成功 - 数量: %d", len(items))
+            
+        except Exception as e:
+            logger.error(
+                "保存主机端口关联快照失败 - 数量: %d, 错误: %s",
+                len(items),
+                str(e),
+                exc_info=True
+            )
+            raise

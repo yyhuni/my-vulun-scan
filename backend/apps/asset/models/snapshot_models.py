@@ -457,3 +457,75 @@ class SubdomainPortSnapshotAssociation(models.Model):
 
     def __str__(self):
         return f'{self.subdomain_name} -> {self.ip}:{self.port_number}'
+
+
+class HostPortAssociationSnapshot(models.Model):
+    """
+    主机端口关联快照表
+    
+    设计特点：
+    - 存储某次扫描中发现的主机（host）、IP、端口的三元关联关系
+    - 主关联 scan_id，记录扫描历史
+    - scan + host + ip + port 组成复合唯一约束
+    - 支持 TCP/UDP 协议和 TLS 标识
+    """
+
+    id = models.AutoField(primary_key=True)
+    
+    # ==================== 关联字段 ====================
+    scan = models.ForeignKey(
+        'scan.Scan',
+        on_delete=models.CASCADE,
+        related_name='host_port_association_snapshots',
+        help_text='所属的扫描任务（主关联）'
+    )
+    
+    # ==================== 核心字段 ====================
+    host = models.CharField(
+        max_length=1000,
+        blank=False,
+        help_text='主机名（域名或IP）'
+    )
+    ip = models.GenericIPAddressField(
+        blank=False,
+        help_text='IP地址'
+    )
+    port = models.IntegerField(
+        blank=False,
+        validators=[
+            MinValueValidator(1, message='端口号必须大于等于1'),
+            MaxValueValidator(65535, message='端口号必须小于等于65535')
+        ],
+        help_text='端口号（1-65535）'
+    )
+    
+    # ==================== 时间字段 ====================
+    discovered_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text='发现时间'
+    )
+
+    class Meta:
+        db_table = 'host_port_association_snapshot'
+        verbose_name = '主机端口关联快照'
+        verbose_name_plural = '主机端口关联快照'
+        ordering = ['-discovered_at']
+        indexes = [
+            models.Index(fields=['scan']),             # 优化按扫描查询
+            models.Index(fields=['host']),             # 优化按主机名查询
+            models.Index(fields=['ip']),               # 优化按IP查询
+            models.Index(fields=['port']),             # 优化按端口查询
+            models.Index(fields=['host', 'ip']),       # 优化组合查询
+            models.Index(fields=['scan', 'host']),     # 优化扫描+主机查询
+            models.Index(fields=['-discovered_at']),   # 优化时间排序
+        ]
+        constraints = [
+            # 复合唯一约束：同一次扫描中，scan + host + ip + port 组合唯一
+            models.UniqueConstraint(
+                fields=['scan', 'host', 'ip', 'port'],
+                name='unique_scan_host_ip_port_snapshot'
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.host} ({self.ip}:{self.port}) [Scan #{self.scan_id}]'

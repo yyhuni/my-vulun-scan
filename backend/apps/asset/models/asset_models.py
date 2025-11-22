@@ -580,18 +580,6 @@ class HostPortAssociation(models.Model):
         help_text='端口号（1-65535）'
     )
     
-    # ==================== 扩展字段 ====================
-    protocol = models.CharField(
-        max_length=10,
-        default='tcp',
-        blank=True,
-        help_text='协议类型（tcp/udp）'
-    )
-    tls = models.BooleanField(
-        default=False,
-        help_text='是否支持TLS/SSL'
-    )
-    
     # ==================== 时间字段 ====================
     discovered_at = models.DateTimeField(
         auto_now_add=True,
