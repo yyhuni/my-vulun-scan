@@ -10,8 +10,12 @@ from .asset import (
     DjangoSubdomainIPAssociationRepository,
 )
 
-# 快照 Repository（独立）
-from .django_snapshot_repository import DjangoSnapshotRepository
+# 快照模块 Repositories
+from .snapshot import (
+    DjangoSubdomainSnapshotRepository,
+    DjangoIPAddressSnapshotRepository,
+    DjangoSubdomainIPSnapshotAssociationRepository,
+)
 
 __all__ = [
     # 资产模块
@@ -21,8 +25,10 @@ __all__ = [
     'DjangoIPAddressRepository',
     'DjangoPortRepository',
     'DjangoSubdomainIPAssociationRepository',
-    # 快照
-    'DjangoSnapshotRepository',
+    # 快照模块
+    'DjangoSubdomainSnapshotRepository',
+    'DjangoIPAddressSnapshotRepository',
+    'DjangoSubdomainIPSnapshotAssociationRepository',
 ]
 
 

@@ -30,7 +30,7 @@ from django.db import IntegrityError, OperationalError, DatabaseError
 from psycopg2 import InterfaceError
 
 from apps.asset.services import WebSiteService, DirectoryService
-from apps.asset.repositories.asset.django_directory_repository import DirectoryDTO
+from apps.asset.repositories.asset.directory_repository import DirectoryDTO
 from apps.scan.utils import execute_stream
 from dataclasses import dataclass
 

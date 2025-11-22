@@ -34,8 +34,8 @@ from dataclasses import dataclass
 
 
 from apps.asset.services import SubdomainService, IPAddressService, PortService, SubdomainIPAssociationService
-from apps.asset.repositories.asset.django_ip_address_repository import IPAddressDTO
-from apps.asset.repositories.asset.django_port_repository import PortDTO
+from apps.asset.repositories.asset.ip_address_repository import IPAddressDTO
+from apps.asset.repositories.asset.port_repository import PortDTO
 from apps.asset.dtos import SubdomainIPAssociationDTO
 from .types import PortScanRecord
 

@@ -10,8 +10,10 @@ from .asset import (
     SubdomainIPAssociationService,
 )
 
-# 快照 Service（独立）
-from .snapshot_service import SnapshotService
+# 快照模块 Services
+from .snapshot import (
+    SnapshotService,
+)
 
 __all__ = [
     # 资产模块
@@ -21,6 +23,6 @@ __all__ = [
     'IPAddressService',
     'PortService',
     'SubdomainIPAssociationService',
-    # 快照
+    # 快照模块
     'SnapshotService',
 ]

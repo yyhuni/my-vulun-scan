@@ -2,8 +2,12 @@ import logging
 from typing import List
 
 from apps.asset.dtos import SubdomainSnapshotDTO, SubdomainDTO
-from apps.asset.repositories import DjangoSnapshotRepository
-from apps.asset.repositories.asset.django_ip_address_repository import IPAddressDTO
+from apps.asset.repositories import (
+    DjangoSubdomainSnapshotRepository,
+    DjangoIPAddressSnapshotRepository,
+    DjangoSubdomainIPSnapshotAssociationRepository,
+)
+from apps.asset.repositories.asset.ip_address_repository import IPAddressDTO
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +16,9 @@ class SnapshotService:
     """快照服务 - 负责快照数据的业务逻辑"""
     
     def __init__(self):
-        self.repo = DjangoSnapshotRepository()
+        self.subdomain_snapshot_repo = DjangoSubdomainSnapshotRepository()
+        self.ip_snapshot_repo = DjangoIPAddressSnapshotRepository()
+        self.association_repo = DjangoSubdomainIPSnapshotAssociationRepository()
     
     def save_subdomain_snapshots(self, items: List[SubdomainSnapshotDTO], target_id: int) -> None:
         """
@@ -35,7 +41,7 @@ class SnapshotService:
         try:
             # 步骤 1: 保存到快照表
             logger.debug("步骤 1: 保存到快照表")
-            self.repo.save_subdomain_snapshots(items)
+            self.subdomain_snapshot_repo.save_subdomain_snapshots(items)
             
             # 步骤 2: 转换为资产 DTO 并保存到资产表（去重）
             asset_items = [
@@ -78,7 +84,7 @@ class SnapshotService:
         try:
             # 步骤 1: 保存到快照表
             logger.debug("步骤 1: 保存到IP快照表")
-            self.repo.save_ip_snapshots(items)
+            self.ip_snapshot_repo.save_ip_snapshots(items)
             
             # 步骤 2: 保存业务表（去重）
             from apps.asset.services.ip_address_service import IPAddressService
@@ -138,7 +144,7 @@ class SnapshotService:
             self.save_ip_snapshots(ip_dtos)
             
             # 步骤 3: 创建关联关系（调用 Repository 层）
-            self.repo.create_subdomain_ip_associations(subdomain_name, ip_addresses, scan_id, target_id)
+            self.association_repo.create_subdomain_ip_associations(subdomain_name, ip_addresses, scan_id, target_id)
             
             logger.info("子域名及IP关联快照保存成功 - 子域名: %s, IP数量: %d", subdomain_name, len(ip_addresses))
             

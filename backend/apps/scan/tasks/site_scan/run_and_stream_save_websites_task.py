@@ -35,7 +35,7 @@ from dateutil.parser import parse as parse_datetime
 from psycopg2 import InterfaceError
 
 from apps.asset.services import SubdomainService, WebSiteService
-from apps.asset.repositories.asset.django_website_repository import WebSiteDTO
+from apps.asset.repositories.asset.website_repository import WebSiteDTO
 
 from apps.scan.utils import execute_stream
 
