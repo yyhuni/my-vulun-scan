@@ -4,7 +4,7 @@ import logging
 from typing import List
 
 from apps.asset.models.snapshot_models import IPAddressSnapshot
-from apps.asset.repositories.asset.ip_address_repository import IPAddressDTO
+from apps.asset.dtos import IPAddressDTO
 
 logger = logging.getLogger(__name__)
 

@@ -3,7 +3,7 @@ from typing import Tuple, List
 
 from apps.asset.models.asset_models import IPAddress
 from apps.asset.repositories import DjangoIPAddressRepository
-from apps.asset.repositories.asset.ip_address_repository import IPAddressDTO
+from apps.asset.dtos import IPAddressDTO
 
 logger = logging.getLogger(__name__)
 

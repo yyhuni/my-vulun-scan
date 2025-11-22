@@ -3,27 +3,15 @@ Django ORM 实现的 Port Repository
 """
 
 import logging
-from dataclasses import dataclass
-from typing import List
+from typing import List, Tuple, Dict
 from django.db import transaction, IntegrityError, OperationalError, DatabaseError
 from django.utils import timezone
-from typing import Tuple, Dict
 
 from apps.asset.models.asset_models import Port
+from apps.asset.dtos import PortDTO
 from apps.common.decorators import auto_ensure_db_connection
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class PortDTO:
-    """端口数据传输对象"""
-    ip_address_id: int
-    number: int
-    subdomain_id: int = None
-    service_name: str = ''
-    target_id: int = None
-    scan_id: int = None
 
 
 

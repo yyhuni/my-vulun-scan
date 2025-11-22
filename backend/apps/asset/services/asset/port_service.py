@@ -3,7 +3,7 @@ from typing import Tuple, List
 
 from apps.asset.models.asset_models import Port
 from apps.asset.repositories import DjangoPortRepository
-from apps.asset.repositories.asset.port_repository import PortDTO
+from apps.asset.dtos import PortDTO
 
 logger = logging.getLogger(__name__)
 

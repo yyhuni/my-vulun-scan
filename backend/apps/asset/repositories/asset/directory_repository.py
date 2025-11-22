@@ -3,31 +3,15 @@ Django ORM 实现的 Directory Repository
 """
 
 import logging
-from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Tuple, Dict
 from django.db import transaction, IntegrityError, OperationalError, DatabaseError
 from django.utils import timezone
-from typing import Tuple, Dict
 
 from apps.asset.models.asset_models import Directory
+from apps.asset.dtos import DirectoryDTO
 from apps.common.decorators import auto_ensure_db_connection
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class DirectoryDTO:
-    """目录数据传输对象"""
-    website_id: int
-    target_id: int
-    scan_id: int
-    url: str
-    status: Optional[int] = None
-    length: Optional[int] = None
-    words: Optional[int] = None
-    lines: Optional[int] = None
-    content_type: str = ''
-    duration: Optional[int] = None
 
 
 

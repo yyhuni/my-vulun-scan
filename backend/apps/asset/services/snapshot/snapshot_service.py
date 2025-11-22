@@ -1,13 +1,12 @@
 import logging
 from typing import List
 
-from apps.asset.dtos import SubdomainSnapshotDTO, SubdomainDTO
+from apps.asset.dtos import SubdomainSnapshotDTO, SubdomainDTO, IPAddressDTO
 from apps.asset.repositories import (
     DjangoSubdomainSnapshotRepository,
     DjangoIPAddressSnapshotRepository,
     DjangoSubdomainIPSnapshotAssociationRepository,
 )
-from apps.asset.repositories.asset.ip_address_repository import IPAddressDTO
 
 logger = logging.getLogger(__name__)
 

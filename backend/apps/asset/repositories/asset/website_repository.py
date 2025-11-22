@@ -3,39 +3,15 @@ Django ORM 实现的 WebSite Repository
 """
 
 import logging
-from dataclasses import dataclass
-from typing import List, Generator, Optional
+from typing import List, Generator, Tuple, Dict
 from django.db import transaction, IntegrityError, OperationalError, DatabaseError
 from django.utils import timezone
-from typing import Tuple, Dict
 
 from apps.asset.models.asset_models import WebSite
+from apps.asset.dtos import WebSiteDTO
 from apps.common.decorators import auto_ensure_db_connection
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class WebSiteDTO:
-    """网站数据传输对象"""
-    subdomain_id: int
-    target_id: int
-    scan_id: int
-    url: str
-    title: str = ''
-    status_code: Optional[int] = None
-    content_length: Optional[int] = None
-    location: str = ''
-    webserver: str = ''
-    content_type: str = ''
-    tech: List[str] = None
-    body_preview: str = ''
-    vhost: Optional[bool] = None
-    created_at: str = None
-    
-    def __post_init__(self):
-        if self.tech is None:
-            self.tech = []
 
 
 

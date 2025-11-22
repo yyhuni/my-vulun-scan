@@ -3,30 +3,15 @@ Django ORM 实现的 IPAddress Repository
 """
 
 import logging
-from dataclasses import dataclass
-from typing import List
+from typing import List, Tuple, Dict
 from django.db import transaction, IntegrityError, OperationalError, DatabaseError
 from django.utils import timezone
-from typing import Tuple, Dict
 
 from apps.asset.models.asset_models import IPAddress
+from apps.asset.dtos import IPAddressDTO
 from apps.common.decorators import auto_ensure_db_connection
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class IPAddressDTO:
-    """
-    IP地址数据传输对象
-    
-    只包含 IP 自身的信息，不包含关联关系。
-    关联关系通过 SubdomainIPAssociationDTO 管理。
-    """
-    ip: str
-    protocol_version: str = ''
-    is_private: bool = False
-    reverse_pointer: str = ''
 
 
 

@@ -3,7 +3,7 @@ from typing import Tuple, List
 
 from apps.asset.models.asset_models import WebSite
 from apps.asset.repositories import DjangoWebSiteRepository
-from apps.asset.repositories.asset.website_repository import WebSiteDTO
+from apps.asset.dtos import WebSiteDTO
 
 logger = logging.getLogger(__name__)
 

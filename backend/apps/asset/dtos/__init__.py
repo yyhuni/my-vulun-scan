@@ -4,6 +4,10 @@
 from .asset import (
     SubdomainDTO,
     SubdomainIPAssociationDTO,
+    WebSiteDTO,
+    IPAddressDTO,
+    DirectoryDTO,
+    PortDTO,
 )
 
 # 快照模块 DTOs
@@ -15,6 +19,10 @@ __all__ = [
     # 资产模块
     'SubdomainDTO',
     'SubdomainIPAssociationDTO',
+    'WebSiteDTO',
+    'IPAddressDTO',
+    'DirectoryDTO',
+    'PortDTO',
     # 快照模块
     'SubdomainSnapshotDTO',
 ]
