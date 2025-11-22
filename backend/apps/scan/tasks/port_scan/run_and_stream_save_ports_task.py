@@ -26,7 +26,7 @@ import subprocess
 import time
 from pathlib import Path
 from prefect import task
-from typing import Generator, List, Optional
+from typing import Generator, List, Optional, TYPE_CHECKING
 from django.db import IntegrityError, OperationalError, DatabaseError
 from psycopg2 import InterfaceError
 from cachetools import LRUCache
@@ -35,6 +35,10 @@ from dataclasses import dataclass
 from .types import PortScanRecord
 from apps.scan.utils import execute_stream
 from apps.common.validators import validate_port
+
+# 类型检查时导入，运行时不导入（避免循环依赖）
+if TYPE_CHECKING:
+    from apps.asset.services.snapshot import HostPortAssociationSnapshotsService
 
 logger = logging.getLogger(__name__)
 
@@ -51,10 +55,10 @@ class ServiceSet:
     
     提供所有需要的 Service 实例，便于测试时注入 Mock 对象
     """
-    snapshot: 'HostPortAssociationSnapshotsService'
+    snapshot: "HostPortAssociationSnapshotsService"
     
     @classmethod
-    def create_default(cls) -> 'ServiceSet':
+    def create_default(cls) -> "ServiceSet":
         """创建默认的 Service 集合"""
         from apps.asset.services.snapshot import HostPortAssociationSnapshotsService
         return cls(
