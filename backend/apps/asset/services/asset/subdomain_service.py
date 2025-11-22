@@ -1,7 +1,8 @@
 import logging
 from typing import Tuple, List, Dict
 
-from apps.asset.repositories.django_subdomain_repository import DjangoSubdomainRepository, SubdomainDTO
+from apps.asset.repositories import DjangoSubdomainRepository
+from apps.asset.dtos.subdomain_dto import SubdomainDTO
 
 logger = logging.getLogger(__name__)
 

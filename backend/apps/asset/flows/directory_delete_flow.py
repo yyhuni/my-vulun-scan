@@ -13,7 +13,7 @@ from apps.common.prefect_django_setup import setup_django_for_prefect
 from prefect import flow
 from prefect.task_runners import ConcurrentTaskRunner
 
-from apps.asset.tasks.directory_delete_task import hard_delete_directory_task
+from apps.asset.tasks.asset.directory_delete_task import hard_delete_directory_task
 
 logger = logging.getLogger(__name__)
 

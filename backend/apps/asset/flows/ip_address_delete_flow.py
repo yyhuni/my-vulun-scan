@@ -13,7 +13,7 @@ from apps.common.prefect_django_setup import setup_django_for_prefect
 from prefect import flow
 from prefect.task_runners import ConcurrentTaskRunner
 
-from apps.asset.tasks.ip_address_delete_task import hard_delete_ip_address_task
+from apps.asset.tasks.asset.ip_address_delete_task import hard_delete_ip_address_task
 
 logger = logging.getLogger(__name__)
 

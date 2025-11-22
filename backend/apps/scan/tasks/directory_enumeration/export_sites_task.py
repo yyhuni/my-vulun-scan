@@ -7,7 +7,7 @@ import logging
 from pathlib import Path
 from prefect import task
 
-from apps.asset.repositories.django_website_repository import DjangoWebSiteRepository
+from apps.asset.repositories import DjangoWebSiteRepository
 
 logger = logging.getLogger(__name__)
 

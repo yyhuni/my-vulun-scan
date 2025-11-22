@@ -7,7 +7,7 @@ import logging
 from pathlib import Path
 from prefect import task
 
-from apps.asset.repositories.django_subdomain_repository import DjangoSubdomainRepository
+from apps.asset.repositories import DjangoSubdomainRepository
 
 logger = logging.getLogger(__name__)
 

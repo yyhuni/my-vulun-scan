@@ -5,9 +5,7 @@ SubdomainIPAssociation 业务逻辑层
 import logging
 from typing import List
 
-from apps.asset.repositories.subdomain_ip_association_repository import (
-    DjangoSubdomainIPAssociationRepository
-)
+from apps.asset.repositories import DjangoSubdomainIPAssociationRepository
 from apps.asset.dtos.subdomain_ip_association_dto import SubdomainIPAssociationDTO
 
 logger = logging.getLogger(__name__)

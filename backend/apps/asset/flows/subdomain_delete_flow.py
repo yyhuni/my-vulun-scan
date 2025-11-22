@@ -13,7 +13,7 @@ from apps.common.prefect_django_setup import setup_django_for_prefect
 from prefect import flow
 from prefect.task_runners import ConcurrentTaskRunner
 
-from apps.asset.tasks.subdomain_delete_task import hard_delete_subdomain_task
+from apps.asset.tasks.asset.subdomain_delete_task import hard_delete_subdomain_task
 
 logger = logging.getLogger(__name__)
 

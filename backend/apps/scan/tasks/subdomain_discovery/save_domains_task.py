@@ -11,7 +11,7 @@ from prefect import task
 from typing import List
 from django.db import IntegrityError, OperationalError, DatabaseError
 
-from apps.asset.repositories.django_subdomain_repository import SubdomainDTO
+from apps.asset.dtos.subdomain_dto import SubdomainDTO
 from apps.asset.services.snapshot_service import SnapshotService
 from apps.common.validators import validate_domain
 

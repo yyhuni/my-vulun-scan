@@ -2,7 +2,8 @@ import logging
 from typing import Tuple, List
 
 from apps.asset.models.asset_models import WebSite
-from apps.asset.repositories.django_website_repository import DjangoWebSiteRepository, WebSiteDTO
+from apps.asset.repositories import DjangoWebSiteRepository
+from apps.asset.repositories.asset.django_website_repository import WebSiteDTO
 
 logger = logging.getLogger(__name__)
 
