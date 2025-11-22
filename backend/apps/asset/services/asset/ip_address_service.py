@@ -36,24 +36,6 @@ class IPAddressService:
             )
             return str(flow_run.id)
     
-    # ==================== 查询操作 ====================
-    
-    def get_ip_addresses_info(self, ip_address_ids: list[int]) -> tuple[list[int], list[str]]:
-        """获取IPAddress信息（ID 和名称）"""
-        items = list(
-            IPAddress.objects
-            .filter(id__in=ip_address_ids)
-            .values_list('id', 'ip')
-        )
-        
-        if not items:
-            return [], []
-        
-        existing_ids = [s[0] for s in items]
-        names = [s[1] for s in items]
-        
-        return existing_ids, names
-    
     # ==================== 删除操作 ====================
     
     def delete_ip_addresses_two_phase(self, ip_address_ids: list[int]) -> dict:
@@ -66,7 +48,6 @@ class IPAddressService:
         Returns:
             {
                 'soft_deleted_count': int,
-                'ip_address_names': list[str],
                 'hard_delete_scheduled': bool
             }
         
@@ -74,26 +55,22 @@ class IPAddressService:
             ValueError: 未找到要删除的IPAddress
         """
         
-        # 1. 获取IPAddress信息
-        existing_ids, names = self.get_ip_addresses_info(ip_address_ids)
+        # 1. 软删除（如果 ID 不存在，update 返回 0）
+        soft_count = self.soft_delete_ip_addresses(ip_address_ids)
         
-        if not existing_ids:
+        # 2. 检查是否有记录被删除
+        if soft_count == 0:
             raise ValueError("未找到要删除的IPAddress")
         
-        # 2. 软删除
-        soft_count = self.soft_delete_ip_addresses(existing_ids)
         logger.info(f"✓ 软删除完成: {soft_count} 个IPAddress")
         
         # 3. 使用 Prefect Deployment 异步提交删除任务
-        logger.info(f"🔵 提交 Prefect 删除任务 - IPAddress: {', '.join(names[:5])}{'...' if len(names) > 5 else ''}")
+        logger.info(f"🔵 提交 Prefect 删除任务 - IPAddress数量: {soft_count}")
         
         try:
             from asgiref.sync import async_to_sync
             
-            flow_kwargs = {
-                'ip_address_ids': existing_ids,
-                'ip_address_names': names
-            }
+            flow_kwargs = {'ip_address_ids': ip_address_ids}
             
             flow_run_id = async_to_sync(self._submit_delete_flow)(
                 deployment_name="delete-ip-addresses/delete-ip-addresses-on-demand",
@@ -108,7 +85,6 @@ class IPAddressService:
         
         return {
             'soft_deleted_count': soft_count,
-            'ip_address_names': names,
             'hard_delete_scheduled': True
         }
     

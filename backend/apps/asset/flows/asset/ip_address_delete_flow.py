@@ -23,16 +23,12 @@ logger = logging.getLogger(__name__)
     task_runner=ConcurrentTaskRunner(),
     log_prints=True
 )
-def delete_ip_addresses_flow(
-    ip_address_ids: List[int],
-    ip_address_names: List[str]
-) -> dict:
+def delete_ip_addresses_flow(ip_address_ids: List[int]) -> dict:
     """
     批量删除IP地址的 Prefect Flow
     
     Args:
         ip_address_ids: IP地址 ID 列表
-        ip_address_names: IP地址名称列表
     
     Returns:
         删除结果统计
@@ -43,12 +39,9 @@ def delete_ip_addresses_flow(
     successful = 0
     failed = 0
     
-    for ip_address_id, ip_address_name in zip(ip_address_ids, ip_address_names):
+    for ip_address_id in ip_address_ids:
         try:
-            result = hard_delete_ip_address_task.submit(
-                ip_address_id=ip_address_id,
-                ip_address_name=ip_address_name
-            )
+            result = hard_delete_ip_address_task.submit(ip_address_id=ip_address_id)
             
             task_result = result.result()
             
@@ -60,12 +53,11 @@ def delete_ip_addresses_flow(
             results.append(task_result)
             
         except Exception as e:
-            logger.error(f"❌ 删除IP地址失败: {ip_address_name} (ID: {ip_address_id}) - {e}")
+            logger.error(f"❌ 删除IP地址失败 (ID: {ip_address_id}) - {e}")
             failed += 1
             results.append({
                 'success': False,
                 'ip_address_id': ip_address_id,
-                'ip_address_name': ip_address_name,
                 'error': str(e)
             })
     

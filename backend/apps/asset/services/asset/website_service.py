@@ -62,22 +62,6 @@ class WebSiteService:
         """
         return self.repo.get_by_url(url=url, target_id=target_id)
     
-    def get_websites_info(self, website_ids: list[int]) -> tuple[list[int], list[str]]:
-        """获取WebSite信息（ID 和名称）"""
-        items = list(
-            WebSite.objects
-            .filter(id__in=website_ids)
-            .values_list('id', 'url')
-        )
-        
-        if not items:
-            return [], []
-        
-        existing_ids = [s[0] for s in items]
-        names = [s[1] for s in items]
-        
-        return existing_ids, names
-    
     # ==================== 删除操作 ====================
     
     def delete_websites_two_phase(self, website_ids: list[int]) -> dict:
@@ -90,7 +74,6 @@ class WebSiteService:
         Returns:
             {
                 'soft_deleted_count': int,
-                'website_names': list[str],
                 'hard_delete_scheduled': bool
             }
         
@@ -98,26 +81,22 @@ class WebSiteService:
             ValueError: 未找到要删除的WebSite
         """
         
-        # 1. 获取WebSite信息
-        existing_ids, names = self.get_websites_info(website_ids)
+        # 1. 软删除（如果 ID 不存在，update 返回 0）
+        soft_count = self.soft_delete_websites(website_ids)
         
-        if not existing_ids:
+        # 2. 检查是否有记录被删除
+        if soft_count == 0:
             raise ValueError("未找到要删除的WebSite")
         
-        # 2. 软删除
-        soft_count = self.soft_delete_websites(existing_ids)
         logger.info(f"✓ 软删除完成: {soft_count} 个WebSite")
         
         # 3. 使用 Prefect Deployment 异步提交删除任务
-        logger.info(f"🔵 提交 Prefect 删除任务 - WebSite: {', '.join(names[:5])}{'...' if len(names) > 5 else ''}")
+        logger.info(f"🔵 提交 Prefect 删除任务 - WebSite数量: {soft_count}")
         
         try:
             from asgiref.sync import async_to_sync
             
-            flow_kwargs = {
-                'website_ids': existing_ids,
-                'website_names': names
-            }
+            flow_kwargs = {'website_ids': website_ids}
             
             flow_run_id = async_to_sync(self._submit_delete_flow)(
                 deployment_name="delete-websites/delete-websites-on-demand",
@@ -132,7 +111,6 @@ class WebSiteService:
         
         return {
             'soft_deleted_count': soft_count,
-            'website_names': names,
             'hard_delete_scheduled': True
         }
     

@@ -23,16 +23,12 @@ logger = logging.getLogger(__name__)
     task_runner=ConcurrentTaskRunner(),
     log_prints=True
 )
-def delete_ports_flow(
-    port_ids: List[int],
-    port_names: List[str]
-) -> dict:
+def delete_ports_flow(port_ids: List[int]) -> dict:
     """
     批量删除端口的 Prefect Flow
     
     Args:
         port_ids: 端口 ID 列表
-        port_names: 端口名称列表
     
     Returns:
         删除结果统计
@@ -43,12 +39,9 @@ def delete_ports_flow(
     successful = 0
     failed = 0
     
-    for port_id, port_name in zip(port_ids, port_names):
+    for port_id in port_ids:
         try:
-            result = hard_delete_port_task.submit(
-                port_id=port_id,
-                port_name=port_name
-            )
+            result = hard_delete_port_task.submit(port_id=port_id)
             
             task_result = result.result()
             
@@ -60,12 +53,11 @@ def delete_ports_flow(
             results.append(task_result)
             
         except Exception as e:
-            logger.error(f"❌ 删除端口失败: {port_name} (ID: {port_id}) - {e}")
+            logger.error(f"❌ 删除端口失败 (ID: {port_id}) - {e}")
             failed += 1
             results.append({
                 'success': False,
                 'port_id': port_id,
-                'port_name': port_name,
                 'error': str(e)
             })
     

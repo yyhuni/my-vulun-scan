@@ -16,13 +16,12 @@ logger = logging.getLogger(__name__)
 
 
 @flow(name="delete-targets", log_prints=True)
-def delete_targets_flow(target_ids: List[int], target_names: List[str]) -> Dict:
+def delete_targets_flow(target_ids: List[int]) -> Dict:
     """
     批量删除目标 Flow
     
     Args:
-        target_ids: 目标ID列表
-        target_names: 目标名称列表
+        target_ids: 目标 ID 列表
     
     Returns:
         删除结果统计 {
@@ -48,7 +47,6 @@ def delete_targets_flow(target_ids: List[int], target_names: List[str]) -> Dict:
     logger.info("="*60)
     logger.info(f"开始批量删除目标")
     logger.info(f"  数量: {len(target_ids)}")
-    logger.info(f"  目标: {', '.join(target_names)}")
     logger.info("="*60)
     
     results = []
@@ -57,20 +55,19 @@ def delete_targets_flow(target_ids: List[int], target_names: List[str]) -> Dict:
     total_deleted = 0
     
     # 逐个删除目标（Prefect Task自动管理重试和错误处理）
-    for target_id, target_name in zip(target_ids, target_names):
+    for target_id in target_ids:
         try:
-            result = hard_delete_target_task(target_id, target_name)
+            result = hard_delete_target_task.submit(target_id=target_id)
             results.append(result)
             success_count += 1
             total_deleted += result['deleted_count']
             
         except Exception as e:
-            logger.error(f"目标删除失败: {target_name} - {e}")
+            logger.error(f"❌ 删除目标失败 (ID: {target_id}) - {e}")
             failed_count += 1
             results.append({
                 'success': False,
                 'target_id': target_id,
-                'target_name': target_name,
                 'error': str(e)
             })
     

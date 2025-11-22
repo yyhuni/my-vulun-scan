@@ -46,24 +46,6 @@ class DirectoryService:
         """
         return self.repo.bulk_create_ignore_conflicts(directory_dtos)
     
-    # ==================== 查询操作 ====================
-    
-    def get_directories_info(self, directory_ids: list[int]) -> tuple[list[int], list[str]]:
-        """获取Directory信息（ID 和名称）"""
-        items = list(
-            Directory.objects
-            .filter(id__in=directory_ids)
-            .values_list('id', 'url')
-        )
-        
-        if not items:
-            return [], []
-        
-        existing_ids = [s[0] for s in items]
-        names = [s[1] for s in items]
-        
-        return existing_ids, names
-    
     # ==================== 删除操作 ====================
     
     def delete_directories_two_phase(self, directory_ids: list[int]) -> dict:
@@ -76,7 +58,6 @@ class DirectoryService:
         Returns:
             {
                 'soft_deleted_count': int,
-                'directory_names': list[str],
                 'hard_delete_scheduled': bool
             }
         
@@ -84,26 +65,22 @@ class DirectoryService:
             ValueError: 未找到要删除的Directory
         """
         
-        # 1. 获取Directory信息
-        existing_ids, names = self.get_directories_info(directory_ids)
+        # 1. 软删除（如果 ID 不存在，update 返回 0）
+        soft_count = self.soft_delete_directories(directory_ids)
         
-        if not existing_ids:
+        # 2. 检查是否有记录被删除
+        if soft_count == 0:
             raise ValueError("未找到要删除的Directory")
         
-        # 2. 软删除
-        soft_count = self.soft_delete_directories(existing_ids)
         logger.info(f"✓ 软删除完成: {soft_count} 个Directory")
         
         # 3. 使用 Prefect Deployment 异步提交删除任务
-        logger.info(f"🔵 提交 Prefect 删除任务 - Directory: {', '.join(names[:5])}{'...' if len(names) > 5 else ''}")
+        logger.info(f"🔵 提交 Prefect 删除任务 - Directory数量: {soft_count}")
         
         try:
             from asgiref.sync import async_to_sync
             
-            flow_kwargs = {
-                'directory_ids': existing_ids,
-                'directory_names': names
-            }
+            flow_kwargs = {'directory_ids': directory_ids}
             
             flow_run_id = async_to_sync(self._submit_delete_flow)(
                 deployment_name="delete-directories/delete-directories-on-demand",
@@ -118,7 +95,6 @@ class DirectoryService:
         
         return {
             'soft_deleted_count': soft_count,
-            'directory_names': names,
             'hard_delete_scheduled': True
         }
     

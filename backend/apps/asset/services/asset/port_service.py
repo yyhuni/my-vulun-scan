@@ -36,24 +36,6 @@ class PortService:
             )
             return str(flow_run.id)
     
-    # ==================== 查询操作 ====================
-    
-    def get_ports_info(self, port_ids: list[int]) -> tuple[list[int], list[str]]:
-        """获取Port信息（ID 和名称）"""
-        items = list(
-            Port.objects
-            .filter(id__in=port_ids)
-            .values_list('id', 'port')
-        )
-        
-        if not items:
-            return [], []
-        
-        existing_ids = [s[0] for s in items]
-        names = [s[1] for s in items]
-        
-        return existing_ids, names
-    
     # ==================== 删除操作 ====================
     
     def delete_ports_two_phase(self, port_ids: list[int]) -> dict:
@@ -66,7 +48,6 @@ class PortService:
         Returns:
             {
                 'soft_deleted_count': int,
-                'port_names': list[str],
                 'hard_delete_scheduled': bool
             }
         
@@ -74,26 +55,22 @@ class PortService:
             ValueError: 未找到要删除的Port
         """
         
-        # 1. 获取Port信息
-        existing_ids, names = self.get_ports_info(port_ids)
+        # 1. 软删除（如果 ID 不存在，update 返回 0）
+        soft_count = self.soft_delete_ports(port_ids)
         
-        if not existing_ids:
+        # 2. 检查是否有记录被删除
+        if soft_count == 0:
             raise ValueError("未找到要删除的Port")
         
-        # 2. 软删除
-        soft_count = self.soft_delete_ports(existing_ids)
         logger.info(f"✓ 软删除完成: {soft_count} 个Port")
         
         # 3. 使用 Prefect Deployment 异步提交删除任务
-        logger.info(f"🔵 提交 Prefect 删除任务 - Port: {', '.join(names[:5])}{'...' if len(names) > 5 else ''}")
+        logger.info(f"🔵 提交 Prefect 删除任务 - Port数量: {soft_count}")
         
         try:
             from asgiref.sync import async_to_sync
             
-            flow_kwargs = {
-                'port_ids': existing_ids,
-                'port_names': names
-            }
+            flow_kwargs = {'port_ids': port_ids}
             
             flow_run_id = async_to_sync(self._submit_delete_flow)(
                 deployment_name="delete-ports/delete-ports-on-demand",
@@ -108,7 +85,6 @@ class PortService:
         
         return {
             'soft_deleted_count': soft_count,
-            'port_names': names,
             'hard_delete_scheduled': True
         }
     

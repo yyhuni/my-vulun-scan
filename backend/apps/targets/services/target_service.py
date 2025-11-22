@@ -65,28 +65,6 @@ class TargetService:
         """
         return self.repo.get_by_id(target_id)
     
-    def get_targets_info(
-        self, 
-        target_ids: List[int]
-    ) -> Tuple[List[int], List[str]]:
-        """
-        获取目标信息（ID 和名称）
-        
-        Args:
-            target_ids: 目标 ID 列表
-        
-        Returns:
-            (存在的ID列表, 目标名称列表)
-        """
-        targets = self.repo.get_names_by_ids(target_ids)
-        
-        if not targets:
-            return [], []
-        
-        existing_ids = [t[0] for t in targets]
-        target_names = [t[1] for t in targets]
-        
-        return existing_ids, target_names
     
     def get_all(self):
         """
@@ -136,7 +114,6 @@ class TargetService:
         Returns:
             {
                 'soft_deleted_count': int,
-                'target_names': List[str],
                 'hard_delete_scheduled': bool
             }
         
@@ -148,27 +125,23 @@ class TargetService:
             - 阶段 2：硬删除（后台），真正删除数据和关联
         """
         
-        # 1. 获取目标信息
-        existing_ids, target_names = self.get_targets_info(target_ids)
+        # 1. 软删除（如果 ID 不存在，update 返回 0）
+        soft_count = self.soft_delete_targets(target_ids)
         
-        if not existing_ids:
+        # 2. 检查是否有记录被删除
+        if soft_count == 0:
             raise ValueError("未找到要删除的目标")
         
-        # 2. 软删除
-        soft_count = self.soft_delete_targets(existing_ids)
         logger.info(f"✓ 软删除完成: {soft_count} 个目标")
         
         # 3. 使用 Prefect Deployment 异步提交删除任务
-        logger.info(f"🔵 提交 Prefect 删除任务 - 目标: {', '.join(target_names)}")
+        logger.info(f"🔵 提交 Prefect 删除任务 - 目标数量: {soft_count}")
         
         try:
             from asgiref.sync import async_to_sync
             
-            # 准备 Flow 参数
-            flow_kwargs = {
-                'target_ids': existing_ids,
-                'target_names': target_names
-            }
+            # 准备 Flow 参数（只传递 ID）
+            flow_kwargs = {'target_ids': target_ids}
             
             # 使用 Prefect Client API 异步提交任务
             flow_run_id = async_to_sync(self._submit_delete_flow)(
@@ -185,7 +158,6 @@ class TargetService:
         
         return {
             'soft_deleted_count': soft_count,
-            'target_names': target_names,
             'hard_delete_scheduled': True
         }
     

@@ -65,28 +65,6 @@ class OrganizationService:
         """
         return self.repo.get_by_id(organization_id)
     
-    def get_organizations_info(
-        self, 
-        organization_ids: List[int]
-    ) -> Tuple[List[int], List[str]]:
-        """
-        获取组织信息（ID 和名称）
-        
-        Args:
-            organization_ids: 组织 ID 列表
-        
-        Returns:
-            (存在的ID列表, 组织名称列表)
-        """
-        organizations = self.repo.get_names_by_ids(organization_ids)
-        
-        if not organizations:
-            return [], []
-        
-        existing_ids = [org[0] for org in organizations]
-        organization_names = [org[1] for org in organizations]
-        
-        return existing_ids, organization_names
     
     def get_all(self):
         """
@@ -118,7 +96,6 @@ class OrganizationService:
         Returns:
             {
                 'soft_deleted_count': int,
-                'organization_names': List[str],
                 'hard_delete_scheduled': bool
             }
         
@@ -130,27 +107,23 @@ class OrganizationService:
             - 阶段 2：硬删除（后台），真正删除数据和中间表
         """
         
-        # 1. 获取组织信息
-        existing_ids, organization_names = self.get_organizations_info(organization_ids)
+        # 1. 软删除（如果 ID 不存在，update 返回 0）
+        soft_count = self.soft_delete_organizations(organization_ids)
         
-        if not existing_ids:
+        # 2. 检查是否有记录被删除
+        if soft_count == 0:
             raise ValueError("未找到要删除的组织")
         
-        # 2. 软删除
-        soft_count = self.soft_delete_organizations(existing_ids)
         logger.info(f"✓ 软删除完成: {soft_count} 个组织")
         
         # 3. 使用 Prefect Deployment 异步提交删除任务
-        logger.info(f"🔵 提交 Prefect 删除任务 - 组织: {', '.join(organization_names)}")
+        logger.info(f"🔵 提交 Prefect 删除任务 - 组织数量: {soft_count}")
         
         try:
             from asgiref.sync import async_to_sync
             
-            # 准备 Flow 参数
-            flow_kwargs = {
-                'organization_ids': existing_ids,
-                'organization_names': organization_names
-            }
+            # 准备 Flow 参数（只传递 ID）
+            flow_kwargs = {'organization_ids': organization_ids}
             
             # 使用 Prefect Client API 异步提交任务
             flow_run_id = async_to_sync(self._submit_delete_flow)(
@@ -167,7 +140,6 @@ class OrganizationService:
         
         return {
             'soft_deleted_count': soft_count,
-            'organization_names': organization_names,
             'hard_delete_scheduled': True
         }
     

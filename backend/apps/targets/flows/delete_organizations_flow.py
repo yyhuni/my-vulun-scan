@@ -16,13 +16,12 @@ logger = logging.getLogger(__name__)
 
 
 @flow(name="delete-organizations", log_prints=True)
-def delete_organizations_flow(organization_ids: List[int], organization_names: List[str]) -> Dict:
+def delete_organizations_flow(organization_ids: List[int]) -> Dict:
     """
     批量删除组织 Flow
     
     Args:
-        organization_ids: 组织ID列表
-        organization_names: 组织名称列表
+        organization_ids: 组织 ID 列表
     
     Returns:
         删除结果统计 {
@@ -48,7 +47,6 @@ def delete_organizations_flow(organization_ids: List[int], organization_names: L
     logger.info("="*60)
     logger.info(f"开始批量删除组织")
     logger.info(f"  数量: {len(organization_ids)}")
-    logger.info(f"  组织: {', '.join(organization_names)}")
     logger.info("="*60)
     
     results = []
@@ -57,20 +55,19 @@ def delete_organizations_flow(organization_ids: List[int], organization_names: L
     total_deleted = 0
     
     # 逐个删除组织（Prefect Task自动管理重试和错误处理）
-    for organization_id, organization_name in zip(organization_ids, organization_names):
+    for organization_id in organization_ids:
         try:
-            result = hard_delete_organization_task(organization_id, organization_name)
+            result = hard_delete_organization_task.submit(organization_id=organization_id)
             results.append(result)
             success_count += 1
             total_deleted += result['deleted_count']
             
         except Exception as e:
-            logger.error(f"组织删除失败: {organization_name} - {e}")
+            logger.error(f"❌ 删除组织失败 (ID: {organization_id}) - {e}")
             failed_count += 1
             results.append({
                 'success': False,
                 'organization_id': organization_id,
-                'organization_name': organization_name,
                 'error': str(e)
             })
     

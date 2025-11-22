@@ -14,13 +14,12 @@ logger = logging.getLogger(__name__)
 
 
 @task(name="hard-delete-port", retries=2, retry_delay_seconds=60)
-def hard_delete_port_task(port_id: int, port_name: str) -> Dict:
+def hard_delete_port_task(port_id: int) -> Dict:
     """
     硬删除单个端口及其关联数据（Prefect Task）
     
     Args:
         port_id: 端口ID
-        port_name: 端口名称
     
     Returns:
         删除结果字典
@@ -32,7 +31,7 @@ def hard_delete_port_task(port_id: int, port_name: str) -> Dict:
     start_time = time.time()
     
     try:
-        logger.info(f"🔵 开始删除端口: {port_name} (ID: {port_id})")
+        logger.info(f"🔵 开始删除端口 (ID: {port_id})")
         
         service = PortService()
         deleted_count, details = service.hard_delete_ports([port_id])
@@ -42,13 +41,12 @@ def hard_delete_port_task(port_id: int, port_name: str) -> Dict:
         result = {
             'success': True,
             'port_id': port_id,
-            'port_name': port_name,
             'deleted_count': deleted_count,
             'execution_time': round(execution_time, 2)
         }
         
         logger.info(
-            f"✓ 删除完成: {port_name} - 删除 {deleted_count:,} 条记录，耗时 {execution_time:.2f}s"
+            f"✓ 删除完成 (ID: {port_id}) - 删除 {deleted_count:,} 条记录，耗时 {execution_time:.2f}s"
         )
         
         return result
@@ -56,7 +54,7 @@ def hard_delete_port_task(port_id: int, port_name: str) -> Dict:
     except Exception as e:
         execution_time = time.time() - start_time
         logger.error(
-            f"❌ 删除失败: {port_name} - 错误: {e}, 耗时 {execution_time:.2f}s", 
+            f"❌ 删除失败 (ID: {port_id}) - 错误: {e}, 耗时 {execution_time:.2f}s", 
             exc_info=True
         )
         raise

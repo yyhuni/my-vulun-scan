@@ -23,16 +23,12 @@ logger = logging.getLogger(__name__)
     task_runner=ConcurrentTaskRunner(),
     log_prints=True
 )
-def delete_websites_flow(
-    website_ids: List[int],
-    website_names: List[str]
-) -> dict:
+def delete_websites_flow(website_ids: List[int]) -> dict:
     """
     批量删除网站的 Prefect Flow
     
     Args:
         website_ids: 网站 ID 列表
-        website_names: 网站名称列表
     
     Returns:
         删除结果统计
@@ -43,12 +39,9 @@ def delete_websites_flow(
     successful = 0
     failed = 0
     
-    for website_id, website_name in zip(website_ids, website_names):
+    for website_id in website_ids:
         try:
-            result = hard_delete_website_task.submit(
-                website_id=website_id,
-                website_name=website_name
-            )
+            result = hard_delete_website_task.submit(website_id=website_id)
             
             task_result = result.result()
             
@@ -60,12 +53,11 @@ def delete_websites_flow(
             results.append(task_result)
             
         except Exception as e:
-            logger.error(f"❌ 删除网站失败: {website_name} (ID: {website_id}) - {e}")
+            logger.error(f"❌ 删除网站失败 (ID: {website_id}) - {e}")
             failed += 1
             results.append({
                 'success': False,
                 'website_id': website_id,
-                'website_name': website_name,
                 'error': str(e)
             })
     

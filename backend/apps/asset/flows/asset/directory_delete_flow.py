@@ -23,16 +23,12 @@ logger = logging.getLogger(__name__)
     task_runner=ConcurrentTaskRunner(),
     log_prints=True
 )
-def delete_directories_flow(
-    directory_ids: List[int],
-    directory_names: List[str]
-) -> dict:
+def delete_directories_flow(directory_ids: List[int]) -> dict:
     """
     批量删除目录的 Prefect Flow
     
     Args:
         directory_ids: 目录 ID 列表
-        directory_names: 目录名称列表
     
     Returns:
         删除结果统计
@@ -43,12 +39,9 @@ def delete_directories_flow(
     successful = 0
     failed = 0
     
-    for directory_id, directory_name in zip(directory_ids, directory_names):
+    for directory_id in directory_ids:
         try:
-            result = hard_delete_directory_task.submit(
-                directory_id=directory_id,
-                directory_name=directory_name
-            )
+            result = hard_delete_directory_task.submit(directory_id=directory_id)
             
             task_result = result.result()
             
@@ -60,12 +53,11 @@ def delete_directories_flow(
             results.append(task_result)
             
         except Exception as e:
-            logger.error(f"❌ 删除目录失败: {directory_name} (ID: {directory_id}) - {e}")
+            logger.error(f"❌ 删除目录失败 (ID: {directory_id}) - {e}")
             failed += 1
             results.append({
                 'success': False,
                 'directory_id': directory_id,
-                'directory_name': directory_name,
                 'error': str(e)
             })
     
