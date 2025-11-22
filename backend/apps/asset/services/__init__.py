@@ -7,7 +7,6 @@ from .asset import (
     DirectoryService,
     IPAddressService,
     PortService,
-    SubdomainIPAssociationService,
 )
 
 # 快照模块 Services
@@ -23,7 +22,6 @@ __all__ = [
     'DirectoryService',
     'IPAddressService',
     'PortService',
-    'SubdomainIPAssociationService',
     # 快照模块
     'SubdomainSnapshotsService',
     'IPSnapshotsService',

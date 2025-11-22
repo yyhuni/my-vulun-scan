@@ -15,8 +15,10 @@ class Subdomain(models.Model):
     """
     子域名模型（纯资产表）
     
-    只存储子域名资产信息，通过 SubdomainIPAssociation 中间表与 IPAddress 建立多对多关系。
-    扫描历史记录存储在 SubdomainSnapshot 快照表中。
+    设计特点：
+    - 只存储子域名资产信息
+    - 与其他资产表（IPAddress、Port）无直接关联
+    - 扫描历史记录存储在 SubdomainSnapshot 快照表中
     """
 
     id = models.AutoField(primary_key=True)
@@ -290,12 +292,11 @@ class WebSite(models.Model):
 
 class IPAddress(models.Model):
     """
-    IP地址模型（独立存储，通过 SubdomainIPAssociation 与子域名关联）
+    IP地址模型（独立存储）
     
-    重构后的设计：
+    设计特点：
     - IP地址独立存储，避免重复
-    - 通过 SubdomainIPAssociation 中间表建立与子域名的多对多关系
-    - 支持一个 IP 地址关联多个子域名
+    - 与其他资产表（Subdomain、Port）无直接关联
     """
 
     id = models.AutoField(primary_key=True)
@@ -324,15 +325,6 @@ class IPAddress(models.Model):
         blank=True,
         default='',
         help_text='反向DNS解析结果'
-    )
-    
-    # ==================== 多对多关系 ====================
-    subdomains = models.ManyToManyField(
-        'Subdomain',
-        through='SubdomainIPAssociation',
-        related_name='ip_addresses',
-        blank=True,
-        help_text='关联的子域名（多对多关系）'
     )
     
     # ==================== 时间字段 ====================
@@ -380,8 +372,9 @@ class Port(models.Model):
     """
     端口模型（去重存储）
     
-    记录：某个 IP 地址上发现的端口
-    通过 SubdomainPortAssociation 中间表与 Subdomain 建立多对多关系
+    设计特点：
+    - 记录某个 IP 地址上发现的端口
+    - 通过 ip_address 外键关联到 IPAddress
     """
 
     id = models.AutoField(primary_key=True)
@@ -417,15 +410,6 @@ class Port(models.Model):
         help_text='是否为不常见端口'
     )
     discovered_at = models.DateTimeField(auto_now_add=True, help_text='首次发现时间')
-    
-    # ==================== 多对多关系 ====================
-    subdomains = models.ManyToManyField(
-        'Subdomain',
-        through='SubdomainPortAssociation',
-        related_name='ports',
-        blank=True,
-        help_text='关联的子域名（多对多关系）'
-    )
     
     # ==================== 软删除字段 ====================
     deleted_at = models.DateTimeField(null=True, blank=True, db_index=True, help_text='删除时间（NULL表示未删除）')
@@ -556,131 +540,98 @@ class Directory(models.Model):
         return str(self.url or f'Directory {self.id}')
 
 
-class SubdomainIPAssociation(models.Model):
+class HostPortAssociation(models.Model):
     """
-    子域名-IP关联表（多对多中间表，纯资产表）
+    主机端口关联表
     
-    用于记录子域名和IP地址之间的多对多关系。
-    一个关联只有一条记录，通过 first_seen 和 last_seen 追踪时间。
-    历史记录存储在 SubdomainIPSnapshotAssociation 快照表中。
+    设计特点：
+    - 存储主机（host）、IP、端口的三元关联关系
+    - 只关联 target_id，不关联其他资产表
+    - target + host + ip + port 组成复合唯一约束
+    - 支持 TCP/UDP 协议和 TLS 标识
     """
+
+    id = models.AutoField(primary_key=True)
     
     # ==================== 关联字段 ====================
-    subdomain = models.ForeignKey(
-        'Subdomain',
+    target = models.ForeignKey(
+        'targets.Target',
         on_delete=models.CASCADE,
-        related_name='ip_associations',
-        help_text='关联的子域名'
-    )
-    ip_address = models.ForeignKey(
-        'IPAddress',
-        on_delete=models.CASCADE,
-        related_name='subdomain_associations',
-        help_text='关联的IP地址'
+        related_name='host_port_associations',
+        help_text='所属的扫描目标'
     )
     
-    # ==================== 冗余字段（性能优化）====================
-    subdomain_name = models.CharField(
+    # ==================== 核心字段 ====================
+    host = models.CharField(
         max_length=1000,
         blank=False,
-        help_text='子域名（冗余字段，必须与 subdomain.name 保持一致）'
+        help_text='主机名（域名或IP）'
     )
     ip = models.GenericIPAddressField(
         blank=False,
-        help_text='IP地址字符串（冗余字段，必须与 ip_address.ip 保持一致）'
+        help_text='IP地址'
     )
-    
-    discovered_at = models.DateTimeField(auto_now_add=True, help_text='首次发现此关联的时间')
-
-    class Meta:
-        db_table = 'subdomain_ip_association'
-        verbose_name = '子域名-IP关联'
-        verbose_name_plural = '子域名-IP关联'
-        indexes = [
-            models.Index(fields=['subdomain']),
-            models.Index(fields=['ip_address']),
-            models.Index(fields=['subdomain_name']),           # 快速搜索子域名
-            models.Index(fields=['subdomain', 'ip']),          # 快速查询子域名的IP
-            models.Index(fields=['subdomain_name', 'ip']),     # 覆盖查询
-        ]
-        constraints = [
-            # 唯一约束：一个子域名-IP关联只有一条记录
-            models.UniqueConstraint(
-                fields=['subdomain', 'ip_address'],
-                name='unique_subdomain_ip'
-            ),
-        ]
-
-    def __str__(self):
-        return f'{self.subdomain_name} -> {self.ip}'
-
-
-class SubdomainPortAssociation(models.Model):
-    """
-    子域名-端口关联表（多对多中间表，纯资产表）
-    
-    记录子域名和端口之间的多对多关系。
-    一个子域名可以有多个端口，一个端口可以被多个子域名使用。
-    """
-    
-    # ==================== 关联字段 ====================
-    subdomain = models.ForeignKey(
-        'Subdomain',
-        on_delete=models.CASCADE,
-        related_name='port_associations',
-        help_text='关联的子域名'
-    )
-    port = models.ForeignKey(
-        'Port',
-        on_delete=models.CASCADE,
-        related_name='subdomain_associations',
-        help_text='关联的端口'
-    )
-    
-    # ==================== 冗余字段（性能优化）====================
-    subdomain_name = models.CharField(
-        max_length=1000,
+    port = models.IntegerField(
         blank=False,
-        help_text='子域名（冗余字段，必须与 subdomain.name 保持一致）'
+        validators=[
+            MinValueValidator(1, message='端口号必须大于等于1'),
+            MaxValueValidator(65535, message='端口号必须小于等于65535')
+        ],
+        help_text='端口号（1-65535）'
     )
-    port_number = models.IntegerField(
-        blank=False,
-        help_text='端口号（冗余字段，必须与 port.number 保持一致）'
+    
+    # ==================== 扩展字段 ====================
+    protocol = models.CharField(
+        max_length=10,
+        default='tcp',
+        blank=True,
+        help_text='协议类型（tcp/udp）'
     )
-    ip = models.GenericIPAddressField(
-        blank=False,
-        help_text='IP地址字符串（冗余字段，必须与 port.ip_address.ip 保持一致）'
+    tls = models.BooleanField(
+        default=False,
+        help_text='是否支持TLS/SSL'
     )
     
     # ==================== 时间字段 ====================
     discovered_at = models.DateTimeField(
         auto_now_add=True,
-        help_text='首次发现此关联的时间'
+        help_text='发现时间'
     )
+    
+    # ==================== 软删除字段 ====================
+    deleted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text='删除时间（NULL表示未删除）'
+    )
+    
+    # ==================== 管理器 ====================
+    objects = SoftDeleteManager()  # 默认管理器：只返回未删除的记录
+    all_objects = models.Manager()  # 全量管理器：包括已删除的记录（用于硬删除）
 
     class Meta:
-        db_table = 'subdomain_port_association'
-        verbose_name = '子域名-端口关联'
-        verbose_name_plural = '子域名-端口关联'
+        db_table = 'host_port_association'
+        verbose_name = '主机端口关联'
+        verbose_name_plural = '主机端口关联'
         ordering = ['-discovered_at']
         indexes = [
-            models.Index(fields=['subdomain']),
-            models.Index(fields=['port']),
-            models.Index(fields=['subdomain_name']),                # 快速搜索子域名
-            models.Index(fields=['subdomain', 'port_number']),      # 快速查询子域名的端口号
-            models.Index(fields=['subdomain', 'ip']),               # 快速查询子域名的IP
-            models.Index(fields=['subdomain_name', 'port_number']), # 覆盖查询
-            models.Index(fields=['-discovered_at']),
+            models.Index(fields=['target']),           # 优化按目标查询
+            models.Index(fields=['host']),             # 优化按主机名查询
+            models.Index(fields=['ip']),               # 优化按IP查询
+            models.Index(fields=['port']),             # 优化按端口查询
+            models.Index(fields=['host', 'ip']),       # 优化组合查询
+            models.Index(fields=['-discovered_at']),   # 优化时间排序
+            models.Index(fields=['deleted_at', '-discovered_at']),  # 软删除 + 时间索引
         ]
         constraints = [
-            # 唯一约束：一个子域名-端口关联只有一条记录
+            # 复合唯一约束：target + host + ip + port 组合唯一（只对未删除记录生效）
             models.UniqueConstraint(
-                fields=['subdomain', 'port'],
-                name='unique_subdomain_port'
+                fields=['target', 'host', 'ip', 'port'],
+                condition=models.Q(deleted_at__isnull=True),
+                name='unique_target_host_ip_port_active'
             ),
         ]
 
     def __str__(self):
-        return f'{self.subdomain_name} -> {self.ip}:{self.port_number}'
-
-
+        return f'{self.host} ({self.ip}:{self.port})'

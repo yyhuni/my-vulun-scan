@@ -5,7 +5,6 @@ from .website_repository import DjangoWebSiteRepository
 from .directory_repository import DjangoDirectoryRepository
 from .ip_address_repository import DjangoIPAddressRepository
 from .port_repository import DjangoPortRepository
-from .subdomain_ip_association_repository import DjangoSubdomainIPAssociationRepository
 
 __all__ = [
     'DjangoSubdomainRepository',
@@ -13,5 +12,4 @@ __all__ = [
     'DjangoDirectoryRepository',
     'DjangoIPAddressRepository',
     'DjangoPortRepository',
-    'DjangoSubdomainIPAssociationRepository',
 ]

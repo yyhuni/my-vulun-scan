@@ -7,7 +7,6 @@ from .asset import (
     DjangoDirectoryRepository,
     DjangoIPAddressRepository,
     DjangoPortRepository,
-    DjangoSubdomainIPAssociationRepository,
 )
 
 # 快照模块 Repositories
@@ -24,7 +23,6 @@ __all__ = [
     'DjangoDirectoryRepository',
     'DjangoIPAddressRepository',
     'DjangoPortRepository',
-    'DjangoSubdomainIPAssociationRepository',
     # 快照模块
     'DjangoSubdomainSnapshotRepository',
     'DjangoIPAddressSnapshotRepository',

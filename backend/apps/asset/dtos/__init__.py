@@ -3,7 +3,6 @@
 # 资产模块 DTOs
 from .asset import (
     SubdomainDTO,
-    SubdomainIPAssociationDTO,
     WebSiteDTO,
     IPAddressDTO,
     DirectoryDTO,
@@ -18,7 +17,6 @@ from .snapshot import (
 __all__ = [
     # 资产模块
     'SubdomainDTO',
-    'SubdomainIPAssociationDTO',
     'WebSiteDTO',
     'IPAddressDTO',
     'DirectoryDTO',
