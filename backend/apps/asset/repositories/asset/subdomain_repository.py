@@ -35,7 +35,6 @@ class DjangoSubdomainRepository:
             subdomain_objects = [
                 Subdomain(
                     name=item.name,
-                    scan_id=item.scan_id,
                     target_id=item.target_id,
                 )
                 for item in items

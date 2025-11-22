@@ -14,7 +14,6 @@ class SubdomainSnapshot(models.Model):
         help_text='所属的扫描任务'
     )
     
-    # 扫描结果数据（原始值，不维护外键关联）
     name = models.CharField(max_length=1000, help_text='子域名名称')
     discovered_at = models.DateTimeField(auto_now_add=True, help_text='发现时间')
     
