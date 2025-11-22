@@ -160,15 +160,14 @@ class DirectorySnapshot(models.Model):
         return f'{self.url} (Scan #{self.scan_id})'
 
 
-class HostPortAssociationSnapshot(models.Model):
+class HostPortMappingSnapshot(models.Model):
     """
-    主机端口关联快照表
+    主机端口映射快照表
     
     设计特点：
-    - 存储某次扫描中发现的主机（host）、IP、端口的三元关联关系
+    - 存储某次扫描中发现的主机（host）、IP、端口的三元映射关系
     - 主关联 scan_id，记录扫描历史
     - scan + host + ip + port 组成复合唯一约束
-    - 支持 TCP/UDP 协议和 TLS 标识
     """
 
     id = models.AutoField(primary_key=True)
@@ -177,7 +176,7 @@ class HostPortAssociationSnapshot(models.Model):
     scan = models.ForeignKey(
         'scan.Scan',
         on_delete=models.CASCADE,
-        related_name='host_port_association_snapshots',
+        related_name='host_port_mapping_snapshots',
         help_text='所属的扫描任务（主关联）'
     )
     
@@ -207,9 +206,9 @@ class HostPortAssociationSnapshot(models.Model):
     )
 
     class Meta:
-        db_table = 'host_port_association_snapshot'
-        verbose_name = '主机端口关联快照'
-        verbose_name_plural = '主机端口关联快照'
+        db_table = 'host_port_mapping_snapshot'
+        verbose_name = '主机端口映射快照'
+        verbose_name_plural = '主机端口映射快照'
         ordering = ['-discovered_at']
         indexes = [
             models.Index(fields=['scan']),             # 优化按扫描查询

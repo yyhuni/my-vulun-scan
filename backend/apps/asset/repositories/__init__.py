@@ -5,13 +5,13 @@ from .asset import (
     DjangoSubdomainRepository,
     DjangoWebSiteRepository,
     DjangoDirectoryRepository,
-    DjangoHostPortAssociationRepository,
+    DjangoHostPortMappingRepository,
 )
 
 # 快照模块 Repositories
 from .snapshot import (
     DjangoSubdomainSnapshotRepository,
-    DjangoHostPortAssociationSnapshotRepository,
+    DjangoHostPortMappingSnapshotRepository,
 )
 
 __all__ = [
@@ -19,10 +19,10 @@ __all__ = [
     'DjangoSubdomainRepository',
     'DjangoWebSiteRepository',
     'DjangoDirectoryRepository',
-    'DjangoHostPortAssociationRepository',
+    'DjangoHostPortMappingRepository',
     # 快照模块
     'DjangoSubdomainSnapshotRepository',
-    'DjangoHostPortAssociationSnapshotRepository',
+    'DjangoHostPortMappingSnapshotRepository',
 ]
 
 

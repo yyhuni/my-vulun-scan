@@ -5,12 +5,13 @@ from .asset import (
     SubdomainService,
     WebSiteService,
     DirectoryService,
+    HostPortMappingService,
 )
 
 # 快照模块 Services
 from .snapshot import (
     SubdomainSnapshotsService,
-    HostPortAssociationSnapshotsService,
+    HostPortMappingSnapshotsService,
 )
 
 __all__ = [
@@ -18,7 +19,8 @@ __all__ = [
     'SubdomainService',
     'WebSiteService',
     'DirectoryService',
+    'HostPortMappingService',
     # 快照模块
     'SubdomainSnapshotsService',
-    'HostPortAssociationSnapshotsService',
+    'HostPortMappingSnapshotsService',
 ]

@@ -1,18 +1,18 @@
-"""Django ORM 实现的 HostPortAssociation Repository"""
+"""HostPortMapping Repository - Django ORM 实现"""
 
 import logging
 from typing import List
 
-from apps.asset.models.asset_models import HostPortAssociation
-from apps.asset.dtos.asset import HostPortAssociationDTO
+from apps.asset.models.asset_models import HostPortMapping
+from apps.asset.dtos.asset import HostPortMappingDTO
 
 logger = logging.getLogger(__name__)
 
 
-class DjangoHostPortAssociationRepository:
-    """主机端口关联 Repository - 负责主机端口关联表的数据访问"""
+class DjangoHostPortMappingRepository:
+    """HostPortMapping Repository - Django ORM 实现"""
 
-    def bulk_create_ignore_conflicts(self, items: List[HostPortAssociationDTO]) -> int:
+    def bulk_create_ignore_conflicts(self, items: List[HostPortMappingDTO]) -> int:
         """
         批量创建主机端口关联（忽略冲突）
         
@@ -36,7 +36,7 @@ class DjangoHostPortAssociationRepository:
             # 构建记录对象
             records = []
             for item in items:
-                records.append(HostPortAssociation(
+                records.append(HostPortMapping(
                     target_id=item.target_id,
                     host=item.host,
                     ip=item.ip,
@@ -44,7 +44,7 @@ class DjangoHostPortAssociationRepository:
                 ))
             
             # 批量创建（忽略冲突，基于唯一约束去重）
-            created = HostPortAssociation.objects.bulk_create(
+            created = HostPortMapping.objects.bulk_create(
                 records, 
                 ignore_conflicts=True
             )

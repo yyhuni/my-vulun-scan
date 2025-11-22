@@ -1,0 +1,47 @@
+"""HostPortMapping Service - 业务逻辑层"""
+
+import logging
+from typing import List
+
+from apps.asset.repositories.asset import DjangoHostPortMappingRepository
+from apps.asset.dtos.asset import HostPortMappingDTO
+
+logger = logging.getLogger(__name__)
+
+
+class HostPortMappingService:
+    """主机端口映射服务 - 负责主机端口映射数据的业务逻辑"""
+    
+    def __init__(self):
+        self.repo = DjangoHostPortMappingRepository()
+    
+    def bulk_create_ignore_conflicts(self, items: List[HostPortMappingDTO]) -> int:
+        """
+        批量创建主机端口映射（忽略冲突）
+        
+        Args:
+            items: 主机端口映射 DTO 列表
+        
+        Returns:
+            int: 实际创建的记录数
+        
+        Note:
+            使用数据库唯一约束 + ignore_conflicts 自动去重
+        """
+        try:
+            logger.debug("Service: 准备批量创建主机端口映射 - 数量: %d", len(items))
+            
+            created_count = self.repo.bulk_create_ignore_conflicts(items)
+            
+            logger.info("Service: 主机端口映射创建成功 - 数量: %d", created_count)
+            
+            return created_count
+            
+        except Exception as e:
+            logger.error(
+                "Service: 批量创建主机端口映射失败 - 数量: %d, 错误: %s",
+                len(items),
+                str(e),
+                exc_info=True
+            )
+            raise

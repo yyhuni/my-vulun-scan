@@ -1,18 +1,18 @@
-"""Django ORM 实现的 HostPortAssociationSnapshot Repository"""
+"""HostPortMappingSnapshot Repository - Django ORM 实现"""
 
 import logging
 from typing import List
 
-from apps.asset.models.snapshot_models import HostPortAssociationSnapshot
-from apps.asset.dtos.snapshot import HostPortAssociationSnapshotDTO
+from apps.asset.models.snapshot_models import HostPortMappingSnapshot
+from apps.asset.dtos.snapshot import HostPortMappingSnapshotDTO
 
 logger = logging.getLogger(__name__)
 
 
-class DjangoHostPortAssociationSnapshotRepository:
-    """主机端口关联快照 Repository - 负责主机端口关联快照表的数据访问"""
+class DjangoHostPortMappingSnapshotRepository:
+    """HostPortMappingSnapshot Repository - Django ORM 实现，负责主机端口映射快照表的数据访问"""
 
-    def save_snapshots(self, items: List[HostPortAssociationSnapshotDTO]) -> None:
+    def save_snapshots(self, items: List[HostPortMappingSnapshotDTO]) -> None:
         """
         保存主机端口关联快照
         
@@ -33,7 +33,7 @@ class DjangoHostPortAssociationSnapshotRepository:
             # 构建快照对象
             snapshots = []
             for item in items:
-                snapshots.append(HostPortAssociationSnapshot(
+                snapshots.append(HostPortMappingSnapshot(
                     scan_id=item.scan_id,
                     host=item.host,
                     ip=item.ip,
@@ -41,7 +41,7 @@ class DjangoHostPortAssociationSnapshotRepository:
                 ))
             
             # 批量创建（忽略冲突，基于唯一约束去重）
-            HostPortAssociationSnapshot.objects.bulk_create(
+            HostPortMappingSnapshot.objects.bulk_create(
                 snapshots, 
                 ignore_conflicts=True
             )

@@ -5,7 +5,7 @@ from .website_dto import WebSiteDTO
 from .ip_address_dto import IPAddressDTO
 from .directory_dto import DirectoryDTO
 from .port_dto import PortDTO
-from .host_port_association_dto import HostPortAssociationDTO
+from .host_port_mapping_dto import HostPortMappingDTO
 
 __all__ = [
     'SubdomainDTO',
@@ -13,5 +13,5 @@ __all__ = [
     'IPAddressDTO',
     'DirectoryDTO',
     'PortDTO',
-    'HostPortAssociationDTO',
+    'HostPortMappingDTO',
 ]

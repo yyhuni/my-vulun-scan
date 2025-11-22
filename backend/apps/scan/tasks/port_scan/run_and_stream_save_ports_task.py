@@ -38,7 +38,7 @@ from apps.common.validators import validate_port
 
 # 类型检查时导入，运行时不导入（避免循环依赖）
 if TYPE_CHECKING:
-    from apps.asset.services.snapshot import HostPortAssociationSnapshotsService
+    from apps.asset.services.snapshot import HostPortMappingSnapshotsService
 
 logger = logging.getLogger(__name__)
 
@@ -55,14 +55,14 @@ class ServiceSet:
     
     提供所有需要的 Service 实例，便于测试时注入 Mock 对象
     """
-    snapshot: "HostPortAssociationSnapshotsService"
+    snapshot: "HostPortMappingSnapshotsService"
     
     @classmethod
     def create_default(cls) -> "ServiceSet":
         """创建默认的 Service 集合"""
-        from apps.asset.services.snapshot import HostPortAssociationSnapshotsService
+        from apps.asset.services.snapshot import HostPortMappingSnapshotsService
         return cls(
-            snapshot=HostPortAssociationSnapshotsService()
+            snapshot=HostPortMappingSnapshotsService()
         )
 
 
@@ -167,7 +167,7 @@ def _save_batch(
         - 新记录：插入
         - 重复记录：忽略（不更新）
     """
-    from apps.asset.dtos.snapshot import HostPortAssociationSnapshotDTO
+    from apps.asset.dtos.snapshot import HostPortMappingSnapshotDTO
     
     # 参数验证
     if not isinstance(batch, list):
@@ -179,7 +179,7 @@ def _save_batch(
     
     # 构建 DTO 列表（包含完整的业务上下文）
     items = [
-        HostPortAssociationSnapshotDTO(
+        HostPortMappingSnapshotDTO(
             scan_id=scan_id,
             target_id=target_id,  # 包含 target_id 用于同步到资产表
             host=record['host'],

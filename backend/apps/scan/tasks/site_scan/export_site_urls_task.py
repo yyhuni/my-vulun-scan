@@ -1,13 +1,13 @@
 """
 导出站点URL到文件的Task
 
-直接使用 HostPortAssociation 表查询 host+port 组合，拼接成URL格式写入文件
+直接使用 HostPortMapping 表查询 host+port 组合，拼接成URL格式写入文件
 """
 import logging
 from pathlib import Path
 from prefect import task
 
-from apps.asset.models.asset_models import HostPortAssociation
+from apps.asset.models.asset_models import HostPortMapping
 
 logger = logging.getLogger(__name__)
 
@@ -19,10 +19,10 @@ def export_site_urls_task(
     batch_size: int = 1000
 ) -> dict:
     """
-    导出目标下的所有站点URL到文件（基于 HostPortAssociation 表）
+    导出目标下的所有站点URL到文件（基于 HostPortMapping 表）
     
     功能：
-    1. 从 HostPortAssociation 表查询 target 下所有 host+port 组合
+    1. 从 HostPortMapping 表查询 target 下所有 host+port 组合
     2. 拼接成URL格式（标准端口80/443将省略端口号）
     3. 写入到指定文件中
     
@@ -44,14 +44,14 @@ def export_site_urls_task(
         IOError: 文件写入失败
     """
     try:
-        logger.info("开始导出站点URL - Target ID: %d, 输出文件: %s", target_id, output_file)
+        logger.info("开始统计站点URL - Target ID: %d, 输出文件: %s", target_id, output_file)
         
         # 确保输出目录存在
         output_path = Path(output_file)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         
-        # 直接查询 HostPortAssociation 表，按 host 排序
-        associations = HostPortAssociation.objects.filter(
+        # 直接查询 HostPortMapping 表，按 host 排序
+        associations = HostPortMapping.objects.filter(
             target_id=target_id
         ).order_by('host', 'port').values('host', 'port')
         

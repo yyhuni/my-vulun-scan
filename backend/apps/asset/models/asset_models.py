@@ -390,15 +390,14 @@ class Directory(models.Model):
         return str(self.url or f'Directory {self.id}')
 
 
-class HostPortAssociation(models.Model):
+class HostPortMapping(models.Model):
     """
-    主机端口关联表
+    主机端口映射表
     
     设计特点：
-    - 存储主机（host）、IP、端口的三元关联关系
+    - 存储主机（host）、IP、端口的三元映射关系
     - 只关联 target_id，不关联其他资产表
     - target + host + ip + port 组成复合唯一约束
-    - 支持 TCP/UDP 协议和 TLS 标识
     """
 
     id = models.AutoField(primary_key=True)
@@ -407,7 +406,7 @@ class HostPortAssociation(models.Model):
     target = models.ForeignKey(
         'targets.Target',
         on_delete=models.CASCADE,
-        related_name='host_port_associations',
+        related_name='host_port_mappings',
         help_text='所属的扫描目标'
     )
     
@@ -449,9 +448,9 @@ class HostPortAssociation(models.Model):
     all_objects = models.Manager()  # 全量管理器：包括已删除的记录（用于硬删除）
 
     class Meta:
-        db_table = 'host_port_association'
-        verbose_name = '主机端口关联'
-        verbose_name_plural = '主机端口关联'
+        db_table = 'host_port_mapping'
+        verbose_name = '主机端口映射'
+        verbose_name_plural = '主机端口映射'
         ordering = ['-discovered_at']
         indexes = [
             models.Index(fields=['target']),           # 优化按目标查询
