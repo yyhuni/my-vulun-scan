@@ -1,0 +1,150 @@
+import logging
+from typing import List
+
+from apps.asset.dtos.subdomain_dto import SubdomainDTO
+from apps.asset.repositories.django_snapshot_repository import DjangoSnapshotRepository
+from apps.asset.repositories.django_ip_address_repository import IPAddressDTO
+
+logger = logging.getLogger(__name__)
+
+
+class SnapshotService:
+    """快照服务 - 负责快照数据的业务逻辑"""
+    
+    def __init__(self):
+        self.repo = DjangoSnapshotRepository()
+    
+    def save_subdomain_snapshots(self, items: List[SubdomainDTO]) -> None:
+        """
+        保存子域名快照（统一入口）
+        
+        流程：
+        1. 保存到快照表（完整记录）
+        2. 保存到业务表（去重）
+        
+        Args:
+            items: 子域名 DTO 列表
+        """
+        logger.debug("保存子域名快照 - 数量: %d", len(items))
+        
+        if not items:
+            logger.debug("快照数据为空，跳过保存")
+            return
+        
+        try:
+            # 步骤 1: 保存到快照表
+            logger.debug("步骤 1: 保存到快照表")
+            self.repo.save_subdomain_snapshots(items)
+            
+            # 2. 保存业务表（去重）
+            from apps.asset.services.subdomain_service import SubdomainService
+            subdomain_service = SubdomainService()
+            subdomain_service.bulk_create_ignore_conflicts(items)
+            
+            logger.info("子域名快照和业务数据保存成功 - 数量: %d", len(items))
+            
+        except Exception as e:
+            logger.error(
+                "保存子域名快照失败 - 数量: %d, 错误: %s",
+                len(items),
+                str(e),
+                exc_info=True
+            )
+            raise
+    
+    def save_ip_snapshots(self, items: List[IPAddressDTO]) -> None:
+        """
+        保存IP地址快照（统一入口）
+        
+        流程：
+        1. 保存到快照表（完整记录）
+        2. 保存到业务表（去重）
+        
+        Args:
+            items: IP地址 DTO 列表
+        """
+        logger.debug("保存IP地址快照 - 数量: %d", len(items))
+        
+        if not items:
+            logger.debug("IP快照数据为空，跳过保存")
+            return
+        
+        try:
+            # 步骤 1: 保存到快照表
+            logger.debug("步骤 1: 保存到IP快照表")
+            self.repo.save_ip_snapshots(items)
+            
+            # 步骤 2: 保存业务表（去重）
+            from apps.asset.services.ip_address_service import IPAddressService
+            ip_service = IPAddressService()
+            ip_service.bulk_create_ignore_conflicts(items)
+            
+            # 步骤 3: 创建关联关系（如果需要）
+            # 注意：这里需要额外的子域名信息来创建关联
+            # 建议使用组合保存方法 save_subdomain_with_ips
+            
+            logger.info("IP地址快照和业务数据保存成功 - 数量: %d", len(items))
+            
+        except Exception as e:
+            logger.error(
+                "保存IP地址快照失败 - 数量: %d, 错误: %s",
+                len(items),
+                str(e),
+                exc_info=True
+            )
+            raise
+    
+    def save_subdomain_with_ips(self, subdomain_name: str, ip_addresses: List[str], scan_id: int, target_id: int) -> None:
+        """
+        保存子域名及其关联的IP地址快照（包含关联关系）
+        
+        Args:
+            subdomain_name: 子域名名称
+            ip_addresses: IP地址列表
+            scan_id: 扫描ID
+            target_id: 目标ID
+            
+        流程：
+        1. 保存子域名快照
+        2. 保存IP地址快照
+        3. 创建关联关系
+        4. 同步到业务表
+        """
+        logger.debug("保存子域名及IP关联快照 - 子域名: %s, IP数量: %d", subdomain_name, len(ip_addresses))
+        
+        try:
+            # 步骤 1: 保存子域名快照
+            subdomain_dto = SubdomainDTO(
+                name=subdomain_name,
+                scan_id=scan_id,
+                target_id=target_id
+            )
+            self.save_subdomain_snapshots([subdomain_dto])
+            
+            # 步骤 2: 保存IP地址快照
+            ip_dtos = []
+            for ip in ip_addresses:
+                ip_dtos.append(IPAddressDTO(
+                    ip=ip,
+                    scan_id=scan_id,
+                    target_id=target_id,
+                    subdomain_id=0  # 快照表中不需要真实的 subdomain_id
+                ))
+            self.save_ip_snapshots(ip_dtos)
+            
+            # 步骤 3: 创建关联关系（调用 Repository 层）
+            self.repo.create_subdomain_ip_associations(subdomain_name, ip_addresses, scan_id, target_id)
+            
+            logger.info("子域名及IP关联快照保存成功 - 子域名: %s, IP数量: %d", subdomain_name, len(ip_addresses))
+            
+        except Exception as e:
+            logger.error(
+                "保存子域名及IP关联快照失败 - 子域名: %s, IP数量: %d, 错误: %s",
+                subdomain_name, len(ip_addresses), str(e),
+                exc_info=True
+            )
+            raise
+
+    # 未来扩展：其他快照保存方法
+    # def save_website_snapshots(self, items: List[WebsiteDTO]) -> None:
+    # def save_port_snapshots(self, items: List[PortDTO]) -> None:

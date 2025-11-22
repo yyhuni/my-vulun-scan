@@ -10,12 +10,14 @@ from .asset_models import (
     Directory,
 )
 
-# 扫描结果模型
-from .scan_result_models import (
-    SubdomainScanResult,
-    WebsiteScanResult,
-    PortScanResult,
-    DirectoryScanResult,
+# 快照模型
+from .snapshot_models import (
+    SubdomainSnapshot,
+    WebsiteSnapshot,
+    PortSnapshot,
+    DirectorySnapshot,
+    IPAddressSnapshot,
+    SubdomainIPSnapshotAssociation,
 )
 
 # 导出所有模型供外部导入
@@ -27,9 +29,11 @@ __all__ = [
     'Port',
     'Endpoint',
     'Directory',
-    # 扫描结果模型
-    'SubdomainScanResult',
-    'WebsiteScanResult', 
-    'PortScanResult',
-    'DirectoryScanResult',
+    # 快照模型
+    'SubdomainSnapshot',
+    'WebsiteSnapshot', 
+    'PortSnapshot',
+    'DirectorySnapshot',
+    'IPAddressSnapshot',
+    'SubdomainIPSnapshotAssociation',
 ]

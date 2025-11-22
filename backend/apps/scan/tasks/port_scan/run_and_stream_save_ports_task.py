@@ -33,9 +33,10 @@ from cachetools import LRUCache
 from dataclasses import dataclass
 
 
-from apps.asset.services import SubdomainService, IPAddressService, PortService
+from apps.asset.services import SubdomainService, IPAddressService, PortService, SubdomainIPAssociationService
 from apps.asset.repositories.django_ip_address_repository import IPAddressDTO
 from apps.asset.repositories.django_port_repository import PortDTO
+from apps.asset.dtos.subdomain_ip_association_dto import SubdomainIPAssociationDTO
 from .types import PortScanRecord
 
 from apps.scan.utils import execute_stream
@@ -59,6 +60,7 @@ class ServiceSet:
     subdomain: SubdomainService
     ip_address: IPAddressService
     port: PortService
+    subdomain_ip_association: SubdomainIPAssociationService
     
     @classmethod
     def create_default(cls) -> 'ServiceSet':
@@ -66,7 +68,8 @@ class ServiceSet:
         return cls(
             subdomain=SubdomainService(),
             ip_address=IPAddressService(),
-            port=PortService()
+            port=PortService(),
+            subdomain_ip_association=SubdomainIPAssociationService()
         )
 
 
@@ -218,6 +221,7 @@ def _save_batch(
     subdomain_service = services.subdomain
     ip_service = services.ip_address
     port_service = services.port
+    association_service = services.subdomain_ip_association
     
     # 统计变量
     skipped_no_subdomain = 0
@@ -244,9 +248,11 @@ def _save_batch(
     # 构建 subdomain_map（host → Subdomain对象映射，用于后续获取ID）
     subdomain_map = {h: subdomain_cache[h] for h in hosts if h in subdomain_cache and subdomain_cache[h] is not None}
     
-    # ========== Step 2: 准备 IPAddress 数据（内存操作，无需事务）==========
-    # 提取所有唯一的 (subdomain_id, ip) 组合
-    ip_set = set()
+    # ========== Step 2: 准备数据（内存操作，无需事务）==========
+    # 提取所有唯一的 IP 地址
+    ip_addrs_set = set()
+    # 提取所有 (subdomain_id, ip) 组合用于关联
+    subdomain_ip_pairs = []
     
     for record in batch:
         host = record['host']
@@ -257,44 +263,41 @@ def _save_batch(
             skipped_no_subdomain += 1
             continue
         
-        ip_key = (subdomain.id, ip_addr)
-        ip_set.add(ip_key)
+        ip_addrs_set.add(ip_addr)
+        subdomain_ip_pairs.append((subdomain.id, ip_addr))
     
-    # ========== Step 3: 批量创建 IPAddress（Repository 内部独立短事务）==========
+    # ========== Step 3: 批量创建 IPAddress（只创建 IP 记录）==========
     ip_items = [
-        IPAddressDTO(
-            subdomain_id=subdomain_id,
-            ip=ip_addr,
-            target_id=target_id,
-            scan_id=scan_id
-        )
-        for subdomain_id, ip_addr in ip_set
+        IPAddressDTO(ip=ip_addr)
+        for ip_addr in ip_addrs_set
     ]
     
     # 批量插入（忽略已存在的记录）
     if ip_items:
         ip_service.bulk_create_ignore_conflicts(ip_items)
     
-    # ========== Step 4: 批量查询所有 IPAddress（读操作，无需事务）==========
+    # ========== Step 4: 批量查询 IPAddress（获取 ID 用于创建关联）==========
     ip_map = {}
-    if ip_set:
-        # 从 ip_set 中提取查询条件
-        subdomain_ids = {subdomain_id for subdomain_id, _ in ip_set}
-        ip_addrs = {ip_addr for _, ip_addr in ip_set}
-        
-        # 使用 Service 批量查询
-        # 注：上方的 bulk_create 是同步阻塞操作，执行到这里时数据已提交
-        # 如果查不到，说明数据本身不存在（如 subdomain 不在库中），而非延迟问题
-        ip_map = ip_service.get_by_subdomain_and_ips(subdomain_ids, ip_addrs)
-        
-        # 验证数据完整性（有助于发现潜在问题）
-        if len(ip_map) < len(ip_set):
-            logger.warning(
-                "批次 %d: IP 创建后查询不完整 - 预期 %d 条，实际查到 %d 条（可能原因：subdomain 不存在或已删除）",
-                batch_num, len(ip_set), len(ip_map)
+    if ip_addrs_set:
+        ip_map = ip_service.get_by_ips(ip_addrs_set)
+    
+    # ========== Step 5: 创建 SubdomainIPAssociation 关联（纯资产表，多对多关系）==========
+    association_items = []
+    for subdomain_id, ip_addr in subdomain_ip_pairs:
+        ip_obj = ip_map.get(ip_addr)
+        if ip_obj:
+            association_items.append(
+                SubdomainIPAssociationDTO(
+                    subdomain_id=subdomain_id,
+                    ip_address_id=ip_obj.id
+                )
             )
     
-    # ========== Step 5: 批量创建 Port（Repository 内部独立短事务）==========
+    # 批量创建关联记录（忽略重复）
+    if association_items:
+        association_service.bulk_create_ignore_conflicts(association_items)
+    
+    # ========== Step 6: 批量创建 Port（Repository 内部独立短事务）==========
     port_items = []
     
     for record in batch:
@@ -307,8 +310,7 @@ def _save_batch(
             continue
         
         # 从映射中获取 IPAddress 对象
-        ip_key = (subdomain.id, ip_addr)
-        ip_obj = ip_map.get(ip_key)
+        ip_obj = ip_map.get(ip_addr)
         
         if not ip_obj:
             skipped_no_ip += 1

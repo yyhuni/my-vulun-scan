@@ -12,7 +12,12 @@ class SoftDeleteManager(models.Manager):
 
 
 class Subdomain(models.Model):
-    """子域名模型"""
+    """
+    子域名模型
+    
+    通过 SubdomainIPAssociation 中间表与 IPAddress 建立多对多关系。
+    一个子域名可以有多个IP地址，一个IP地址也可以属于多个子域名。
+    """
 
     id = models.AutoField(primary_key=True)
     scan = models.ForeignKey(
@@ -34,22 +39,6 @@ class Subdomain(models.Model):
     
     # ==================== 软删除字段 ====================
     deleted_at = models.DateTimeField(null=True, blank=True, db_index=True, help_text='删除时间（NULL表示未删除）')
-    cname = ArrayField(
-        models.CharField(max_length=255),
-        blank=True,
-        default=list,
-        help_text='CNAME记录列表，由httpx探测获取'
-    )
-    is_cdn = models.BooleanField(
-        default=False,
-        help_text='是否使用CDN（由httpx的cdn探测标志判断）'
-    )
-    cdn_name = models.CharField(
-        max_length=200,
-        blank=True,
-        default='',
-        help_text='CDN提供商名称（如cloudflare, akamai等）'
-    )
     
     # ==================== 管理器 ====================
     objects = SoftDeleteManager()  # 默认管理器：只返回未删除的记录
@@ -310,32 +299,17 @@ class WebSite(models.Model):
 
 class IPAddress(models.Model):
     """
-    IP地址模型
+    IP地址模型（独立存储，通过 SubdomainIPAssociation 与子域名关联）
+    
+    重构后的设计：
+    - IP地址独立存储，避免重复
+    - 通过 SubdomainIPAssociation 中间表建立与子域名的多对多关系
+    - 支持一个 IP 地址关联多个子域名
     """
 
     id = models.AutoField(primary_key=True)
-    scan = models.ForeignKey(
-        'scan.Scan',  # 使用字符串引用
-        on_delete=models.CASCADE,
-        related_name='ip_addresses',
-        null=True,
-        blank=True,
-        help_text='所属的扫描任务（冗余字段，用于快速查询）'
-    )
-    target = models.ForeignKey(
-        'targets.Target',  # 使用字符串引用
-        on_delete=models.CASCADE,
-        related_name='ip_addresses',
-        null=True,
-        blank=True,
-        help_text='所属的扫描目标（冗余字段，用于快速查询）'
-    )
-    subdomain = models.ForeignKey(
-        'Subdomain',  # 使用字符串引用
-        on_delete=models.CASCADE,
-        related_name='ip_addresses',
-        help_text='所属的子域名（主关联字段，表示所属关系，不能为空）'
-    )
+    
+    # ==================== 核心字段 ====================
     ip = models.CharField(
         max_length=500,
         blank=False,
@@ -348,17 +322,41 @@ class IPAddress(models.Model):
         default='',
         help_text='协议版本（如IPv4, IPv6）'
     )
-    created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
-    is_private = models.BooleanField(default=False, help_text='是否私有IP')
+    is_private = models.BooleanField(
+        default=False, 
+        help_text='是否私有IP地址'
+    )
+    
+    # ==================== 扩展信息 ====================
     reverse_pointer = models.CharField(
         max_length=500,
         blank=True,
         default='',
-        help_text='反向解析（如域名）'
+        help_text='反向DNS解析结果'
+    )
+    
+    # ==================== 多对多关系 ====================
+    subdomains = models.ManyToManyField(
+        'Subdomain',
+        through='SubdomainIPAssociation',
+        related_name='ip_addresses',
+        blank=True,
+        help_text='关联的子域名（多对多关系）'
+    )
+    
+    # ==================== 时间字段 ====================
+    first_seen = models.DateTimeField(
+        auto_now_add=True, 
+        help_text='首次发现时间'
     )
     
     # ==================== 软删除字段 ====================
-    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True, help_text='删除时间（NULL表示未删除）')
+    deleted_at = models.DateTimeField(
+        null=True, 
+        blank=True, 
+        db_index=True, 
+        help_text='删除时间（NULL表示未删除）'
+    )
     
     # ==================== 管理器 ====================
     objects = SoftDeleteManager()  # 默认管理器：只返回未删除的记录
@@ -368,25 +366,23 @@ class IPAddress(models.Model):
         db_table = 'ip_address'
         verbose_name = 'IP地址'
         verbose_name_plural = 'IP地址'
-        ordering = ['-created_at']
+        ordering = ['-first_seen']
         indexes = [
-            models.Index(fields=['-created_at']),
-            models.Index(fields=['target']),     # 优化从target_id快速查找下面的IP地址
-            models.Index(fields=['scan']),         # 优化从scan_id快速查找下面的IP地址
-            models.Index(fields=['deleted_at', '-created_at']),  # 软删除 + 时间索引
+            models.Index(fields=['ip']),  # IP地址索引
+            models.Index(fields=['-first_seen']),
+            models.Index(fields=['deleted_at', '-first_seen']),  # 软删除 + 时间索引
         ]
         constraints = [
-            # 部分唯一约束：只对未删除记录生效
+            # 唯一约束：每个IP地址只能有一条记录（未删除状态下）
             models.UniqueConstraint(
-                fields=['subdomain', 'ip'],
+                fields=['ip'],
                 condition=models.Q(deleted_at__isnull=True),
-                name='unique_ip_subdomain_active'
+                name='unique_ip_active'
             ),
         ]
 
-
     def __str__(self):
-        return str(self.ip or f'IPAddress {self.id}')
+        return self.ip
 
 
 class Port(models.Model):
@@ -400,14 +396,6 @@ class Port(models.Model):
         on_delete=models.CASCADE,
         related_name='ports',
         help_text='所属的IP地址（主关联字段，表示所属关系，不能为空）'
-    )
-    subdomain = models.ForeignKey(
-        'Subdomain',  # 使用字符串引用
-        on_delete=models.CASCADE,
-        related_name='ports',
-        null=True,
-        blank=True,
-        help_text='所属的子域名（冗余字段，用于快速查询）'
     )
     number = models.IntegerField(
         null=False,
@@ -562,5 +550,48 @@ class Directory(models.Model):
 
     def __str__(self):
         return str(self.url or f'Directory {self.id}')
+
+
+class SubdomainIPAssociation(models.Model):
+    """
+    子域名-IP关联表（多对多中间表，纯资产表）
+    
+    用于记录子域名和IP地址之间的多对多关系。
+    一个关联只有一条记录，通过 first_seen 和 last_seen 追踪时间。
+    历史记录存储在 SubdomainIPSnapshotAssociation 快照表中。
+    """
+    
+    # ==================== 关联字段 ====================
+    subdomain = models.ForeignKey(
+        'Subdomain',
+        on_delete=models.CASCADE,
+        related_name='ip_associations',
+        help_text='关联的子域名'
+    )
+    ip_address = models.ForeignKey(
+        'IPAddress',
+        on_delete=models.CASCADE,
+        related_name='subdomain_associations',
+        help_text='关联的IP地址'
+    )
+
+    class Meta:
+        db_table = 'subdomain_ip_association'
+        verbose_name = '子域名-IP关联'
+        verbose_name_plural = '子域名-IP关联'
+        indexes = [
+            models.Index(fields=['subdomain']),
+            models.Index(fields=['ip_address']),
+        ]
+        constraints = [
+            # 唯一约束：一个子域名-IP关联只有一条记录
+            models.UniqueConstraint(
+                fields=['subdomain', 'ip_address'],
+                name='unique_subdomain_ip'
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.subdomain.name} -> {self.ip_address.ip}'
 
 

@@ -1,5 +1,4 @@
 import logging
-from dataclasses import dataclass
 from typing import List, Iterator
 
 from django.db import transaction, IntegrityError, OperationalError, DatabaseError
@@ -7,17 +6,10 @@ from django.utils import timezone
 from typing import Tuple, Dict
 
 from apps.asset.models.asset_models import Subdomain
+from apps.asset.dtos.subdomain_dto import SubdomainDTO
 from apps.common.decorators import auto_ensure_db_connection
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class SubdomainDTO:
-    """子域名数据传输对象"""
-    name: str
-    target_id: int
-    scan_id: int = None  # 扫描任务ID（可选）
 
 
 @auto_ensure_db_connection
@@ -45,9 +37,6 @@ class DjangoSubdomainRepository:
                     name=item.name,
                     scan_id=item.scan_id,
                     target_id=item.target_id,
-                    cname=[],  # 显式设置为空列表，避免 ArrayField 类型不匹配
-                    is_cdn=False,  # 设置默认值
-                    cdn_name='',  # 设置默认值
                 )
                 for item in items
             ]
@@ -153,6 +142,30 @@ class DjangoSubdomainRepository:
             QuerySet: 子域名查询集
         """
         return Subdomain.objects.all()
+    
+    def get_subdomains_info(self, subdomain_ids: List[int]) -> Tuple[List[int], List[str]]:
+        """
+        获取子域名信息（ID 和名称）
+        
+        Args:
+            subdomain_ids: 子域名 ID 列表
+        
+        Returns:
+            (存在的ID列表, 子域名名称列表)
+        """
+        subdomains = list(
+            Subdomain.objects
+            .filter(id__in=subdomain_ids)
+            .values_list('id', 'name')
+        )
+        
+        if not subdomains:
+            return [], []
+        
+        existing_ids = [s[0] for s in subdomains]
+        subdomain_names = [s[1] for s in subdomains]
+        
+        return existing_ids, subdomain_names
     
     def soft_delete_by_ids(self, subdomain_ids: List[int]) -> int:
         """

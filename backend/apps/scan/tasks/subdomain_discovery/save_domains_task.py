@@ -12,7 +12,7 @@ from typing import List
 from django.db import IntegrityError, OperationalError, DatabaseError
 
 from apps.asset.repositories.django_subdomain_repository import SubdomainDTO
-from apps.asset.services.scan_result_service import ScanResultService
+from apps.asset.services.snapshot_service import SnapshotService
 from apps.common.validators import validate_domain
 
 logger = logging.getLogger(__name__)
@@ -168,7 +168,7 @@ def _save_batch_with_retry(batch: List[str], scan_id: int, target_id: int, batch
     # 调试日志：记录传入的参数
     logger.info(f"[调试] _save_batch_with_retry 接收的参数: scan_id={scan_id}, target_id={target_id}, batch_size={len(batch)}")
     
-    service = ScanResultService()
+    service = SnapshotService()
     items = [
         SubdomainDTO(
             name=domain,
@@ -185,7 +185,7 @@ def _save_batch_with_retry(batch: List[str], scan_id: int, target_id: int, batch
     
     for attempt in range(max_retries):
         try:
-            service.save_subdomain_scan_results(items)
+            service.save_subdomain_snapshots(items)
             logger.debug("批次 %d: 已处理 %d 个域名", batch_num, len(batch))
             return {'success': True}
         

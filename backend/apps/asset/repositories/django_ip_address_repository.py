@@ -17,11 +17,16 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class IPAddressDTO:
-    """IP地址数据传输对象"""
-    subdomain_id: int
+    """
+    IP地址数据传输对象
+    
+    只包含 IP 自身的信息，不包含关联关系。
+    关联关系通过 SubdomainIPAssociationDTO 管理。
+    """
     ip: str
-    target_id: int
-    scan_id: int = None  # 扫描任务ID（可选）
+    protocol_version: str = ''
+    is_private: bool = False
+    reverse_pointer: str = ''
 
 
 
@@ -32,6 +37,9 @@ class DjangoIPAddressRepository:
     def bulk_create_ignore_conflicts(self, items: List[IPAddressDTO]) -> None:
         """
         批量创建 IPAddress，忽略冲突
+        
+        注意：此方法只创建 IP 记录，不处理与 Subdomain 的关联关系。
+        关联关系需要通过 SubdomainIPAssociationRepository 单独创建。
         
         Args:
             items: IPAddress DTO 列表
@@ -48,16 +56,16 @@ class DjangoIPAddressRepository:
             # 转换为 Django 模型对象
             ip_objects = [
                 IPAddress(
-                    subdomain_id=item.subdomain_id,
                     ip=item.ip,
-                    target_id=item.target_id,
-                    scan_id=item.scan_id
+                    protocol_version=item.protocol_version,
+                    is_private=item.is_private,
+                    reverse_pointer=item.reverse_pointer
                 )
                 for item in items
             ]
 
             with transaction.atomic():
-                # 批量插入，忽略冲突
+                # 批量插入，忽略冲突（基于 ip 的唯一约束）
                 IPAddress.objects.bulk_create(
                     ip_objects,
                     ignore_conflicts=True,
@@ -95,28 +103,22 @@ class DjangoIPAddressRepository:
             )
             raise
     
-    def get_by_subdomain_and_ips(
-        self, 
-        subdomain_ids: set, 
-        ip_addrs: set
-    ) -> dict:
+    def get_by_ips(self, ip_addrs: set) -> dict:
         """
-        根据 subdomain_id 和 ip 批量查询 IPAddress
+        根据 IP 地址字符串批量查询 IPAddress 对象
         
         Args:
-            subdomain_ids: subdomain ID 集合
-            ip_addrs: IP 地址集合
+            ip_addrs: IP 地址字符串集合（如 {"192.168.1.1", "10.0.0.1"}）
             
         Returns:
-            dict: {(subdomain_id, ip): IPAddress对象}
+            dict: {ip字符串: IPAddress对象} 的映射
         """
         ip_objects = IPAddress.objects.filter(
-            subdomain_id__in=subdomain_ids,
             ip__in=ip_addrs
-        ).only('id', 'subdomain_id', 'ip')
+        ).only('id', 'ip')
         
         return {
-            (ip_obj.subdomain_id, ip_obj.ip): ip_obj
+            ip_obj.ip: ip_obj
             for ip_obj in ip_objects
         }
     

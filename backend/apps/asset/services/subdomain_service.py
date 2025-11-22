@@ -2,7 +2,6 @@ import logging
 from typing import Tuple, List, Dict
 
 from apps.asset.repositories.django_subdomain_repository import DjangoSubdomainRepository, SubdomainDTO
-from apps.asset.models.asset_models import Subdomain
 
 logger = logging.getLogger(__name__)
 
@@ -62,19 +61,7 @@ class SubdomainService:
         Returns:
             (存在的ID列表, 子域名名称列表)
         """
-        subdomains = list(
-            Subdomain.objects
-            .filter(id__in=subdomain_ids)
-            .values_list('id', 'name')
-        )
-        
-        if not subdomains:
-            return [], []
-        
-        existing_ids = [s[0] for s in subdomains]
-        subdomain_names = [s[1] for s in subdomains]
-        
-        return existing_ids, subdomain_names
+        return self.repo.get_subdomains_info(subdomain_ids)
     
     def get_all(self):
         """

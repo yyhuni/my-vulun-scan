@@ -162,27 +162,18 @@ class IPAddressService:
         logger.debug("批量创建 IP 地址 - 数量: %d", len(items))
         return self.repo.bulk_create_ignore_conflicts(items)
     
-    def get_by_subdomain_and_ips(
-        self, 
-        subdomain_ids: set, 
-        ip_addrs: set
-    ) -> dict:
+    def get_by_ips(self, ip_addrs: set) -> dict:
         """
-        根据子域名ID集合和IP地址集合批量查询 IP 地址
+        根据 IP 地址字符串批量查询 IPAddress 对象
         
         Args:
-            subdomain_ids: 子域名ID集合
-            ip_addrs: IP地址集合
+            ip_addrs: IP 地址字符串集合（如 {"192.168.1.1", "10.0.0.1"}）
         
         Returns:
-            dict: {(subdomain_id, ip): IPAddress对象}
+            dict: {ip字符串: IPAddress对象} 的映射，包含 ID 等完整信息
         """
-        logger.debug(
-            "批量查询 IP 地址 - 子域名数: %d, IP数: %d",
-            len(subdomain_ids),
-            len(ip_addrs)
-        )
-        return self.repo.get_by_subdomain_and_ips(subdomain_ids, ip_addrs)
+        logger.debug("批量查询 IP 地址对象 - IP数: %d", len(ip_addrs))
+        return self.repo.get_by_ips(ip_addrs)
 
 
 __all__ = ['IPAddressService']
