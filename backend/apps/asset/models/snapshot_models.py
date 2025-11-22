@@ -115,7 +115,11 @@ class IPAddressSnapshot(models.Model):
     
 
 class WebsiteSnapshot(models.Model):
-    """网站快照"""
+    """
+    网站快照
+    
+    记录：某次扫描中，某个子域名发现的网站
+    """
 
     id = models.AutoField(primary_key=True)
     scan = models.ForeignKey(
@@ -123,6 +127,12 @@ class WebsiteSnapshot(models.Model):
         on_delete=models.CASCADE,
         related_name='website_snapshots',
         help_text='所属的扫描任务'
+    )
+    subdomain = models.ForeignKey(
+        'Subdomain',
+        on_delete=models.CASCADE,
+        related_name='website_snapshots',
+        help_text='所属子域名'
     )
     
     # 扫描结果数据
@@ -150,13 +160,15 @@ class WebsiteSnapshot(models.Model):
         ordering = ['-discovered_at']
         indexes = [
             models.Index(fields=['scan']),
+            models.Index(fields=['subdomain']),
+            models.Index(fields=['scan', 'subdomain']),  # 组合查询
             models.Index(fields=['url']),
             models.Index(fields=['-discovered_at']),
         ]
         constraints = [
-            # 唯一约束：同一次扫描中，同一个URL只能记录一次
+            # 唯一约束：同一次扫描中，同一个子域名的同一个URL只能记录一次
             models.UniqueConstraint(
-                fields=['scan', 'url'],
+                fields=['scan', 'subdomain', 'url'],
                 name='unique_website_per_scan_snapshot'
             ),
         ]
@@ -166,7 +178,12 @@ class WebsiteSnapshot(models.Model):
 
 
 class PortSnapshot(models.Model):
-    """端口快照"""
+    """
+    端口快照（去重存储）
+    
+    记录：某次扫描中，某个 IP 上发现的端口
+    通过 SubdomainPortSnapshotAssociation 中间表与 SubdomainSnapshot 建立多对多关系
+    """
 
     id = models.AutoField(primary_key=True)
     scan = models.ForeignKey(
@@ -174,6 +191,12 @@ class PortSnapshot(models.Model):
         on_delete=models.CASCADE,
         related_name='port_snapshots',
         help_text='所属的扫描任务'
+    )
+    ip_snapshot = models.ForeignKey(
+        'IPAddressSnapshot',
+        on_delete=models.CASCADE,
+        related_name='port_snapshots',
+        help_text='所属IP地址快照'
     )
     
     # 扫描结果数据
@@ -186,6 +209,15 @@ class PortSnapshot(models.Model):
     service = models.CharField(max_length=100, blank=True, default='', help_text='服务名称')
     version = models.CharField(max_length=200, blank=True, default='', help_text='服务版本')
     discovered_at = models.DateTimeField(auto_now_add=True, help_text='发现时间')
+    
+    # ==================== 多对多关系 ====================
+    subdomain_snapshots = models.ManyToManyField(
+        'SubdomainSnapshot',
+        through='SubdomainPortSnapshotAssociation',
+        related_name='port_snapshots',
+        blank=True,
+        help_text='关联的子域名快照（多对多关系）'
+    )
 
     class Meta:
         db_table = 'port_snapshot'
@@ -194,8 +226,16 @@ class PortSnapshot(models.Model):
         ordering = ['-discovered_at']
         indexes = [
             models.Index(fields=['scan']),
+            models.Index(fields=['ip_snapshot', 'number']),     # IP+端口查询
             models.Index(fields=['number']),
             models.Index(fields=['-discovered_at']),
+        ]
+        constraints = [
+            # 唯一约束：同一次扫描中，IP快照+端口号唯一（去重存储）
+            models.UniqueConstraint(
+                fields=['scan', 'ip_snapshot', 'number'],
+                name='unique_port_per_scan_snapshot'
+            ),
         ]
 
     def __str__(self):
@@ -203,7 +243,11 @@ class PortSnapshot(models.Model):
 
 
 class DirectorySnapshot(models.Model):
-    """目录快照"""
+    """
+    目录快照
+    
+    记录：某次扫描中，某个网站发现的目录
+    """
 
     id = models.AutoField(primary_key=True)
     scan = models.ForeignKey(
@@ -211,6 +255,18 @@ class DirectorySnapshot(models.Model):
         on_delete=models.CASCADE,
         related_name='directory_snapshots',
         help_text='所属的扫描任务'
+    )
+    website = models.ForeignKey(
+        'WebSite',
+        on_delete=models.CASCADE,
+        related_name='directory_snapshots',
+        help_text='所属网站'
+    )
+    subdomain = models.ForeignKey(
+        'Subdomain',
+        on_delete=models.CASCADE,
+        related_name='directory_snapshots',
+        help_text='所属子域名（冗余字段，用于快速查询）'
     )
     
     # 扫描结果数据
@@ -227,13 +283,16 @@ class DirectorySnapshot(models.Model):
         ordering = ['-discovered_at']
         indexes = [
             models.Index(fields=['scan']),
+            models.Index(fields=['website']),
+            models.Index(fields=['subdomain']),
+            models.Index(fields=['scan', 'website']),  # 组合查询
             models.Index(fields=['url']),
             models.Index(fields=['-discovered_at']),
         ]
         constraints = [
-            # 唯一约束：同一次扫描中，同一个目录URL只能记录一次
+            # 唯一约束：同一次扫描中，同一个网站的同一个目录URL只能记录一次
             models.UniqueConstraint(
-                fields=['scan', 'url'],
+                fields=['scan', 'website', 'url'],
                 name='unique_directory_per_scan_snapshot'
             ),
         ]
@@ -259,9 +318,20 @@ class SubdomainIPSnapshotAssociation(models.Model):
         'IPAddressSnapshot',
         on_delete=models.CASCADE,
         related_name='subdomain_associations',
-        help_text='关联的IP快照'
+        help_text='关联的IP地址快照'
     )
-
+    
+    # ==================== 冗余字段（性能优化）====================
+    subdomain_name = models.CharField(
+        max_length=1000,
+        blank=False,
+        help_text='子域名（冗余字段，必须与 subdomain_snapshot.name 保持一致）'
+    )
+    ip = models.GenericIPAddressField(
+        blank=False,
+        help_text='IP地址字符串（冗余字段，必须与 ip_snapshot.ip 保持一致）'
+    )
+    
     # ==================== 扫描上下文字段 ====================
     scan = models.ForeignKey(
         'scan.Scan',
@@ -296,13 +366,94 @@ class SubdomainIPSnapshotAssociation(models.Model):
             models.Index(fields=['-discovered_at']),
             models.Index(fields=['subdomain_snapshot']),
             models.Index(fields=['ip_snapshot']),
+            models.Index(fields=['subdomain_name']),                # 快速搜索子域名
+            models.Index(fields=['subdomain_snapshot', 'ip']),      # 快速查询子域名的IP
+            models.Index(fields=['subdomain_name', 'ip']),          # 覆盖查询
         ]
         constraints = [
+            # 唯一约束：同一次扫描中，同一个子域名-IP关联只记录一次
             models.UniqueConstraint(
-                fields=['subdomain_snapshot', 'ip_snapshot'],
-                name='unique_subdomain_ip_snapshot'
+                fields=['scan', 'subdomain_snapshot', 'ip_snapshot'],
+                name='unique_subdomain_ip_per_scan_snapshot'
             ),
         ]
 
     def __str__(self):
-        return f'{self.subdomain_snapshot.name} -> {self.ip_snapshot.ip}'
+        return f'{self.subdomain_name} -> {self.ip}'
+
+
+class SubdomainPortSnapshotAssociation(models.Model):
+    """
+    子域名-端口快照关联表（多对多中间表）
+    
+    记录在快照中，子域名和端口之间的关联关系。
+    """
+    
+    subdomain_snapshot = models.ForeignKey(
+        'SubdomainSnapshot',
+        on_delete=models.CASCADE,
+        related_name='port_associations',
+        help_text='关联的子域名快照'
+    )
+    port_snapshot = models.ForeignKey(
+        'PortSnapshot',
+        on_delete=models.CASCADE,
+        related_name='subdomain_associations',
+        help_text='关联的端口快照'
+    )
+    
+    # ==================== 扫描上下文字段 ====================
+    scan = models.ForeignKey(
+        'scan.Scan',
+        on_delete=models.CASCADE,
+        related_name='subdomain_port_associations',
+        null=True,
+        blank=True,
+        help_text='发现此关联的扫描任务（冗余字段，用于快速查询）'
+    )
+    
+    # ==================== 冗余字段（性能优化）====================
+    subdomain_name = models.CharField(
+        max_length=1000,
+        blank=False,
+        help_text='子域名（冗余字段，必须与 subdomain_snapshot.name 保持一致）'
+    )
+    port_number = models.IntegerField(
+        blank=False,
+        help_text='端口号（冗余字段，必须与 port_snapshot.number 保持一致）'
+    )
+    ip = models.GenericIPAddressField(
+        blank=False,
+        help_text='IP地址字符串（冗余字段，必须与 port_snapshot.ip_snapshot.ip 保持一致）'
+    )
+    
+    # ==================== 时间字段 ====================
+    discovered_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text='发现此关联的时间'
+    )
+
+    class Meta:
+        db_table = 'subdomain_port_snapshot_association'
+        verbose_name = '子域名-端口快照关联'
+        verbose_name_plural = '子域名-端口快照关联'
+        ordering = ['-discovered_at']
+        indexes = [
+            models.Index(fields=['-discovered_at']),
+            models.Index(fields=['subdomain_snapshot']),
+            models.Index(fields=['port_snapshot']),
+            models.Index(fields=['scan']),
+            models.Index(fields=['subdomain_name']),                         # 快速搜索子域名
+            models.Index(fields=['subdomain_snapshot', 'port_number']),      # 快速查询子域名的端口号
+            models.Index(fields=['subdomain_snapshot', 'ip']),               # 快速查询子域名的IP
+            models.Index(fields=['subdomain_name', 'port_number']),          # 覆盖查询
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['scan', 'subdomain_snapshot', 'port_snapshot'],
+                name='unique_subdomain_port_per_scan_snapshot'
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.subdomain_name} -> {self.ip}:{self.port_number}'
