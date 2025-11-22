@@ -13,13 +13,13 @@ class SubdomainSnapshotsService:
     def __init__(self):
         self.subdomain_snapshot_repo = DjangoSubdomainSnapshotRepository()
     
-    def save_subdomain_snapshots(self, items: List[SubdomainSnapshotDTO]) -> None:
+    def save_and_sync(self, items: List[SubdomainSnapshotDTO]) -> None:
         """
-        保存子域名快照（统一入口）
+        保存子域名快照并同步到资产表（统一入口）
         
         流程：
         1. 保存到快照表（完整记录，包含 scan_id）
-        2. 保存到资产表（去重，不包含 scan_id）
+        2. 同步到资产表（去重，不包含 scan_id）
         
         Args:
             items: 子域名快照 DTO 列表（包含 target_id）

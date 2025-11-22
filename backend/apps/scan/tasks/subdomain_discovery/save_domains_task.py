@@ -215,7 +215,7 @@ def _save_batch_with_retry(
     for attempt in range(max_retries):
         try:
             # DTO 已包含 target_id，无需额外传参
-            services.snapshot.save_subdomain_snapshots(items)
+            services.snapshot.save_and_sync(items)
             logger.debug("批次 %d: 已处理 %d 个域名", batch_num, len(batch))
             return {'success': True}
         
