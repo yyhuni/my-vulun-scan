@@ -12,7 +12,7 @@ from typing import List
 from dataclasses import dataclass
 from django.db import IntegrityError, OperationalError, DatabaseError
 
-from apps.asset.services import SnapshotService
+from apps.asset.services.snapshot import SubdomainSnapshotsService
 from apps.common.validators import validate_domain
 
 logger = logging.getLogger(__name__)
@@ -25,13 +25,13 @@ class ServiceSet:
     
     封装所有需要的 Service 实例，便于测试和管理。
     """
-    snapshot: SnapshotService
+    snapshot: SubdomainSnapshotsService
     
     @classmethod
     def create_default(cls) -> 'ServiceSet':
         """创建默认的 Service 集合"""
         return cls(
-            snapshot=SnapshotService()
+            snapshot=SubdomainSnapshotsService()
         )
 
 
