@@ -4,10 +4,9 @@
 from .asset_models import (
     Subdomain,
     WebSite,
-    IPAddress,
-    Port,
     Endpoint,
     Directory,
+    HostPortAssociation,
 )
 
 # 快照模型
@@ -23,10 +22,9 @@ __all__ = [
     # 业务模型
     'Subdomain',
     'WebSite', 
-    'IPAddress',
-    'Port',
     'Endpoint',
     'Directory',
+    'HostPortAssociation',
     # 快照模型
     'SubdomainSnapshot',
     'WebsiteSnapshot', 
