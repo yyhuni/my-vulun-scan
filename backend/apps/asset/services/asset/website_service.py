@@ -44,7 +44,11 @@ class WebSiteService:
         
         Args:
             website_dtos: WebSiteDTO 列表
+        
+        Note:
+            使用 ignore_conflicts 策略，重复记录会被跳过
         """
+        logger.debug("批量创建网站 - 数量: %d", len(website_dtos))
         return self.repo.bulk_create_ignore_conflicts(website_dtos)
     
     # ==================== 查询操作 ====================
@@ -149,19 +153,6 @@ class WebSiteService:
         """
         logger.debug("获取所有网站")
         return self.repo.get_all()
-    
-    def bulk_create_ignore_conflicts(self, items: List[WebSiteDTO]) -> None:
-        """
-        批量创建网站，忽略冲突
-        
-        Args:
-            items: 网站 DTO 列表
-        
-        Note:
-            使用 ignore_conflicts 策略，重复记录会被跳过
-        """
-        logger.debug("批量创建网站 - 数量: %d", len(items))
-        return self.repo.bulk_create_ignore_conflicts(items)
 
 
 __all__ = ['WebSiteService']

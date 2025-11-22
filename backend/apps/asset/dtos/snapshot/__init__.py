@@ -2,8 +2,10 @@
 
 from .subdomain_snapshot_dto import SubdomainSnapshotDTO
 from .host_port_mapping_snapshot_dto import HostPortMappingSnapshotDTO
+from .website_snapshot_dto import WebsiteSnapshotDTO
 
 __all__ = [
     'SubdomainSnapshotDTO',
     'HostPortMappingSnapshotDTO',
+    'WebsiteSnapshotDTO',
 ]

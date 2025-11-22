@@ -2,8 +2,10 @@
 
 from .subdomain_snapshots_service import SubdomainSnapshotsService
 from .host_port_mapping_snapshots_service import HostPortMappingSnapshotsService
+from .website_snapshots_service import WebsiteSnapshotsService
 
 __all__ = [
     'SubdomainSnapshotsService',
     'HostPortMappingSnapshotsService',
+    'WebsiteSnapshotsService',
 ]

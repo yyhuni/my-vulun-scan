@@ -26,7 +26,7 @@ import subprocess
 import time
 from pathlib import Path
 from prefect import task
-from typing import Generator, Optional, Dict, Any
+from typing import Generator, Optional, Dict, Any, TYPE_CHECKING
 from django.db import IntegrityError, OperationalError, DatabaseError
 from cachetools import LRUCache
 from dataclasses import dataclass
@@ -34,10 +34,14 @@ from urllib.parse import urlparse, urlunparse
 from dateutil.parser import parse as parse_datetime
 from psycopg2 import InterfaceError
 
-from apps.asset.services import SubdomainService, WebSiteService
-from apps.asset.dtos import WebSiteDTO
+from apps.asset.services import SubdomainService
+from apps.asset.dtos.snapshot import WebsiteSnapshotDTO
 
 from apps.scan.utils import execute_stream
+
+# 类型检查时导入，运行时不导入（避免循环依赖）
+if TYPE_CHECKING:
+    from apps.asset.services.snapshot import WebsiteSnapshotsService
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +49,24 @@ logger = logging.getLogger(__name__)
 # 最大缓存条目数：10000 条域名记录
 # 优点：自动淘汰最少使用的条目，内存占用可控
 MAX_SUBDOMAIN_CACHE_SIZE = 10000
+
+
+@dataclass
+class ServiceSet:
+    """
+    Service 集合，用于依赖注入
+    
+    提供所有需要的 Service 实例，便于测试时注入 Mock 对象
+    """
+    snapshot: "WebsiteSnapshotsService"
+    
+    @classmethod
+    def create_default(cls) -> "ServiceSet":
+        """创建默认的 Service 集合"""
+        from apps.asset.services.snapshot import WebsiteSnapshotsService
+        return cls(
+            snapshot=WebsiteSnapshotsService()
+        )
 
 
 def normalize_url(url: str) -> str:
@@ -288,14 +310,15 @@ def _save_batch(
     services: ServiceSet
 ) -> dict:
     """
-    保存一个批次的数据到数据库（使用 Service 层）
+    保存一个批次的数据到数据库（使用快照 Service）
     
     数据关系链：
-        Subdomain (已存在) → WebSite (待创建)
+        Subdomain (已存在) → WebsiteSnapshot (待创建) → WebSite (自动同步)
     
-    处理流程（2次数据库操作）：
-        1. 查询 Subdomain：根据域名批量查询（Service）
-        2. 创建 WebSite：批量插入站点记录，ignore_conflicts（Service，独立短事务）
+    处理流程：
+        1. 查询 Subdomain：根据域名批量查询（LRU缓存）
+        2. 构建 WebsiteSnapshotDTO：包含 scan_id 和 target_id
+        3. 调用快照 Service：save_and_sync() 自动保存快照并同步到资产表
     
     Args:
         batch: 数据批次，list of HttpxRecord
@@ -330,8 +353,7 @@ def _save_batch(
         }
     
     # 使用注入的 Service 实例
-    subdomain_service = services.subdomain
-    website_service = services.website
+    subdomain_service = SubdomainService()
     
     # 统计变量
     skipped_no_subdomain = 0
@@ -366,8 +388,8 @@ def _save_batch(
             if subdomain is not None:
                 subdomain_map[h] = subdomain
     
-    # ========== Step 2: 准备 WebSite 数据（内存操作，无需事务）==========
-    website_items = []
+    # ========== Step 2: 准备 WebsiteSnapshot 数据（内存操作，无需事务）==========
+    snapshot_items = []
     
     for record in batch:
         # 跳过失败的请求
@@ -395,32 +417,31 @@ def _save_batch(
         # 如果使用 record.input，两条记录保留原始输入，不会冲突
         normalized_url = normalize_url(record.input)
         
-        # 创建 WebSite DTO
-        website_dto = WebSiteDTO(
+        # 创建 WebsiteSnapshot DTO
+        snapshot_dto = WebsiteSnapshotDTO(
             scan_id=scan_id,
-            target_id=target_id,
+            target_id=target_id,  # 冗余字段，用于同步到资产表
             subdomain_id=subdomain.id,
             url=normalized_url,  # 保存原始输入 URL（归一化后）
             location=record.location,  # location 字段保存重定向信息
             title=record.title[:1000] if record.title else '',
-            webserver=record.webserver[:200] if record.webserver else '',
+            web_server=record.webserver[:200] if record.webserver else '',
             body_preview=record.body_preview[:1000] if record.body_preview else '',
             content_type=record.content_type[:200] if record.content_type else '',
             tech=record.tech if isinstance(record.tech, list) else [],
-            status_code=record.status_code,
+            status=record.status_code,
             content_length=record.content_length,
-            vhost=record.vhost,
-            created_at=created_at
+            vhost=record.vhost
         )
         
-        website_items.append(website_dto)
+        snapshot_items.append(snapshot_dto)
     
-    # ========== Step 3: 批量创建 WebSite（Service 内部独立短事务）==========
-    if website_items:
-        website_service.bulk_create_ignore_conflicts(website_items)
+    # ========== Step 3: 保存快照并同步到资产表（通过快照 Service）==========
+    if snapshot_items:
+        services.snapshot.save_and_sync(snapshot_items)
     
     return {
-        'created_websites': len(website_items),
+        'created_websites': len(snapshot_items),
         'skipped_no_subdomain': skipped_no_subdomain,
         'skipped_failed': skipped_failed
     }
