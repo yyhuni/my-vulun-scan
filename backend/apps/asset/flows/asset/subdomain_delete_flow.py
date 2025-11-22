@@ -23,16 +23,12 @@ logger = logging.getLogger(__name__)
     task_runner=ConcurrentTaskRunner(),
     log_prints=True
 )
-def delete_subdomains_flow(
-    subdomain_ids: List[int],
-    subdomain_names: List[str]
-) -> dict:
+def delete_subdomains_flow(subdomain_ids: List[int]) -> dict:
     """
     批量删除子域名的 Prefect Flow
     
     Args:
         subdomain_ids: 子域名 ID 列表
-        subdomain_names: 子域名名称列表
     
     Returns:
         {
@@ -58,13 +54,10 @@ def delete_subdomains_flow(
     failed = 0
     
     # 为每个子域名创建并发任务
-    for subdomain_id, subdomain_name in zip(subdomain_ids, subdomain_names):
+    for subdomain_id in subdomain_ids:
         try:
             # 提交删除任务（异步执行）
-            result = hard_delete_subdomain_task.submit(
-                subdomain_id=subdomain_id,
-                subdomain_name=subdomain_name
-            )
+            result = hard_delete_subdomain_task.submit(subdomain_id=subdomain_id)
             
             # 等待任务完成并获取结果
             task_result = result.result()
@@ -77,12 +70,11 @@ def delete_subdomains_flow(
             results.append(task_result)
             
         except Exception as e:
-            logger.error(f"❌ 删除子域名失败: {subdomain_name} (ID: {subdomain_id}) - {e}")
+            logger.error(f"❌ 删除子域名失败 (ID: {subdomain_id}) - {e}")
             failed += 1
             results.append({
                 'success': False,
                 'subdomain_id': subdomain_id,
-                'subdomain_name': subdomain_name,
                 'error': str(e)
             })
     

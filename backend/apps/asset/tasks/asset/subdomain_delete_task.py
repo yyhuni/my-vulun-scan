@@ -19,19 +19,17 @@ logger = logging.getLogger(__name__)
 
 
 @task(name="hard-delete-subdomain", retries=2, retry_delay_seconds=60)
-def hard_delete_subdomain_task(subdomain_id: int, subdomain_name: str) -> Dict:
+def hard_delete_subdomain_task(subdomain_id: int) -> Dict:
     """
     硬删除单个子域名及其关联数据（Prefect Task）
     
     Args:
         subdomain_id: 子域名ID
-        subdomain_name: 子域名名称
     
     Returns:
         删除结果字典 {
             'success': bool,
             'subdomain_id': int,
-            'subdomain_name': str,
             'deleted_count': int,
             'execution_time': float
         }
@@ -44,7 +42,7 @@ def hard_delete_subdomain_task(subdomain_id: int, subdomain_name: str) -> Dict:
         - 失败会自动重试，超过重试次数后抛出异常
     """
     import time
-    from apps.asset.services.subdomain_service import SubdomainService
+    from apps.asset.services import SubdomainService
     
     # 关闭旧的数据库连接（新Task需要新连接）
     close_old_connections()
@@ -52,7 +50,7 @@ def hard_delete_subdomain_task(subdomain_id: int, subdomain_name: str) -> Dict:
     start_time = time.time()
     
     try:
-        logger.info(f"🔵 开始删除子域名: {subdomain_name} (ID: {subdomain_id})")
+        logger.info(f"🔵 开始删除子域名 (ID: {subdomain_id})")
         logger.info(f"   策略: 数据库级 CASCADE 删除")
         
         # 调用Service层执行删除（使用数据库 CASCADE）
@@ -64,13 +62,12 @@ def hard_delete_subdomain_task(subdomain_id: int, subdomain_name: str) -> Dict:
         result = {
             'success': True,
             'subdomain_id': subdomain_id,
-            'subdomain_name': subdomain_name,
             'deleted_count': deleted_count,
             'execution_time': round(execution_time, 2)
         }
         
         logger.info(
-            f"✓ 删除完成: {subdomain_name} - 删除 {deleted_count:,} 条记录，耗时 {execution_time:.2f}s"
+            f"✓ 删除完成 (ID: {subdomain_id}) - 删除 {deleted_count:,} 条记录，耗时 {execution_time:.2f}s"
         )
         
         return result
@@ -78,14 +75,15 @@ def hard_delete_subdomain_task(subdomain_id: int, subdomain_name: str) -> Dict:
     except Exception as e:
         execution_time = time.time() - start_time
         logger.error(
-            f"❌ 删除失败: {subdomain_name} - 错误: {e}, 耗时 {execution_time:.2f}s", 
+            f"❌ 删除失败 (ID: {subdomain_id}) - {e}",
             exc_info=True
         )
-        raise
-        
-    finally:
-        # 清理数据库连接
-        close_old_connections()
+        return {
+            'success': False,
+            'subdomain_id': subdomain_id,
+            'error': str(e),
+            'execution_time': round(execution_time, 2)
+        }
 
 
 # 导出接口

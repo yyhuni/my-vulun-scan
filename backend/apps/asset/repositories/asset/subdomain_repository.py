@@ -142,30 +142,6 @@ class DjangoSubdomainRepository:
         """
         return Subdomain.objects.all()
     
-    def get_subdomains_info(self, subdomain_ids: List[int]) -> Tuple[List[int], List[str]]:
-        """
-        获取子域名信息（ID 和名称）
-        
-        Args:
-            subdomain_ids: 子域名 ID 列表
-        
-        Returns:
-            (存在的ID列表, 子域名名称列表)
-        """
-        subdomains = list(
-            Subdomain.objects
-            .filter(id__in=subdomain_ids)
-            .values_list('id', 'name')
-        )
-        
-        if not subdomains:
-            return [], []
-        
-        existing_ids = [s[0] for s in subdomains]
-        subdomain_names = [s[1] for s in subdomains]
-        
-        return existing_ids, subdomain_names
-    
     def soft_delete_by_ids(self, subdomain_ids: List[int]) -> int:
         """
         根据 ID 列表批量软删除子域名

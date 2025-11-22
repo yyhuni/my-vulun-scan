@@ -52,18 +52,6 @@ class SubdomainService:
     
     # ==================== 查询操作 ====================
     
-    def get_subdomains_info(self, subdomain_ids: List[int]) -> Tuple[List[int], List[str]]:
-        """
-        获取子域名信息（ID 和名称）
-        
-        Args:
-            subdomain_ids: 子域名 ID 列表
-        
-        Returns:
-            (存在的ID列表, 子域名名称列表)
-        """
-        return self.repo.get_subdomains_info(subdomain_ids)
-    
     def get_all(self):
         """
         获取所有子域名
@@ -86,7 +74,6 @@ class SubdomainService:
         Returns:
             {
                 'soft_deleted_count': int,
-                'subdomain_names': List[str],
                 'hard_delete_scheduled': bool
             }
         
@@ -98,27 +85,23 @@ class SubdomainService:
             - 阶段 2：硬删除（后台），真正删除数据和关联
         """
         
-        # 1. 获取子域名信息
-        existing_ids, subdomain_names = self.get_subdomains_info(subdomain_ids)
+        # 1. 软删除（如果 ID 不存在，update 返回 0）
+        soft_count = self.soft_delete_subdomains(subdomain_ids)
         
-        if not existing_ids:
+        # 2. 检查是否有记录被删除
+        if soft_count == 0:
             raise ValueError("未找到要删除的子域名")
         
-        # 2. 软删除
-        soft_count = self.soft_delete_subdomains(existing_ids)
         logger.info(f"✓ 软删除完成: {soft_count} 个子域名")
         
         # 3. 使用 Prefect Deployment 异步提交删除任务
-        logger.info(f"🔵 提交 Prefect 删除任务 - 子域名: {', '.join(subdomain_names[:5])}{'...' if len(subdomain_names) > 5 else ''}")
+        logger.info(f"🔵 提交 Prefect 删除任务 - 子域名数量: {soft_count}")
         
         try:
             from asgiref.sync import async_to_sync
             
-            # 准备 Flow 参数
-            flow_kwargs = {
-                'subdomain_ids': existing_ids,
-                'subdomain_names': subdomain_names
-            }
+            # 准备 Flow 参数（只传递 ID）
+            flow_kwargs = {'subdomain_ids': subdomain_ids}
             
             # 使用 Prefect Client API 异步提交任务
             flow_run_id = async_to_sync(self._submit_delete_flow)(
@@ -135,7 +118,6 @@ class SubdomainService:
         
         return {
             'soft_deleted_count': soft_count,
-            'subdomain_names': subdomain_names,
             'hard_delete_scheduled': True
         }
     
