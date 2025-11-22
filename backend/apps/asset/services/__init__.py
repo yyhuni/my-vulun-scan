@@ -12,7 +12,7 @@ from .asset import (
 # 快照模块 Services
 from .snapshot import (
     SubdomainSnapshotsService,
-    IPSnapshotsService,
+    HostPortAssociationSnapshotsService,
 )
 
 __all__ = [
@@ -24,5 +24,5 @@ __all__ = [
     'PortService',
     # 快照模块
     'SubdomainSnapshotsService',
-    'IPSnapshotsService',
+    'HostPortAssociationSnapshotsService',
 ]

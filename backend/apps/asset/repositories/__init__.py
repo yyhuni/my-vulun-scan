@@ -12,8 +12,7 @@ from .asset import (
 # 快照模块 Repositories
 from .snapshot import (
     DjangoSubdomainSnapshotRepository,
-    DjangoIPAddressSnapshotRepository,
-    DjangoSubdomainIPSnapshotAssociationRepository,
+    DjangoHostPortAssociationSnapshotRepository,
 )
 
 __all__ = [
@@ -25,8 +24,7 @@ __all__ = [
     'DjangoPortRepository',
     # 快照模块
     'DjangoSubdomainSnapshotRepository',
-    'DjangoIPAddressSnapshotRepository',
-    'DjangoSubdomainIPSnapshotAssociationRepository',
+    'DjangoHostPortAssociationSnapshotRepository',
 ]
 
 

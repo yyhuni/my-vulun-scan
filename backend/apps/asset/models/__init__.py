@@ -14,10 +14,8 @@ from .asset_models import (
 from .snapshot_models import (
     SubdomainSnapshot,
     WebsiteSnapshot,
-    PortSnapshot,
     DirectorySnapshot,
-    IPAddressSnapshot,
-    SubdomainIPSnapshotAssociation,
+    HostPortAssociationSnapshot,
 )
 
 # 导出所有模型供外部导入
@@ -32,8 +30,6 @@ __all__ = [
     # 快照模型
     'SubdomainSnapshot',
     'WebsiteSnapshot', 
-    'PortSnapshot',
     'DirectorySnapshot',
-    'IPAddressSnapshot',
-    'SubdomainIPSnapshotAssociation',
+    'HostPortAssociationSnapshot',
 ]
