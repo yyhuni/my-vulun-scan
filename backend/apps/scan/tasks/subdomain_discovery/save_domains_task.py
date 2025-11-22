@@ -9,13 +9,30 @@ import time
 from pathlib import Path
 from prefect import task
 from typing import List
+from dataclasses import dataclass
 from django.db import IntegrityError, OperationalError, DatabaseError
 
-from apps.asset.dtos import SubdomainDTO
-from apps.asset.services.snapshot_service import SnapshotService
+from apps.asset.services import SnapshotService
 from apps.common.validators import validate_domain
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ServiceSet:
+    """
+    Service 集合，用于依赖注入
+    
+    封装所有需要的 Service 实例，便于测试和管理。
+    """
+    snapshot: SnapshotService
+    
+    @classmethod
+    def create_default(cls) -> 'ServiceSet':
+        """创建默认的 Service 集合"""
+        return cls(
+            snapshot=SnapshotService()
+        )
 
 
 @task(
@@ -75,6 +92,9 @@ def save_domains_task(
     failed_batches = []  # 记录失败的批次
     total_domains = 0  # 总域名数
     
+    # 初始化 Service 集合（依赖注入）
+    services = ServiceSet.create_default()
+    
     try:
         # 流式读取并分批保存
         batch = []
@@ -97,7 +117,7 @@ def save_domains_task(
                 # 达到批次大小，执行保存
                 if len(batch) >= batch_size:
                     batch_num += 1
-                    result = _save_batch_with_retry(batch, scan_id, target_id, batch_num)
+                    result = _save_batch_with_retry(batch, scan_id, target_id, batch_num, services)
                     if not result['success']:
                         failed_batches.append(batch_num)
                         logger.warning("批次 %d 保存失败，已记录", batch_num)
@@ -111,7 +131,7 @@ def save_domains_task(
             # 保存最后一批（可能不足 batch_size）
             if batch:
                 batch_num += 1
-                result = _save_batch_with_retry(batch, scan_id, target_id, batch_num)
+                result = _save_batch_with_retry(batch, scan_id, target_id, batch_num, services)
                 if not result['success']:
                     failed_batches.append(batch_num)
         
@@ -146,7 +166,14 @@ def save_domains_task(
         raise
 
 
-def _save_batch_with_retry(batch: List[str], scan_id: int, target_id: int, batch_num: int, max_retries: int = 3) -> dict:
+def _save_batch_with_retry(
+    batch: List[str], 
+    scan_id: int, 
+    target_id: int, 
+    batch_num: int, 
+    services: ServiceSet,
+    max_retries: int = 3
+) -> dict:
     """
     保存一个批次的域名（带重试机制）
     
@@ -155,6 +182,7 @@ def _save_batch_with_retry(batch: List[str], scan_id: int, target_id: int, batch
         scan_id: 扫描ID
         target_id: 目标ID
         batch_num: 批次编号
+        services: Service 集合（依赖注入）
         max_retries: 最大重试次数
     
     Returns:
@@ -168,13 +196,13 @@ def _save_batch_with_retry(batch: List[str], scan_id: int, target_id: int, batch
     # 调试日志：记录传入的参数
     logger.info(f"[调试] _save_batch_with_retry 接收的参数: scan_id={scan_id}, target_id={target_id}, batch_size={len(batch)}")
     
-    service = SnapshotService()
-    # 使用快照 DTO（包含 scan_id）
+    # 使用快照 DTO（包含完整的业务上下文）
     from apps.asset.dtos import SubdomainSnapshotDTO
     items = [
         SubdomainSnapshotDTO(
             name=domain,
-            scan_id=scan_id
+            scan_id=scan_id,
+            target_id=target_id  # 包含 target_id
         )
         for domain in batch
     ]
@@ -182,11 +210,12 @@ def _save_batch_with_retry(batch: List[str], scan_id: int, target_id: int, batch
     # 调试日志：记录第一个DTO的内容
     if items:
         first_item = items[0]
-        logger.info(f"[调试] 第一个 SubdomainSnapshotDTO: name={first_item.name}, scan_id={first_item.scan_id}")
+        logger.info(f"[调试] 第一个 SubdomainSnapshotDTO: name={first_item.name}, scan_id={first_item.scan_id}, target_id={first_item.target_id}")
     
     for attempt in range(max_retries):
         try:
-            service.save_subdomain_snapshots(items, target_id)
+            # DTO 已包含 target_id，无需额外传参
+            services.snapshot.save_subdomain_snapshots(items)
             logger.debug("批次 %d: 已处理 %d 个域名", batch_num, len(batch))
             return {'success': True}
         
