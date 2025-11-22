@@ -181,14 +181,6 @@ class WebSite(models.Model):
     """站点模型"""
 
     id = models.AutoField(primary_key=True)
-    scan = models.ForeignKey(
-        'scan.Scan',  # 使用字符串引用
-        on_delete=models.CASCADE,
-        related_name='websites',
-        null=True,
-        blank=True,
-        help_text='所属的扫描任务（冗余字段，用于快速查询）'
-    )
     target = models.ForeignKey(
         'targets.Target',  # 使用字符串引用
         on_delete=models.CASCADE,
@@ -274,7 +266,6 @@ class WebSite(models.Model):
             models.Index(fields=['-discovered_at']),
             models.Index(fields=['url']),  # URL索引，优化查询性能
             models.Index(fields=['target']),     # 优化从target_id快速查找下面的站点
-            models.Index(fields=['scan']),         # 优化从scan_id快速查找下面的站点
             models.Index(fields=['deleted_at', '-discovered_at']),  # 软删除 + 时间索引
         ]
         constraints = [

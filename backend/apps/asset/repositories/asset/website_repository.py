@@ -38,7 +38,6 @@ class DjangoWebSiteRepository:
             # 转换为 Django 模型对象
             website_objects = [
                 WebSite(
-                    scan_id=item.scan_id,
                     target_id=item.target_id,
                     subdomain_id=item.subdomain_id,
                     url=item.url,
@@ -58,16 +57,10 @@ class DjangoWebSiteRepository:
 
             with transaction.atomic():
                 # 批量插入或更新
-                # 如果URL和子域名已存在，则更新探测字段，但不更新 scan_id（保留原始扫描任务关联）
-                # 唯一约束：url + subdomain（对应模型中的 unique_url_subdomain 约束）
+                # 如果URL和子域名已存在，忽略冲突
                 WebSite.objects.bulk_create(
                     website_objects,
-                    update_conflicts=True,
-                    unique_fields=['url', 'subdomain'],  # 指定唯一字段，用于检测冲突
-                    update_fields=[
-                        'location', 'title', 'webserver', 'body_preview',
-                        'content_type', 'tech', 'status_code', 'content_length', 'vhost'
-                    ]
+                    ignore_conflicts=True
                 )
 
             logger.debug(f"成功处理 {len(items)} 条 WebSite 记录")

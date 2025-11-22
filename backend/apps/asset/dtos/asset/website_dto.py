@@ -9,7 +9,6 @@ class WebSiteDTO:
     """网站数据传输对象"""
     subdomain_id: int
     target_id: int
-    scan_id: int
     url: str
     title: str = ''
     status_code: Optional[int] = None
