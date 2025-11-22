@@ -27,7 +27,7 @@ class Subdomain(models.Model):
         help_text='所属的扫描目标（主关联字段，表示所属关系，不能为空）'
     )
     name = models.CharField(max_length=1000, help_text='子域名名称')
-    created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间，也就是首次发现时间')
+    discovered_at = models.DateTimeField(auto_now_add=True, help_text='首次发现时间')
     
     # ==================== 软删除字段 ====================
     deleted_at = models.DateTimeField(null=True, blank=True, db_index=True, help_text='删除时间（NULL表示未删除）')
@@ -40,13 +40,13 @@ class Subdomain(models.Model):
         db_table = 'subdomain'
         verbose_name = '子域名'
         verbose_name_plural = '子域名'
-        ordering = ['-created_at']
+        ordering = ['-discovered_at']
         indexes = [
-            models.Index(fields=['-created_at']),
+            models.Index(fields=['-discovered_at']),
             models.Index(fields=['name', 'target']),  # 复合索引，优化 get_by_names_and_target_id 批量查询
             models.Index(fields=['target']),     # 优化从target_id快速查找下面的子域名
             models.Index(fields=['name']),            # 优化从name快速查找子域名，搜索场景
-            models.Index(fields=['deleted_at', '-created_at']),  # 软删除 + 时间索引
+            models.Index(fields=['deleted_at', '-discovered_at']),  # 软删除 + 时间索引
         ]
         constraints = [
             # 部分唯一约束：只对未删除记录生效
@@ -97,7 +97,7 @@ class Endpoint(models.Model):
         # 默认就是 null=False, blank=False
         help_text='从 URL 提取的主机名（如 api.example.com 或 api.example.com:8080），用于快速查询和分组'
     )
-    created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
+    discovered_at = models.DateTimeField(auto_now_add=True, help_text='发现时间')
     content_length = models.IntegerField(
         null=True,
         blank=True,
@@ -153,14 +153,14 @@ class Endpoint(models.Model):
         db_table = 'endpoint'
         verbose_name = '端点'
         verbose_name_plural = '端点'
-        ordering = ['-created_at']
+        ordering = ['-discovered_at']
         indexes = [
-            models.Index(fields=['-created_at']),
+            models.Index(fields=['-discovered_at']),
             models.Index(fields=['website']),      # 优化主关联查询（website.endpoints.all()）
             models.Index(fields=['scan']),         # 优化从scan_id快速查找下面的端点（冗余字段）
             models.Index(fields=['target']),       # 优化从target_id快速查找下面的端点（冗余字段）
             models.Index(fields=['host']),         # 优化通过 host 查询端点
-            models.Index(fields=['deleted_at', '-created_at']),  # 软删除 + 时间索引
+            models.Index(fields=['deleted_at', '-discovered_at']),  # 软删除 + 时间索引
         ]
         constraints = [
             # 部分唯一约束：只对未删除记录生效
@@ -209,7 +209,7 @@ class WebSite(models.Model):
         default='',
         help_text='重定向地址（HTTP 3xx 响应头 Location）'
     )
-    created_at = models.DateTimeField(auto_now_add=True, help_text='扫描或探测时间')
+    discovered_at = models.DateTimeField(auto_now_add=True, help_text='发现时间')
     title = models.CharField(
         max_length=1000,
         blank=True,
@@ -267,13 +267,13 @@ class WebSite(models.Model):
         db_table = 'website'
         verbose_name = '站点'
         verbose_name_plural = '站点'
-        ordering = ['-created_at']
+        ordering = ['-discovered_at']
         indexes = [
-            models.Index(fields=['-created_at']),
+            models.Index(fields=['-discovered_at']),
             models.Index(fields=['url']),  # URL索引，优化查询性能
             models.Index(fields=['target']),     # 优化从target_id快速查找下面的站点
             models.Index(fields=['scan']),         # 优化从scan_id快速查找下面的站点
-            models.Index(fields=['deleted_at', '-created_at']),  # 软删除 + 时间索引
+            models.Index(fields=['deleted_at', '-discovered_at']),  # 软删除 + 时间索引
         ]
         constraints = [
             # 部分唯一约束：只对未删除记录生效
@@ -336,7 +336,7 @@ class IPAddress(models.Model):
     )
     
     # ==================== 时间字段 ====================
-    first_seen = models.DateTimeField(
+    discovered_at = models.DateTimeField(
         auto_now_add=True, 
         help_text='首次发现时间'
     )
@@ -357,11 +357,11 @@ class IPAddress(models.Model):
         db_table = 'ip_address'
         verbose_name = 'IP地址'
         verbose_name_plural = 'IP地址'
-        ordering = ['-first_seen']
+        ordering = ['-discovered_at']
         indexes = [
             models.Index(fields=['ip']),  # IP地址索引
-            models.Index(fields=['-first_seen']),
-            models.Index(fields=['deleted_at', '-first_seen']),  # 软删除 + 时间索引
+            models.Index(fields=['-discovered_at']),
+            models.Index(fields=['deleted_at', '-discovered_at']),  # 软删除 + 时间索引
         ]
         constraints = [
             # 唯一约束：每个IP地址只能有一条记录（未删除状态下）
@@ -413,7 +413,7 @@ class Port(models.Model):
         default=False,
         help_text='是否为不常见端口'
     )
-    created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
+    discovered_at = models.DateTimeField(auto_now_add=True, help_text='发现时间')
     
     # ==================== 软删除字段 ====================
     deleted_at = models.DateTimeField(null=True, blank=True, db_index=True, help_text='删除时间（NULL表示未删除）')
@@ -426,10 +426,10 @@ class Port(models.Model):
         db_table = 'port'
         verbose_name = '端口'
         verbose_name_plural = '端口'
-        ordering = ['-created_at']
+        ordering = ['-discovered_at']
         indexes = [
-            models.Index(fields=['-created_at']),
-            models.Index(fields=['deleted_at', '-created_at']),  # 软删除 + 时间索引
+            models.Index(fields=['-discovered_at']),
+            models.Index(fields=['deleted_at', '-discovered_at']),  # 软删除 + 时间索引
         ]
         constraints = [
             # 部分唯一约束：只对未删除记录生效
@@ -510,7 +510,7 @@ class Directory(models.Model):
         help_text='请求耗时（单位：纳秒）'
     )
     
-    created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
+    discovered_at = models.DateTimeField(auto_now_add=True, help_text='发现时间')
     
     # ==================== 软删除字段 ====================
     deleted_at = models.DateTimeField(null=True, blank=True, db_index=True, help_text='删除时间（NULL表示未删除）')
@@ -523,12 +523,12 @@ class Directory(models.Model):
         db_table = 'directory'
         verbose_name = '目录'
         verbose_name_plural = '目录'
-        ordering = ['-created_at']
+        ordering = ['-discovered_at']
         indexes = [
-            models.Index(fields=['-created_at']),
+            models.Index(fields=['-discovered_at']),
             models.Index(fields=['scan']),         # 优化从scan_id快速查找下面的目录
             models.Index(fields=['target']),     # 优化从target_id快速查找下面的目录
-            models.Index(fields=['deleted_at', '-created_at']),  # 软删除 + 时间索引
+            models.Index(fields=['deleted_at', '-discovered_at']),  # 软删除 + 时间索引
         ]
         constraints = [
             # 部分唯一约束：只对未删除记录生效
