@@ -5,10 +5,12 @@ from typing import List
 
 from apps.asset.models.snapshot_models import HostPortMappingSnapshot
 from apps.asset.dtos.snapshot import HostPortMappingSnapshotDTO
+from apps.common.decorators import auto_ensure_db_connection
 
 logger = logging.getLogger(__name__)
 
 
+@auto_ensure_db_connection
 class DjangoHostPortMappingSnapshotRepository:
     """HostPortMappingSnapshot Repository - Django ORM 实现，负责主机端口映射快照表的数据访问"""
 

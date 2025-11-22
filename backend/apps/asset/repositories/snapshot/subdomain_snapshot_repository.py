@@ -5,10 +5,12 @@ from typing import List
 
 from apps.asset.models.snapshot_models import SubdomainSnapshot
 from apps.asset.dtos import SubdomainSnapshotDTO
+from apps.common.decorators import auto_ensure_db_connection
 
 logger = logging.getLogger(__name__)
 
 
+@auto_ensure_db_connection
 class DjangoSubdomainSnapshotRepository:
     """子域名快照 Repository - 负责子域名快照表的数据访问"""
 

@@ -5,10 +5,12 @@ from typing import List
 
 from apps.asset.models.asset_models import HostPortMapping
 from apps.asset.dtos.asset import HostPortMappingDTO
+from apps.common.decorators import auto_ensure_db_connection
 
 logger = logging.getLogger(__name__)
 
 
+@auto_ensure_db_connection
 class DjangoHostPortMappingRepository:
     """HostPortMapping Repository - Django ORM 实现"""
 
