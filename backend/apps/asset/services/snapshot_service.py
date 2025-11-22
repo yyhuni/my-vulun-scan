@@ -1,6 +1,7 @@
 import logging
 from typing import List
 
+from apps.asset.dtos.subdomain_snapshot_dto import SubdomainSnapshotDTO
 from apps.asset.dtos.subdomain_dto import SubdomainDTO
 from apps.asset.repositories.django_snapshot_repository import DjangoSnapshotRepository
 from apps.asset.repositories.django_ip_address_repository import IPAddressDTO
@@ -14,16 +15,17 @@ class SnapshotService:
     def __init__(self):
         self.repo = DjangoSnapshotRepository()
     
-    def save_subdomain_snapshots(self, items: List[SubdomainDTO]) -> None:
+    def save_subdomain_snapshots(self, items: List[SubdomainSnapshotDTO], target_id: int) -> None:
         """
         保存子域名快照（统一入口）
         
         流程：
-        1. 保存到快照表（完整记录）
-        2. 保存到业务表（去重）
+        1. 保存到快照表（完整记录，包含 scan_id）
+        2. 保存到资产表（去重，不包含 scan_id）
         
         Args:
-            items: 子域名 DTO 列表
+            items: 子域名快照 DTO 列表
+            target_id: 目标ID（用于保存到资产表）
         """
         logger.debug("保存子域名快照 - 数量: %d", len(items))
         
@@ -36,10 +38,15 @@ class SnapshotService:
             logger.debug("步骤 1: 保存到快照表")
             self.repo.save_subdomain_snapshots(items)
             
-            # 2. 保存业务表（去重）
+            # 步骤 2: 转换为资产 DTO 并保存到资产表（去重）
+            asset_items = [
+                SubdomainDTO(name=item.name, target_id=target_id)
+                for item in items
+            ]
+            
             from apps.asset.services.subdomain_service import SubdomainService
             subdomain_service = SubdomainService()
-            subdomain_service.bulk_create_ignore_conflicts(items)
+            subdomain_service.bulk_create_ignore_conflicts(asset_items)
             
             logger.info("子域名快照和业务数据保存成功 - 数量: %d", len(items))
             
@@ -114,12 +121,11 @@ class SnapshotService:
         
         try:
             # 步骤 1: 保存子域名快照
-            subdomain_dto = SubdomainDTO(
+            subdomain_dto = SubdomainSnapshotDTO(
                 name=subdomain_name,
-                scan_id=scan_id,
-                target_id=target_id
+                scan_id=scan_id
             )
-            self.save_subdomain_snapshots([subdomain_dto])
+            self.save_subdomain_snapshots([subdomain_dto], target_id)
             
             # 步骤 2: 保存IP地址快照
             ip_dtos = []

@@ -2,7 +2,7 @@ import logging
 from typing import List
 
 from apps.asset.models.snapshot_models import SubdomainSnapshot, IPAddressSnapshot
-from apps.asset.dtos.subdomain_dto import SubdomainDTO
+from apps.asset.dtos.subdomain_snapshot_dto import SubdomainSnapshotDTO
 from apps.asset.repositories.django_ip_address_repository import IPAddressDTO
 
 logger = logging.getLogger(__name__)
@@ -11,12 +11,12 @@ logger = logging.getLogger(__name__)
 class DjangoSnapshotRepository:
     """快照 Repository - 负责快照表的数据访问"""
 
-    def save_subdomain_snapshots(self, items: List[SubdomainDTO]) -> None:
+    def save_subdomain_snapshots(self, items: List[SubdomainSnapshotDTO]) -> None:
         """
         保存子域名快照
         
         Args:
-            items: 子域名 DTO 列表
+            items: 子域名快照 DTO 列表
         
         Note:
             - 保存完整的快照数据

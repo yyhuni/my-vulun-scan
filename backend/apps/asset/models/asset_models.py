@@ -13,21 +13,13 @@ class SoftDeleteManager(models.Manager):
 
 class Subdomain(models.Model):
     """
-    子域名模型
+    子域名模型（纯资产表）
     
-    通过 SubdomainIPAssociation 中间表与 IPAddress 建立多对多关系。
-    一个子域名可以有多个IP地址，一个IP地址也可以属于多个子域名。
+    只存储子域名资产信息，通过 SubdomainIPAssociation 中间表与 IPAddress 建立多对多关系。
+    扫描历史记录存储在 SubdomainSnapshot 快照表中。
     """
 
     id = models.AutoField(primary_key=True)
-    scan = models.ForeignKey(
-        'scan.Scan',  # 使用字符串引用避免循环导入
-        on_delete=models.CASCADE,
-        related_name='subdomains',
-        null=True,
-        blank=True,
-        help_text='所属的扫描任务（冗余字段，用于快速查询）'
-    )
     target = models.ForeignKey(
         'targets.Target',  # 使用字符串引用避免循环导入
         on_delete=models.CASCADE,
@@ -53,7 +45,6 @@ class Subdomain(models.Model):
             models.Index(fields=['-created_at']),
             models.Index(fields=['name', 'target']),  # 复合索引，优化 get_by_names_and_target_id 批量查询
             models.Index(fields=['target']),     # 优化从target_id快速查找下面的子域名
-            models.Index(fields=['scan']),         # 优化从scan_id快速查找下面的子域名
             models.Index(fields=['name']),            # 优化从name快速查找子域名，搜索场景
             models.Index(fields=['deleted_at', '-created_at']),  # 软删除 + 时间索引
         ]

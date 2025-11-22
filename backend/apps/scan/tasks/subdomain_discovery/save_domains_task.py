@@ -169,11 +169,12 @@ def _save_batch_with_retry(batch: List[str], scan_id: int, target_id: int, batch
     logger.info(f"[调试] _save_batch_with_retry 接收的参数: scan_id={scan_id}, target_id={target_id}, batch_size={len(batch)}")
     
     service = SnapshotService()
+    # 使用快照 DTO（包含 scan_id）
+    from apps.asset.dtos.subdomain_snapshot_dto import SubdomainSnapshotDTO
     items = [
-        SubdomainDTO(
+        SubdomainSnapshotDTO(
             name=domain,
-            scan_id=scan_id,
-            target_id=target_id
+            scan_id=scan_id
         )
         for domain in batch
     ]
@@ -181,11 +182,11 @@ def _save_batch_with_retry(batch: List[str], scan_id: int, target_id: int, batch
     # 调试日志：记录第一个DTO的内容
     if items:
         first_item = items[0]
-        logger.info(f"[调试] 第一个 SubdomainDTO: name={first_item.name}, scan_id={first_item.scan_id}, target_id={first_item.target_id}")
+        logger.info(f"[调试] 第一个 SubdomainSnapshotDTO: name={first_item.name}, scan_id={first_item.scan_id}")
     
     for attempt in range(max_retries):
         try:
-            service.save_subdomain_snapshots(items)
+            service.save_subdomain_snapshots(items, target_id)
             logger.debug("批次 %d: 已处理 %d 个域名", batch_num, len(batch))
             return {'success': True}
         
