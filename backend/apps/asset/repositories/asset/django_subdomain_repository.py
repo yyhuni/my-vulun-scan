@@ -6,7 +6,7 @@ from django.utils import timezone
 from typing import Tuple, Dict
 
 from apps.asset.models.asset_models import Subdomain
-from apps.asset.dtos.subdomain_dto import SubdomainDTO
+from apps.asset.dtos import SubdomainDTO
 from apps.common.decorators import auto_ensure_db_connection
 
 logger = logging.getLogger(__name__)

@@ -7,7 +7,7 @@ from typing import List
 from django.db import transaction, IntegrityError, OperationalError, DatabaseError
 
 from apps.asset.models.asset_models import SubdomainIPAssociation
-from apps.asset.dtos.subdomain_ip_association_dto import SubdomainIPAssociationDTO
+from apps.asset.dtos import SubdomainIPAssociationDTO
 from apps.common.decorators import auto_ensure_db_connection
 
 logger = logging.getLogger(__name__)

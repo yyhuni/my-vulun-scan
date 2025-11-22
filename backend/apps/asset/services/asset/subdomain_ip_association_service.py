@@ -6,7 +6,7 @@ import logging
 from typing import List
 
 from apps.asset.repositories import DjangoSubdomainIPAssociationRepository
-from apps.asset.dtos.subdomain_ip_association_dto import SubdomainIPAssociationDTO
+from apps.asset.dtos import SubdomainIPAssociationDTO
 
 logger = logging.getLogger(__name__)
 

@@ -11,7 +11,7 @@ from prefect import task
 from typing import List
 from django.db import IntegrityError, OperationalError, DatabaseError
 
-from apps.asset.dtos.subdomain_dto import SubdomainDTO
+from apps.asset.dtos import SubdomainDTO
 from apps.asset.services.snapshot_service import SnapshotService
 from apps.common.validators import validate_domain
 
@@ -170,7 +170,7 @@ def _save_batch_with_retry(batch: List[str], scan_id: int, target_id: int, batch
     
     service = SnapshotService()
     # 使用快照 DTO（包含 scan_id）
-    from apps.asset.dtos.subdomain_snapshot_dto import SubdomainSnapshotDTO
+    from apps.asset.dtos import SubdomainSnapshotDTO
     items = [
         SubdomainSnapshotDTO(
             name=domain,

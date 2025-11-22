@@ -1,8 +1,7 @@
 import logging
 from typing import List
 
-from apps.asset.dtos.subdomain_snapshot_dto import SubdomainSnapshotDTO
-from apps.asset.dtos.subdomain_dto import SubdomainDTO
+from apps.asset.dtos import SubdomainSnapshotDTO, SubdomainDTO
 from apps.asset.repositories import DjangoSnapshotRepository
 from apps.asset.repositories.asset.django_ip_address_repository import IPAddressDTO
 

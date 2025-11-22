@@ -2,7 +2,7 @@ import logging
 from typing import List
 
 from apps.asset.models.snapshot_models import SubdomainSnapshot, IPAddressSnapshot
-from apps.asset.dtos.subdomain_snapshot_dto import SubdomainSnapshotDTO
+from apps.asset.dtos import SubdomainSnapshotDTO
 from apps.asset.repositories.asset.django_ip_address_repository import IPAddressDTO
 
 logger = logging.getLogger(__name__)
