@@ -83,11 +83,11 @@ directory_scan:
                                                # 也可以手动指定固定超时（如 300）
       wordlist: ~/Desktop/dirsearch_dicc.txt   # 词表文件路径（必需）
                                                # ffuf会逐行读取该文件，将每行作为FUZZ关键字的替换值
-      # delay: 0.1-2.0                         # Seconds of delay between requests, or a range of random delay
+      delay: 0.1-2.0                         # Seconds of delay between requests, or a range of random delay
                                                # For example "0.1" or "0.1-2.0"
-      # threads: 10                            # Number of concurrent threads (default: 40)
-      # request_timeout: 10                    # HTTP request timeout in seconds (default: 10)
-      # match_codes: 200,201,301,302,401,403   # Match HTTP status codes, comma separated
+      threads: 10                            # Number of concurrent threads (default: 40)
+      request_timeout: 10                    # HTTP request timeout in seconds (default: 10)
+      match_codes: 200,201,301,302,401,403   # Match HTTP status codes, comma separated
       # rate: 0                                # Rate of requests per second (default: 0)
 
 # ==================== URL 获取 ====================
@@ -101,9 +101,21 @@ url_fetch:
     
     katana:
       enabled: true
-      timeout: auto     # 自动计算（根据站点数量）
-                        # 或手动指定：timeout: 300
-      # depth: 2        # 可选，爬取深度（默认 2）
-      # threads: 10     # 可选，并发数（默认 10）
-      # rate_limit: 150 # 可选，每秒请求数
-                        # 输入类型：url（站点级别，每个站点单独爬取）
+      timeout: auto         # 工具级别总超时：自动计算（根据站点数量）
+                            # 或手动指定：timeout: 300
+      
+      # ========== 核心功能参数（已在命令中固定开启） ==========
+      # -jc: JavaScript 爬取 + 自动解析 .js 文件里的所有端点（最重要）
+      # -xhr: 从 JS 中提取 XHR/Fetch 请求的 API 路径（再多挖 10-20% 隐藏接口）
+      # -kf all: 自动 fuzz 所有已知敏感文件（.env、.git、backup、config 等 5000+ 条）
+      # -fs rdn: 智能过滤重复+噪声路径（分页、?id=1/2/3 全干掉，输出极干净）
+      
+      # ========== 可选参数（推荐配置） ==========
+      depth: 5              # 爬取最大深度（平衡深度与时间，默认 3，推荐 5）
+      threads: 10           # 全局并发数（极低并发最像真人，推荐 10）
+      rate-limit: 30        # 全局硬限速：每秒最多 30 个请求（WAF 几乎不报警）
+      random-delay: 1       # 每次请求之间随机延迟 0.5~1.5 秒（再加一层人性化）
+      retry: 2              # 失败请求自动重试 2 次（网络抖动不丢包）
+      request-timeout: 12   # 单请求超时 12 秒（防卡死，katana 参数名是 -timeout）
+      
+      # 输入类型：url（站点级别，每个站点单独爬取）

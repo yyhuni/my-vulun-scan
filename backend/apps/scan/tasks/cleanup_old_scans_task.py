@@ -33,7 +33,7 @@ def cleanup_old_scans_flow() -> dict:
     
     清理策略（从 settings 读取）：
     - 基于文件系统时间戳，不依赖数据库
-    - 所有目录统一保留 N 天（默认 7 天）
+    - 所有目录统一保留 N 天（默认 3 天）
     - 根据目录的最后修改时间（mtime）判断
     
     Returns:
@@ -162,8 +162,8 @@ def _get_retention_policy() -> int:
     Returns:
         保留天数（int）
     """
-    # 从 settings 读取配置，提供默认值
-    return getattr(settings, 'SCAN_RESULTS_RETENTION_DAYS', 7)
+    # 从 settings 读取配置，提供默认值（改为 3 天）
+    return getattr(settings, 'SCAN_RESULTS_RETENTION_DAYS', 3)
 
 
 def _find_directories_to_cleanup(base_dir: str, retention_days: int) -> list:

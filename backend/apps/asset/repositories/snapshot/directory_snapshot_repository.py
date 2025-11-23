@@ -45,7 +45,10 @@ class DjangoDirectorySnapshotRepository:
                     url=item.url,
                     status=item.status,
                     content_length=item.content_length,
-                    location=item.location
+                    words=item.words,
+                    lines=item.lines,
+                    content_type=item.content_type,
+                    duration=item.duration
                 )
                 for item in items
             ]

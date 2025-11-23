@@ -188,7 +188,7 @@ def _run_scans_sequentially(
                 tool_name=tool_name,
                 scan_type='site_scan',
                 command_params={
-                    'target_file': urls_file
+                    'url_file': urls_file
                 },
                 tool_config=tool_config
             )

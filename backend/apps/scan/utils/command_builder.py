@@ -23,7 +23,9 @@ def build_scan_command(
         scan_type: 扫描类型（如 'subdomain_discovery'）
         command_params: 命令占位符参数
             - domain: 目标域名
-            - target_file: 目标文件路径
+            - domains_file: 域名列表文件（用于端口扫描）
+            - url_file: URL列表文件（用于站点扫描）
+            - target_file: 目标文件路径（通用）
             - output_file: 输出文件路径
         tool_config: 工具配置参数（包含可选参数）
             - threads: 线程数

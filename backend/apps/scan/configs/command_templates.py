@@ -71,7 +71,7 @@ PORT_SCAN_COMMANDS = {
 SITE_SCAN_COMMANDS = {
     'httpx': {
         'base': (
-            '$HOME/go/bin/httpx -l {target_file} '
+            '$HOME/go/bin/httpx -l {url_file} '
             '-status-code -content-type -content-length '
             '-location -title -server -body-preview '
             '-tech-detect -cdn -vhost '
@@ -91,7 +91,7 @@ SITE_SCAN_COMMANDS = {
 
 DIRECTORY_SCAN_COMMANDS = {
     'ffuf': {
-        'base': 'ffuf -u {url}/FUZZ -se -ac -sf -json -w {wordlist}',
+        'base': 'ffuf -u {url}FUZZ -se -ac -sf -json -w {wordlist}',  # 去掉 /，FUZZ 替换为完整路径（含开头斜杠）
         'optional': {
             'delay': '-p {delay}',
             'threads': '-t {threads}',
@@ -112,11 +112,22 @@ URL_FETCH_COMMANDS = {
     },
     
     'katana': {
-        'base': '$HOME/go/bin/katana -u {url} -o {output_file} -silent -jsonl',
+        'base': (
+            '$HOME/go/bin/katana -u {url} -o {output_file} '
+            '-jc '                   # 开启 JavaScript 爬取 + 自动解析 .js 文件里的所有端点（最重要）
+            '-xhr '                  # 额外从 JS 中提取 XHR/Fetch 请求的 API 路径（再多挖 10-20% 隐藏接口）
+            '-kf all '               # 在每个目录下自动 fuzz 所有已知敏感文件（.env、.git、backup、config、ds_store 等 5000+ 条）
+            '-fs rdn '               # 智能过滤相对重复+噪声路径（分页、?id=1/2/3 这类垃圾全干掉，输出极干净）
+            '-H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" '  # 固定一个正常 UA（Katana 默认会随机，但固定更低调）
+            '-silent '               # 安静模式（终端不输出进度条，只出 URL）
+        ),
         'optional': {
-            'depth': '-d {depth}',
-            'threads': '-c {threads}',
-            'rate-limit': '-rl {rate-limit}'
+            'depth': '-d {depth}',                      # 爬取最大深度（平衡深度与时间，默认 3，推荐 5）
+            'threads': '-c {threads}',                  # 全局并发数（极低并发最像真人，推荐 10）
+            'rate-limit': '-rl {rate-limit}',           # 全局硬限速：每秒最多 N 个请求（WAF 几乎不报警，推荐 30）
+            'random-delay': '-rd {random-delay}',       # 每次请求之间随机延迟 N 秒（再加一层人性化，推荐 1）
+            'retry': '-retry {retry}',                  # 失败请求自动重试次数（网络抖动不丢包，推荐 2）
+            'request-timeout': '-timeout {request-timeout}'  # 单请求超时秒数（防卡死，推荐 12）
         },
         'input_type': 'url'
     },

@@ -212,7 +212,7 @@ else:
     SCAN_RESULTS_DIR = str(BASE_DIR / 'results')
 
 # 扫描结果保留时间（单位：天）
-SCAN_RESULTS_RETENTION_DAYS = int(os.getenv('SCAN_RETENTION_DAYS', '7'))
+SCAN_RESULTS_RETENTION_DAYS = int(os.getenv('SCAN_RETENTION_DAYS', '3'))
 
 
 # ==================== Redis 配置 ====================

@@ -300,7 +300,6 @@ def _save_batch(
             url=record['url'],
             status=record.get('status'),
             content_length=record.get('length'),
-            location=record.get('location', ''),
             words=record.get('words'),
             lines=record.get('lines'),
             content_type=record.get('content_type', ''),

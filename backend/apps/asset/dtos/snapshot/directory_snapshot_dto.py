@@ -18,7 +18,6 @@ class DirectorySnapshotDTO:
     url: str
     status: Optional[int] = None
     content_length: Optional[int] = None
-    location: str = ''
     words: Optional[int] = None
     lines: Optional[int] = None
     content_type: str = ''
