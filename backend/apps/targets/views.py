@@ -494,8 +494,9 @@ class TargetViewSet(viewsets.ModelViewSet):
             # 获取目标对象
             target = self.get_object()
             
-            # 获取该目标的所有子域名（按创建时间倒序）
-            queryset = Subdomain.objects.filter(target=target).prefetch_related('ports', 'ip_addresses').order_by('-created_at')
+            # 获取该目标的所有子域名（按发现时间倒序）
+            # 注意：ports 和 ip_addresses 关系已被重构为 HostPortMapping
+            queryset = Subdomain.objects.filter(target=target).order_by('-discovered_at')
             
             # 使用分页器
             paginator = self.paginator
@@ -514,35 +515,38 @@ class TargetViewSet(viewsets.ModelViewSet):
         except (DatabaseError, OperationalError):
             raise APIException('数据库错误，请稍后重试')
 
-    @action(detail=True, methods=['get'], url_path='ip-addresses')
-    def ip_addresses(self, request, pk=None):
-        """
-        获取目标关联的所有 IP 地址（支持分页）
-
-        URL: GET /api/targets/{id}/ip-addresses/?page=1&pageSize=10
-        """
-        from apps.asset.serializers import IPAddressListSerializer
-        from django.core.exceptions import ObjectDoesNotExist
-        from django.db import DatabaseError, OperationalError
-
-        try:
-            target = self.get_object()
-            queryset = target.ip_addresses.select_related('subdomain').prefetch_related('ports').order_by('-created_at')
-
-            paginator = self.paginator
-            page = paginator.paginate_queryset(queryset, request, view=self)
-
-            if page is not None:
-                serializer = IPAddressListSerializer(page, many=True)
-                return paginator.get_paginated_response(serializer.data)
-
-            raise ValidationError('必须提供分页参数 page 和 pageSize')
-
-        except ObjectDoesNotExist:
-            raise NotFound(f'目标 ID {pk} 不存在')
-
-        except (DatabaseError, OperationalError):
-            raise APIException('数据库错误，请稍后重试')
+    # 注意：IPAddress 模型已被重构为 HostPortMapping
+    # ip_addresses 方法已注释，需要根据新架构重新实现
+    
+    # @action(detail=True, methods=['get'], url_path='ip-addresses')
+    # def ip_addresses(self, request, pk=None):
+    #     """
+    #     获取目标关联的所有 IP 地址（支持分页）
+    #
+    #     URL: GET /api/targets/{id}/ip-addresses/?page=1&pageSize=10
+    #     """
+    #     from apps.asset.serializers import IPAddressListSerializer
+    #     from django.core.exceptions import ObjectDoesNotExist
+    #     from django.db import DatabaseError, OperationalError
+    #
+    #     try:
+    #         target = self.get_object()
+    #         queryset = target.ip_addresses.select_related('subdomain').prefetch_related('ports').order_by('-discovered_at')
+    #
+    #         paginator = self.paginator
+    #         page = paginator.paginate_queryset(queryset, request, view=self)
+    #
+    #         if page is not None:
+    #             serializer = IPAddressListSerializer(page, many=True)
+    #             return paginator.get_paginated_response(serializer.data)
+    #
+    #         raise ValidationError('必须提供分页参数 page 和 pageSize')
+    #
+    #     except ObjectDoesNotExist:
+    #         raise NotFound(f'目标 ID {pk} 不存在')
+    #
+    #     except (DatabaseError, OperationalError):
+    #         raise APIException('数据库错误，请稍后重试')
 
     @action(detail=True, methods=['get'])
     def websites(self, request, pk=None):
@@ -572,8 +576,8 @@ class TargetViewSet(viewsets.ModelViewSet):
             # 获取目标对象
             target = self.get_object()
 
-            # 获取该目标的所有站点（按创建时间倒序）
-            queryset = WebSite.objects.filter(target=target).select_related('subdomain').order_by('-created_at')
+            # 获取该目标的所有站点（按发现时间倒序）
+            queryset = WebSite.objects.filter(target=target).select_related('subdomain').order_by('-discovered_at')
 
             # 使用分页器
             paginator = self.paginator
@@ -620,8 +624,8 @@ class TargetViewSet(viewsets.ModelViewSet):
             # 获取目标对象
             target = self.get_object()
 
-            # 获取该目标的所有目录（按创建时间倒序）
-            queryset = Directory.objects.filter(target=target).select_related('website').order_by('-created_at')
+            # 获取该目标的所有目录（按发现时间倒序）
+            queryset = Directory.objects.filter(target=target).select_related('website').order_by('-discovered_at')
 
             # 使用分页器
             paginator = self.paginator

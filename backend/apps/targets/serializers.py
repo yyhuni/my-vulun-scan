@@ -124,12 +124,13 @@ class TargetDetailSerializer(serializers.ModelSerializer):
         - 每个统计字段执行一次数据库查询
         - 不使用 annotate 预聚合的原因：多个 Count(distinct=True) 在大数据量时性能较差
         - 对于详情页单条记录，直接 .count() 查询性能可接受
+        - ips 统计使用 distinct() 去重，因为 HostPortMapping 中同一 IP 可能有多个端口
         """
         return {
             'subdomains': obj.subdomains.count(),
             'websites': obj.websites.count(),
             'endpoints': obj.endpoints.count(),
-            'ips': obj.ip_addresses.count(),
+            'ips': obj.host_port_mappings.values('ip').distinct().count(),
             'directories': obj.directories.count(),
             'vulnerabilities': {
                 'total': 0,
