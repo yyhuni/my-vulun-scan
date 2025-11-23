@@ -106,7 +106,7 @@ export function IPAddressesDataTable({
       columnFilters,
       pagination: tablePagination,
     },
-    getRowId: (row) => row.id.toString(),
+    getRowId: (row) => row.ip, // IP 地址本身就是唯一标识
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,

@@ -216,24 +216,39 @@ export function createIPAddressColumns(params: {
         />
       ),
     },
-    // 所属子域名列
+    // 关联主机名列
     {
-      accessorKey: "subdomain",
+      accessorKey: "hosts",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="所属子域名" />
+        <DataTableColumnHeader column={column} title="关联主机" />
       ),
       cell: ({ getValue }) => {
-        const value = getValue<string | undefined>()
-        return value ? (
-          <span className="font-medium">{value}</span>
-        ) : (
-          <span className="text-muted-foreground">-</span>
+        const hosts = getValue<string[]>()
+        if (!hosts || hosts.length === 0) {
+          return <span className="text-muted-foreground">-</span>
+        }
+        
+        // 显示前3个主机名
+        const displayHosts = hosts.slice(0, 3)
+        const hasMore = hosts.length > 3
+        
+        return (
+          <div className="flex flex-col gap-1">
+            {displayHosts.map((host, index) => (
+              <span key={index} className="text-sm font-mono">{host}</span>
+            ))}
+            {hasMore && (
+              <Badge variant="secondary" className="text-xs w-fit">
+                +{hosts.length - 3} more
+              </Badge>
+            )}
+          </div>
         )
       },
     },
     // 发现时间列
     {
-      accessorKey: "createdAt",
+      accessorKey: "discoveredAt",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="发现时间" />
       ),
@@ -249,7 +264,7 @@ export function createIPAddressColumns(params: {
         <DataTableColumnHeader column={column} title="开放端口" />
       ),
       cell: ({ getValue }) => {
-        const ports = getValue<IPAddress["ports"]>()
+        const ports = getValue<number[]>()
         if (!ports || ports.length === 0) {
           return <span className="text-muted-foreground">-</span>
         }
@@ -271,36 +286,35 @@ export function createIPAddressColumns(params: {
           const commonPorts = [80, 443, 22, 21, 25, 53, 110, 143, 993, 995]
           const webPorts = [80, 443, 8080, 8443, 3000, 8000, 8888]
           
-          const aScore = webPorts.includes(a.number) ? 3 : 
-                        commonPorts.includes(a.number) ? 2 : 1
-          const bScore = webPorts.includes(b.number) ? 3 : 
-                        commonPorts.includes(b.number) ? 2 : 1
+          const aScore = webPorts.includes(a) ? 3 : 
+                        commonPorts.includes(a) ? 2 : 1
+          const bScore = webPorts.includes(b) ? 3 : 
+                        commonPorts.includes(b) ? 2 : 1
           
           if (aScore !== bScore) return bScore - aScore
-          return a.number - b.number
+          return a - b
         })
 
-        // 显示前几个端口，如果太多就显示省略
-        const displayPorts = sortedPorts.slice(0, 5)
-        const hasMore = sortedPorts.length > 5
+        // 显示前8个端口
+        const displayPorts = sortedPorts.slice(0, 8)
+        const hasMore = sortedPorts.length > 8
 
         return (
           <div className="flex flex-wrap gap-1 max-w-xs">
             {displayPorts.map((port, index) => (
               <Badge 
                 key={index} 
-                variant={getPortVariant(port.number)}
+                variant={getPortVariant(port)}
                 className="text-xs font-mono"
-                title={`端口 ${port.number}${port.serviceName ? ` (${port.serviceName})` : ''}${port.description ? ` - ${port.description}` : ''}`}
               >
-                {port.number}
+                {port}
               </Badge>
             ))}
             {hasMore && (
               <Popover>
                 <PopoverTrigger asChild>
                   <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted">
-                    +{ports.length - 5}
+                    +{ports.length - 8}
                   </Badge>
                 </PopoverTrigger>
                 <PopoverContent className="w-80 p-3">
@@ -310,11 +324,10 @@ export function createIPAddressColumns(params: {
                       {sortedPorts.map((port, index) => (
                         <Badge 
                           key={index} 
-                          variant={getPortVariant(port.number)}
+                          variant={getPortVariant(port)}
                           className="text-xs font-mono"
-                          title={`端口 ${port.number}${port.serviceName ? ` (${port.serviceName})` : ''}${port.description ? ` - ${port.description}` : ''}`}
                         >
-                          {port.number}
+                          {port}
                         </Badge>
                       ))}
                     </div>
@@ -323,21 +336,6 @@ export function createIPAddressColumns(params: {
               </Popover>
             )}
           </div>
-        )
-      },
-    },
-    // 反向解析列
-    {
-      accessorKey: "reversePointer",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="反向解析" />
-      ),
-      cell: ({ getValue }) => {
-        const value = getValue<string | undefined>()
-        return value ? (
-          <span className="font-mono text-sm">{value}</span>
-        ) : (
-          <span className="text-muted-foreground">-</span>
         )
       },
     },

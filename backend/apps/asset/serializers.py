@@ -63,7 +63,7 @@ class WebSiteSerializer(serializers.ModelSerializer):
     """站点序列化器"""
     
     subdomain = serializers.CharField(source='subdomain.name', allow_blank=True, default='')
-    created_at = serializers.DateTimeField(read_only=True)
+    discovered_at = serializers.DateTimeField(read_only=True)
     
     class Meta:
         model = WebSite
@@ -80,7 +80,7 @@ class WebSiteSerializer(serializers.ModelSerializer):
             'tech',
             'vhost',
             'subdomain',
-            'created_at',
+            'discovered_at',
         ]
         read_only_fields = fields
 

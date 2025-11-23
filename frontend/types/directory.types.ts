@@ -4,17 +4,15 @@
 
 export interface Directory {
   id: number
-  website: number
-  target?: number
-  scan?: number
   url: string
   status: number | null
-  length: number | null
+  contentLength: number | null  // 后端返回 contentLength
   words: number | null
   lines: number | null
   contentType: string
   duration: number | null
-  createdAt: string
+  websiteUrl: string  // 后端返回 websiteUrl
+  discoveredAt: string  // 后端返回 discoveredAt
 }
 
 export interface DirectoryFilters {

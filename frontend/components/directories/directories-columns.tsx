@@ -213,9 +213,9 @@ export function createDirectoryColumns({
       },
       cell: ({ row }) => <StatusBadge status={row.getValue("status")} />,
     },
-    // Length 列
+    // Content Length 列
     {
-      accessorKey: "length",
+      accessorKey: "contentLength",
       header: ({ column }) => {
         return (
           <Button
@@ -235,7 +235,7 @@ export function createDirectoryColumns({
         )
       },
       cell: ({ row }) => {
-        const length = row.getValue("length") as number | null
+        const length = row.getValue("contentLength") as number | null
         return <span>{length !== null ? length.toLocaleString() : "-"}</span>
       },
     },
@@ -330,9 +330,9 @@ export function createDirectoryColumns({
         return <span className="text-muted-foreground">{formatDuration(duration)}</span>
       },
     },
-    // Created At 列
+    // Discovered At 列
     {
-      accessorKey: "createdAt",
+      accessorKey: "discoveredAt",
       header: ({ column }) => {
         return (
           <Button
@@ -340,7 +340,7 @@ export function createDirectoryColumns({
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
             className="h-8 px-2 lg:px-3"
           >
-            Created At
+            Discovered At
             {column.getIsSorted() === "asc" ? (
               <ChevronUp className="ml-2 h-4 w-4" />
             ) : column.getIsSorted() === "desc" ? (
@@ -352,7 +352,7 @@ export function createDirectoryColumns({
         )
       },
       cell: ({ row }) => {
-        const date = row.getValue("createdAt") as string
+        const date = row.getValue("discoveredAt") as string
         return <span className="text-muted-foreground">{formatDate(date)}</span>
       },
     },

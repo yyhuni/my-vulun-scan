@@ -186,12 +186,12 @@ export function DirectoriesDataTable({
                     const columnTitle = {
                       url: "URL",
                       status: "Status",
-                      length: "Length",
+                      contentLength: "Length",
                       words: "Words",
                       lines: "Lines",
                       contentType: "Content Type",
                       duration: "Duration",
-                      createdAt: "Created At",
+                      discoveredAt: "Discovered At",
                     }[column.id] || column.id
 
                     return (

@@ -6,17 +6,10 @@ export interface Port {
 }
 
 export interface IPAddress {
-  id: number
-  ip: string
-  subdomain?: string
-  createdAt?: string
-  reversePointer?: string
-  ports?: Port[]
-  // 兼容后端额外字段（无需前端展示）
-  protocolVersion?: string
-  isPrivate?: boolean
-  riskLevel?: string
-  lastSeen?: string
+  ip: string  // IP 地址（唯一标识）
+  hosts: string[]  // 关联的主机名列表
+  ports: number[]  // 关联的端口列表
+  discoveredAt: string  // 首次发现时间
 }
 
 export interface GetIPAddressesParams {
