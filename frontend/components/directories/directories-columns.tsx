@@ -19,7 +19,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { IconDots, IconTrash } from "@tabler/icons-react"
+import { IconDots, IconEye } from "@tabler/icons-react"
 import { Copy, Check, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react"
 import { toast } from "sonner"
 import type { Directory } from "@/types/directory.types"
@@ -131,10 +131,10 @@ function formatDuration(nanoseconds: number | null): string {
  */
 export function createDirectoryColumns({
   formatDate,
-  onDelete,
+  onViewDetail,
 }: {
   formatDate: (date: string) => string
-  onDelete?: (directory: Directory) => void
+  onViewDetail?: (directory: Directory) => void
 }): ColumnDef<Directory>[] {
   return [
     // 选择列
@@ -381,15 +381,10 @@ export function createDirectoryColumns({
                 复制 URL
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              {onDelete && (
-                <DropdownMenuItem
-                  className="text-destructive focus:text-destructive"
-                  onClick={() => onDelete(directory)}
-                >
-                  <IconTrash className="mr-2 h-4 w-4" />
-                  删除
-                </DropdownMenuItem>
-              )}
+              <DropdownMenuItem onClick={() => onViewDetail?.(directory)}>
+                <IconEye className="mr-2 h-4 w-4" />
+                查看详细
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )

@@ -4,8 +4,6 @@ import React, { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { useTarget } from "@/hooks/use-targets"
 import { 
-  useDeleteSubdomain, 
-  useBatchDeleteSubdomains,
   useTargetSubdomains,
   useScanSubdomains 
 } from "@/hooks/use-subdomains"
@@ -13,16 +11,6 @@ import { SubdomainsDataTable } from "./subdomains-data-table"
 import { createSubdomainColumns } from "./subdomains-columns"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { DataTableSkeleton } from "@/components/ui/data-table-skeleton"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 import type { Subdomain } from "@/types/subdomain.types"
 
 /**
@@ -39,9 +27,6 @@ export function SubdomainsDetailView({
   scanId?: number
 }) {
   const [selectedSubdomains, setSelectedSubdomains] = useState<Subdomain[]>([])
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [subdomainToDelete, setSubdomainToDelete] = useState<Subdomain | null>(null)
-  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
 
   // 分页状态
   const [pagination, setPagination] = useState({
@@ -74,10 +59,6 @@ export function SubdomainsDetailView({
   // 获取目标信息（仅在 targetId 模式下）
   const { data: targetData } = useTarget(targetId || 0)
 
-  // Mutations
-  const deleteSubdomain = useDeleteSubdomain()
-  const batchDeleteSubdomains = useBatchDeleteSubdomains()
-
   // 辅助函数 - 格式化日期
   const formatDate = (dateString: string): string => {
     return new Date(dateString).toLocaleString("zh-CN", {
@@ -97,40 +78,11 @@ export function SubdomainsDetailView({
     router.push(path)
   }
 
-  // 处理删除域名
-  const handleDeleteSubdomain = (subdomain: Subdomain) => {
-    setSubdomainToDelete(subdomain)
-    setDeleteDialogOpen(true)
-  }
-
-  // 确认删除域名
-  const confirmDelete = async () => {
-    if (!subdomainToDelete) return
-
-    setDeleteDialogOpen(false)
-    setSubdomainToDelete(null)
-
-    deleteSubdomain.mutate(subdomainToDelete.id)
-  }
-
-  // 处理批量删除
-  const handleBulkDelete = () => {
-    if (selectedSubdomains.length === 0) {
-      return
-    }
-    setBulkDeleteDialogOpen(true)
-  }
-
-  // 确认批量删除
-  const confirmBulkDelete = async () => {
-    if (selectedSubdomains.length === 0) return
-
-    const deletedIds = selectedSubdomains.map(subdomain => subdomain.id)
-
-    setBulkDeleteDialogOpen(false)
-    setSelectedSubdomains([])
-
-    batchDeleteSubdomains.mutate(deletedIds)
+  // 处理查看详细
+  const handleViewDetail = (subdomain: Subdomain) => {
+    // TODO: 实现查看子域名详细功能
+    console.log('查看子域名详细:', subdomain)
+    // 可以跳转到详情页或打开对话框
   }
 
   // 处理分页变化
@@ -147,9 +99,18 @@ export function SubdomainsDetailView({
 
   // 处理下载所有子域名
   const handleDownloadAll = () => {
-    // TODO: 实现下载所有子域名功能
     console.log('下载所有子域名')
     // 可以生成包含所有子域名的文件并下载
+  }
+
+  // 处理下载选中的子域名
+  const handleDownloadSelected = () => {
+    if (selectedSubdomains.length === 0) {
+      return
+    }
+    // TODO: 实现下载选中的子域名功能
+    console.log('下载选中的子域名', selectedSubdomains)
+    // 生成包含选中子域名的文件并下载
   }
 
   // 处理下载有趣的子域名
@@ -163,21 +124,6 @@ export function SubdomainsDetailView({
   const handleDownloadImportant = () => {
     // TODO: 实现下载重要的子域名功能
     console.log('下载重要的子域名')
-    // 可以筛选标记为重要的子域名并下载
-  }
-
-  // 处理下载选中的子域名
-  const handleDownloadSelected = () => {
-    // TODO: 实现下载选中的子域名功能
-    console.log('下载选中的子域名:', selectedSubdomains)
-    // 可以将选中的子域名生成文件并下载
-    if (selectedSubdomains.length === 0) {
-      return
-    }
-    // 示例：生成文本文件
-    // const content = selectedDomains.map(d => d.name).join('\n')
-    // const blob = new Blob([content], { type: 'text/plain' })
-    // const url = URL.createObjectURL(blob)
     // const a = document.createElement('a')
     // a.href = url
     // a.download = `selected-subdomains-${Date.now()}.txt`
@@ -191,9 +137,9 @@ export function SubdomainsDetailView({
       createSubdomainColumns({
         formatDate,
         navigate,
-        handleDelete: handleDeleteSubdomain,
+        onViewDetail: handleViewDetail,
       }),
-    [formatDate, navigate, handleDeleteSubdomain]
+    [formatDate, navigate]
   )
 
   // 转换后端数据格式为前端 Subdomain 类型（必须在条件渲染之前调用）
@@ -244,7 +190,6 @@ export function SubdomainsDetailView({
       <SubdomainsDataTable
         data={subdomains}
         columns={subdomainColumns}
-        onBulkDelete={handleBulkDelete}
         onSelectionChange={setSelectedSubdomains}
         searchPlaceholder="搜索子域名..."
         searchColumn="name"
@@ -262,73 +207,6 @@ export function SubdomainsDetailView({
         }}
         onPaginationChange={handlePaginationChange}
       />
-
-      {/* 删除确认对话框 */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认删除</AlertDialogTitle>
-            <AlertDialogDescription>
-              此操作无法撤销。这将永久删除子域名 &quot;{subdomainToDelete?.name}&quot; 及其相关数据。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={deleteSubdomain.isPending}
-            >
-              {deleteSubdomain.isPending ? (
-                <>
-                  <LoadingSpinner/>
-                  删除中...
-                </>
-              ) : (
-                "删除"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* 批量删除确认对话框 */}
-      <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认批量删除</AlertDialogTitle>
-            <AlertDialogDescription>
-              此操作无法撤销。这将永久删除以下 {selectedSubdomains.length} 个子域名及其相关数据。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="mt-2 p-2 bg-muted rounded-md max-h-96 overflow-y-auto">
-            <ul className="text-sm space-y-1">
-              {selectedSubdomains.map((subdomain) => (
-                <li key={subdomain.id} className="flex items-center">
-                  <span className="font-medium font-mono">{subdomain.name}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmBulkDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={batchDeleteSubdomains.isPending}
-            >
-              {batchDeleteSubdomains.isPending ? (
-                <>
-                  <LoadingSpinner/>
-                  删除中...
-                </>
-              ) : (
-                `删除 ${selectedSubdomains.length} 个子域名`
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   )
 }

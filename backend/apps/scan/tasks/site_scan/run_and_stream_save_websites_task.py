@@ -34,7 +34,7 @@ from urllib.parse import urlparse, urlunparse
 from dateutil.parser import parse as parse_datetime
 from psycopg2 import InterfaceError
 
-from apps.asset.services import SubdomainService
+from apps.asset.services import SubdomainService, WebSiteService
 from apps.asset.dtos.snapshot import WebsiteSnapshotDTO
 
 from apps.scan.utils import execute_stream

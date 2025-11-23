@@ -24,7 +24,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { IconDots, IconEye, IconTrash, IconExternalLink } from "@tabler/icons-react"
+import { IconDots, IconEye, IconExternalLink } from "@tabler/icons-react"
 import { Copy, Check, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react"
 import { toast } from "sonner"
 import type { WebSite } from "@/types/website.types"
@@ -142,13 +142,11 @@ function DataTableColumnHeader({
 
 interface CreateWebSiteColumnsProps {
   formatDate: (dateString: string) => string
-  onDelete: (website: WebSite) => void
   onViewDetail?: (website: WebSite) => void
 }
 
 export function createWebSiteColumns({
   formatDate,
-  onDelete,
   onViewDetail,
 }: CreateWebSiteColumnsProps): ColumnDef<WebSite>[] {
   return [
@@ -513,18 +511,9 @@ export function createWebSiteColumns({
                 Open in new tab
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              {onViewDetail && (
-                <DropdownMenuItem onClick={() => onViewDetail(website)}>
-                  <IconEye className="mr-2 h-4 w-4" />
-                  View details
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem
-                onClick={() => onDelete(website)}
-                className="text-destructive"
-              >
-                <IconTrash className="mr-2 h-4 w-4" />
-                Delete
+              <DropdownMenuItem onClick={() => onViewDetail?.(website)}>
+                <IconEye className="mr-2 h-4 w-4" />
+                查看详细
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

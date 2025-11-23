@@ -21,7 +21,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { MoreHorizontal, Trash2, ChevronsUpDown, ChevronUp, ChevronDown, Copy, Check } from "lucide-react"
+import { MoreHorizontal, Eye, ChevronsUpDown, ChevronUp, ChevronDown, Copy, Check } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import type { Subdomain } from "@/types/subdomain.types"
 import { toast } from "sonner"
@@ -107,7 +107,7 @@ function CopyableCell({
 interface CreateColumnsProps {
   formatDate: (dateString: string) => string
   navigate: (path: string) => void
-  handleDelete: (subdomain: Subdomain) => void
+  onViewDetail: (subdomain: Subdomain) => void
 }
 
 /**
@@ -115,10 +115,10 @@ interface CreateColumnsProps {
  */
 function SubdomainRowActions({
   subdomain,
-  onDelete,
+  onViewDetail,
 }: {
   subdomain: Subdomain
-  onDelete: () => void
+  onViewDetail: () => void
 }) {
   return (
     <DropdownMenu>
@@ -132,12 +132,9 @@ function SubdomainRowActions({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
-        <DropdownMenuItem
-          onClick={onDelete}
-          className="text-destructive focus:text-destructive"
-        >
-          <Trash2 />
-          Delete
+        <DropdownMenuItem onClick={onViewDetail}>
+          <Eye className="mr-2 h-4 w-4" />
+          查看详细
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -184,7 +181,7 @@ function DataTableColumnHeader({
 export const createSubdomainColumns = ({
   formatDate,
   navigate,
-  handleDelete,
+  onViewDetail,
 }: CreateColumnsProps): ColumnDef<Subdomain>[] => [
   // 选择列
   {
@@ -240,7 +237,7 @@ export const createSubdomainColumns = ({
     cell: ({ row }) => (
       <SubdomainRowActions
         subdomain={row.original}
-        onDelete={() => handleDelete(row.original)}
+        onViewDetail={() => onViewDetail(row.original)}
       />
     ),
     enableSorting: false,

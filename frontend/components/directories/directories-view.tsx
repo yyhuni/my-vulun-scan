@@ -5,20 +5,9 @@ import { DirectoriesDataTable } from "./directories-data-table"
 import { createDirectoryColumns } from "./directories-columns"
 import { DataTableSkeleton } from "@/components/ui/data-table-skeleton"
 import { Button } from "@/components/ui/button"
-import { useTargetDirectories, useScanDirectories, useDeleteDirectory, useBulkDeleteDirectories } from "@/hooks/use-directories"
+import { useTargetDirectories, useScanDirectories } from "@/hooks/use-directories"
 import type { Directory } from "@/types/directory.types"
 import { toast } from "sonner"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { LoadingSpinner } from "@/components/loading-spinner"
 
 export function DirectoriesView({
   targetId,
@@ -32,12 +21,6 @@ export function DirectoriesView({
     pageSize: 10,
   })
   const [selectedDirectories, setSelectedDirectories] = useState<Directory[]>([])
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [directoryToDelete, setDirectoryToDelete] = useState<Directory | null>(null)
-  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
-
-  const deleteDirectoryMutation = useDeleteDirectory()
-  const bulkDeleteMutation = useBulkDeleteDirectories()
 
   const targetQuery = useTargetDirectories(
     targetId || 0,
@@ -72,25 +55,16 @@ export function DirectoriesView({
     })
   }, [])
 
-  const handleDeleteDirectory = (directory: Directory) => {
-    setDirectoryToDelete(directory)
-    setDeleteDialogOpen(true)
-  }
-
-  const confirmDelete = async () => {
-    if (!directoryToDelete) return
-
-    setDeleteDialogOpen(false)
-    setDirectoryToDelete(null)
-
-    deleteDirectoryMutation.mutate(directoryToDelete.id)
+  const handleViewDetail = (directory: Directory) => {
+    // TODO: 实现查看目录详细功能
+    console.log('查看目录详细:', directory)
   }
 
   const columns = useMemo(
     () =>
       createDirectoryColumns({
         formatDate,
-        onDelete: handleDeleteDirectory,
+        onViewDetail: handleViewDetail,
       }),
     [formatDate]
   )
@@ -109,24 +83,6 @@ export function DirectoriesView({
       }
     : undefined
 
-  const handleBulkDelete = () => {
-    if (selectedDirectories.length === 0) {
-      return
-    }
-    setBulkDeleteDialogOpen(true)
-  }
-
-  const confirmBulkDelete = async () => {
-    if (selectedDirectories.length === 0) return
-
-    const directoryIds = selectedDirectories.map(directory => directory.id)
-
-    setBulkDeleteDialogOpen(false)
-    setSelectedDirectories([])
-
-    bulkDeleteMutation.mutate(directoryIds)
-  }
-
   const handleSelectionChange = useCallback((selectedRows: Directory[]) => {
     setSelectedDirectories(selectedRows)
   }, [])
@@ -140,13 +96,11 @@ export function DirectoriesView({
 
   // 处理下载选中的目录
   const handleDownloadSelected = () => {
-    // TODO: 实现下载选中的目录功能
-    console.log('下载选中的目录:', selectedDirectories)
     if (selectedDirectories.length === 0) {
-      toast.error("请选择要下载的目录")
       return
     }
-    toast.info("下载功能开发中...")
+    console.log('下载选中的目录', selectedDirectories)
+    // TODO: 实现下载选中目录功能
   }
 
   if (error) {
@@ -185,70 +139,10 @@ export function DirectoriesView({
         setPagination={setPagination}
         paginationInfo={paginationInfo}
         onPaginationChange={setPagination}
-        onBulkDelete={handleBulkDelete}
         onSelectionChange={handleSelectionChange}
         onDownloadAll={handleDownloadAll}
         onDownloadSelected={handleDownloadSelected}
       />
-
-      {/* 删除确认对话框 */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认删除</AlertDialogTitle>
-            <AlertDialogDescription>
-              此操作无法撤销。这将永久删除目录 &quot;{directoryToDelete?.url}&quot; 及其相关数据。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              删除
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* 批量删除确认对话框 */}
-      <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认批量删除</AlertDialogTitle>
-            <AlertDialogDescription>
-              此操作无法撤销。这将永久删除以下 {selectedDirectories.length} 个目录及其相关数据。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="mt-2 p-2 bg-muted rounded-md max-h-96 overflow-y-auto">
-            <ul className="text-sm space-y-1">
-              {selectedDirectories.map((directory) => (
-                <li key={directory.id} className="flex items-center">
-                  <span className="font-medium font-mono">{directory.url}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmBulkDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={bulkDeleteMutation.isPending}
-            >
-              {bulkDeleteMutation.isPending ? (
-                <>
-                  <LoadingSpinner/>
-                  删除中...
-                </>
-              ) : (
-                `删除 ${selectedDirectories.length} 个目录`
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   )
 }
