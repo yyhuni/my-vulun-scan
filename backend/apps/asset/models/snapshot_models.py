@@ -126,7 +126,10 @@ class DirectorySnapshot(models.Model):
     url = models.CharField(max_length=2000, help_text='目录URL')
     status = models.IntegerField(null=True, blank=True, help_text='HTTP状态码')
     content_length = models.BigIntegerField(null=True, blank=True, help_text='内容长度')
-    location = models.CharField(max_length=1000, blank=True, default='', help_text='重定向位置')
+    words = models.IntegerField(null=True, blank=True, help_text='响应体中单词数量（按空格分割）')
+    lines = models.IntegerField(null=True, blank=True, help_text='响应体行数（按换行符分割）')
+    content_type = models.CharField(max_length=200, blank=True, default='', help_text='响应头 Content-Type 值')
+    duration = models.BigIntegerField(null=True, blank=True, help_text='请求耗时（单位：纳秒）')
     discovered_at = models.DateTimeField(auto_now_add=True, help_text='发现时间')
 
     class Meta:

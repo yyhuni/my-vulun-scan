@@ -174,7 +174,10 @@ class DirectorySnapshotSerializer(serializers.ModelSerializer):
             'url',
             'status',
             'content_length',
-            'location',
+            'words',
+            'lines',
+            'content_type',
+            'duration',
             'website_url',
             'discovered_at',
         ]

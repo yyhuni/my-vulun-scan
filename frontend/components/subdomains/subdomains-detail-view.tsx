@@ -192,9 +192,8 @@ export function SubdomainsDetailView({
         formatDate,
         navigate,
         handleDelete: handleDeleteSubdomain,
-        handleMarkImportant,
       }),
-    [formatDate, navigate, handleDeleteSubdomain, handleMarkImportant]
+    [formatDate, navigate, handleDeleteSubdomain]
   )
 
   // 转换后端数据格式为前端 Subdomain 类型（必须在条件渲染之前调用）
@@ -204,13 +203,7 @@ export function SubdomainsDetailView({
     return subdomainsData.results.map((item: any) => ({
       id: item.id,
       name: item.name,
-      createdAt: item.createdAt,      // 后端已转换为 camelCase
-      updatedAt: item.createdAt,      // 使用 createdAt 作为 updatedAt 的默认值
-      cname: item.cname || [],
-      isCdn: item.isCdn || false,     // 后端已转换为 camelCase
-      cdnName: item.cdnName || '',    // 后端已转换为 camelCase
-      ports: item.ports || [],        // 端口数据
-      ipAddresses: item.ipAddresses || [],  // IP地址列表
+      discoveredAt: item.discoveredAt,  // 发现时间（后端已转换为 camelCase）
     }))
   }, [subdomainsData])
 

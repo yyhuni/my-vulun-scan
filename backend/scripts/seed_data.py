@@ -611,7 +611,7 @@ def create_directories(targets, websites, scans):
                 )
                 directories.append(directory)
                 
-                # 创建目录快照（只包含快照模型实际有的字段）
+                # 创建目录快照（填充所有字段）
                 latest_scan = next((s for s in scans if s.target == target and s.status == 'completed'), None)
                 if latest_scan:
                     snapshot = DirectorySnapshot.objects.create(
@@ -620,7 +620,10 @@ def create_directories(targets, websites, scans):
                         url=url,
                         status=dir_info['status'],
                         content_length=content_length,
-                        location='',  # DirectorySnapshot 有 location 字段
+                        words=dir_info['words'],
+                        lines=dir_info['lines'],
+                        content_type=dir_info['content_type'],
+                        duration=duration,
                     )
                     snapshots.append(snapshot)
     
