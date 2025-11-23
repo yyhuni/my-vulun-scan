@@ -180,41 +180,41 @@ def create_subdomains(targets, scans):
 
 
 def create_host_port_mappings(targets, subdomains):
-    """创建主机端口映射 - 真实的服务与端口映射关系"""
+    """创建主机端口映射 - 真实的服务与端口映射关系，一个 IP 对应多个域名"""
     print("🔌 创建主机端口映射...")
     
-    # 定义真实的服务与端口映射关系
+    # 定义真实的服务与端口映射关系（扩展端口列表）
     service_ports = {
-        'www': [80, 443],  # Web 服务
-        'api': [443, 8080],  # API 服务
-        'app': [443, 8443],  # 应用服务
-        'admin': [443, 8443],  # 管理后台
-        'mail': [25, 587, 993, 995],  # 邮件服务
-        'portal': [443],  # 门户
-        'crm': [443, 8443],  # CRM 系统
-        'erp': [443, 8443],  # ERP 系统
-        'hr': [443],  # HR 系统
-        'finance': [443],  # 财务系统
-        'docs': [443],  # 文档系统
-        'blog': [80, 443],  # 博客
-        'vpn': [443, 1194],  # VPN 服务
-        'git': [22, 443, 9418],  # Git 服务
-        'jenkins': [8080, 443],  # CI/CD
-        'monitoring': [443, 9090, 3000],  # 监控服务
-        'dev': [80, 443, 3000],  # 开发环境
-        'staging': [80, 443],  # 预发布环境
-        'cdn': [80, 443],  # CDN
-        'assets': [80, 443],  # 静态资源
-        'status': [443],  # 状态页
-        'dashboard': [443, 3000],  # 仪表板
-        'analytics': [443],  # 分析服务
-        'support': [443],  # 支持系统
-        'console': [443],  # 控制台
-        'billing': [443],  # 计费系统
-        'storage': [443, 9000],  # 存储服务
-        'compute': [443],  # 计算服务
-        'database': [3306, 5432, 27017],  # 数据库服务
-        'marketplace': [443],  # 市场
+        'www': [80, 443, 8080, 8443],  # Web 服务
+        'api': [443, 8080, 8443, 3000, 5000, 8000],  # API 服务
+        'app': [443, 8443, 3000, 3001, 4000],  # 应用服务
+        'admin': [443, 8443, 9000, 9001],  # 管理后台
+        'mail': [25, 110, 143, 465, 587, 993, 995, 2525],  # 邮件服务
+        'portal': [443, 8443, 9443],  # 门户
+        'crm': [443, 8080, 8443, 9000],  # CRM 系统
+        'erp': [443, 8080, 8443, 9000, 9001],  # ERP 系统
+        'hr': [443, 8443, 9000],  # HR 系统
+        'finance': [443, 8443, 9000, 9443],  # 财务系统
+        'docs': [443, 8080, 3000],  # 文档系统
+        'blog': [80, 443, 8080, 8443],  # 博客
+        'vpn': [443, 1194, 1195, 1196, 1197],  # VPN 服务
+        'git': [22, 443, 9418, 3000, 8080],  # Git 服务
+        'jenkins': [8080, 443, 50000, 8443],  # CI/CD
+        'monitoring': [443, 3000, 9090, 9091, 9093, 9100, 9115],  # 监控服务
+        'dev': [80, 443, 3000, 3001, 5000, 8080, 8443],  # 开发环境
+        'staging': [80, 443, 8080, 8443, 3000],  # 预发布环境
+        'cdn': [80, 443, 8080, 8443],  # CDN
+        'assets': [80, 443, 8080, 8443],  # 静态资源
+        'status': [443, 8080, 3000],  # 状态页
+        'dashboard': [443, 3000, 3001, 8080, 8443],  # 仪表板
+        'analytics': [443, 8080, 9000],  # 分析服务
+        'support': [443, 8080, 8443],  # 支持系统
+        'console': [443, 8080, 8443, 9000],  # 控制台
+        'billing': [443, 8080, 8443, 9000],  # 计费系统
+        'storage': [443, 9000, 9001, 9002, 9003],  # 存储服务
+        'compute': [443, 8080, 8443],  # 计算服务
+        'database': [3306, 5432, 27017, 6379, 5433, 27018, 6380],  # 数据库服务
+        'marketplace': [443, 8080, 8443],  # 市场
     }
     
     # 为不同公司分配不同的 IP 段
@@ -230,26 +230,38 @@ def create_host_port_mappings(targets, subdomains):
         target_subdomains = [s for s in subdomains if s.target == target]
         ip_base = company_ip_ranges.get(target.name, '192.168.1.')
         
-        # 为每个子域名创建 IP 和端口映射
+        # 策略：让多个子域名共享同一个 IP
+        # 每 5-6 个子域名共享一个 IP
+        ip_groups = {}
         for i, subdomain in enumerate(target_subdomains):
-            # 提取子域名前缀
-            subdomain_prefix = subdomain.name.split('.')[0]
+            # 每 5 个子域名使用同一个 IP
+            ip_index = i // 5
+            ip = f"{ip_base}{10 + ip_index}"
             
-            # 根据服务类型分配 IP（同一服务可能在不同 IP 上）
-            ip = f"{ip_base}{10 + i}"
+            if ip not in ip_groups:
+                ip_groups[ip] = []
+            ip_groups[ip].append(subdomain)
+        
+        # 为每个 IP 组创建映射
+        for ip, group_subdomains in ip_groups.items():
+            # 收集该 IP 组所有子域名需要的端口
+            all_ports = set()
             
-            # 根据服务类型获取对应的端口
-            ports = service_ports.get(subdomain_prefix, [80, 443])
+            for subdomain in group_subdomains:
+                subdomain_prefix = subdomain.name.split('.')[0]
+                ports = service_ports.get(subdomain_prefix, [80, 443])
+                all_ports.update(ports)
             
-            # 为该子域名创建所有相关端口的映射
-            for port in ports:
-                mapping = HostPortMapping.objects.create(
-                    target=target,
-                    host=subdomain.name,
-                    ip=ip,
-                    port=port,
-                )
-                mappings.append(mapping)
+            # 为该 IP 的每个子域名创建所有端口的映射
+            for subdomain in group_subdomains:
+                for port in all_ports:
+                    mapping = HostPortMapping.objects.create(
+                        target=target,
+                        host=subdomain.name,
+                        ip=ip,
+                        port=port,
+                    )
+                    mappings.append(mapping)
     
     print(f"✅ 创建了 {len(mappings)} 个主机端口映射\n")
     return mappings

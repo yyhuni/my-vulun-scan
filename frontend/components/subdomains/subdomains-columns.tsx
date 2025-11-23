@@ -222,149 +222,17 @@ export const createSubdomainColumns = ({
     },
   },
 
-
-  // IP地址列
+  // 发现时间列
   {
-    accessorKey: "ipAddresses",
+    accessorKey: "discoveredAt",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="IP 地址" />
+      <DataTableColumnHeader column={column} title="发现时间" />
     ),
-    cell: ({ row }) => {
-      const ipAddresses = row.getValue("ipAddresses") as string[] | undefined
-      if (!ipAddresses || ipAddresses.length === 0) {
-        return <span className="text-sm text-muted-foreground">-</span>
-      }
-
-      // 显示前5个IP，如果太多就显示省略
-      const displayIPs = ipAddresses.slice(0, 5)
-      const hasMore = ipAddresses.length > 5
-
-      return (
-        <div className="flex flex-wrap gap-1 max-w-xs">
-          {displayIPs.map((ip, index) => (
-            <Badge 
-              key={index} 
-              variant="secondary" 
-              className="text-xs font-mono"
-            >
-              {ip}
-            </Badge>
-          ))}
-          {hasMore && (
-            <Popover>
-              <PopoverTrigger asChild>
-                <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted">
-                  +{ipAddresses.length - 5}
-                </Badge>
-              </PopoverTrigger>
-              <PopoverContent className="w-80 p-3">
-                <div className="space-y-2">
-                  <h4 className="font-medium text-sm">所有 IP 地址 ({ipAddresses.length})</h4>
-                  <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto">
-                    {ipAddresses.map((ip, index) => (
-                      <Badge 
-                        key={index} 
-                        variant="secondary" 
-                        className="text-xs font-mono"
-                      >
-                        {ip}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
-          )}
-        </div>
-      )
+    cell: ({ getValue }) => {
+      const value = getValue<string | undefined>()
+      return value ? formatDate(value) : "-"
     },
   },
-
-  // 端口列
-  {
-    accessorKey: "ports",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="开放端口" />
-    ),
-    cell: ({ row }) => {
-      const ports = row.getValue("ports") as Subdomain["ports"]
-      if (!ports || ports.length === 0) {
-        return <span className="text-sm text-muted-foreground">-</span>
-      }
-
-      // 常见端口颜色映射
-      const getPortVariant = (portNumber: number) => {
-        const commonPorts = [80, 443, 22, 21, 25, 53, 110, 143, 993, 995]
-        const webPorts = [80, 443, 8080, 8443, 3000, 8000, 8888]
-        const sshPorts = [22]
-        
-        if (sshPorts.includes(portNumber)) return "destructive"
-        if (webPorts.includes(portNumber)) return "default"
-        if (commonPorts.includes(portNumber)) return "secondary"
-        return "outline"
-      }
-
-      // 按端口重要性排序：常见端口优先
-      const sortedPorts = [...ports].sort((a, b) => {
-        const commonPorts = [80, 443, 22, 21, 25, 53, 110, 143, 993, 995]
-        const webPorts = [80, 443, 8080, 8443, 3000, 8000, 8888]
-        
-        const aScore = webPorts.includes(a.number) ? 3 : 
-                      commonPorts.includes(a.number) ? 2 : 1
-        const bScore = webPorts.includes(b.number) ? 3 : 
-                      commonPorts.includes(b.number) ? 2 : 1
-        
-        if (aScore !== bScore) return bScore - aScore
-        return a.number - b.number
-      })
-
-      // 显示前几个端口，如果太多就显示省略
-      const displayPorts = sortedPorts.slice(0, 5)
-      const hasMore = sortedPorts.length > 5
-
-      return (
-        <div className="flex flex-wrap gap-1 max-w-xs">
-          {displayPorts.map((port, index) => (
-            <Badge 
-              key={index} 
-              variant={getPortVariant(port.number)}
-              className="text-xs font-mono"
-              title={`端口 ${port.number}${port.serviceName ? ` (${port.serviceName})` : ''}${port.description ? ` - ${port.description}` : ''}`}
-            >
-              {port.number}
-            </Badge>
-          ))}
-          {hasMore && (
-            <Popover>
-              <PopoverTrigger asChild>
-                <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted">
-                  +{ports.length - 5}
-                </Badge>
-              </PopoverTrigger>
-              <PopoverContent className="w-80 p-3">
-                <div className="space-y-2">
-                  <h4 className="font-medium text-sm">所有开放端口 ({sortedPorts.length})</h4>
-                  <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto">
-                    {sortedPorts.map((port, index) => (
-                      <Badge 
-                        key={index} 
-                        variant={getPortVariant(port.number)}
-                        className="text-xs font-mono"
-                        title={`端口 ${port.number}${port.serviceName ? ` (${port.serviceName})` : ''}${port.description ? ` - ${port.description}` : ''}`}
-                      >
-                        {port.number}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
-          )}
-        </div>
-      )
-    },
-  },
-
 
   // 操作列
   {
