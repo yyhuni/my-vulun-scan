@@ -3,7 +3,7 @@ Django ORM 实现的 WebSite Repository
 """
 
 import logging
-from typing import List, Generator, Tuple, Dict
+from typing import List, Generator, Tuple, Dict, Optional
 from django.db import transaction, IntegrityError, OperationalError, DatabaseError
 from django.utils import timezone
 

@@ -13,7 +13,7 @@ from .serializers import ScanSerializer, ScanHistorySerializer
 from .services.scan_service import ScanService
 from apps.common.definitions import ScanStatus
 from apps.common.pagination import BasePagination
-from apps.asset.serializers import SubdomainListSerializer, IPAddressListSerializer, WebSiteSerializer, DirectorySerializer
+from apps.asset.serializers import SubdomainListSerializer, WebSiteSerializer, DirectorySerializer
 
 
 class ScanViewSet(viewsets.ModelViewSet):
