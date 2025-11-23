@@ -121,12 +121,6 @@ class DirectorySnapshot(models.Model):
         related_name='directory_snapshots',
         help_text='所属网站'
     )
-    subdomain = models.ForeignKey(
-        'Subdomain',
-        on_delete=models.CASCADE,
-        related_name='directory_snapshots',
-        help_text='所属子域名（冗余字段，用于快速查询）'
-    )
     
     # 扫描结果数据
     url = models.CharField(max_length=2000, help_text='目录URL')
@@ -143,7 +137,6 @@ class DirectorySnapshot(models.Model):
         indexes = [
             models.Index(fields=['scan']),
             models.Index(fields=['website']),
-            models.Index(fields=['subdomain']),
             models.Index(fields=['scan', 'website']),  # 组合查询
             models.Index(fields=['url']),
             models.Index(fields=['-discovered_at']),

@@ -43,7 +43,6 @@ class DjangoDirectoryRepository:
                 Directory(
                     website_id=item.website_id,
                     target_id=item.target_id,
-                    scan_id=item.scan_id,
                     url=item.url,
                     status=item.status,
                     length=item.length,
@@ -56,16 +55,11 @@ class DjangoDirectoryRepository:
             ]
 
             with transaction.atomic():
-                # 批量插入或更新
-                # 如果 website + url 已存在，则更新扫描字段，但不更新 scan_id（保留原始扫描任务关联）
-                # 唯一约束：website + url（对应模型中的 unique_directory_url_website 约束）
+                # 批量插入或忽略冲突
+                # 如果 website + url 已存在，忽略冲突
                 Directory.objects.bulk_create(
                     directory_objects,
-                    update_conflicts=True,
-                    unique_fields=['website', 'url'],  # 指定唯一字段，用于检测冲突
-                    update_fields=[
-                        'status', 'length', 'words', 'lines', 'content_type', 'duration'
-                    ]
+                    ignore_conflicts=True
                 )
 
             logger.debug(f"成功处理 {len(items)} 条 Directory 记录")
@@ -117,7 +111,6 @@ class DjangoDirectoryRepository:
                 DirectoryDTO(
                     website_id=d.website_id,
                     target_id=d.target_id,
-                    scan_id=d.scan_id,
                     url=d.url,
                     status=d.status,
                     length=d.length,

@@ -9,7 +9,6 @@ class DirectoryDTO:
     """目录数据传输对象"""
     website_id: int
     target_id: int
-    scan_id: int
     url: str
     status: Optional[int] = None
     length: Optional[int] = None

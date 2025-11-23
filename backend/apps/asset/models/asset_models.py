@@ -301,14 +301,6 @@ class Directory(models.Model):
         blank=True,
         help_text='所属的扫描目标（冗余字段，用于快速查询）'
     )
-    scan = models.ForeignKey(
-        'scan.Scan',  # 使用字符串引用
-        on_delete=models.CASCADE,
-        related_name='directories',
-        null=True,
-        blank=True,
-        help_text='所属的扫描任务（冗余字段，用于快速查询）'
-    )
     
     url = models.CharField(
         null=False,
@@ -364,7 +356,6 @@ class Directory(models.Model):
         ordering = ['-discovered_at']
         indexes = [
             models.Index(fields=['-discovered_at']),
-            models.Index(fields=['scan']),         # 优化从scan_id快速查找下面的目录
             models.Index(fields=['target']),     # 优化从target_id快速查找下面的目录
             models.Index(fields=['deleted_at', '-discovered_at']),  # 软删除 + 时间索引
         ]

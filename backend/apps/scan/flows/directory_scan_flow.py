@@ -18,7 +18,7 @@ import os
 import subprocess
 from pathlib import Path
 from prefect import flow
-from apps.scan.tasks.directory_enumeration import (
+from apps.scan.tasks.directory_scan import (
     export_sites_task,
     run_and_stream_save_directories_task
 )
