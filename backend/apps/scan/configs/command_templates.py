@@ -51,7 +51,7 @@ SUBDOMAIN_DISCOVERY_COMMANDS = {
 
 PORT_SCAN_COMMANDS = {
     'naabu_active': {
-        'base': 'naabu -exclude-cdn -warm-up-time 5 -retries 1 -verify -timeout 5000 -list {domains_file} -json -silent',
+        'base': 'sudo naabu -exclude-cdn -warm-up-time 5 -retries 1 -verify -timeout 30000 -list {domains_file} -json ',
         'optional': {
             'threads': '-c {threads}',
             'ports': '-p {ports}',
@@ -61,7 +61,7 @@ PORT_SCAN_COMMANDS = {
     },
     
     'naabu_passive': {
-        'base': 'naabu -list {domains_file} -passive -json -silent'
+        'base': 'sudo naabu -list {domains_file} -passive -json -silent'
     },
 }
 

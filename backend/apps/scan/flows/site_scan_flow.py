@@ -109,7 +109,7 @@ def _setup_site_scan_directory(scan_workspace_dir: str) -> Path:
     return site_scan_dir
 
 
-def _export_site_urls(target_id: int, site_scan_dir: Path) -> tuple[str, int, int, int]:
+def _export_site_urls(target_id: int, site_scan_dir: Path) -> tuple[str, int, int]:
     """
     导出站点 URL 到文件
     
@@ -118,7 +118,7 @@ def _export_site_urls(target_id: int, site_scan_dir: Path) -> tuple[str, int, in
         site_scan_dir: 站点扫描目录
         
     Returns:
-        tuple: (urls_file, total_urls, subdomain_count, port_count)
+        tuple: (urls_file, total_urls, association_count)
         
     Raises:
         ValueError: URL 数量为 0
@@ -133,14 +133,13 @@ def _export_site_urls(target_id: int, site_scan_dir: Path) -> tuple[str, int, in
     )
     
     total_urls = export_result['total_urls']
-    subdomain_count = export_result['subdomain_count']
-    port_count = export_result['port_count']
+    association_count = export_result['association_count']  # 主机端口关联数
     
     logger.info(
-        "✓ 站点URL导出完成 - 文件: %s, URL数量: %d, 子域名数: %d",
+        "✓ 站点URL导出完成 - 文件: %s, URL数量: %d, 关联数: %d",
         export_result['output_file'],
         total_urls,
-        subdomain_count
+        association_count
     )
     
     if total_urls == 0:
@@ -148,7 +147,7 @@ def _export_site_urls(target_id: int, site_scan_dir: Path) -> tuple[str, int, in
         # 不抛出异常，由上层决定如何处理
         # raise ValueError("目标下没有可用的站点URL，无法执行站点扫描")
     
-    return export_result['output_file'], total_urls, subdomain_count, port_count
+    return export_result['output_file'], total_urls, association_count
 
 
 def _run_scans_sequentially(
@@ -364,8 +363,7 @@ def site_scan_flow(
             'scan_workspace_dir': str,
             'urls_file': str,
             'total_urls': int,
-            'subdomain_count': int,
-            'port_count': int,
+            'association_count': int,
             'processed_records': int,
             'created_websites': int,
             'skipped_no_subdomain': int,
@@ -410,7 +408,7 @@ def site_scan_flow(
         site_scan_dir = _setup_site_scan_directory(scan_workspace_dir)
         
         # Step 1: 导出站点 URL
-        urls_file, total_urls, subdomain_count, port_count = _export_site_urls(
+        urls_file, total_urls, association_count = _export_site_urls(
             target_id, site_scan_dir
         )
         
@@ -423,8 +421,7 @@ def site_scan_flow(
                 'scan_workspace_dir': scan_workspace_dir,
                 'urls_file': urls_file,
                 'total_urls': 0,
-                'subdomain_count': subdomain_count,
-                'port_count': port_count,
+                'association_count': association_count,
                 'processed_records': 0,
                 'created_websites': 0,
                 'skipped_no_subdomain': 0,
@@ -492,8 +489,7 @@ def site_scan_flow(
             'scan_workspace_dir': scan_workspace_dir,
             'urls_file': urls_file,
             'total_urls': total_urls,
-            'subdomain_count': subdomain_count,
-            'port_count': port_count,
+            'association_count': association_count,
             'processed_records': processed_records,
             'created_websites': total_created,
             'skipped_no_subdomain': total_skipped_no_subdomain,
