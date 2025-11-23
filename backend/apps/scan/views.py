@@ -15,7 +15,6 @@ from apps.common.definitions import ScanStatus
 from apps.common.pagination import BasePagination
 from apps.asset.serializers import (
     SubdomainListSerializer,
-    IPAddressListSerializer,
     WebSiteSerializer,
     DirectorySerializer,
     SubdomainSnapshotSerializer,
@@ -393,20 +392,19 @@ class ScanViewSet(viewsets.ModelViewSet):
         """
         获取扫描关联的所有 IP 地址（支持分页）
         
+        基于 HostPortMappingSnapshot 模型，按 IP 聚合显示：
+        - 每个 IP 显示其关联的所有 hosts 和 ports
+        - 按首次发现时间倒序排列
+        
         URL: GET /api/scans/{id}/ip-addresses/?page=1&pageSize=10
-        
-        功能:
-        - 返回指定扫描任务发现的所有 IP 地址
-        - 包含 IP 地址的详细信息（地址、关联子域名、端口等）
-        - 支持分页查询
-        
-        返回:
-        - results: IP 地址列表
-        - total: 总记录数
-        - page: 当前页码
-        - page_size: 每页大小
-        - total_pages: 总页数
         """
+        from apps.asset.models.snapshot_models import HostPortMappingSnapshot
+        from apps.asset.serializers import IPAddressAggregatedSerializer
+        from django.core.exceptions import ObjectDoesNotExist
+        from django.db import DatabaseError, OperationalError
+        from django.db.models import Min
+        from rest_framework.exceptions import ValidationError, NotFound, APIException
+
         try:
             scan_service = ScanService()
             scan = scan_service.get_scan(scan_id=pk, prefetch_relations=False)
@@ -417,14 +415,40 @@ class ScanViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_404_NOT_FOUND
                 )
 
-            # IP 地址使用实时数据（因为没有 IP 快照表）
-            queryset = scan.ip_addresses.select_related('subdomain').prefetch_related('ports').order_by('-created_at')
+            # 按 IP 聚合，获取每个 IP 的 hosts、ports 和首次发现时间
+            ip_aggregated = (
+                HostPortMappingSnapshot.objects
+                .filter(scan=scan)
+                .values('ip')
+                .annotate(
+                    discovered_at=Min('discovered_at')  # 该 IP 的首次发现时间
+                )
+                .order_by('-discovered_at')
+            )
+            
+            # 为每个 IP 获取其关联的 hosts 和 ports
+            results = []
+            for item in ip_aggregated:
+                ip = item['ip']
+                # 获取该 IP 的所有 host 和 port
+                mappings = HostPortMappingSnapshot.objects.filter(scan=scan, ip=ip).values('host', 'port').distinct()
+                
+                hosts = sorted(set(m['host'] for m in mappings))
+                ports = sorted(set(m['port'] for m in mappings))
+                
+                results.append({
+                    'ip': ip,
+                    'hosts': hosts,
+                    'ports': ports,
+                    'discovered_at': item['discovered_at']
+                })
 
+            # 分页
             paginator = self.paginator
-            page = paginator.paginate_queryset(queryset, request, view=self)
+            page = paginator.paginate_queryset(results, request, view=self)
 
             if page is not None:
-                serializer = IPAddressListSerializer(page, many=True)
+                serializer = IPAddressAggregatedSerializer(page, many=True)
                 return paginator.get_paginated_response(serializer.data)
 
             return Response(

@@ -54,44 +54,28 @@ class ScanHistorySerializer(serializers.ModelSerializer):
     def get_summary(self, obj):
         """计算扫描汇总数据
         
-        统计该扫描发现的资产数量：
+        统计该扫描发现的资产数量（使用快照数据）：
         - subdomains: 子域名数量
         - websites: 网站数量
-        - endpoints: 端点数量
-        - ips: IP地址数量
+        - endpoints: 端点数量（暂无快照表，返回0）
+        - ips: IP地址数量（基于 HostPortMappingSnapshot 按 IP 去重）
         - directories: 目录数量
         - vulnerabilities: 漏洞统计（暂时返回 0，待后续实现）
-        
-        性能优化：
-        - 只使用缓存的统计字段（cached_*_count）
-        - 如果缓存未更新（stats_updated_at 为 None），返回 0
-        - 扫描完成时缓存字段会被正确更新
         """
-        # 检查缓存是否已更新（通过 stats_updated_at 字段判断）
-        if obj.stats_updated_at is None:
-            # 缓存未更新，返回 0（扫描刚开始或未完成）
-            return {
-                'subdomains': 0,
-                'websites': 0,
-                'endpoints': 0,
-                'ips': 0,
-                'directories': 0,
-                'vulnerabilities': {
-                    'total': 0,
-                    'critical': 0,
-                    'high': 0,
-                    'medium': 0,
-                    'low': 0
-                }
-            }
+        # 直接统计快照数据
+        subdomains_count = obj.subdomain_snapshots.count()
+        websites_count = obj.website_snapshots.count()
+        directories_count = obj.directory_snapshots.count()
         
-        # 使用缓存字段
+        # IP 数量：基于 HostPortMappingSnapshot 按 IP 去重统计
+        ips_count = obj.host_port_mapping_snapshots.values('ip').distinct().count()
+        
         return {
-            'subdomains': obj.cached_subdomains_count or 0,
-            'websites': obj.cached_websites_count or 0,
-            'endpoints': obj.cached_endpoints_count or 0,
-            'ips': obj.cached_ips_count or 0,
-            'directories': obj.cached_directories_count or 0,
+            'subdomains': subdomains_count,
+            'websites': websites_count,
+            'endpoints': 0,  # 暂无端点快照表
+            'ips': ips_count,
+            'directories': directories_count,
             'vulnerabilities': {
                 'total': 0,
                 'critical': 0,

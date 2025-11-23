@@ -33,7 +33,7 @@ from apps.asset.models import (
 from apps.scan.models import Scan
 from apps.engine.models import ScanEngine
 from apps.asset.models.snapshot_models import (
-    SubdomainSnapshot, WebsiteSnapshot, DirectorySnapshot
+    SubdomainSnapshot, WebsiteSnapshot, DirectorySnapshot, HostPortMappingSnapshot
 )
 
 
@@ -45,6 +45,7 @@ def clear_existing_data():
     DirectorySnapshot.objects.all().delete()
     WebsiteSnapshot.objects.all().delete()
     SubdomainSnapshot.objects.all().delete()
+    HostPortMappingSnapshot.objects.all().delete()
     
     Directory.objects.all().delete()
     WebSite.objects.all().delete()
@@ -179,8 +180,8 @@ def create_subdomains(targets, scans):
     return subdomains
 
 
-def create_host_port_mappings(targets, subdomains):
-    """创建主机端口映射 - 真实的服务与端口映射关系，一个 IP 对应多个域名"""
+def create_host_port_mappings(targets, subdomains, scans):
+    """创建主机端口映射及快照 - 真实的服务与端口映射关系，一个 IP 对应多个域名"""
     print("🔌 创建主机端口映射...")
     
     # 定义真实的服务与端口映射关系（扩展端口列表）
@@ -263,7 +264,44 @@ def create_host_port_mappings(targets, subdomains):
                     )
                     mappings.append(mapping)
     
-    print(f"✅ 创建了 {len(mappings)} 个主机端口映射\n")
+    print(f"✅ 创建了 {len(mappings)} 个主机端口映射")
+    
+    # 为已完成的扫描创建快照
+    snapshots = []
+    for target in targets:
+        target_subdomains = [s for s in subdomains if s.target == target]
+        ip_base = company_ip_ranges.get(target.name, '192.168.1.')
+        latest_scan = next((s for s in scans if s.target == target and s.status == 'completed'), None)
+        
+        if latest_scan:
+            # 重新构建 IP 组
+            ip_groups = {}
+            for i, subdomain in enumerate(target_subdomains):
+                ip_index = i // 5
+                ip = f"{ip_base}{10 + ip_index}"
+                if ip not in ip_groups:
+                    ip_groups[ip] = []
+                ip_groups[ip].append(subdomain)
+            
+            # 为每个 IP 组创建快照映射
+            for ip, group_subdomains in ip_groups.items():
+                all_ports = set()
+                for subdomain in group_subdomains:
+                    subdomain_prefix = subdomain.name.split('.')[0]
+                    ports = service_ports.get(subdomain_prefix, [80, 443])
+                    all_ports.update(ports)
+                
+                for subdomain in group_subdomains:
+                    for port in all_ports:
+                        snapshot = HostPortMappingSnapshot.objects.create(
+                            scan=latest_scan,
+                            host=subdomain.name,
+                            ip=ip,
+                            port=port,
+                        )
+                        snapshots.append(snapshot)
+    
+    print(f"✅ 创建了 {len(snapshots)} 个主机端口映射快照\n")
     return mappings
 
 
@@ -573,7 +611,7 @@ def create_directories(targets, websites, scans):
                 )
                 directories.append(directory)
                 
-                # 创建目录快照
+                # 创建目录快照（只包含快照模型实际有的字段）
                 latest_scan = next((s for s in scans if s.target == target and s.status == 'completed'), None)
                 if latest_scan:
                     snapshot = DirectorySnapshot.objects.create(
@@ -582,6 +620,7 @@ def create_directories(targets, websites, scans):
                         url=url,
                         status=dir_info['status'],
                         content_length=content_length,
+                        location='',  # DirectorySnapshot 有 location 字段
                     )
                     snapshots.append(snapshot)
     
@@ -620,7 +659,7 @@ def main():
         targets = create_targets(orgs)
         scans = create_scans(targets)
         subdomains = create_subdomains(targets, scans)
-        mappings = create_host_port_mappings(targets, subdomains)
+        mappings = create_host_port_mappings(targets, subdomains, scans)
         websites = create_websites(targets, subdomains, scans)
         directories = create_directories(targets, websites, scans)
         
@@ -638,6 +677,7 @@ def main():
         print(f"  - 子域名: {Subdomain.objects.count()}")
         print(f"  - 子域名快照: {SubdomainSnapshot.objects.count()}")
         print(f"  - 主机端口映射: {HostPortMapping.objects.count()}")
+        print(f"  - 主机端口映射快照: {HostPortMappingSnapshot.objects.count()}")
         print(f"  - 网站: {WebSite.objects.count()}")
         print(f"  - 网站快照: {WebsiteSnapshot.objects.count()}")
         print(f"  - 目录: {Directory.objects.count()}")
