@@ -13,7 +13,15 @@ from .serializers import ScanSerializer, ScanHistorySerializer
 from .services.scan_service import ScanService
 from apps.common.definitions import ScanStatus
 from apps.common.pagination import BasePagination
-from apps.asset.serializers import SubdomainListSerializer, WebSiteSerializer, DirectorySerializer
+from apps.asset.serializers import (
+    SubdomainListSerializer,
+    IPAddressListSerializer,
+    WebSiteSerializer,
+    DirectorySerializer,
+    SubdomainSnapshotSerializer,
+    WebsiteSnapshotSerializer,
+    DirectorySnapshotSerializer,
+)
 
 
 class ScanViewSet(viewsets.ModelViewSet):
@@ -351,15 +359,15 @@ class ScanViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_404_NOT_FOUND
                 )
             
-            # 获取该扫描的所有子域名（按创建时间倒序）
-            queryset = scan.subdomains.prefetch_related('ports', 'ip_addresses').order_by('-created_at')
+            # 获取该扫描的所有子域名快照（按发现时间倒序）
+            queryset = scan.subdomain_snapshots.all().order_by('-discovered_at')
             
             # 使用分页器
             paginator = self.paginator
             page = paginator.paginate_queryset(queryset, request, view=self)
             
             if page is not None:
-                serializer = SubdomainListSerializer(page, many=True)
+                serializer = SubdomainSnapshotSerializer(page, many=True)
                 return paginator.get_paginated_response(serializer.data)
             
             # 如果没有分页参数，返回错误
@@ -409,6 +417,7 @@ class ScanViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_404_NOT_FOUND
                 )
 
+            # IP 地址使用实时数据（因为没有 IP 快照表）
             queryset = scan.ip_addresses.select_related('subdomain').prefetch_related('ports').order_by('-created_at')
 
             paginator = self.paginator
@@ -464,14 +473,14 @@ class ScanViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_404_NOT_FOUND
                 )
 
-            # 获取该扫描的所有站点（按创建时间倒序）
-            queryset = scan.websites.select_related('subdomain').order_by('-created_at')
+            # 获取该扫描的所有站点快照（按发现时间倒序）
+            queryset = scan.website_snapshots.select_related('subdomain').order_by('-discovered_at')
 
             paginator = self.paginator
             page = paginator.paginate_queryset(queryset, request, view=self)
 
             if page is not None:
-                serializer = WebSiteSerializer(page, many=True)
+                serializer = WebsiteSnapshotSerializer(page, many=True)
                 return paginator.get_paginated_response(serializer.data)
 
             return Response(
@@ -520,14 +529,14 @@ class ScanViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_404_NOT_FOUND
                 )
 
-            # 获取该扫描的所有目录（按创建时间倒序）
-            queryset = scan.directories.select_related('website').order_by('-created_at')
+            # 获取该扫描的所有目录快照（按发现时间倒序）
+            queryset = scan.directory_snapshots.select_related('website').order_by('-discovered_at')
 
             paginator = self.paginator
             page = paginator.paginate_queryset(queryset, request, view=self)
 
             if page is not None:
-                serializer = DirectorySerializer(page, many=True)
+                serializer = DirectorySnapshotSerializer(page, many=True)
                 return paginator.get_paginated_response(serializer.data)
 
             return Response(

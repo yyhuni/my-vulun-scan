@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Subdomain, WebSite, Directory, HostPortMapping
+from .models.snapshot_models import SubdomainSnapshot, WebsiteSnapshot, DirectorySnapshot
 
 
 # 注意：IPAddress 和 Port 模型已被重构为 HostPortMapping
@@ -121,3 +122,63 @@ class IPAddressAggregatedSerializer(serializers.Serializer):
     hosts = serializers.ListField(child=serializers.CharField(), read_only=True)
     ports = serializers.ListField(child=serializers.IntegerField(), read_only=True)
     discovered_at = serializers.DateTimeField(read_only=True)
+
+
+# ==================== 快照序列化器 ====================
+
+class SubdomainSnapshotSerializer(serializers.ModelSerializer):
+    """子域名快照序列化器（用于扫描历史）"""
+    
+    class Meta:
+        model = SubdomainSnapshot
+        fields = ['id', 'name', 'discovered_at']
+        read_only_fields = fields
+
+
+class WebsiteSnapshotSerializer(serializers.ModelSerializer):
+    """网站快照序列化器（用于扫描历史）"""
+    
+    subdomain_name = serializers.CharField(source='subdomain.name', read_only=True)
+    webserver = serializers.CharField(source='web_server', read_only=True)  # 映射字段名
+    status_code = serializers.IntegerField(source='status', read_only=True)  # 映射字段名
+    
+    class Meta:
+        model = WebsiteSnapshot
+        fields = [
+            'id',
+            'url',
+            'location',
+            'title',
+            'webserver',  # 使用映射后的字段名
+            'content_type',
+            'status_code',  # 使用映射后的字段名
+            'content_length',
+            'body_preview',
+            'tech',
+            'vhost',
+            'subdomain_name',
+            'discovered_at',
+        ]
+        read_only_fields = fields
+
+
+class DirectorySnapshotSerializer(serializers.ModelSerializer):
+    """目录快照序列化器（用于扫描历史）"""
+    
+    website_url = serializers.CharField(source='website.url', read_only=True)
+    
+    class Meta:
+        model = DirectorySnapshot
+        fields = [
+            'id',
+            'url',
+            'status',
+            'content_length',
+            'words',
+            'lines',
+            'content_type',
+            'duration',
+            'website_url',
+            'discovered_at',
+        ]
+        read_only_fields = fields
