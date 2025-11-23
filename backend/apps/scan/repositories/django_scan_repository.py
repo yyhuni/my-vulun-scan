@@ -400,13 +400,16 @@ class DjangoScanRepository:
                 logger.error("Scan 不存在，无法更新缓存统计数据 - Scan ID: %s", scan_id)
                 return False
             
-            # 使用 Django ORM 聚合查询，保持数据库抽象
+            # 统计快照数据（用于扫描历史）
+            # IP 数量需要按 IP 去重统计
+            ips_count = scan.host_port_mapping_snapshots.values('ip').distinct().count()
+            
             stats = {
-                'cached_subdomains_count': scan.subdomains.count(),
-                'cached_websites_count': scan.websites.count(), 
-                'cached_endpoints_count': scan.endpoints.count(),
-                'cached_ips_count': scan.ip_addresses.count(),
-                'cached_directories_count': scan.directories.count(),
+                'cached_subdomains_count': scan.subdomain_snapshots.count(),
+                'cached_websites_count': scan.website_snapshots.count(), 
+                'cached_endpoints_count': 0,  # 暂无端点快照表
+                'cached_ips_count': ips_count,
+                'cached_directories_count': scan.directory_snapshots.count(),
                 'stats_updated_at': timezone.now()
             }
             

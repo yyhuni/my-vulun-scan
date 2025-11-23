@@ -633,16 +633,16 @@ def create_directories(targets, websites, scans):
 
 
 def update_scan_stats(scans):
-    """更新扫描统计数据"""
+    """更新扫描统计数据（使用 ScanService 更新缓存字段）"""
     print("📊 更新扫描统计...")
+    
+    from apps.scan.services import ScanService
+    scan_service = ScanService()
     
     for scan in scans:
         if scan.status == 'completed':
-            scan.subdomains_count = Subdomain.objects.filter(target=scan.target).count()
-            scan.websites_count = WebSite.objects.filter(target=scan.target).count()
-            scan.directories_count = Directory.objects.filter(target=scan.target).count()
-            scan.ips_count = HostPortMapping.objects.filter(target=scan.target).values('ip').distinct().count()
-            scan.save()
+            # 使用 ScanService 更新缓存统计字段
+            scan_service.update_cached_stats(scan.id)
     
     print("✅ 扫描统计更新完成\n")
 

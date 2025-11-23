@@ -52,30 +52,27 @@ class ScanHistorySerializer(serializers.ModelSerializer):
         ]
     
     def get_summary(self, obj):
-        """计算扫描汇总数据
+        """获取扫描汇总数据（使用缓存字段）
         
-        统计该扫描发现的资产数量（使用快照数据）：
+        性能优化：只使用缓存字段，不实时计算
+        - 缓存字段由扫描完成时自动更新（通过 ScanService.update_cached_stats）
+        - 扫描进行中或未更新时显示 0
+        
+        返回字段：
         - subdomains: 子域名数量
         - websites: 网站数量
         - endpoints: 端点数量（暂无快照表，返回0）
-        - ips: IP地址数量（基于 HostPortMappingSnapshot 按 IP 去重）
+        - ips: IP地址数量
         - directories: 目录数量
         - vulnerabilities: 漏洞统计（暂时返回 0，待后续实现）
         """
-        # 直接统计快照数据
-        subdomains_count = obj.subdomain_snapshots.count()
-        websites_count = obj.website_snapshots.count()
-        directories_count = obj.directory_snapshots.count()
-        
-        # IP 数量：基于 HostPortMappingSnapshot 按 IP 去重统计
-        ips_count = obj.host_port_mapping_snapshots.values('ip').distinct().count()
-        
+        # 只使用缓存字段（无数据库查询）
         return {
-            'subdomains': subdomains_count,
-            'websites': websites_count,
-            'endpoints': 0,  # 暂无端点快照表
-            'ips': ips_count,
-            'directories': directories_count,
+            'subdomains': obj.cached_subdomains_count or 0,
+            'websites': obj.cached_websites_count or 0,
+            'endpoints': obj.cached_endpoints_count or 0,
+            'ips': obj.cached_ips_count or 0,
+            'directories': obj.cached_directories_count or 0,
             'vulnerabilities': {
                 'total': 0,
                 'critical': 0,
