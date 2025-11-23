@@ -148,6 +148,7 @@ class CommandExecutor:
                     with open(log_file_path, 'w', encoding='utf-8', buffering=1) as log_f:
                         result = subprocess.run(
                             command,
+                            stdin=subprocess.DEVNULL,  # 关闭 stdin，防止工具等待输入
                             shell=True,
                             stdout=log_f,
                             stderr=subprocess.STDOUT,  # 合并到 stdout
@@ -160,6 +161,7 @@ class CommandExecutor:
                     with open(log_file_path, 'w', encoding='utf-8', buffering=1) as log_f:
                         result = subprocess.run(
                             command,
+                            stdin=subprocess.DEVNULL,  # 关闭 stdin，防止工具等待输入
                             shell=True,
                             stdout=subprocess.DEVNULL,
                             stderr=log_f,
@@ -170,6 +172,7 @@ class CommandExecutor:
                 # 无日志文件路径：丢弃所有输出
                 result = subprocess.run(
                     command,
+                    stdin=subprocess.DEVNULL,  # 关闭 stdin，防止工具等待输入
                     shell=True,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
@@ -294,6 +297,7 @@ class CommandExecutor:
                 # 输出所有内容到日志文件，同时流式返回
                 process = subprocess.Popen(
                     command,
+                    stdin=subprocess.DEVNULL,  # 关闭 stdin，防止工具等待输入
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,  # 合并错误输出
                     cwd=cwd,
@@ -305,6 +309,7 @@ class CommandExecutor:
                 # 只输出错误到日志文件
                 process = subprocess.Popen(
                     command,
+                    stdin=subprocess.DEVNULL,  # 关闭 stdin，防止工具等待输入
                     stdout=subprocess.PIPE,
                     stderr=log_file_handle,  # 错误直接写入日志文件
                     cwd=cwd,
@@ -316,6 +321,7 @@ class CommandExecutor:
             # 无日志文件：正常流式输出
             process = subprocess.Popen(
                 command,
+                stdin=subprocess.DEVNULL,  # 关闭 stdin，防止工具等待输入
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 cwd=cwd,

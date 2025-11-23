@@ -291,6 +291,7 @@ def _parse_naabu_stream_output(
     
     total_lines = 0
     error_lines = 0
+    last_log_time = time.time()  # 添加：记录上次日志时间
     
     try:
         # 使用 execute_stream 获取实时输出流（带工具名、超时控制和日志文件）
@@ -306,6 +307,16 @@ def _parse_naabu_stream_output(
                 
                 # yield 一条有效记录
                 yield record
+                
+                # 添加：每100条记录输出一次处理速度统计
+                if total_lines % 100 == 0:
+                    current_time = time.time()
+                    elapsed = current_time - last_log_time
+                    logger.info(
+                        "流式处理进度 - 已处理: %d 行, 有效记录: %d, 错误: %d, 速度: %.1f 行/秒",
+                        total_lines, total_lines - error_lines, error_lines, 100 / elapsed if elapsed > 0 else 0
+                    )
+                    last_log_time = current_time
             
             except (json.JSONDecodeError, ValueError, KeyError) as e:
                 # 数据解析错误（可恢复）：记录警告但继续处理后续数据
@@ -411,9 +422,20 @@ def _process_batch(
         failed_batches: 失败批次列表
         services: Service 集合（必须，依赖注入）
     """
+    # 添加：记录批次保存开始时间
+    batch_start_time = time.time()
+    
     result = _save_batch_with_retry(
         batch, scan_id, target_id, batch_num, subdomain_cache, services
     )
+    
+    # 添加：记录批次保存耗时
+    batch_elapsed = time.time() - batch_start_time
+    if batch_elapsed > 1.0:  # 如果保存超过1秒，输出警告
+        logger.warning(
+            "批次 %d 保存耗时过长: %.2f 秒（%d 条记录）",
+            batch_num, batch_elapsed, len(batch)
+        )
     
     # 累计统计信息（失败时可能有部分数据已保存）
     _accumulate_batch_stats(total_stats, result)
