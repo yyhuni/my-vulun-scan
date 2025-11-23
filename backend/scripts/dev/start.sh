@@ -182,17 +182,11 @@ echo "  - 注册 Targets 删除任务..."
 nohup $PYTHON -m apps.targets.deployments.register > "$PID_DIR/targets-delete-deployment.log" 2>&1 &
 echo $! > "$PID_DIR/targets-delete-deployment.pid"
 
-# 注册 Asset 删除任务 Deployments（子域名等）
-echo "  - 注册 Asset 删除任务..."
-nohup $PYTHON -m apps.asset.deployments.register > "$PID_DIR/asset-delete-deployment.log" 2>&1 &
-echo $! > "$PID_DIR/asset-delete-deployment.pid"
-
 sleep 5
 
 # 验证 Deployments 启动状态（所有都是分离模式）
 SCAN_SUCCESS=false
 TARGETS_SUCCESS=false
-ASSET_SUCCESS=false
 
 # 检查 Scan Deployments（扫描 + 清理 + 删除）
 if grep -q "✅ 所有 Scan Deployments 注册成功！" "$PID_DIR/scan-deployment.log" 2>/dev/null; then
@@ -204,13 +198,8 @@ if grep -q "✅ 所有 Targets Deployments 注册成功！" "$PID_DIR/targets-de
     TARGETS_SUCCESS=true
 fi
 
-# 检查 Asset Deployments
-if grep -q "✅ 所有 Asset Deployments 注册成功！" "$PID_DIR/asset-delete-deployment.log" 2>/dev/null; then
-    ASSET_SUCCESS=true
-fi
-
 # 验证结果
-if $SCAN_SUCCESS && $TARGETS_SUCCESS && $ASSET_SUCCESS; then
+if [ "$SCAN_SUCCESS" = true ] && [ "$TARGETS_SUCCESS" = true ]; then
     echo -e "${GREEN}✓ 所有 Prefect Deployments 已启动${NC}"
     echo "  - 扫描任务: 分离模式部署成功"
     echo "  - 清理任务: 分离模式部署成功"
@@ -218,13 +207,11 @@ if $SCAN_SUCCESS && $TARGETS_SUCCESS && $ASSET_SUCCESS; then
 else
     echo -e "${YELLOW}⚠ 部分 Deployments 可能未完成部署${NC}"
     echo "  状态检查:"
-    echo "    - Scan 任务: $(if $SCAN_SUCCESS; then echo "✓ 部署成功"; else echo "⚠ 请检查日志"; fi)"
-    echo "    - Targets 任务: $(if $TARGETS_SUCCESS; then echo "✓ 部署成功"; else echo "⚠ 请检查日志"; fi)"
-    echo "    - Asset 任务: $(if $ASSET_SUCCESS; then echo "✓ 部署成功"; else echo "⚠ 请检查日志"; fi)"
+    echo "    - Scan 任务: $(if [ "$SCAN_SUCCESS" = true ]; then echo "✓ 部署成功"; else echo "⚠ 请检查日志"; fi)"
+    echo "    - Targets 任务: $(if [ "$TARGETS_SUCCESS" = true ]; then echo "✓ 部署成功"; else echo "⚠ 请检查日志"; fi)"
     echo "  查看日志:"
     echo "    - tail -f $PID_DIR/scan-deployment.log"
     echo "    - tail -f $PID_DIR/targets-delete-deployment.log"
-    echo "    - tail -f $PID_DIR/asset-delete-deployment.log"
     echo ""
     echo -e "${YELLOW}  继续启动 Worker...${NC}"
 fi
@@ -269,8 +256,6 @@ echo "    • delete-scans (删除)"
 echo "  - Targets 任务:     分离模式部署成功"
 echo "    • delete-targets (目标删除)"
 echo "    • delete-organizations (组织删除)"
-echo "  - Asset 任务:       分离模式部署成功"
-echo "    • delete-subdomains, delete-websites, 等"
 echo "  - Worker:           运行中 (PID: $(cat $PID_DIR/prefect-worker.pid))"
 echo "    • 工作池:          development-pool"
 echo ""
@@ -279,7 +264,6 @@ echo "  - Prefect:          $PID_DIR/prefect-server.log"
 echo "  - Daphne:           $PID_DIR/daphne.log"
 echo "  - Scan Deployments: $PID_DIR/scan-deployment.log"
 echo "  - Targets 删除:     $PID_DIR/targets-delete-deployment.log"
-echo "  - Asset 删除:       $PID_DIR/asset-delete-deployment.log"
 echo "  - Worker:           $PID_DIR/prefect-worker.log"
 echo ""
 echo "管理命令:"
