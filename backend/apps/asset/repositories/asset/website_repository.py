@@ -49,8 +49,7 @@ class DjangoWebSiteRepository:
                     tech=item.tech,
                     status_code=item.status_code,
                     content_length=item.content_length,
-                    vhost=item.vhost,
-                    created_at=item.created_at
+                    vhost=item.vhost
                 )
                 for item in items
             ]
