@@ -13,6 +13,7 @@ from .snapshot import (
     DjangoSubdomainSnapshotRepository,
     DjangoHostPortMappingSnapshotRepository,
     DjangoWebsiteSnapshotRepository,
+    DjangoDirectorySnapshotRepository,
 )
 
 __all__ = [
@@ -25,6 +26,7 @@ __all__ = [
     'DjangoSubdomainSnapshotRepository',
     'DjangoHostPortMappingSnapshotRepository',
     'DjangoWebsiteSnapshotRepository',
+    'DjangoDirectorySnapshotRepository',
 ]
 
 

@@ -91,25 +91,4 @@ def export_sites_task(
         raise
 
 
-@task(name="count_sites", retries=2)
-def count_sites_task(target_id: int) -> int:
-    """
-    统计目标下的站点总数
 
-    Args:
-        target_id: 目标 ID
-
-    Returns:
-        int: 站点总数
-    """
-    try:
-        # 初始化 Repository
-        repository = DjangoWebSiteRepository()
-
-        count = repository.count_by_target(target_id)
-        logger.info("Target %d 的站点总数: %d", target_id, count)
-        return count
-
-    except Exception as e:
-        logger.exception("统计站点数量失败: %s", e)
-        raise

@@ -13,6 +13,7 @@ from .snapshot import (
     SubdomainSnapshotsService,
     HostPortMappingSnapshotsService,
     WebsiteSnapshotsService,
+    DirectorySnapshotsService,
 )
 
 __all__ = [
@@ -25,4 +26,5 @@ __all__ = [
     'SubdomainSnapshotsService',
     'HostPortMappingSnapshotsService',
     'WebsiteSnapshotsService',
+    'DirectorySnapshotsService',
 ]

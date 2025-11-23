@@ -25,14 +25,18 @@ import subprocess
 import time
 from pathlib import Path
 from prefect import task
-from typing import Generator, Optional
+from typing import Generator, Optional, TYPE_CHECKING
 from django.db import IntegrityError, OperationalError, DatabaseError
 from psycopg2 import InterfaceError
-
-from apps.asset.services import WebSiteService, DirectoryService
-from apps.asset.dtos import DirectoryDTO
-from apps.scan.utils import execute_stream
 from dataclasses import dataclass
+
+from apps.asset.services import WebSiteService
+from apps.asset.dtos.snapshot import DirectorySnapshotDTO
+from apps.scan.utils import execute_stream
+
+# 类型检查时导入，运行时不导入（避免循环依赖）
+if TYPE_CHECKING:
+    from apps.asset.services.snapshot import DirectorySnapshotsService
 
 logger = logging.getLogger(__name__)
 
@@ -45,14 +49,15 @@ class ServiceSet:
     提供目录扫描所需的 Service 实例，便于测试时注入 Mock 对象
     """
     website: WebSiteService
-    directory: DirectoryService
+    snapshot: "DirectorySnapshotsService"
     
     @classmethod
-    def create_default(cls) -> 'ServiceSet':
+    def create_default(cls) -> "ServiceSet":
         """创建默认的 Service 集合"""
+        from apps.asset.services.snapshot import DirectorySnapshotsService
         return cls(
             website=WebSiteService(),
-            directory=DirectoryService()
+            snapshot=DirectorySnapshotsService()
         )
 
 
@@ -259,10 +264,14 @@ def _save_batch(
     services: ServiceSet
 ) -> int:
     """
-    保存一个批次的数据到数据库
+    保存一个批次的数据到数据库（使用快照 Service）
     
     数据关系链：
-        WebSite (已存在) → Directory (待创建)
+        WebSite (已存在) → DirectorySnapshot (待创建) → Directory (自动同步)
+    
+    处理流程：
+        1. 构建 DirectorySnapshotDTO：包含 scan_id 和 target_id
+        2. 调用快照 Service：save_and_sync() 自动保存快照并同步到资产表
     
     Args:
         batch: 数据批次，list of dict
@@ -279,30 +288,32 @@ def _save_batch(
         logger.debug("批次 %d 为空，跳过处理", batch_num)
         return 0
     
-    # 准备 Directory DTO 数据（Service 装饰器会自动处理数据库连接健康检查）
-    directory_dtos = []
+    # ========== Step 1: 准备 DirectorySnapshot 数据（内存操作，无需事务）==========
+    snapshot_items = []
     
     for record in batch:
-        directory_dtos.append(
-            DirectoryDTO(
-                website_id=website_id,
-                target_id=target_id,
-                scan_id=scan_id,
-                url=record['url'],
-                status=record.get('status'),
-                length=record.get('length'),
-                words=record.get('words'),
-                lines=record.get('lines'),
-                content_type=record.get('content_type', ''),
-                duration=record.get('duration')
-            )
+        # 创建 DirectorySnapshot DTO
+        snapshot_dto = DirectorySnapshotDTO(
+            scan_id=scan_id,
+            website_id=website_id,
+            target_id=target_id,  # 冗余字段，用于同步到资产表
+            url=record['url'],
+            status=record.get('status'),
+            content_length=record.get('length'),
+            location=record.get('location', ''),
+            words=record.get('words'),
+            lines=record.get('lines'),
+            content_type=record.get('content_type', ''),
+            duration=record.get('duration')
         )
+        
+        snapshot_items.append(snapshot_dto)
     
-    # 使用 Service 批量插入（忽略已存在的记录）
-    if directory_dtos:
-        services.directory.bulk_create_ignore_conflicts(directory_dtos)
+    # ========== Step 2: 保存快照并同步到资产表（通过快照 Service）==========
+    if snapshot_items:
+        services.snapshot.save_and_sync(snapshot_items)
     
-    return len(directory_dtos)
+    return len(snapshot_items)
 
 
 @task(

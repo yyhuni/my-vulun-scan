@@ -313,7 +313,7 @@ class Directory(models.Model):
         blank=True,
         help_text='HTTP 响应状态码'
     )
-    length = models.BigIntegerField(
+    content_length = models.BigIntegerField(
         null=True,
         blank=True,
         help_text='响应体字节大小（Content-Length 或实际长度）'

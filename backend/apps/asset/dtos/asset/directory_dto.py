@@ -11,7 +11,7 @@ class DirectoryDTO:
     target_id: int
     url: str
     status: Optional[int] = None
-    length: Optional[int] = None
+    content_length: Optional[int] = None
     words: Optional[int] = None
     lines: Optional[int] = None
     content_type: str = ''
