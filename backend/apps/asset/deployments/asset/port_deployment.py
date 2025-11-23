@@ -5,7 +5,7 @@ Port 删除 Deployment 配置
 """
 
 import os
-from apps.asset.flows.port_delete_flow import delete_ports_flow
+from apps.asset.flows import delete_ports_flow
 
 
 def create_port_deployment():
@@ -19,7 +19,7 @@ def create_port_deployment():
     
     return delete_ports_flow.from_source(
         source=".",
-        entrypoint="apps/asset/flows/port_delete_flow.py:delete_ports_flow"
+        entrypoint="apps/asset/flows/asset/port_delete_flow.py:delete_ports_flow"
     ).to_deployment(
         name="delete-ports-on-demand",
         work_pool_name=work_pool_name,

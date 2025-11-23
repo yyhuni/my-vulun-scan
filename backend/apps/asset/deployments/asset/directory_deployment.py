@@ -5,7 +5,7 @@ Directory 删除 Deployment 配置
 """
 
 import os
-from apps.asset.flows.directory_delete_flow import delete_directories_flow
+from apps.asset.flows import delete_directories_flow
 
 
 def create_directory_deployment():
@@ -19,7 +19,7 @@ def create_directory_deployment():
     
     return delete_directories_flow.from_source(
         source=".",
-        entrypoint="apps/asset/flows/directory_delete_flow.py:delete_directories_flow"
+        entrypoint="apps/asset/flows/asset/directory_delete_flow.py:delete_directories_flow"
     ).to_deployment(
         name="delete-directories-on-demand",
         work_pool_name=work_pool_name,

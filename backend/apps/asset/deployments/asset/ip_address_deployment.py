@@ -5,7 +5,7 @@ IPAddress 删除 Deployment 配置
 """
 
 import os
-from apps.asset.flows.ip_address_delete_flow import delete_ip_addresses_flow
+from apps.asset.flows import delete_ip_addresses_flow
 
 
 def create_ip_address_deployment():
@@ -19,7 +19,7 @@ def create_ip_address_deployment():
     
     return delete_ip_addresses_flow.from_source(
         source=".",
-        entrypoint="apps/asset/flows/ip_address_delete_flow.py:delete_ip_addresses_flow"
+        entrypoint="apps/asset/flows/asset/ip_address_delete_flow.py:delete_ip_addresses_flow"
     ).to_deployment(
         name="delete-ip-addresses-on-demand",
         work_pool_name=work_pool_name,

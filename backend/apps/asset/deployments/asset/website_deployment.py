@@ -5,7 +5,7 @@ WebSite 删除 Deployment 配置
 """
 
 import os
-from apps.asset.flows.website_delete_flow import delete_websites_flow
+from apps.asset.flows import delete_websites_flow
 
 
 def create_website_deployment():
@@ -19,7 +19,7 @@ def create_website_deployment():
     
     return delete_websites_flow.from_source(
         source=".",
-        entrypoint="apps/asset/flows/website_delete_flow.py:delete_websites_flow"
+        entrypoint="apps/asset/flows/asset/website_delete_flow.py:delete_websites_flow"
     ).to_deployment(
         name="delete-websites-on-demand",
         work_pool_name=work_pool_name,

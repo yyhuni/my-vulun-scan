@@ -5,7 +5,7 @@ Subdomain 删除 Deployment 配置
 """
 
 import os
-from apps.asset.flows.subdomain_delete_flow import delete_subdomains_flow
+from apps.asset.flows import delete_subdomains_flow
 
 
 def create_subdomain_deployment():
@@ -19,7 +19,7 @@ def create_subdomain_deployment():
     
     return delete_subdomains_flow.from_source(
         source=".",
-        entrypoint="apps/asset/flows/subdomain_delete_flow.py:delete_subdomains_flow"
+        entrypoint="apps/asset/flows/asset/subdomain_delete_flow.py:delete_subdomains_flow"
     ).to_deployment(
         name="delete-subdomains-on-demand",
         work_pool_name=work_pool_name,
