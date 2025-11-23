@@ -11,21 +11,7 @@ import type { Port } from "./ip-address.types"
 export interface Subdomain {
   id: number
   name: string
-  description?: string
-  assetId?: number   // 响应拦截器自动从 asset_id 转换而来（部分接口返回）
-  asset?: number     // 后端返回的 asset 字段（外键ID）
-  createdAt: string  // 响应拦截器自动从 created_at 转换而来
-  updatedAt: string  // 响应拦截器自动从 updated_at 转换而来
-  organizations?: Organization[]  // 关联的组织列表（仅在 Preload 时返回）
-  // 新增字段
-  status?: string    // 状态
-  title?: string     // 页面标题
-  ipAddresses?: string[]  // IP地址列表
-  ports?: Port[]     // 端口列表
-  contentLength?: number  // 内容长度
-  screenshot?: string     // 截图URL
-  responseTime?: number   // 响应时间（毫秒）
-  isImportant?: boolean   // 是否重要
+  discoveredAt: string  // 发现时间
 }
 
 // 获取子域名列表请求参数

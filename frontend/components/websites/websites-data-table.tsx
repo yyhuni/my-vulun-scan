@@ -198,9 +198,9 @@ export function WebSitesDataTable({
                     {column.id === "tech" && "Technologies"}
                     {column.id === "bodyPreview" && "Body Preview"}
                     {column.id === "vhost" && "VHost"}
-                    {column.id === "createdAt" && "Created At"}
+                    {column.id === "discoveredAt" && "Discovered At"}
                     {column.id === "actions" && "Actions"}
-                    {!["select", "url", "title", "statusCode", "contentLength", "location", "webserver", "contentType", "tech", "bodyPreview", "vhost", "createdAt", "actions"].includes(column.id) && column.id}
+                    {!["select", "url", "title", "statusCode", "contentLength", "location", "webserver", "contentType", "tech", "bodyPreview", "vhost", "discoveredAt", "actions"].includes(column.id) && column.id}
                   </DropdownMenuCheckboxItem>
                 ))}
             </DropdownMenuContent>

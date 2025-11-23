@@ -268,16 +268,20 @@ def create_host_port_mappings(targets, subdomains):
 
 
 def create_websites(targets, subdomains, scans):
-    """创建网站及快照 - 真实的网站标题和技术栈"""
+    """创建网站及快照 - 填充所有字段的真实数据"""
     print("🌍 创建网站...")
     
-    # 定义真实的网站信息
+    # 定义真实的网站信息（包含所有字段）
     website_info = {
         'www': {
             'title': '首页 - {}',
             'status': 200,
             'server': 'nginx/1.24.0',
             'tech': ['React', 'Next.js', 'TailwindCSS'],
+            'content_type': 'text/html; charset=utf-8',
+            'location': '',
+            'body_preview': '<!DOCTYPE html><html><head><title>Welcome</title></head><body><h1>Welcome to our website</h1>',
+            'vhost': True,
             'protocols': ['https']
         },
         'api': {
@@ -285,6 +289,10 @@ def create_websites(targets, subdomains, scans):
             'status': 200,
             'server': 'nginx/1.24.0',
             'tech': ['FastAPI', 'Python', 'PostgreSQL', 'Redis'],
+            'content_type': 'application/json',
+            'location': '',
+            'body_preview': '{"status":"ok","version":"1.0.0","endpoints":["/users","/products","/orders"]}',
+            'vhost': True,
             'protocols': ['https']
         },
         'app': {
@@ -292,6 +300,10 @@ def create_websites(targets, subdomains, scans):
             'status': 200,
             'server': 'nginx/1.24.0',
             'tech': ['Vue.js', 'Element UI', 'Axios'],
+            'content_type': 'text/html; charset=utf-8',
+            'location': '',
+            'body_preview': '<!DOCTYPE html><html><head><title>App</title></head><body><div id="app">Loading...</div>',
+            'vhost': True,
             'protocols': ['https']
         },
         'admin': {
@@ -299,6 +311,10 @@ def create_websites(targets, subdomains, scans):
             'status': 403,
             'server': 'nginx/1.24.0',
             'tech': ['Django', 'Bootstrap', 'jQuery'],
+            'content_type': 'text/html; charset=utf-8',
+            'location': '/login',
+            'body_preview': '<html><head><title>403 Forbidden</title></head><body><h1>Access Denied</h1></body></html>',
+            'vhost': True,
             'protocols': ['https']
         },
         'blog': {
@@ -306,6 +322,10 @@ def create_websites(targets, subdomains, scans):
             'status': 200,
             'server': 'Apache/2.4.57',
             'tech': ['WordPress', 'PHP', 'MySQL'],
+            'content_type': 'text/html; charset=utf-8',
+            'location': '',
+            'body_preview': '<!DOCTYPE html><html><head><title>Blog</title></head><body><article><h1>Latest Posts</h1>',
+            'vhost': False,
             'protocols': ['http', 'https']
         },
         'docs': {
@@ -313,13 +333,21 @@ def create_websites(targets, subdomains, scans):
             'status': 200,
             'server': 'nginx/1.24.0',
             'tech': ['VuePress', 'Markdown', 'Node.js'],
+            'content_type': 'text/html; charset=utf-8',
+            'location': '',
+            'body_preview': '<!DOCTYPE html><html><head><title>Docs</title></head><body><nav>Getting Started</nav>',
+            'vhost': True,
             'protocols': ['https']
         },
         'portal': {
             'title': 'Enterprise Portal - {}',
-            'status': 200,
+            'status': 301,
             'server': 'nginx/1.24.0',
             'tech': ['Angular', 'TypeScript', 'RxJS'],
+            'content_type': 'text/html; charset=utf-8',
+            'location': 'https://portal.example.com/dashboard',
+            'body_preview': '<html><head><title>Redirecting...</title></head><body>Redirecting to dashboard...</body></html>',
+            'vhost': True,
             'protocols': ['https']
         },
         'crm': {
@@ -327,6 +355,10 @@ def create_websites(targets, subdomains, scans):
             'status': 200,
             'server': 'Apache/2.4.57',
             'tech': ['Java', 'Spring Boot', 'MySQL', 'Redis'],
+            'content_type': 'text/html; charset=utf-8',
+            'location': '',
+            'body_preview': '<!DOCTYPE html><html><head><title>CRM</title></head><body><div class="container">Dashboard</div>',
+            'vhost': True,
             'protocols': ['https']
         },
         'erp': {
@@ -334,6 +366,10 @@ def create_websites(targets, subdomains, scans):
             'status': 200,
             'server': 'IIS/10.0',
             'tech': ['.NET Core', 'SQL Server', 'SignalR'],
+            'content_type': 'text/html; charset=utf-8',
+            'location': '',
+            'body_preview': '<!DOCTYPE html><html><head><title>ERP</title></head><body><main>Enterprise Resource Planning</main>',
+            'vhost': True,
             'protocols': ['https']
         },
         'jenkins': {
@@ -341,6 +377,10 @@ def create_websites(targets, subdomains, scans):
             'status': 200,
             'server': 'Jetty/9.4.51',
             'tech': ['Jenkins', 'Java', 'Groovy'],
+            'content_type': 'text/html; charset=utf-8',
+            'location': '',
+            'body_preview': '<!DOCTYPE html><html><head><title>Jenkins</title></head><body><div id="jenkins">Build Pipeline</div>',
+            'vhost': False,
             'protocols': ['https']
         },
         'monitoring': {
@@ -348,6 +388,10 @@ def create_websites(targets, subdomains, scans):
             'status': 200,
             'server': 'nginx/1.24.0',
             'tech': ['Grafana', 'Prometheus', 'InfluxDB'],
+            'content_type': 'text/html; charset=utf-8',
+            'location': '',
+            'body_preview': '<!DOCTYPE html><html><head><title>Monitoring</title></head><body><div class="grafana">Metrics Dashboard</div>',
+            'vhost': True,
             'protocols': ['https']
         },
         'console': {
@@ -355,6 +399,10 @@ def create_websites(targets, subdomains, scans):
             'status': 200,
             'server': 'nginx/1.24.0',
             'tech': ['React', 'Ant Design', 'TypeScript'],
+            'content_type': 'text/html; charset=utf-8',
+            'location': '',
+            'body_preview': '<!DOCTYPE html><html><head><title>Console</title></head><body><div id="root">Cloud Management</div>',
+            'vhost': True,
             'protocols': ['https']
         },
         'status': {
@@ -362,6 +410,10 @@ def create_websites(targets, subdomains, scans):
             'status': 200,
             'server': 'nginx/1.24.0',
             'tech': ['Statuspage', 'React', 'Chart.js'],
+            'content_type': 'text/html; charset=utf-8',
+            'location': '',
+            'body_preview': '<!DOCTYPE html><html><head><title>Status</title></head><body><div class="status">All Systems Operational</div>',
+            'vhost': True,
             'protocols': ['https']
         },
     }
@@ -380,23 +432,37 @@ def create_websites(targets, subdomains, scans):
                 'status': 200,
                 'server': 'nginx/1.24.0',
                 'tech': ['Unknown'],
+                'content_type': 'text/html; charset=utf-8',
+                'location': '',
+                'body_preview': f'<!DOCTYPE html><html><head><title>{subdomain_prefix}</title></head><body>Content</body></html>',
+                'vhost': True,
                 'protocols': ['https']
             })
             
             # 根据配置创建 HTTP/HTTPS 网站
             for protocol in info['protocols']:
                 url = f"{protocol}://{subdomain.name}"
+                company_name = target.name.split('.')[0].title()
+                
                 website = WebSite.objects.create(
                     target=target,
                     subdomain=subdomain,
                     url=url,
+                    title=info['title'].format(company_name),
+                    webserver=info['server'],
+                    content_type=info['content_type'],
+                    status_code=info['status'],
+                    content_length=2048 + len(info['tech']) * 512,
+                    tech=info['tech'],
+                    location=info['location'],
+                    body_preview=info['body_preview'],
+                    vhost=info['vhost'],
                 )
                 websites.append(website)
                 
                 # 创建网站快照
                 latest_scan = next((s for s in scans if s.target == target and s.status == 'completed'), None)
                 if latest_scan:
-                    company_name = target.name.split('.')[0].title()
                     snapshot = WebsiteSnapshot.objects.create(
                         subdomain=subdomain,
                         scan=latest_scan,
@@ -406,6 +472,10 @@ def create_websites(targets, subdomains, scans):
                         content_length=2048 + len(info['tech']) * 512,
                         web_server=info['server'],
                         tech=info['tech'],
+                        location=info['location'],
+                        body_preview=info['body_preview'],
+                        vhost=info['vhost'],
+                        content_type=info['content_type'],
                     )
                     snapshots.append(snapshot)
     
@@ -415,60 +485,51 @@ def create_websites(targets, subdomains, scans):
 
 
 def create_directories(targets, websites, scans):
-    """创建目录及快照 - 真实的、与服务类型相关的目录路径"""
+    """创建目录及快照 - 填充所有字段的真实数据"""
     print("📂 创建目录...")
     
-    # 为不同类型的网站定义真实的目录结构
+    # 为不同类型的网站定义真实的目录结构（包含详细信息）
     service_directories = {
         'www': [
-            '/', '/about', '/contact', '/products', '/services',
-            '/blog', '/news', '/careers', '/support', '/login',
-            '/static/css', '/static/js', '/static/images', '/assets'
+            {'path': '/', 'status': 200, 'content_type': 'text/html; charset=utf-8', 'words': 500, 'lines': 120},
+            {'path': '/about', 'status': 200, 'content_type': 'text/html; charset=utf-8', 'words': 350, 'lines': 80},
+            {'path': '/contact', 'status': 200, 'content_type': 'text/html; charset=utf-8', 'words': 200, 'lines': 50},
+            {'path': '/products', 'status': 200, 'content_type': 'text/html; charset=utf-8', 'words': 800, 'lines': 200},
+            {'path': '/services', 'status': 200, 'content_type': 'text/html; charset=utf-8', 'words': 600, 'lines': 150},
+            {'path': '/blog', 'status': 200, 'content_type': 'text/html; charset=utf-8', 'words': 1000, 'lines': 250},
+            {'path': '/news', 'status': 200, 'content_type': 'text/html; charset=utf-8', 'words': 700, 'lines': 180},
+            {'path': '/careers', 'status': 200, 'content_type': 'text/html; charset=utf-8', 'words': 400, 'lines': 100},
+            {'path': '/support', 'status': 200, 'content_type': 'text/html; charset=utf-8', 'words': 300, 'lines': 75},
+            {'path': '/login', 'status': 200, 'content_type': 'text/html; charset=utf-8', 'words': 150, 'lines': 40},
+            {'path': '/static/css', 'status': 404, 'content_type': 'text/html', 'words': 50, 'lines': 10},
+            {'path': '/static/js', 'status': 404, 'content_type': 'text/html', 'words': 50, 'lines': 10},
+            {'path': '/static/images', 'status': 404, 'content_type': 'text/html', 'words': 50, 'lines': 10},
+            {'path': '/assets', 'status': 403, 'content_type': 'text/html', 'words': 30, 'lines': 8},
         ],
         'api': [
-            '/v1', '/v2', '/docs', '/swagger', '/health',
-            '/v1/users', '/v1/products', '/v1/orders', '/v1/auth',
-            '/v2/users', '/v2/products', '/v2/analytics'
-        ],
-        'app': [
-            '/', '/login', '/dashboard', '/profile', '/settings',
-            '/notifications', '/messages', '/reports', '/analytics'
+            {'path': '/v1', 'status': 200, 'content_type': 'application/json', 'words': 50, 'lines': 10},
+            {'path': '/v2', 'status': 200, 'content_type': 'application/json', 'words': 50, 'lines': 10},
+            {'path': '/docs', 'status': 200, 'content_type': 'text/html; charset=utf-8', 'words': 2000, 'lines': 500},
+            {'path': '/swagger', 'status': 200, 'content_type': 'text/html; charset=utf-8', 'words': 1500, 'lines': 400},
+            {'path': '/health', 'status': 200, 'content_type': 'application/json', 'words': 10, 'lines': 3},
+            {'path': '/v1/users', 'status': 200, 'content_type': 'application/json', 'words': 200, 'lines': 50},
+            {'path': '/v1/products', 'status': 200, 'content_type': 'application/json', 'words': 300, 'lines': 80},
+            {'path': '/v1/orders', 'status': 200, 'content_type': 'application/json', 'words': 250, 'lines': 60},
+            {'path': '/v1/auth', 'status': 401, 'content_type': 'application/json', 'words': 20, 'lines': 5},
+            {'path': '/v2/users', 'status': 200, 'content_type': 'application/json', 'words': 220, 'lines': 55},
+            {'path': '/v2/products', 'status': 200, 'content_type': 'application/json', 'words': 320, 'lines': 85},
+            {'path': '/v2/analytics', 'status': 200, 'content_type': 'application/json', 'words': 400, 'lines': 100},
         ],
         'admin': [
-            '/', '/login', '/dashboard', '/users', '/settings',
-            '/logs', '/monitoring', '/reports', '/system'
-        ],
-        'blog': [
-            '/', '/posts', '/categories', '/tags', '/archives',
-            '/wp-admin', '/wp-content', '/wp-includes'
-        ],
-        'docs': [
-            '/', '/getting-started', '/api-reference', '/guides',
-            '/tutorials', '/faq', '/changelog', '/search'
-        ],
-        'portal': [
-            '/', '/login', '/dashboard', '/projects', '/tasks',
-            '/calendar', '/documents', '/team', '/settings'
-        ],
-        'crm': [
-            '/', '/login', '/customers', '/leads', '/opportunities',
-            '/contacts', '/reports', '/dashboard', '/settings'
-        ],
-        'erp': [
-            '/', '/login', '/inventory', '/orders', '/finance',
-            '/hr', '/production', '/reports', '/settings'
-        ],
-        'jenkins': [
-            '/', '/login', '/job', '/build', '/configure',
-            '/api', '/pluginManager', '/systemInfo'
-        ],
-        'monitoring': [
-            '/', '/login', '/dashboards', '/alerts', '/metrics',
-            '/logs', '/api', '/datasources', '/plugins'
-        ],
-        'console': [
-            '/', '/login', '/dashboard', '/instances', '/storage',
-            '/network', '/security', '/billing', '/settings'
+            {'path': '/', 'status': 403, 'content_type': 'text/html; charset=utf-8', 'words': 100, 'lines': 20},
+            {'path': '/login', 'status': 200, 'content_type': 'text/html; charset=utf-8', 'words': 150, 'lines': 35},
+            {'path': '/dashboard', 'status': 403, 'content_type': 'text/html; charset=utf-8', 'words': 100, 'lines': 20},
+            {'path': '/users', 'status': 403, 'content_type': 'text/html; charset=utf-8', 'words': 100, 'lines': 20},
+            {'path': '/settings', 'status': 403, 'content_type': 'text/html; charset=utf-8', 'words': 100, 'lines': 20},
+            {'path': '/logs', 'status': 403, 'content_type': 'text/html; charset=utf-8', 'words': 100, 'lines': 20},
+            {'path': '/monitoring', 'status': 403, 'content_type': 'text/html; charset=utf-8', 'words': 100, 'lines': 20},
+            {'path': '/reports', 'status': 403, 'content_type': 'text/html; charset=utf-8', 'words': 100, 'lines': 20},
+            {'path': '/system', 'status': 403, 'content_type': 'text/html; charset=utf-8', 'words': 100, 'lines': 20},
         ],
     }
     
@@ -483,38 +544,44 @@ def create_directories(targets, websites, scans):
             # 提取服务类型
             subdomain_prefix = website.subdomain.name.split('.')[0]
             paths = service_directories.get(subdomain_prefix, [
-                '/', '/login', '/dashboard', '/api', '/static'
+                {'path': '/', 'status': 200, 'content_type': 'text/html; charset=utf-8', 'words': 300, 'lines': 80},
+                {'path': '/login', 'status': 200, 'content_type': 'text/html; charset=utf-8', 'words': 150, 'lines': 40},
+                {'path': '/dashboard', 'status': 200, 'content_type': 'text/html; charset=utf-8', 'words': 500, 'lines': 120},
+                {'path': '/api', 'status': 200, 'content_type': 'application/json', 'words': 100, 'lines': 25},
+                {'path': '/static', 'status': 404, 'content_type': 'text/html', 'words': 50, 'lines': 10},
             ])
             
             # 为该网站创建所有相关目录
-            for path in paths:
-                url = f"{website.url}{path}"
+            for dir_info in paths:
+                url = f"{website.url}{dir_info['path']}"
+                
+                # 计算内容长度（基于 words）
+                content_length = dir_info['words'] * 6  # 平均每个单词6字节
+                # 计算请求耗时（纳秒）
+                duration = 50000000 + (dir_info['words'] * 10000)  # 50ms + 每个单词10微秒
+                
                 directory = Directory.objects.create(
                     target=target,
                     website=website,
                     url=url,
+                    status=dir_info['status'],
+                    content_length=content_length,
+                    words=dir_info['words'],
+                    lines=dir_info['lines'],
+                    content_type=dir_info['content_type'],
+                    duration=duration,
                 )
                 directories.append(directory)
                 
                 # 创建目录快照
                 latest_scan = next((s for s in scans if s.target == target and s.status == 'completed'), None)
                 if latest_scan:
-                    # 根据路径类型设置状态码
-                    if 'admin' in path or 'login' in path:
-                        status = 403 if 'admin' in subdomain_prefix else 200
-                    elif path == '/':
-                        status = 200
-                    elif 'api' in path:
-                        status = 200
-                    else:
-                        status = 200
-                    
                     snapshot = DirectorySnapshot.objects.create(
                         website=website,
                         scan=latest_scan,
                         url=url,
-                        status=status,
-                        content_length=1024 + len(path) * 100,
+                        status=dir_info['status'],
+                        content_length=content_length,
                     )
                     snapshots.append(snapshot)
     

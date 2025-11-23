@@ -476,13 +476,13 @@ export function createWebSiteColumns({
       },
     },
     {
-      accessorKey: "createdAt",
+      accessorKey: "discoveredAt",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Created At" />
+        <DataTableColumnHeader column={column} title="Discovered At" />
       ),
       cell: ({ row }) => {
-        const createdAt = row.getValue("createdAt") as string
-        return <div className="text-sm">{createdAt ? formatDate(createdAt) : "-"}</div>
+        const discoveredAt = row.getValue("discoveredAt") as string
+        return <div className="text-sm">{discoveredAt ? formatDate(discoveredAt) : "-"}</div>
       },
     },
     {

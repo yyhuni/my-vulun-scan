@@ -17,7 +17,7 @@ export interface WebSite {
   tech: string[]
   vhost: boolean | null
   subdomain: string
-  createdAt: string | null
+  discoveredAt: string
 }
 
 export interface Technology {
