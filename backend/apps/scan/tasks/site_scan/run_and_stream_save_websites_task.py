@@ -58,13 +58,17 @@ class ServiceSet:
     
     提供所有需要的 Service 实例，便于测试时注入 Mock 对象
     """
+    subdomain: SubdomainService
+    website: WebSiteService
     snapshot: "WebsiteSnapshotsService"
     
     @classmethod
-    def create_default(cls) -> "ServiceSet":
+    def create_default(cls) -> 'ServiceSet':
         """创建默认的 Service 集合"""
         from apps.asset.services.snapshot import WebsiteSnapshotsService
         return cls(
+            subdomain=SubdomainService(),
+            website=WebSiteService(),
             snapshot=WebsiteSnapshotsService()
         )
 
@@ -122,25 +126,6 @@ def normalize_url(url: str) -> str:
         # 解析失败，返回原 URL
         logger.debug("URL 标准化失败: %s，使用原始 URL: %s", e, url)
         return url
-
-
-@dataclass
-class ServiceSet:
-    """
-    Service 集合，用于依赖注入
-    
-    提供所有需要的 Service 实例，便于测试时注入 Mock 对象
-    """
-    subdomain: SubdomainService
-    website: WebSiteService
-    
-    @classmethod
-    def create_default(cls) -> 'ServiceSet':
-        """创建默认的 Service 集合"""
-        return cls(
-            subdomain=SubdomainService(),
-            website=WebSiteService()
-        )
 
 
 class HttpxRecord:
