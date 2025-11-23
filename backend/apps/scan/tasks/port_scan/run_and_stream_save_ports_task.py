@@ -422,20 +422,9 @@ def _process_batch(
         failed_batches: 失败批次列表
         services: Service 集合（必须，依赖注入）
     """
-    # 添加：记录批次保存开始时间
-    batch_start_time = time.time()
-    
     result = _save_batch_with_retry(
         batch, scan_id, target_id, batch_num, subdomain_cache, services
     )
-    
-    # 添加：记录批次保存耗时
-    batch_elapsed = time.time() - batch_start_time
-    if batch_elapsed > 1.0:  # 如果保存超过1秒，输出警告
-        logger.warning(
-            "批次 %d 保存耗时过长: %.2f 秒（%d 条记录）",
-            batch_num, batch_elapsed, len(batch)
-        )
     
     # 累计统计信息（失败时可能有部分数据已保存）
     _accumulate_batch_stats(total_stats, result)
