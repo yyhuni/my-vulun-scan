@@ -1,9 +1,9 @@
 from rest_framework import serializers
-from .models import Subdomain, WebSite, Directory
+from .models import Subdomain, WebSite, Directory, HostPortMapping
 
 
 # 注意：IPAddress 和 Port 模型已被重构为 HostPortMapping
-# 以下序列化器暂时注释，需要根据新架构重新实现
+# 以下是基于新架构的序列化器实现
 
 # class PortSerializer(serializers.ModelSerializer):
 #     """端口序列化器"""
@@ -19,8 +19,7 @@ class SubdomainSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subdomain
         fields = [
-            'id', 'name', 'discovered_at', 'cname', 
-            'is_cdn', 'cdn_name', 'target'
+            'id', 'name', 'discovered_at', 'target'
         ]
         read_only_fields = ['id', 'discovered_at']
 
@@ -28,21 +27,16 @@ class SubdomainSerializer(serializers.ModelSerializer):
 class SubdomainListSerializer(serializers.ModelSerializer):
     """子域名列表序列化器（用于扫描详情）"""
     
-    # 注意：ports 和 ip_addresses 字段需要根据新的 HostPortMapping 架构重新实现
-    # ports = PortSerializer(many=True, read_only=True)
-    # ip_addresses = serializers.SerializerMethodField()
+    # 注意：Subdomain 模型已简化，只保留核心字段
+    # cname, is_cdn, cdn_name 等字段已移至 SubdomainSnapshot
+    # ports 和 ip_addresses 关系已被重构为 HostPortMapping
     
     class Meta:
         model = Subdomain
         fields = [
-            'id', 'name', 'discovered_at', 'cname', 
-            'is_cdn', 'cdn_name'
+            'id', 'name', 'discovered_at'
         ]
         read_only_fields = ['id', 'discovered_at']
-    
-    # def get_ip_addresses(self, obj):
-    #     """获取子域名关联的所有 IP 地址"""
-    #     return [ip.ip for ip in obj.ip_addresses.all()]
 
 
 # class IPAddressListSerializer(serializers.ModelSerializer):
@@ -112,3 +106,19 @@ class DirectorySerializer(serializers.ModelSerializer):
             'discovered_at',
         ]
         read_only_fields = fields
+
+
+class IPAddressAggregatedSerializer(serializers.Serializer):
+    """
+    IP 地址聚合序列化器
+    
+    基于 HostPortMapping 模型，按 IP 聚合显示：
+    - ip: IP 地址
+    - hosts: 该 IP 关联的所有主机名列表
+    - ports: 该 IP 关联的所有端口列表
+    - discovered_at: 首次发现时间
+    """
+    ip = serializers.IPAddressField(read_only=True)
+    hosts = serializers.ListField(child=serializers.CharField(), read_only=True)
+    ports = serializers.ListField(child=serializers.IntegerField(), read_only=True)
+    discovered_at = serializers.DateTimeField(read_only=True)

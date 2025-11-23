@@ -515,38 +515,70 @@ class TargetViewSet(viewsets.ModelViewSet):
         except (DatabaseError, OperationalError):
             raise APIException('数据库错误，请稍后重试')
 
-    # 注意：IPAddress 模型已被重构为 HostPortMapping
-    # ip_addresses 方法已注释，需要根据新架构重新实现
-    
-    # @action(detail=True, methods=['get'], url_path='ip-addresses')
-    # def ip_addresses(self, request, pk=None):
-    #     """
-    #     获取目标关联的所有 IP 地址（支持分页）
-    #
-    #     URL: GET /api/targets/{id}/ip-addresses/?page=1&pageSize=10
-    #     """
-    #     from apps.asset.serializers import IPAddressListSerializer
-    #     from django.core.exceptions import ObjectDoesNotExist
-    #     from django.db import DatabaseError, OperationalError
-    #
-    #     try:
-    #         target = self.get_object()
-    #         queryset = target.ip_addresses.select_related('subdomain').prefetch_related('ports').order_by('-discovered_at')
-    #
-    #         paginator = self.paginator
-    #         page = paginator.paginate_queryset(queryset, request, view=self)
-    #
-    #         if page is not None:
-    #             serializer = IPAddressListSerializer(page, many=True)
-    #             return paginator.get_paginated_response(serializer.data)
-    #
-    #         raise ValidationError('必须提供分页参数 page 和 pageSize')
-    #
-    #     except ObjectDoesNotExist:
-    #         raise NotFound(f'目标 ID {pk} 不存在')
-    #
-    #     except (DatabaseError, OperationalError):
-    #         raise APIException('数据库错误，请稍后重试')
+    @action(detail=True, methods=['get'], url_path='ip-addresses')
+    def ip_addresses(self, request, pk=None):
+        """
+        获取目标关联的所有 IP 地址（支持分页）
+        
+        基于 HostPortMapping 模型，按 IP 聚合显示：
+        - 每个 IP 显示其关联的所有 hosts 和 ports
+        - 按首次发现时间倒序排列
+
+        URL: GET /api/targets/{id}/ip-addresses/?page=1&pageSize=10
+        """
+        from apps.asset.models.asset_models import HostPortMapping
+        from apps.asset.serializers import IPAddressAggregatedSerializer
+        from django.core.exceptions import ObjectDoesNotExist
+        from django.db import DatabaseError, OperationalError
+        from django.db.models import Min, F
+        from rest_framework.exceptions import ValidationError, NotFound, APIException
+
+        try:
+            target = self.get_object()
+            
+            # 按 IP 聚合，获取每个 IP 的 hosts、ports 和首次发现时间
+            ip_aggregated = (
+                HostPortMapping.objects
+                .filter(target=target)
+                .values('ip')
+                .annotate(
+                    discovered_at=Min('discovered_at')  # 该 IP 的首次发现时间
+                )
+                .order_by('-discovered_at')
+            )
+            
+            # 为每个 IP 获取其关联的 hosts 和 ports
+            results = []
+            for item in ip_aggregated:
+                ip = item['ip']
+                # 获取该 IP 的所有 host 和 port
+                mappings = HostPortMapping.objects.filter(target=target, ip=ip).values('host', 'port').distinct()
+                
+                hosts = sorted(set(m['host'] for m in mappings))
+                ports = sorted(set(m['port'] for m in mappings))
+                
+                results.append({
+                    'ip': ip,
+                    'hosts': hosts,
+                    'ports': ports,
+                    'discovered_at': item['discovered_at']
+                })
+
+            # 分页
+            paginator = self.paginator
+            page = paginator.paginate_queryset(results, request, view=self)
+
+            if page is not None:
+                serializer = IPAddressAggregatedSerializer(page, many=True)
+                return paginator.get_paginated_response(serializer.data)
+
+            raise ValidationError('必须提供分页参数 page 和 pageSize')
+
+        except ObjectDoesNotExist:
+            raise NotFound(f'目标 ID {pk} 不存在')
+
+        except (DatabaseError, OperationalError):
+            raise APIException('数据库错误，请稍后重试')
 
     @action(detail=True, methods=['get'])
     def websites(self, request, pk=None):
