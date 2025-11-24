@@ -134,29 +134,31 @@ def parse_enabled_tools(
             
             # 支持 timeout: auto（动态计算超时时间）
             if timeout_value == 'auto':
+                # 对于 url_fetch，允许保留 'auto'，由具体 Flow 内部根据输入文件行数自行计算
                 if not timeout_calculator:
-                    raise ValueError(
-                        f"工具 {name} 的 timeout 配置为 'auto'，但未提供 timeout_calculator 回调函数"
-                    )
-                
-                # 调用回调函数计算实际的 timeout
-                try:
-                    # 使用 kwargs 调用计算函数，并传入工具配置
-                    kwargs = timeout_calculator_kwargs or {}
-                    calculated_timeout = timeout_calculator(tool_config=config, **kwargs)
-                    
-                    if not isinstance(calculated_timeout, int) or calculated_timeout <= 0:
+                    if scan_type != 'url_fetch':
                         raise ValueError(
-                            f"timeout_calculator 返回的值无效（{calculated_timeout}），必须是大于0的整数"
+                            f"工具 {name} 的 timeout 配置为 'auto'，但未提供 timeout_calculator 回调函数"
                         )
-                    # 将计算出的 timeout 写回配置
-                    config = dict(config)  # 创建副本避免修改原始配置
-                    config['timeout'] = calculated_timeout
-                    logger.debug(f"工具 {name} 的 timeout 自动计算为: {calculated_timeout}秒")
-                except Exception as e:
-                    raise ValueError(
-                        f"工具 {name} 调用 timeout_calculator 失败: {e}"
-                    ) from e
+                else:
+                    # 调用回调函数计算实际的 timeout
+                    try:
+                        # 使用 kwargs 调用计算函数，并传入工具配置
+                        kwargs = timeout_calculator_kwargs or {}
+                        calculated_timeout = timeout_calculator(tool_config=config, **kwargs)
+
+                        if not isinstance(calculated_timeout, int) or calculated_timeout <= 0:
+                            raise ValueError(
+                                f"timeout_calculator 返回的值无效（{calculated_timeout}），必须是大于0的整数"
+                            )
+                        # 将计算出的 timeout 写回配置
+                        config = dict(config)  # 创建副本避免修改原始配置
+                        config['timeout'] = calculated_timeout
+                        logger.debug(f"工具 {name} 的 timeout 自动计算为: {calculated_timeout}秒")
+                    except Exception as e:
+                        raise ValueError(
+                            f"工具 {name} 调用 timeout_calculator 失败: {e}"
+                        ) from e
             
             # 验证 timeout 是整数且大于0
             elif isinstance(timeout_value, int):

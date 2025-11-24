@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { useTargetEndpoints } from "@/hooks/use-targets"
-import { useDeleteEndpoint } from "@/hooks/use-endpoints"
+import { useDeleteEndpoint, useScanEndpoints } from "@/hooks/use-endpoints"
 import { EndpointsDataTable } from "./endpoints-data-table"
 import { createEndpointColumns } from "./endpoints-columns"
 import { LoadingSpinner } from "@/components/loading-spinner"
@@ -25,9 +25,11 @@ import type { Endpoint } from "@/types/endpoint.types"
  * 用于显示和管理目标下的端点列表
  */
 export function EndpointsDetailView({
-  targetId
+  targetId,
+  scanId,
 }: {
-  targetId: number
+  targetId?: number
+  scanId?: number
 }) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [endpointToDelete, setEndpointToDelete] = useState<Endpoint | null>(null)
@@ -41,16 +43,23 @@ export function EndpointsDetailView({
   // 删除相关 hooks
   const deleteEndpoint = useDeleteEndpoint()
 
-  // 使用 React Query 获取目标端点数据
+  // 使用 React Query 获取端点数据：优先按 targetId，其次按 scanId（历史快照）
+  const targetEndpointsQuery = useTargetEndpoints(targetId || 0, {
+    page: pagination.pageIndex + 1,
+    pageSize: pagination.pageSize,
+  }, { enabled: !!targetId })
+
+  const scanEndpointsQuery = useScanEndpoints(scanId || 0, {
+    page: pagination.pageIndex + 1,
+    pageSize: pagination.pageSize,
+  }, { enabled: !!scanId })
+
   const {
     data,
     isLoading,
     error,
     refetch,
-  } = useTargetEndpoints(targetId, {
-    page: pagination.pageIndex + 1,
-    pageSize: pagination.pageSize,
-  })
+  } = targetId ? targetEndpointsQuery : scanEndpointsQuery
 
   // 辅助函数 - 格式化日期
   const formatDate = React.useCallback((dateString: string): string => {

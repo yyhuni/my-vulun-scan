@@ -89,8 +89,8 @@ def export_target_assets_task(
             }
             
         elif input_type == 'sites_file':
-            # 导出站点 URL 列表
-            logger.info("从扫描 %d 导出站点 URL 列表", scan_id)
+            # 导出站点 URL 列表（按目标导出）
+            logger.info("从目标 %d 导出站点 URL 列表", target_id)
             from apps.asset.services import WebSiteService
             
             # 使用 Service 层的流式接口
@@ -99,8 +99,8 @@ def export_target_assets_task(
             # 流式写入文件
             asset_count = 0
             with open(output_path, 'w') as f:
-                # 使用 Service 层的迭代器进行批量处理
-                for url in website_service.iter_website_urls_by_scan(scan_id, batch_size):
+                # 使用 Service 层的迭代器进行批量处理（按目标）
+                for url in website_service.iter_website_urls_by_target(target_id, batch_size):
                     f.write(f"{url}\n")
                     asset_count += 1
                     

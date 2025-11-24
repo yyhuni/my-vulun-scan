@@ -50,24 +50,32 @@ import {
 } from "@/components/ui/table"
 import type { Endpoint } from "@/types/endpoint.types"
 
-interface EndpointsDataTableProps<TData, TValue> {
+interface EndpointsDataTableProps<TData extends { id: number | string }, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   searchPlaceholder?: string
+  searchColumn?: string
+  onAddNew?: () => void
+  addButtonText?: string
+  onSelectionChange?: (selectedRows: TData[]) => void
   pagination?: { pageIndex: number; pageSize: number }
   onPaginationChange?: (pagination: { pageIndex: number; pageSize: number }) => void
   totalCount?: number
   totalPages?: number
 }
 
-export function EndpointsDataTable<TData, TValue>({
+export function EndpointsDataTable<TData extends { id: number | string }, TValue>({
   columns,
   data,
   searchPlaceholder = "搜索端点...",
+  searchColumn = "url",
   pagination: externalPagination,
   onPaginationChange,
   totalCount,
   totalPages,
+  onAddNew,
+  addButtonText = "Add",
+  onSelectionChange,
 }: EndpointsDataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({})
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})

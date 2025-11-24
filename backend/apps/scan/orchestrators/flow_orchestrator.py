@@ -31,6 +31,7 @@ class FlowOrchestrator:
         'port_scan',
         'site_scan',
         'directory_scan',
+        'url_fetch',
     ]
     
     def __init__(self, engine_config: str):
@@ -125,6 +126,10 @@ class FlowOrchestrator:
         elif scan_type == 'directory_scan':
             from apps.scan.flows.directory_scan_flow import directory_scan_flow
             return directory_scan_flow
+
+        elif scan_type == 'url_fetch':
+            from apps.scan.flows.url_fetch_flow import url_fetch_flow
+            return url_fetch_flow
         
         else:
             logger.warning(f"未实现的扫描类型: {scan_type}")

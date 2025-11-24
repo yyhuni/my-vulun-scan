@@ -25,6 +25,8 @@ export const endpointKeys = {
     [...endpointKeys.all, 'target', targetId, params] as const,
   bySubdomain: (subdomainId: number, params: GetEndpointsRequest) => 
     [...endpointKeys.all, 'subdomain', subdomainId, params] as const,
+  byScan: (scanId: number, params: GetEndpointsRequest) =>
+    [...endpointKeys.all, 'scan', scanId, params] as const,
 }
 
 // 获取单个 Endpoint 详情
@@ -74,6 +76,33 @@ export function useEndpointsByTarget(targetId: number, params?: Omit<GetEndpoint
       return response as GetEndpointsResponse
     },
     enabled: !!targetId,
+  })
+}
+
+// 根据扫描ID获取 Endpoint 列表（历史快照）
+export function useScanEndpoints(scanId: number, params?: Omit<GetEndpointsRequest, 'targetId'>, options?: { enabled?: boolean }) {
+  const defaultParams: GetEndpointsRequest = {
+    page: 1,
+    pageSize: 10,
+    ...params,
+  }
+
+  return useQuery({
+    queryKey: endpointKeys.byScan(scanId, defaultParams),
+    queryFn: () => EndpointService.getEndpointsByScanId(scanId, defaultParams),
+    enabled: options?.enabled !== undefined ? options.enabled : !!scanId,
+    select: (response: any) => {
+      // 后端使用通用分页格式：results/total/page/pageSize/totalPages
+      return {
+        endpoints: response.results || [],
+        pagination: {
+          total: response.total || 0,
+          page: response.page || 1,
+          pageSize: response.pageSize || response.page_size || defaultParams.pageSize || 10,
+          totalPages: response.totalPages || response.total_pages || 0,
+        },
+      }
+    },
   })
 }
 

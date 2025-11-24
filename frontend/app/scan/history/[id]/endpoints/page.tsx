@@ -9,7 +9,7 @@ export default function ScanHistoryEndpointsPage() {
 
   return (
     <div className="px-4 lg:px-6">
-      <EndpointsDetailView targetId={parseInt(id)} />
+      <EndpointsDetailView scanId={parseInt(id)} />
     </div>
   )
 }

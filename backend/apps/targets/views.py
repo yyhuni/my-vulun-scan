@@ -515,6 +515,60 @@ class TargetViewSet(viewsets.ModelViewSet):
         except (DatabaseError, OperationalError):
             raise APIException('数据库错误，请稍后重试')
 
+    @action(detail=True, methods=['get'])
+    def endpoints(self, request, pk=None):
+        """获取目标关联的所有端点（支持分页）
+
+        URL: GET /api/targets/{id}/endpoints/?page=1&pageSize=10
+
+        功能:
+        - 返回指定目标下的所有端点信息
+        - 包含 URL、状态码、标题、内容类型、标签等
+        - 支持分页查询
+
+        返回:
+        - results: 端点列表
+        - total: 总记录数
+        - page: 当前页码
+        - page_size: 每页大小
+        - total_pages: 总页数
+        """
+        from apps.asset.serializers import EndpointListSerializer
+        from apps.asset.models.asset_models import Endpoint
+        from django.core.exceptions import ObjectDoesNotExist
+        from django.db import DatabaseError, OperationalError
+
+        try:
+            target = self.get_object()
+
+            # 获取该目标的所有端点（按发现时间倒序）
+            queryset = Endpoint.objects.filter(target=target).order_by('-discovered_at')
+
+            # 使用分页器
+            paginator = self.paginator
+            page = paginator.paginate_queryset(queryset, request, view=self)
+
+            if page is not None:
+                serializer = EndpointListSerializer(page, many=True)
+
+                # 手动构造响应结构，兼容前端 GetEndpointsResponse
+                return Response({
+                    'endpoints': serializer.data,
+                    'total': paginator.page.paginator.count,
+                    'page': paginator.page.number,
+                    'page_size': paginator.page.paginator.per_page,
+                    'total_pages': paginator.page.paginator.num_pages,
+                })
+
+            # 如果没有分页参数，返回错误
+            raise ValidationError('必须提供分页参数 page 和 pageSize')
+
+        except ObjectDoesNotExist:
+            raise NotFound(f'目标 ID {pk} 不存在')
+
+        except (DatabaseError, OperationalError):
+            raise APIException('数据库错误，请稍后重试')
+
     @action(detail=True, methods=['get'], url_path='ip-addresses')
     def ip_addresses(self, request, pk=None):
         """
@@ -609,7 +663,8 @@ class TargetViewSet(viewsets.ModelViewSet):
             target = self.get_object()
 
             # 获取该目标的所有站点（按发现时间倒序）
-            queryset = WebSite.objects.filter(target=target).select_related('subdomain').order_by('-discovered_at')
+            # 注意：WebSite 模型当前不再关联 Subdomain，因此不使用 select_related('subdomain')
+            queryset = WebSite.objects.filter(target=target).order_by('-discovered_at')
 
             # 使用分页器
             paginator = self.paginator

@@ -1,6 +1,6 @@
 from rest_framework import serializers
-from .models import Subdomain, WebSite, Directory, HostPortMapping
-from .models.snapshot_models import SubdomainSnapshot, WebsiteSnapshot, DirectorySnapshot
+from .models import Subdomain, WebSite, Directory, HostPortMapping, Endpoint
+from .models.snapshot_models import SubdomainSnapshot, WebsiteSnapshot, DirectorySnapshot, EndpointSnapshot
 
 
 # 注意：IPAddress 和 Port 模型已被重构为 HostPortMapping
@@ -80,6 +80,31 @@ class WebSiteSerializer(serializers.ModelSerializer):
             'tech',
             'vhost',
             'subdomain',
+            'discovered_at',
+        ]
+        read_only_fields = fields
+
+
+class EndpointListSerializer(serializers.ModelSerializer):
+    """端点列表序列化器（用于目标端点列表页）"""
+
+    # 将 GF 匹配模式映射为前端使用的 tags 字段
+    tags = serializers.ListField(
+        child=serializers.CharField(),
+        source='matched_gf_patterns',
+        read_only=True,
+    )
+
+    class Meta:
+        model = Endpoint
+        fields = [
+            'id',
+            'url',
+            'status_code',
+            'title',
+            'content_length',
+            'content_type',
+            'tags',
             'discovered_at',
         ]
         read_only_fields = fields
@@ -179,6 +204,31 @@ class DirectorySnapshotSerializer(serializers.ModelSerializer):
             'content_type',
             'duration',
             'website_url',
+            'discovered_at',
+        ]
+        read_only_fields = fields
+
+
+class EndpointSnapshotSerializer(serializers.ModelSerializer):
+    """端点快照序列化器（用于扫描历史）"""
+
+    # 将 GF 匹配模式映射为前端使用的 tags 字段
+    tags = serializers.ListField(
+        child=serializers.CharField(),
+        source='matched_gf_patterns',
+        read_only=True,
+    )
+
+    class Meta:
+        model = EndpointSnapshot
+        fields = [
+            'id',
+            'url',
+            'title',
+            'status_code',
+            'content_length',
+            'content_type',
+            'tags',
             'discovered_at',
         ]
         read_only_fields = fields

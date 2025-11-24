@@ -20,6 +20,7 @@ from apps.asset.serializers import (
     SubdomainSnapshotSerializer,
     WebsiteSnapshotSerializer,
     DirectorySnapshotSerializer,
+    EndpointSnapshotSerializer,
 )
 
 
@@ -153,6 +154,61 @@ class ScanViewSet(viewsets.ModelViewSet):
         
         except (DatabaseError, IntegrityError, OperationalError):
             # 数据库错误
+            return Response(
+                {'error': '数据库错误，请稍后重试'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+
+    @action(detail=True, methods=['get'])
+    def endpoints(self, request, pk=None):  # pylint: disable=unused-argument
+        """获取扫描关联的所有端点（支持分页）
+
+        URL: GET /api/scans/{id}/endpoints/?page=1&pageSize=10
+
+        功能:
+        - 返回指定扫描任务发现的所有端点
+        - 包含 URL、状态码、标题、内容类型、标签等
+        - 支持分页查询
+
+        返回:
+        - results: 端点列表
+        - total: 总记录数
+        - page: 当前页码
+        - page_size: 每页大小
+        - total_pages: 总页数
+        """
+        try:
+            scan_service = ScanService()
+            scan = scan_service.get_scan(scan_id=pk, prefetch_relations=False)
+
+            if not scan:
+                return Response(
+                    {'error': f'扫描 ID {pk} 不存在'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # 获取该扫描的所有端点快照（按发现时间倒序）
+            queryset = scan.endpoint_snapshots.all().order_by('-discovered_at')
+
+            paginator = self.paginator
+            page = paginator.paginate_queryset(queryset, request, view=self)
+
+            if page is not None:
+                serializer = EndpointSnapshotSerializer(page, many=True)
+                return paginator.get_paginated_response(serializer.data)
+
+            return Response(
+                {'error': '必须提供分页参数 page 和 pageSize'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        except ObjectDoesNotExist:
+            return Response(
+                {'error': f'扫描 ID {pk} 不存在'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        except (DatabaseError, OperationalError):
             return Response(
                 {'error': '数据库错误，请稍后重试'},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE
@@ -498,7 +554,8 @@ class ScanViewSet(viewsets.ModelViewSet):
                 )
 
             # 获取该扫描的所有站点快照（按发现时间倒序）
-            queryset = scan.website_snapshots.select_related('subdomain').order_by('-discovered_at')
+            # 注意：WebsiteSnapshot 当前未直接关联 Subdomain，这里不使用 select_related('subdomain')
+            queryset = scan.website_snapshots.all().order_by('-discovered_at')
 
             paginator = self.paginator
             page = paginator.paginate_queryset(queryset, request, view=self)

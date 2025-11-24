@@ -244,12 +244,8 @@ class SubdomainService:
             str: 子域名名称
         """
         logger.debug("流式获取目标下所有子域名 - Target ID: %d, 批次大小: %d", target_id, chunk_size)
-        from apps.asset.models import Subdomain
-        queryset = Subdomain.objects.filter(target_id=target_id).values_list('name', flat=True)
-        
-        # 使用 iterator() 避免一次性加载所有数据到内存
-        for subdomain in queryset.iterator(chunk_size=chunk_size):
-            yield subdomain
+        # 通过仓储层统一访问数据库，内部已使用 iterator() 做流式查询
+        return self.repo.get_domains_for_export(target_id=target_id, batch_size=chunk_size)
 
 
 __all__ = ['SubdomainService']

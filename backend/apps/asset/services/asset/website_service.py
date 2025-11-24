@@ -168,24 +168,15 @@ class WebSiteService:
         from apps.asset.models import WebSite
         return WebSite.objects.filter(scan_id=scan_id).count()
     
-    def iter_website_urls_by_scan(self, scan_id: int, chunk_size: int = 1000):
-        """
-        流式获取扫描下的所有站点 URL（内存优化）
-        
-        Args:
-            scan_id: 扫描 ID
-            chunk_size: 批次大小
-        
-        Yields:
-            str: 站点 URL
-        """
-        logger.debug("流式获取扫描下所有站点 URL - Scan ID: %d, 批次大小: %d", scan_id, chunk_size)
-        from apps.asset.models import WebSite
-        queryset = WebSite.objects.filter(scan_id=scan_id).values_list('url', flat=True)
-        
-        # 使用 iterator() 避免一次性加载所有数据到内存
-        for url in queryset.iterator(chunk_size=chunk_size):
-            yield url
+    def iter_website_urls_by_target(self, target_id: int, chunk_size: int = 1000):
+        """流式获取目标下的所有站点 URL（内存优化，委托给 Repository 层）"""
+        logger.debug(
+            "流式获取目标下所有站点 URL - Target ID: %d, 批次大小: %d",
+            target_id,
+            chunk_size,
+        )
+        # 通过仓储层统一访问数据库，避免 Service 直接依赖 ORM
+        return self.repo.get_urls_for_export(target_id=target_id, batch_size=chunk_size)
 
 
 __all__ = ['WebSiteService']

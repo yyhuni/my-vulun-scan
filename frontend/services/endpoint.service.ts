@@ -49,6 +49,21 @@ export class EndpointService {
   }
 
   /**
+   * 根据扫描ID获取 Endpoint 列表（历史快照）
+   * @param scanId - 扫描任务 ID
+   * @param params - 分页等查询参数
+   */
+  static async getEndpointsByScanId(
+    scanId: number,
+    params: GetEndpointsRequest,
+  ): Promise<any> {
+    const response = await api.get(`/scans/${scanId}/endpoints/`, {
+      params,
+    })
+    return response.data
+  }
+
+  /**
    * 批量创建 Endpoint
    * @param data - 创建请求对象
    * @param data.endpoints - Endpoint 数据数组

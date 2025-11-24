@@ -218,71 +218,58 @@ def _prepare_tool_execution(
     input_type: str,
     assets_files: dict,
     url_fetch_dir: Path,
-    timestamp: str
 ) -> dict:
-    """
-    准备单个工具的执行参数
-    
-    Args:
-        tool_name: 工具名称
-        tool_config: 工具配置
-        input_type: 工具的输入类型（预先计算）
-        assets_files: 资产文件映射
-        url_fetch_dir: URL 获取目录
-        timestamp: 时间戳
-        
-    Returns:
-        dict: 执行参数，包含 command, input_file, output_file, timeout 等
-        None: 如果准备失败
-    """
+    """准备单个工具的执行参数"""
+
     # 1. 检查输入类型是否支持
-    if input_type not in ['domains_file', 'sites_file']:
+    if input_type not in ["domains_file", "sites_file"]:
         logger.warning("未知的输入类型: %s，跳过工具 %s", input_type, tool_name)
         return None
-    
+
     # 获取输入文件信息
     asset_info = assets_files.get(input_type)
     if not asset_info:
         logger.warning("工具 %s 需要 %s 但文件不存在，跳过", tool_name, input_type)
-        return {'error': f'缺少输入文件 {input_type}'}
-    
-    input_file = asset_info['file']
-    input_count = asset_info['count']
+        return {"error": f"缺少输入文件 {input_type}"}
+
+    input_file = asset_info["file"]
+    input_count = asset_info["count"]
     logger.info("工具 %s - 输入类型: %s, 数量: %d", tool_name, input_type, input_count)
-    
-    # 2. 生成输出文件路径
+
+    # 2. 生成输出文件路径（带时间戳和短 UUID 后缀）
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     short_uuid = uuid.uuid4().hex[:4]
     output_file = str(url_fetch_dir / f"{tool_name}_{timestamp}_{short_uuid}.txt")
-    
+
     # 3. 构建命令
     command_params = {
         input_type: input_file,
-        'output_file': output_file
+        "output_file": output_file,
     }
-    
+
     try:
         command = build_scan_command(
             tool_name=tool_name,
-            scan_type='url_fetch',
+            scan_type="url_fetch",
             command_params=command_params,
-            tool_config=tool_config
+            tool_config=tool_config,
         )
-    except Exception as e:
+    except Exception as e:  # pragma: no cover - 防御性日志
         logger.error("构建 %s 命令失败: %s", tool_name, e)
-        return {'error': f'命令构建失败: {e}'}
-    
-    # 4. 计算超时时间（支持 auto）
-    raw_timeout = tool_config.get('timeout', 3600)
+        return {"error": f"命令构建失败: {e}"}
+
+    # 4. 计算超时时间（支持 auto 和显式整数）
+    raw_timeout = tool_config.get("timeout", 3600)
     timeout = 3600
-    if isinstance(raw_timeout, str) and raw_timeout == 'auto':
-        # 当配置为 auto 时，参考 site_scan_flow，根据输入文件行数自动计算
+    if isinstance(raw_timeout, str) and raw_timeout == "auto":
+        # 当配置为 auto 时，根据输入文件行数自动计算
         try:
             timeout = calculate_timeout_by_line_count(
                 tool_config=tool_config,
                 file_path=input_file,
-                base_per_time=1
+                base_per_time=1,
             )
-        except Exception as e:
+        except Exception as e:  # pragma: no cover - 防御性日志
             logger.warning(
                 "工具 %s 自动计算 timeout 失败，将使用默认 3600 秒: %s",
                 tool_name,
@@ -302,11 +289,11 @@ def _prepare_tool_execution(
 
     # 5. 返回执行参数
     return {
-        'command': command,
-        'input_file': input_file,
-        'input_type': input_type,
-        'output_file': output_file,
-        'timeout': timeout,
+        "command": command,
+        "input_file": input_file,
+        "input_type": input_type,
+        "output_file": output_file,
+        "timeout": timeout,
     }
 
 
@@ -315,35 +302,25 @@ def _submit_tool_tasks(
     tool_input_types: dict,
     assets_files: dict,
     url_fetch_dir: Path,
-    timestamp: str
 ) -> tuple[dict, list]:
-    """
-    提交所有工具的并行任务
-    
-    Args:
-        fetcher_tools: URL 获取工具配置
-        tool_input_types: 工具输入类型映射（预先计算）
-        assets_files: 资产文件映射
-        url_fetch_dir: URL 获取目录
-        timestamp: 时间戳
-        
-    Returns:
-        tuple: (futures, failed_tools)
-    """
+    """提交所有 URL 获取工具的并行任务"""
+
     from apps.scan.tasks.url_fetch import run_url_fetcher_task
-    
-    futures = {}
-    failed_tools = []
-    
+
+    futures: dict[str, object] = {}
+    failed_tools: list[dict] = []
+
     for tool_name, tool_config in fetcher_tools.items():
         # 获取缓存的输入类型（必须存在，不再使用默认回退）
         input_type = tool_input_types.get(tool_name)
         if not input_type:
-            error_msg = f"工具 {tool_name} 缺少 input_type 映射，请检查 command_templates 配置"
+            error_msg = (
+                f"工具 {tool_name} 缺少 input_type 映射，请检查 command_templates 配置"
+            )
             logger.error(error_msg)
-            failed_tools.append({'tool': tool_name, 'reason': error_msg})
+            failed_tools.append({"tool": tool_name, "reason": error_msg})
             continue
-        
+
         # 准备执行参数
         exec_params = _prepare_tool_execution(
             tool_name=tool_name,
@@ -351,30 +328,31 @@ def _submit_tool_tasks(
             input_type=input_type,
             assets_files=assets_files,
             url_fetch_dir=url_fetch_dir,
-            timestamp=timestamp
         )
-        
+
         if not exec_params:
             continue
-            
-        if 'error' in exec_params:
-            failed_tools.append({'tool': tool_name, 'reason': exec_params['error']})
+
+        if "error" in exec_params:
+            failed_tools.append({"tool": tool_name, "reason": exec_params["error"]})
             continue
-        
+
         logger.info(
             "提交任务 - 工具: %s, 输入: %s, 超时: %d秒",
-            tool_name, exec_params['input_type'], exec_params['timeout']
+            tool_name,
+            exec_params["input_type"],
+            exec_params["timeout"],
         )
-        
+
         # 提交并行任务
         future = run_url_fetcher_task.submit(
             tool_name=tool_name,
-            command=exec_params['command'],
-            timeout=exec_params['timeout'],
-            output_file=exec_params['output_file']
+            command=exec_params["command"],
+            timeout=exec_params["timeout"],
+            output_file=exec_params["output_file"],
         )
         futures[tool_name] = future
-    
+
     return futures, failed_tools
 
 
@@ -474,17 +452,13 @@ def _run_fetchers_parallel(
         )
     
     logger.info("准备并行执行 %d 个 URL 获取工具", len(fetcher_tools))
-    
-    # 生成时间戳
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    
+
     # 提交所有工具的并行任务
     futures, failed_tools = _submit_tool_tasks(
         fetcher_tools=fetcher_tools,
         tool_input_types=tool_input_types,
         assets_files=assets_files,
         url_fetch_dir=url_fetch_dir,
-        timestamp=timestamp
     )
     
     # 收集执行结果
