@@ -61,41 +61,97 @@ def _setup_url_fetch_directory(scan_workspace_dir: str) -> Path:
     return url_fetch_dir
 
 
+def _get_tools_input_types(enabled_tools: dict) -> dict:
+    """
+    批量获取所有工具的输入类型，避免重复查询
+    
+    Args:
+        enabled_tools: 启用的工具配置
+        
+    Returns:
+        dict: 工具名到输入类型的映射
+        
+    Raises:
+        ValueError: 当工具未配置或缺少 input_type 时
+    """
+    from apps.scan.configs.command_templates import get_command_template
+    
+    tool_input_types = {}
+    for tool_name in enabled_tools.keys():
+        template = get_command_template('url_fetch', tool_name)
+        if not template:
+            raise ValueError(f"工具 '{tool_name}' 未在 command_templates 中配置")
+        
+        # 必须显式指定 input_type
+        if 'input_type' not in template:
+            raise ValueError(f"工具 '{tool_name}' 缺少必需的配置项 'input_type'，请在 command_templates 中指定为 'domains_file' 或 'sites_file'")
+        
+        input_type = template['input_type']
+        
+        # 验证 input_type 的值必须是有效的
+        if input_type not in ['domains_file', 'sites_file']:
+            raise ValueError(f"工具 '{tool_name}' 的 input_type 配置无效：'{input_type}'，必须是 'domains_file' 或 'sites_file'")
+        
+        tool_input_types[tool_name] = input_type
+    
+    return tool_input_types
+
+
 def _export_required_assets(
     enabled_tools: dict,
     target_id: int,
     scan_id: int,
     url_fetch_dir: Path
-) -> dict:
+) -> tuple[dict, dict]:
     """
     根据启用的工具导出所需的资产文件
     
-    分析启用工具的 input_type，按需导出：
-    - 如果有工具需要 domains_file，导出域名列表
-    - 如果有工具需要 sites_file，导出站点列表
+    注意：httpx 不参与此步骤，因为它需要的 url_file 是从其他工具的输出合并而来
+    
+    分析启用工具的 input_type（已验证有效性），按需导出：
+    - 如果有工具需要 domains_file，导出子域名列表
+    - 如果有工具需要 sites_file，导出网站 URL 列表
     
     Args:
-        enabled_tools: 启用的工具配置
+        enabled_tools: 启用的工具配置字典
         target_id: 目标 ID
         scan_id: 扫描 ID
-        url_fetch_dir: URL 获取目录
+        url_fetch_dir: URL 获取工作目录
         
     Returns:
-        dict: 资产文件映射（只包含实际导出的资产）
-            如果导出了域名：{'domains_file': 路径, 'domains_count': 数量}
-            如果导出了站点：{'sites_file': 路径, 'sites_count': 数量}
+        tuple: (assets_files, tool_input_types)
+        
+        assets_files: 资产文件信息的嵌套字典，格式：
+            {
+                'domains_file': {
+                    'file': '/path/to/domains.txt',
+                    'count': 100
+                },
+                'sites_file': {
+                    'file': '/path/to/sites.txt',
+                    'count': 50
+                }
+            }
+        
+        tool_input_types: 工具名到输入类型的映射，格式：
+            {
+                'waymore': 'domains_file',
+                'katana': 'sites_file'
+            }
+    
+    Raises:
+        ValueError: 当工具配置缺少或 input_type 无效时
     """
     from apps.scan.tasks.url_fetch import export_target_assets_task
     
-    # 收集需要的输入类型
-    required_input_types = set()
-    for tool_name in enabled_tools.keys():
-        input_type = _get_tool_input_type(tool_name)
-        if input_type in ['domains_file', 'sites_file']:
-            required_input_types.add(input_type)
+    # 排除 httpx（它使用合并后的 url_file，不需要从数据库导出）
+    fetcher_tools = {k: v for k, v in enabled_tools.items() if k != 'httpx'}
     
-    if not required_input_types:
-        raise ValueError("启用的工具没有明确的输入类型配置")
+    # 批量获取获取工具的输入类型（已验证有效性）
+    tool_input_types = _get_tools_input_types(fetcher_tools)
+    
+    # 收集需要的输入类型（去重）
+    required_input_types = set(tool_input_types.values())
     
     # 初始化结果（只存储实际导出的资产）
     assets_files = {}
@@ -114,182 +170,179 @@ def _export_required_assets(
             input_type=input_type
         )
         
-        # 存储文件路径和数量
-        assets_files[input_type] = output_file
-        assets_files[f"{input_type.split('_')[0]}_count"] = result['asset_count']
+        # 存储为嵌套字典结构
+        assets_files[input_type] = {
+            'file': output_file,
+            'count': result['asset_count']
+        }
         
         if result['asset_count'] == 0:
             logger.warning("%s 为空，相关工具可能无法正常工作", input_type)
         else:
             logger.info("✓ %s 导出完成 - 数量: %d", input_type, result['asset_count'])
     
-    return assets_files
+    return assets_files, tool_input_types
 
 
-
-def _get_tool_input_type(tool_name: str) -> str:
+def _prepare_tool_execution(
+    tool_name: str,
+    tool_config: dict,
+    input_type: str,
+    assets_files: dict,
+    url_fetch_dir: Path,
+    timestamp: str
+) -> dict:
     """
-    获取工具的输入类型
+    准备单个工具的执行参数
     
     Args:
         tool_name: 工具名称
+        tool_config: 工具配置
+        input_type: 工具的输入类型（预先计算）
+        assets_files: 资产文件映射
+        url_fetch_dir: URL 获取目录
+        timestamp: 时间戳
         
     Returns:
-        str: 输入类型（'domains_file' 或 'sites_file'）
+        dict: 执行参数，包含 command, input_file, output_file, timeout 等
+        None: 如果准备失败
     """
-    from apps.scan.configs.command_templates import get_command_template
+    # 1. 检查输入类型是否支持
+    if input_type not in ['domains_file', 'sites_file']:
+        logger.warning("未知的输入类型: %s，跳过工具 %s", input_type, tool_name)
+        return None
     
-    template = get_command_template('url_fetch', tool_name)
-    if not template:
-        return 'sites_file'  # 默认为站点文件
+    # 获取输入文件信息
+    asset_info = assets_files.get(input_type)
+    if not asset_info:
+        logger.warning("工具 %s 需要 %s 但文件不存在，跳过", tool_name, input_type)
+        return {'error': f'缺少输入文件 {input_type}'}
     
-    # 将模板中的 input_type 映射到文件类型
-    input_type = template.get('input_type', 'sites_file')
+    input_file = asset_info['file']
+    input_count = asset_info['count']
+    logger.info("工具 %s - 输入类型: %s, 数量: %d", tool_name, input_type, input_count)
     
-    # 保持向后兼容性
-    if input_type == 'domain':
-        return 'domains_file'
-    elif input_type == 'url' or input_type == 'url_file':
-        return 'sites_file'
-    else:
-        return input_type  # 直接返回 domains_file 或 sites_file
+    # 2. 生成输出文件路径
+    short_uuid = uuid.uuid4().hex[:4]
+    output_file = str(url_fetch_dir / f"{tool_name}_{timestamp}_{short_uuid}.txt")
+    
+    # 3. 构建命令
+    command_params = {
+        input_type: input_file,
+        'output_file': output_file
+    }
+    
+    try:
+        command = build_scan_command(
+            tool_name=tool_name,
+            scan_type='url_fetch',
+            command_params=command_params,
+            tool_config=tool_config
+        )
+    except Exception as e:
+        logger.error("构建 %s 命令失败: %s", tool_name, e)
+        return {'error': f'命令构建失败: {e}'}
+    
+    # 4. 返回执行参数
+    return {
+        'command': command,
+        'input_file': input_file,
+        'input_type': input_type,
+        'output_file': output_file,
+        'timeout': tool_config.get('timeout', 3600)
+    }
 
 
-
-def _run_fetchers_parallel(
-    enabled_tools: dict,
+def _submit_tool_tasks(
+    fetcher_tools: dict,
+    tool_input_types: dict,
     assets_files: dict,
     url_fetch_dir: Path,
-    scan_id: int,
-    target_id: int,
-    target_name: str
-) -> tuple[list, list, list]:
+    timestamp: str
+) -> tuple[dict, list]:
     """
-    并行执行 URL 获取工具（写入文件）
-    
-    注意：httpx 不参与并行获取，它用于后续的存活验证
-    
-    根据每个工具的 input_type 选择对应的输入文件：
-    - domains_file: 使用域名列表
-    - sites_file: 使用站点 URL 列表
+    提交所有工具的并行任务
     
     Args:
-        enabled_tools: 已启用的工具配置字典
-        assets_files: 资产文件映射（只包含实际导出的资产）
+        fetcher_tools: URL 获取工具配置
+        tool_input_types: 工具输入类型映射（预先计算）
+        assets_files: 资产文件映射
         url_fetch_dir: URL 获取目录
-        scan_id: 扫描任务 ID
-        target_id: 目标 ID
-        target_name: 目标名称（用于错误日志）
+        timestamp: 时间戳
         
     Returns:
-        tuple: (result_files, failed_tools, successful_tool_names)
-        
-    Raises:
-        RuntimeError: 所有工具均失败
+        tuple: (futures, failed_tools)
     """
-    logger.info("Step 2: 并行执行 URL 获取工具")
-    
-    # 分离 httpx（用于验证）和其他获取工具
-    fetcher_tools = {k: v for k, v in enabled_tools.items() if k != 'httpx'}
-    
-    if not fetcher_tools:
-        logger.warning("没有 URL 获取工具（排除 httpx），跳过并行获取")
-        return [], [], []
-    
-    logger.info("准备并行执行 %d 个 URL 获取工具", len(fetcher_tools))
-    
     from apps.scan.tasks.url_fetch import run_url_fetcher_task
     
-    # 生成时间戳
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    
-    result_files = []
+    futures = {}
     failed_tools = []
-    futures = {}  # 存储并行任务
     
-    # 并行执行每个获取工具（排除 httpx）
     for tool_name, tool_config in fetcher_tools.items():
-        logger.info("使用工具: %s", tool_name)
-        
-        # 1. 根据工具类型选择输入文件
-        input_type = _get_tool_input_type(tool_name)
-        if input_type == 'domains_file':
-            input_file = assets_files.get('domains_file')
-            input_count = assets_files.get('domains_count', 0)
-            logger.info("  输入类型: 域名文件, 域名数: %d", input_count)
-        elif input_type == 'sites_file':
-            input_file = assets_files.get('sites_file')
-            input_count = assets_files.get('sites_count', 0)
-            logger.info("  输入类型: 站点文件, 站点数: %d", input_count)
-        else:
-            logger.warning("  未知的输入类型: %s，跳过工具 %s", input_type, tool_name)
+        # 获取缓存的输入类型（必须存在，不再使用默认回退）
+        input_type = tool_input_types.get(tool_name)
+        if not input_type:
+            error_msg = f"工具 {tool_name} 缺少 input_type 映射，请检查 command_templates 配置"
+            logger.error(error_msg)
+            failed_tools.append({'tool': tool_name, 'reason': error_msg})
             continue
         
-        # 检查输入文件是否存在
-        if not input_file:
-            logger.warning("  工具 %s 需要 %s 但文件不存在，跳过", tool_name, input_type)
-            failed_tools.append({'tool': tool_name, 'reason': f'缺少输入文件 {input_type}'})
-            continue
-        
-        # 2. 生成输出文件路径
-        short_uuid = uuid.uuid4().hex[:4]
-        output_file = str(url_fetch_dir / f"{tool_name}_{timestamp}_{short_uuid}.txt")
-        
-        # 3. 构建命令参数（根据输入类型）
-        if input_type == 'domains_file':
-            # 域名级别：使用域名文件
-            command_params = {
-                'domains_file': input_file,
-                'output_file': output_file
-            }
-        else:  # sites_file
-            # 站点级别：使用站点文件
-            command_params = {
-                'sites_file': input_file,
-                'output_file': output_file
-            }
-        
-        # 4. 构建命令
-        try:
-            command = build_scan_command(
-                tool_name=tool_name,
-                scan_type='url_fetch',
-                command_params=command_params,
-                tool_config=tool_config
-            )
-        except Exception as e:
-            logger.error("构建 %s 命令失败: %s", tool_name, e)
-            failed_tools.append({'tool': tool_name, 'reason': f'命令构建失败: {e}'})
-            continue
-        
-        # 5. 获取超时时间
-        timeout = tool_config.get('timeout', 3600)
-        
-        logger.info(
-            "执行获取 - 工具: %s, 输入: %s, 超时: %d秒, 输出: %s",
-            tool_name, input_type, timeout, output_file
+        # 准备执行参数
+        exec_params = _prepare_tool_execution(
+            tool_name=tool_name,
+            tool_config=tool_config,
+            input_type=input_type,
+            assets_files=assets_files,
+            url_fetch_dir=url_fetch_dir,
+            timestamp=timestamp
         )
         
-        # 6. 提交并行任务
+        if not exec_params:
+            continue
+            
+        if 'error' in exec_params:
+            failed_tools.append({'tool': tool_name, 'reason': exec_params['error']})
+            continue
+        
         logger.info(
-            "提交任务 - 工具: %s, 输入: %s, 超时: %d秒, 输出: %s",
-            tool_name, input_type, timeout, output_file
+            "提交任务 - 工具: %s, 输入: %s, 超时: %d秒",
+            tool_name, exec_params['input_type'], exec_params['timeout']
         )
         
+        # 提交并行任务
         future = run_url_fetcher_task.submit(
             tool_name=tool_name,
-            command_template=command,
-            input_file=input_file,
-            input_type=input_type,
-            output_file=output_file,
-            timeout=timeout
+            command=exec_params['command'],
+            timeout=exec_params['timeout'],
+            output_file=exec_params['output_file']
         )
         futures[tool_name] = future
     
-    # 7. 等待并行任务完成，收集结果
+    return futures, failed_tools
+
+
+def _collect_task_results(
+    futures: dict,
+    failed_tools: list,
+    fetcher_tools: dict
+) -> tuple[list, list, list]:
+    """
+    收集并行任务的执行结果
+    
+    Args:
+        futures: 并行任务的 Future 对象字典
+        failed_tools: 已失败的工具列表
+        fetcher_tools: 获取工具配置
+        
+    Returns:
+        tuple: (result_files, all_failed_tools, successful_tool_names)
+    """
+    result_files = []
+    
+    # 收集任务结果
     for tool_name, future in futures.items():
         try:
-            result = future.result()  # 等待任务完成
+            result = future.result()
             if result and result['success']:
                 result_files.append(result['output_file'])
                 logger.info(
@@ -309,30 +362,99 @@ def _run_fetchers_parallel(
             })
             logger.error("工具 %s 执行失败: %s", tool_name, e)
     
-    # 8. 检查是否有成功的工具
+    # 计算成功的工具列表
+    failed_tool_names = [f['tool'] for f in failed_tools]
+    successful_tool_names = [
+        name for name in fetcher_tools.keys()
+        if name not in failed_tool_names
+    ]
+    
+    return result_files, failed_tools, successful_tool_names
+
+
+def _run_fetchers_parallel(
+    enabled_tools: dict,
+    tool_input_types: dict,
+    assets_files: dict,
+    url_fetch_dir: Path,
+    scan_id: int,
+    target_id: int,
+    target_name: str
+) -> tuple[list, list, list]:
+    """
+    并行执行 URL 获取工具（写入文件）
+    
+    注意：httpx 不参与并行获取，它用于后续的存活验证（Step 6）
+    
+    Args:
+        enabled_tools: 已启用的工具配置字典
+        tool_input_types: 工具输入类型映射（预先计算）
+        assets_files: 资产文件映射（嵌套字典结构）
+        url_fetch_dir: URL 获取目录
+        scan_id: 扫描任务 ID
+        target_id: 目标 ID
+        target_name: 目标名称
+        
+    Returns:
+        tuple: (result_files, failed_tools, successful_tool_names)
+            - result_files: 成功工具的输出文件路径列表
+            - failed_tools: 失败工具的名称列表
+            - successful_tool_names: 成功工具的名称列表
+        
+    Raises:
+        ValueError: 没有启用任何 URL 获取工具（httpx 不能单独使用）
+        RuntimeError: 所有 URL 获取工具均失败
+    """
+    logger.info("Step 2: 并行执行 URL 获取工具")
+    
+    # 分离 httpx（用于验证）和其他获取工具
+    fetcher_tools = {k: v for k, v in enabled_tools.items() if k != 'httpx'}
+    
+    if not fetcher_tools:
+        raise ValueError(
+            "URL Fetch 流程需要至少启用一个 URL 获取工具（如 waymore, katana）。"
+            "httpx 仅用于验证 URL 存活状态，不能单独使用。"
+        )
+    
+    logger.info("准备并行执行 %d 个 URL 获取工具", len(fetcher_tools))
+    
+    # 生成时间戳
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    
+    # 提交所有工具的并行任务
+    futures, failed_tools = _submit_tool_tasks(
+        fetcher_tools=fetcher_tools,
+        tool_input_types=tool_input_types,
+        assets_files=assets_files,
+        url_fetch_dir=url_fetch_dir,
+        timestamp=timestamp
+    )
+    
+    # 收集执行结果
+    result_files, all_failed_tools, successful_tool_names = _collect_task_results(
+        futures=futures,
+        failed_tools=failed_tools,
+        fetcher_tools=fetcher_tools
+    )
+    
+    # 检查是否有成功的工具
     if not result_files:
         error_msg = (
             f"所有 URL 获取工具均失败 - 目标: {target_name}\n"
             f"失败详情:\n" + "\n".join(
-                f"  - {f['tool']}: {f['reason']}" for f in failed_tools
+                f"  - {f['tool']}: {f['reason']}" for f in all_failed_tools
             )
         )
         raise RuntimeError(error_msg)
     
-    # 9. 计算成功的工具列表
-    successful_tool_names = [
-        name for name in enabled_tools.keys()
-        if name not in [f['tool'] for f in failed_tools]
-    ]
-    
     logger.info(
         "✓ 并行获取执行完成 - 成功: %d/%d (成功: %s, 失败: %s)",
-        len(result_files), len(enabled_tools),
+        len(successful_tool_names), len(fetcher_tools),
         ', '.join(successful_tool_names) if successful_tool_names else '无',
-        ', '.join([f['tool'] for f in failed_tools]) if failed_tools else '无'
+        ', '.join([f['tool'] for f in all_failed_tools]) if all_failed_tools else '无'
     )
     
-    return result_files, failed_tools, successful_tool_names
+    return result_files, all_failed_tools, successful_tool_names
 
 
 def _validate_and_stream_save_urls(
@@ -360,14 +482,27 @@ def _validate_and_stream_save_urls(
     Returns:
         int: 保存的存活 URL 数量
     """
-    logger.info("使用 httpx 验证 URL 存活状态...")
+    logger.info("开始使用 httpx 验证 URL 存活状态...")
     
     from apps.scan.utils import build_scan_command
     from apps.scan.tasks.url_fetch import run_and_stream_save_urls_task
     
-    # 1. 构建 httpx 命令
+    # 1. 统计待验证的 URL 数量
+    try:
+        with open(merged_file, 'r') as f:
+            url_count = sum(1 for _ in f)
+        logger.info("待验证 URL 数量: %d", url_count)
+    except Exception as e:
+        logger.error("读取 URL 文件失败: %s", e)
+        return 0
+    
+    if url_count == 0:
+        logger.warning("没有需要验证的 URL")
+        return 0
+    
+    # 2. 构建 httpx 命令
     command_params = {
-        'url_file': merged_file  # 使用合并后的 URL 文件
+        'url_file': merged_file
     }
     
     try:
@@ -377,27 +512,28 @@ def _validate_and_stream_save_urls(
             command_params=command_params,
             tool_config=httpx_config
         )
+        logger.debug("httpx 命令构建成功")
     except Exception as e:
         logger.error("构建 httpx 命令失败: %s", e)
-        # 如果 httpx 失败，降级为直接保存
-        logger.warning("httpx 验证失败，将直接保存所有 URL（不验证存活）")
+        logger.warning("降级处理：将直接保存所有 URL（不验证存活）")
         return _save_urls_to_database(merged_file, scan_id, target_id)
     
-    # 2. 获取超时配置
+    # 3. 动态计算超时时间
     timeout = httpx_config.get('timeout', 'auto')
     if timeout == 'auto':
-        # 计算 URL 数量，动态设置超时
-        with open(merged_file, 'r') as f:
-            url_count = sum(1 for _ in f)
-        timeout = min(60 + url_count * 1, 7200)  # 每个 URL 1秒，最多 2 小时
-        logger.info("自动计算超时时间: %d 秒（URL 数量: %d）", timeout, url_count)
+        # 基础时间 + 每个 URL 的处理时间
+        timeout = min(60 + url_count * 2, 7200)  # 每个 URL 2秒，最多 2 小时
+        logger.info("自动计算超时时间: %d 秒", timeout)
+    else:
+        logger.info("使用配置的超时时间: %d 秒", timeout)
     
-    # 3. 生成日志文件路径
+    # 4. 生成日志文件路径
     from datetime import datetime
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     log_file = url_fetch_dir / f"httpx_validation_{timestamp}.log"
     
-    # 4. 流式执行 httpx 并实时保存存活的 URL
+    # 5. 流式执行 httpx 并实时保存存活的 URL
+    logger.info("开始流式验证和保存...")
     try:
         result = run_and_stream_save_urls_task(
             cmd=command,
@@ -411,18 +547,21 @@ def _validate_and_stream_save_urls(
             log_file=str(log_file)
         )
         
+        processed = result.get('processed_records', 0)
+        saved = result.get('saved_urls', 0)
+        failed = result.get('failed_urls', 0)
+        
         logger.info(
-            "✓ httpx 流式验证完成 - 处理: %d, 存活: %d, 失败: %d",
-            result.get('processed_records', 0),
-            result.get('saved_urls', 0),
-            result.get('failed_urls', 0)
+            "✓ httpx 验证完成 - 处理: %d/%d, 存活: %d (%.1f%%), 失败: %d",
+            processed, url_count, saved, 
+            (saved / url_count * 100) if url_count > 0 else 0,
+            failed
         )
         
-        return result.get('saved_urls', 0)
+        return saved
         
     except Exception as e:
         logger.error("httpx 流式验证失败: %s", e, exc_info=True)
-        # 降级处理：直接保存所有 URL
         logger.warning("降级处理：将直接保存所有 URL（不验证存活）")
         return _save_urls_to_database(merged_file, scan_id, target_id)
 
@@ -568,7 +707,7 @@ def url_fetch_flow(
         
         # Step 3: 根据启用的工具导出所需的资产文件
         logger.info("Step 3: 根据启用的工具导出所需的资产文件")
-        assets_files = _export_required_assets(
+        assets_files, tool_input_types = _export_required_assets(
             enabled_tools=enabled_tools,
             target_id=target_id,
             scan_id=scan_id,
@@ -579,6 +718,7 @@ def url_fetch_flow(
         logger.info("Step 4: 并行运行获取工具")
         result_files, failed_tools, successful_tool_names = _run_fetchers_parallel(
             enabled_tools=enabled_tools,
+            tool_input_types=tool_input_types,
             assets_files=assets_files,
             url_fetch_dir=url_fetch_dir,
             scan_id=scan_id,

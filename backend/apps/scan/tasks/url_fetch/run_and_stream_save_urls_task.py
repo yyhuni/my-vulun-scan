@@ -28,7 +28,7 @@ from django.db import IntegrityError, OperationalError, DatabaseError
 from psycopg2 import InterfaceError
 from dataclasses import dataclass
 
-from apps.asset.services import EndpointService
+from apps.asset.services.snapshot import EndpointSnapshotsService
 from apps.scan.utils import execute_stream
 
 logger = logging.getLogger(__name__)
@@ -41,13 +41,13 @@ class ServiceSet:
     
     提供 URL 验证所需的 Service 实例
     """
-    endpoint: EndpointService
+    snapshot: EndpointSnapshotsService
     
     @classmethod
     def create_default(cls) -> "ServiceSet":
         """创建默认的 Service 集合"""
         return cls(
-            endpoint=EndpointService()
+            snapshot=EndpointSnapshotsService()
         )
 
 
@@ -265,37 +265,38 @@ def _save_batch(
         logger.debug("批次 %d 为空，跳过处理", batch_num)
         return 0
     
-    # 批量创建 Endpoint 记录
-    from apps.asset.dtos.asset import EndpointDTO
+    # 批量构造 Endpoint 快照 DTO
+    from apps.asset.dtos.snapshot import EndpointSnapshotDTO
     
-    endpoints = []
+    snapshots = []
     for record in batch:
         try:
-            # 创建 EndpointDTO（直接使用 target_id，不再关联 website）
-            dto = EndpointDTO(
-                target_id=target_id,
+            dto = EndpointSnapshotDTO(
+                scan_id=scan_id,
                 url=record['url'],
-                host=record.get('host', ''),  # 保存 host 字段
+                host=record.get('host', ''),
                 title=record.get('title', ''),
                 status_code=record.get('status_code'),
                 content_length=record.get('content_length', 0),
-                content_type=record.get('content_type', ''),
-                webserver=record.get('webserver', ''),
                 location=record.get('location', ''),
+                webserver=record.get('webserver', ''),
+                content_type=record.get('content_type', ''),
                 tech=record.get('tech', []),
                 body_preview=record.get('body_preview', ''),
                 vhost=record.get('vhost', False),
-                matched_gf_patterns=[]  # 可以后续通过模式匹配补充
+                matched_gf_patterns=[],
+                target_id=target_id,
             )
-            endpoints.append(dto)
-            
+            snapshots.append(dto)
         except Exception as e:
             logger.error("处理记录失败: %s，错误: %s", record.get('url', 'Unknown'), e)
             continue
     
-    if endpoints:
+    if snapshots:
         try:
-            count = services.endpoint.bulk_create_endpoints(endpoints)
+            # 通过快照服务统一保存快照并同步到资产表
+            services.snapshot.save_and_sync(snapshots)
+            count = len(snapshots)
             logger.info(
                 "批次 %d: 保存了 %d 个存活的 URL（共 %d 个）",
                 batch_num, count, len(batch)

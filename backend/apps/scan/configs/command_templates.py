@@ -145,8 +145,7 @@ URL_FETCH_COMMANDS = {
             'rate-limit': '-rate-limit {rate-limit}',
             'request-timeout': '-timeout {request-timeout}',
             'retries': '-retries {retries}'
-        },
-        'input_type': 'url_file'
+        }
     },
 }
 

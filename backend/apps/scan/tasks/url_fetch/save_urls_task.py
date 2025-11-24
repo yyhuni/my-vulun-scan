@@ -100,14 +100,12 @@ def save_urls_task(
     try:
         logger.info(f"开始保存 URL 到数据库 - 扫描ID: {scan_id}, 目标ID: {target_id}")
         
-        # 导入模型和服务
-        from apps.asset.services import EndpointService
-        from apps.asset.dtos.asset import EndpointDTO
-        from django.db import transaction
-        from django.utils import timezone
+        # 导入快照服务和 DTO
+        from apps.asset.services.snapshot import EndpointSnapshotsService
+        from apps.asset.dtos.snapshot import EndpointSnapshotDTO
         
-        # 创建服务
-        endpoint_service = EndpointService()
+        # 创建快照服务（统一负责快照 + 资产双写）
+        snapshots_service = EndpointSnapshotsService()
         
         # 读取并解析 URL
         parsed_urls = []
@@ -139,37 +137,35 @@ def save_urls_task(
         
         logger.info(f"准备保存 {len(parsed_urls)} 个有效 URL（总计: {total_urls}，无效: {invalid_urls}）")
         
-        # 批量创建 Endpoint 记录（直接关联到 target，不再关联 WebSite）
+        # 批量创建 Endpoint 快照记录（通过快照服务同步到资产表）
         saved_count = 0
         skipped_count = 0
         
         for i in range(0, len(parsed_urls), batch_size):
             batch = parsed_urls[i:i+batch_size]
             
-            # 准备 EndpointDTO 对象
-            endpoint_dtos = []
+            # 准备 EndpointSnapshotDTO 对象
+            snapshot_items = []
             for parsed in batch:
-                endpoint_dtos.append(EndpointDTO(
-                    target_id=target_id,
+                snapshot_items.append(EndpointSnapshotDTO(
+                    scan_id=scan_id,
                     url=parsed.url,
-                    host=parsed.domain  # 设置 host 字段
-                    # 其他字段默认为 None，由 httpx 后续填充
+                    host=parsed.domain,  # 设置 host 字段
+                    target_id=target_id,  # 用于同步到资产表
                 ))
             
-            if endpoint_dtos:
-                # 批量插入（忽略冲突）
+            if snapshot_items:
+                # 批量保存快照并同步到资产表（内部通过唯一约束 + ignore_conflicts 去重）
                 try:
-                    created_count = endpoint_service.bulk_create_endpoints(
-                        endpoint_dtos,
-                        ignore_conflicts=True
-                    )
+                    snapshots_service.save_and_sync(snapshot_items)
+                    created_count = len(snapshot_items)
                     saved_count += created_count
                     
                     logger.debug(f"批次 {i//batch_size + 1}: 保存 {created_count} 个 URL")
                     
                 except Exception as e:
                     logger.error(f"批量保存失败: {e}")
-                    skipped_count += len(endpoint_dtos)
+                    skipped_count += len(snapshot_items)
         
         # 计算最终跳过的数量
         final_skipped = total_urls - saved_count
