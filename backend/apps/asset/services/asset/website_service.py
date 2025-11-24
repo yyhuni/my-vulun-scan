@@ -153,6 +153,39 @@ class WebSiteService:
         """
         logger.debug("获取所有网站")
         return self.repo.get_all()
+    
+    def count_websites_by_scan(self, scan_id: int) -> int:
+        """
+        统计扫描下的网站数量
+        
+        Args:
+            scan_id: 扫描 ID
+        
+        Returns:
+            int: 网站数量
+        """
+        logger.debug("统计扫描下网站数量 - Scan ID: %d", scan_id)
+        from apps.asset.models import WebSite
+        return WebSite.objects.filter(scan_id=scan_id).count()
+    
+    def iter_website_urls_by_scan(self, scan_id: int, chunk_size: int = 1000):
+        """
+        流式获取扫描下的所有站点 URL（内存优化）
+        
+        Args:
+            scan_id: 扫描 ID
+            chunk_size: 批次大小
+        
+        Yields:
+            str: 站点 URL
+        """
+        logger.debug("流式获取扫描下所有站点 URL - Scan ID: %d, 批次大小: %d", scan_id, chunk_size)
+        from apps.asset.models import WebSite
+        queryset = WebSite.objects.filter(scan_id=scan_id).values_list('url', flat=True)
+        
+        # 使用 iterator() 避免一次性加载所有数据到内存
+        for url in queryset.iterator(chunk_size=chunk_size):
+            yield url
 
 
 __all__ = ['WebSiteService']

@@ -61,82 +61,70 @@ def _setup_url_fetch_directory(scan_workspace_dir: str) -> Path:
     return url_fetch_dir
 
 
-def _export_website_urls(target_id: int, scan_id: int, url_fetch_dir: Path, input_type: str) -> tuple[str, int]:
+def _export_required_assets(
+    enabled_tools: dict,
+    target_id: int,
+    scan_id: int,
+    url_fetch_dir: Path
+) -> dict:
     """
-    导出目标下的所有网站 URL 到文件（作为获取起点）
+    根据启用的工具导出所需的资产文件
+    
+    分析启用工具的 input_type，按需导出：
+    - 如果有工具需要 domains_file，导出域名列表
+    - 如果有工具需要 sites_file，导出站点列表
     
     Args:
+        enabled_tools: 启用的工具配置
         target_id: 目标 ID
         scan_id: 扫描 ID
         url_fetch_dir: URL 获取目录
-        input_type: 输入类型 ('domains_file', 'sites_file', 'auto')
         
     Returns:
-        tuple: (websites_file, website_count)
-        
-    Raises:
-        ValueError: 网站数量为 0
+        dict: 资产文件映射（只包含实际导出的资产）
+            如果导出了域名：{'domains_file': 路径, 'domains_count': 数量}
+            如果导出了站点：{'sites_file': 路径, 'sites_count': 数量}
     """
-    from apps.scan.tasks.url_fetch import export_websites_task
+    from apps.scan.tasks.url_fetch import export_target_assets_task
     
-    # 根据 input_type 决定数据源
-    if input_type == 'domains_file':
-        # 从目标导出域名（导出子域名）
-        logger.info("从目标导出域名列表")
-        from apps.asset.models import Subdomain
+    # 收集需要的输入类型
+    required_input_types = set()
+    for tool_name in enabled_tools.keys():
+        input_type = _get_tool_input_type(tool_name)
+        if input_type in ['domains_file', 'sites_file']:
+            required_input_types.add(input_type)
+    
+    if not required_input_types:
+        raise ValueError("启用的工具没有明确的输入类型配置")
+    
+    # 初始化结果（只存储实际导出的资产）
+    assets_files = {}
+    
+    # 按需导出每种资产
+    for input_type in required_input_types:
+        # 从 input_type 生成文件名：domains_file -> domains.txt
+        filename = input_type.replace('_file', '.txt')
+        logger.info("导出 %s...", input_type)
         
-        domains_file = str(url_fetch_dir / 'domains.txt')
-        with open(domains_file, 'w') as f:
-            subdomains = Subdomain.objects.filter(target_id=target_id).values_list('name', flat=True)
-            for domain in subdomains.iterator(chunk_size=1000):
-                f.write(f"{domain}\n")
-        
-        domain_count = Subdomain.objects.filter(target_id=target_id).count()
-        logger.info(f"✓ 域名导出完成 - 文件: {domains_file}, 域名数量: {domain_count}")
-        
-        if domain_count == 0:
-            logger.warning("目标下没有域名")
-            raise ValueError("目标下没有域名，无法执行 URL 获取")
-        
-        return domains_file, domain_count
-        
-    elif input_type == 'sites_file':
-        # 从扫描导出站点 URL
-        logger.info("从扫描导出网站 URL 列表")
-        websites_file = str(url_fetch_dir / 'websites.txt')
-        result = export_websites_task(
+        output_file = str(url_fetch_dir / filename)
+        result = export_target_assets_task(
+            output_file=output_file,
+            target_id=target_id,
             scan_id=scan_id,
-            output_file=websites_file
-        )
-        website_count = result['website_count']
-        
-        logger.info(
-            "✓ 网站 URL 导出完成 - 文件: %s, 网站数量: %d",
-            websites_file, website_count
+            input_type=input_type
         )
         
-        if website_count == 0:
-            logger.warning("扫描下没有网站")
-            raise ValueError("扫描下没有网站，无法执行 URL 获取")
+        # 存储文件路径和数量
+        assets_files[input_type] = output_file
+        assets_files[f"{input_type.split('_')[0]}_count"] = result['asset_count']
         
-        return websites_file, website_count
-        
-    else:  # auto
-        # 自动选择：优先使用站点，没有站点时使用域名
-        logger.info("自动选择输入源")
-        from apps.asset.models import WebSite, Subdomain
-        
-        website_count = WebSite.objects.filter(scan_id=scan_id).count()
-        if website_count > 0:
-            # 使用站点
-            return _export_website_urls(target_id, scan_id, url_fetch_dir, 'sites_file')
+        if result['asset_count'] == 0:
+            logger.warning("%s 为空，相关工具可能无法正常工作", input_type)
         else:
-            # 使用域名
-            domain_count = Subdomain.objects.filter(target_id=target_id).count()
-            if domain_count > 0:
-                return _export_website_urls(target_id, scan_id, url_fetch_dir, 'domains_file')
-            else:
-                raise ValueError("目标下既没有网站也没有域名，无法执行 URL 获取")
+            logger.info("✓ %s 导出完成 - 数量: %d", input_type, result['asset_count'])
+    
+    return assets_files
+
 
 
 def _get_tool_input_type(tool_name: str) -> str:
@@ -147,59 +135,30 @@ def _get_tool_input_type(tool_name: str) -> str:
         tool_name: 工具名称
         
     Returns:
-        str: 'domain' 或 'url'
+        str: 输入类型（'domains_file' 或 'sites_file'）
     """
     from apps.scan.configs.command_templates import get_command_template
     
     template = get_command_template('url_fetch', tool_name)
     if not template:
-        return 'url'  # 默认为站点级别
+        return 'sites_file'  # 默认为站点文件
     
-    return template.get('input_type', 'url')
+    # 将模板中的 input_type 映射到文件类型
+    input_type = template.get('input_type', 'sites_file')
+    
+    # 保持向后兼容性
+    if input_type == 'domain':
+        return 'domains_file'
+    elif input_type == 'url' or input_type == 'url_file':
+        return 'sites_file'
+    else:
+        return input_type  # 直接返回 domains_file 或 sites_file
 
-
-def _extract_unique_domains_from_websites(websites_file: str, url_fetch_dir: Path) -> tuple[str, int]:
-    """
-    从网站列表中提取唯一域名
-    
-    Args:
-        websites_file: 网站列表文件（完整 URL）
-        url_fetch_dir: URL 获取目录
-        
-    Returns:
-        tuple: (domains_file, domain_count)
-    """
-    from urllib.parse import urlparse
-    
-    domains = set()
-    
-    # 读取网站 URL 并提取域名
-    with open(websites_file, 'r') as f:
-        for line in f:
-            url = line.strip()
-            if url:
-                try:
-                    parsed = urlparse(url)
-                    domain = parsed.netloc or parsed.path  # 处理有无协议的情况
-                    if domain:
-                        domains.add(domain)
-                except Exception as e:
-                    logger.warning("解析 URL 失败: %s - %s", url, e)
-    
-    # 写入域名文件
-    domains_file = str(url_fetch_dir / 'domains.txt')
-    with open(domains_file, 'w') as f:
-        for domain in sorted(domains):
-            f.write(f"{domain}\n")
-    
-    logger.info("✓ 提取唯一域名 - 总数: %d, 文件: %s", len(domains), domains_file)
-    
-    return domains_file, len(domains)
 
 
 def _run_fetchers_parallel(
     enabled_tools: dict,
-    websites_file: str,
+    assets_files: dict,
     url_fetch_dir: Path,
     scan_id: int,
     target_id: int,
@@ -210,17 +169,13 @@ def _run_fetchers_parallel(
     
     注意：httpx 不参与并行获取，它用于后续的存活验证
     
-    支持两种输入模式：
-    - domain: 域名级别工具（waymore 等）
-    - url: 站点级别工具（katana 等）
-    
-    根据工具的 input_type 自动选择输入：
-    - domain: 使用域名列表（自动去重）
-    - url: 使用站点 URL 列表
+    根据每个工具的 input_type 选择对应的输入文件：
+    - domains_file: 使用域名列表
+    - sites_file: 使用站点 URL 列表
     
     Args:
         enabled_tools: 已启用的工具配置字典
-        websites_file: 网站列表文件路径
+        assets_files: 资产文件映射（只包含实际导出的资产）
         url_fetch_dir: URL 获取目录
         scan_id: 扫描任务 ID
         target_id: 目标 ID
@@ -234,31 +189,19 @@ def _run_fetchers_parallel(
     """
     logger.info("Step 2: 并行执行 URL 获取工具")
     
-    # 分离 httpx（验证工具）和其他获取工具
+    # 分离 httpx（用于验证）和其他获取工具
     fetcher_tools = {k: v for k, v in enabled_tools.items() if k != 'httpx'}
     
     if not fetcher_tools:
-        logger.warning("没有启用的 URL 获取工具（httpx 是验证工具，不参与获取）")
+        logger.warning("没有 URL 获取工具（排除 httpx），跳过并行获取")
         return [], [], []
+    
+    logger.info("准备并行执行 %d 个 URL 获取工具", len(fetcher_tools))
     
     from apps.scan.tasks.url_fetch import run_url_fetcher_task
     
     # 生成时间戳
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    
-    # 检查是否有需要域名输入的工具，提前提取域名
-    domains_file = None
-    domain_count = 0
-    need_domains = any(
-        _get_tool_input_type(tool_name) == 'domain'
-        for tool_name in fetcher_tools.keys()
-    )
-    
-    if need_domains:
-        logger.info("检测到域名级别工具，提取唯一域名...")
-        domains_file, domain_count = _extract_unique_domains_from_websites(
-            websites_file, url_fetch_dir
-        )
     
     result_files = []
     failed_tools = []
@@ -270,31 +213,39 @@ def _run_fetchers_parallel(
         
         # 1. 根据工具类型选择输入文件
         input_type = _get_tool_input_type(tool_name)
-        if input_type == 'domain':
-            input_file = domains_file
-            input_count = domain_count
-            logger.info("  输入类型: 域名级别, 唯一域名数: %d", input_count)
+        if input_type == 'domains_file':
+            input_file = assets_files.get('domains_file')
+            input_count = assets_files.get('domains_count', 0)
+            logger.info("  输入类型: 域名文件, 域名数: %d", input_count)
+        elif input_type == 'sites_file':
+            input_file = assets_files.get('sites_file')
+            input_count = assets_files.get('sites_count', 0)
+            logger.info("  输入类型: 站点文件, 站点数: %d", input_count)
         else:
-            input_file = websites_file
-            input_count = 0  # TODO: 从 websites_file 读取行数
-            logger.info("  输入类型: 站点级别")
+            logger.warning("  未知的输入类型: %s，跳过工具 %s", input_type, tool_name)
+            continue
+        
+        # 检查输入文件是否存在
+        if not input_file:
+            logger.warning("  工具 %s 需要 %s 但文件不存在，跳过", tool_name, input_type)
+            failed_tools.append({'tool': tool_name, 'reason': f'缺少输入文件 {input_type}'})
+            continue
         
         # 2. 生成输出文件路径
         short_uuid = uuid.uuid4().hex[:4]
         output_file = str(url_fetch_dir / f"{tool_name}_{timestamp}_{short_uuid}.txt")
         
         # 3. 构建命令参数（根据输入类型）
-        if input_type == 'domain':
-            # 域名级别：逐个域名执行（因为 waymore 不支持文件输入）
-            # TODO: 实现逐个域名执行的逻辑
+        if input_type == 'domains_file':
+            # 域名级别：使用域名文件
             command_params = {
-                'target': '{domain}',  # 占位符，实际执行时替换
+                'domains_file': input_file,
                 'output_file': output_file
             }
-        else:
-            # 站点级别：使用文件输入
+        else:  # sites_file
+            # 站点级别：使用站点文件
             command_params = {
-                'url': '{url}',  # 占位符，从文件读取每个 URL
+                'sites_file': input_file,
                 'output_file': output_file
             }
         
@@ -556,26 +507,25 @@ def url_fetch_flow(
     target_name: str,
     target_id: int,
     scan_workspace_dir: str,
-    engine_config: str,
-    input_type: str = 'auto'
+    engine_config: str
 ) -> dict:
     """
     URL 获取扫描 Flow
     
-    流程：
-        Step 0: 准备工作（目录创建、导出网站列表）
-        Step 1: 解析配置，获取启用的工具
-        Step 2: 串行运行获取工具（写入文件）
-        Step 3: 合并并去重 URL
-        Step 4: 保存到数据库
+    执行流程：
+    1. 准备工作目录
+    2. 解析配置，获取启用的工具
+    3. 根据启用的工具导出所需的资产文件
+    4. 并行运行获取工具
+    5. 合并并去重 URL
+    6. 保存到数据库或进行存活验证
     
     Args:
-        scan_id: 扫描任务 ID
+        scan_id: 扫描 ID
         target_name: 目标名称
         target_id: 目标 ID
-        scan_workspace_dir: 扫描工作空间目录
-        engine_config: 引擎配置（YAML 字符串）
-        input_type: 输入类型 ('domains_file', 'sites_file', 'auto')
+        scan_workspace_dir: 扫描工作目录
+        engine_config: 引擎配置（YAML 格式字符串）
         
     Returns:
         dict: 扫描结果
@@ -597,16 +547,14 @@ def url_fetch_flow(
             "="*60
         )
         
-        # Step 0: 准备工作
+        # Step 1: 准备工作目录
+        logger.info("Step 1: 准备工作目录")
         url_fetch_dir = _setup_url_fetch_directory(scan_workspace_dir)
-        websites_file, website_count = _export_website_urls(
-            target_id, scan_id, url_fetch_dir, input_type
-        )
         
-        # Step 1: 解析配置，获取启用的工具
-        logger.info("Step 1: 解析配置，获取启用的工具")
+        # Step 2: 解析配置，获取启用的工具
+        logger.info("Step 2: 解析配置，获取启用的工具")
         enabled_tools = config_parser.parse_enabled_tools(
-            scan_type='url_fetch',  # TODO: 添加到 engine_config_example.yaml
+            scan_type='url_fetch',
             engine_config=engine_config
         )
         
@@ -618,25 +566,36 @@ def url_fetch_flow(
             ', '.join(enabled_tools.keys())
         )
         
-        # Step 2: 并行运行获取工具（写入文件）
+        # Step 3: 根据启用的工具导出所需的资产文件
+        logger.info("Step 3: 根据启用的工具导出所需的资产文件")
+        assets_files = _export_required_assets(
+            enabled_tools=enabled_tools,
+            target_id=target_id,
+            scan_id=scan_id,
+            url_fetch_dir=url_fetch_dir
+        )
+        
+        # Step 4: 并行运行获取工具（写入文件）
+        logger.info("Step 4: 并行运行获取工具")
         result_files, failed_tools, successful_tool_names = _run_fetchers_parallel(
             enabled_tools=enabled_tools,
-            websites_file=websites_file,
+            assets_files=assets_files,
             url_fetch_dir=url_fetch_dir,
             scan_id=scan_id,
             target_id=target_id,
             target_name=target_name
         )
         
-        # Step 3: 合并并去重 URL
+        # Step 5: 合并并去重 URL
+        logger.info("Step 5: 合并并去重 URL")
         merged_file, unique_url_count = _merge_and_deduplicate_urls(
             result_files=result_files,
             url_fetch_dir=url_fetch_dir
         )
         
-        # Step 4: 使用 httpx 验证存活并流式保存（如果启用）
+        # Step 6: 使用 httpx 验证存活并流式保存（如果启用）
         if 'httpx' in enabled_tools and enabled_tools['httpx'].get('enabled', False):
-            logger.info("Step 4: 使用 httpx 验证 URL 存活并流式保存")
+            logger.info("Step 6: 使用 httpx 验证 URL 存活并流式保存")
             validated_count = _validate_and_stream_save_urls(
                 merged_file=merged_file,
                 httpx_config=enabled_tools['httpx'],
@@ -647,8 +606,8 @@ def url_fetch_flow(
             saved_count = validated_count
             logger.info("✓ httpx 验证并保存完成 - 存活 URL: %d", validated_count)
         else:
-            # Step 4 备选: 直接保存（不验证存活）
-            logger.info("Step 4: 保存到数据库（未启用 httpx 验证）")
+            # Step 6 备选: 直接保存（不验证存活）
+            logger.info("Step 6: 保存到数据库（未启用 httpx 验证）")
             saved_count = _save_urls_to_database(
                 merged_file=merged_file,
                 scan_id=scan_id,
@@ -658,7 +617,7 @@ def url_fetch_flow(
         logger.info("="*60 + "\n✓ URL 获取扫描完成\n" + "="*60)
         
         # 动态生成已执行的任务列表
-        executed_tasks = ['export_websites', 'parse_config']
+        executed_tasks = ['setup_directory', 'parse_config', 'export_required_assets']
         executed_tasks.extend([f'run_fetcher ({tool})' for tool in successful_tool_names])
         executed_tasks.append('merge_and_deduplicate')
         

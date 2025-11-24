@@ -203,6 +203,53 @@ class SubdomainService:
         """
         logger.debug("批量查询子域名 - 数量: %d, Target ID: %d", len(names), target_id)
         return self.repo.get_by_names_and_target_id(names, target_id)
+    
+    def get_subdomain_names_by_target(self, target_id: int) -> List[str]:
+        """
+        获取目标下的所有子域名名称
+        
+        Args:
+            target_id: 目标 ID
+        
+        Returns:
+            List[str]: 子域名名称列表
+        """
+        logger.debug("获取目标下所有子域名 - Target ID: %d", target_id)
+        from apps.asset.models import Subdomain
+        return list(Subdomain.objects.filter(target_id=target_id).values_list('name', flat=True))
+    
+    def count_subdomains_by_target(self, target_id: int) -> int:
+        """
+        统计目标下的子域名数量
+        
+        Args:
+            target_id: 目标 ID
+        
+        Returns:
+            int: 子域名数量
+        """
+        logger.debug("统计目标下子域名数量 - Target ID: %d", target_id)
+        from apps.asset.models import Subdomain
+        return Subdomain.objects.filter(target_id=target_id).count()
+    
+    def iter_subdomain_names_by_target(self, target_id: int, chunk_size: int = 1000):
+        """
+        流式获取目标下的所有子域名名称（内存优化）
+        
+        Args:
+            target_id: 目标 ID
+            chunk_size: 批次大小
+        
+        Yields:
+            str: 子域名名称
+        """
+        logger.debug("流式获取目标下所有子域名 - Target ID: %d, 批次大小: %d", target_id, chunk_size)
+        from apps.asset.models import Subdomain
+        queryset = Subdomain.objects.filter(target_id=target_id).values_list('name', flat=True)
+        
+        # 使用 iterator() 避免一次性加载所有数据到内存
+        for subdomain in queryset.iterator(chunk_size=chunk_size):
+            yield subdomain
 
 
 __all__ = ['SubdomainService']
