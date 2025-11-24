@@ -6,18 +6,31 @@ import type { BatchCreateResponse } from './api-response.types'
 export interface Endpoint {
   id: number
   url: string
-  method: string
+
+  // HTTP 元信息（部分场景可为空）
+  method?: string
   statusCode: number | null       // 后端: status_code (指针类型，可能为 null)
   title: string
   contentLength: number | null    // 后端: content_length (指针类型，可能为 null)
   contentType?: string | null     // 后端: content_type (可选)
   responseTime?: number | null    // 后端: response_time (单位秒，可选)
-  tags?: string[] | null          // 后端: tags (可选，字符串数组)
-  domainId: number                // 后端: domain_id
+  tags?: string[] | null          // 后端: tags/matched_gf_patterns 映射（可选）
+
+  // 站点/端点维度的附加信息（资产表和快照表都会使用）
+  host?: string
+  location?: string
+  webserver?: string
+  bodyPreview?: string
+  tech?: string[]
+  vhost?: boolean | null
+  discoveredAt?: string
+
+  // 旧版域名关联字段（在部分接口中可能不存在）
+  domainId?: number               // 后端: domain_id
   subdomainId?: number            // 后端: subdomain_id
   domain?: string
   subdomain?: string
-  updatedAt: string               // 后端: updated_at
+  updatedAt?: string              // 后端: updated_at
 }
 
 // Endpoint 列表请求参数

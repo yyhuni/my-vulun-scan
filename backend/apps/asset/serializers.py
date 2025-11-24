@@ -100,10 +100,15 @@ class EndpointListSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'url',
+            'location',
             'status_code',
             'title',
             'content_length',
             'content_type',
+            'webserver',
+            'body_preview',
+            'tech',
+            'vhost',
             'tags',
             'discovered_at',
         ]
@@ -190,7 +195,8 @@ class WebsiteSnapshotSerializer(serializers.ModelSerializer):
 class DirectorySnapshotSerializer(serializers.ModelSerializer):
     """目录快照序列化器（用于扫描历史）"""
     
-    website_url = serializers.CharField(source='website.url', read_only=True)
+    # DirectorySnapshot 当前不再关联 Website，这里暂时将 website_url 映射为自身的 url，保证字段兼容
+    website_url = serializers.CharField(source='url', read_only=True)
     
     class Meta:
         model = DirectorySnapshot
@@ -224,10 +230,16 @@ class EndpointSnapshotSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'url',
+            'host',
+            'location',
             'title',
+            'webserver',
+            'content_type',
             'status_code',
             'content_length',
-            'content_type',
+            'body_preview',
+            'tech',
+            'vhost',
             'tags',
             'discovered_at',
         ]

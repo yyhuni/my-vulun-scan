@@ -211,98 +211,245 @@ export function createEndpointColumns({
   handleDelete,
 }: CreateColumnsProps): ColumnDef<Endpoint>[] {
   return [
-  {
-    accessorKey: "url",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="HTTP URL" />
-    ),
-    cell: ({ row }) => {
-      const url = row.getValue("url") as string
-      return <CopyableCell value={url} maxWidth="800px" truncateLength={100} successMessage="已复制 URL" />
+    {
+      accessorKey: "url",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="URL" />
+      ),
+      cell: ({ row }) => {
+        const url = row.getValue("url") as string
+        return <CopyableCell value={url} maxWidth="300px" truncateLength={40} successMessage="已复制 URL" />
+      },
     },
-  },
-  {
-    accessorKey: "statusCode",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Status" />
-    ),
-    cell: ({ row }) => {
-      const status = row.getValue("statusCode") as number | null | undefined
-      return <HttpStatusBadge statusCode={status} />
-    },
-  },
-  {
-    accessorKey: "title",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Page Title" />
-    ),
-    cell: ({ row }) => {
-      const title = row.getValue("title") as string | null | undefined
-      return <CopyableCell value={title || undefined} maxWidth="500px" truncateLength={80} successMessage="已复制标题" />
-    },
-  },
-  {
-    accessorKey: "tags",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Tags" />
-    ),
-    cell: ({ row }) => {
-      const tags = (row.getValue("tags") as string[] | null | undefined) || []
-      if (!tags.length) {
-        return <span className="text-muted-foreground text-sm">-</span>
-      }
-      return (
-        <div className="flex flex-wrap gap-1">
-          {tags.map((tag, idx) => (
-            <Badge
-              key={idx}
-              variant={/xss|sqli|idor|rce|ssrf|lfi|rfi|xxe|csrf|open.?redirect|interesting/i.test(tag) ? "destructive" : "secondary"}
-              className="text-xs"
-            >
-              {tag}
+    {
+      accessorKey: "title",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Title" />
+      ),
+      cell: ({ row }) => {
+        const title = row.getValue("title") as string | null | undefined
+        if (!title) return <span className="text-sm">-</span>
+
+        const maxLength = 30
+        const isLong = title.length > maxLength
+        const displayText = isLong ? title.substring(0, maxLength) : title
+
+        if (!isLong) {
+          return <span className="text-sm">{title}</span>
+        }
+
+        return (
+          <div className="flex items-center gap-1">
+            <span className="text-sm">{displayText}</span>
+            <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted flex-shrink-0">
+              ...
             </Badge>
-          ))}
-        </div>
-      )
+          </div>
+        )
+      },
     },
-    enableSorting: false,
-  },
-  {
-    accessorKey: "contentType",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Content Type" />
-    ),
-    cell: ({ row }) => {
-      const ct = row.getValue("contentType") as string | null | undefined
-      return ct ? <span className="text-sm">{ct}</span> : <span className="text-muted-foreground text-sm">-</span>
+    {
+      accessorKey: "statusCode",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Status" />
+      ),
+      cell: ({ row }) => {
+        const status = row.getValue("statusCode") as number | null | undefined
+        return <HttpStatusBadge statusCode={status} />
+      },
     },
-  },
-  {
-    accessorKey: "contentLength",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Content Length" />
-    ),
-    cell: ({ row }) => {
-      const len = row.getValue("contentLength") as number | null | undefined
-      if (len === null || len === undefined) {
-        return <span className="text-muted-foreground text-sm">-</span>
-      }
-      return <span className="font-mono tabular-nums">{new Intl.NumberFormat().format(len)}</span>
+    {
+      accessorKey: "contentLength",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Content Length" />
+      ),
+      cell: ({ row }) => {
+        const len = row.getValue("contentLength") as number | null | undefined
+        if (len === null || len === undefined) {
+          return <span className="text-muted-foreground text-sm">-</span>
+        }
+        return <span className="font-mono tabular-nums">{new Intl.NumberFormat().format(len)}</span>
+      },
     },
-  },
-  {
-    accessorKey: "responseTime",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Response time" />
-    ),
-    cell: ({ row }) => {
-      const rt = row.getValue("responseTime") as number | null | undefined
-      if (rt === null || rt === undefined) {
-        return <span className="text-muted-foreground text-sm">-</span>
-      }
-      const formatted = `${rt.toFixed(4)}s`
-      return <span className="font-mono text-emerald-600 dark:text-emerald-400">{formatted}</span>
+    {
+      accessorKey: "location",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Location" />
+      ),
+      cell: ({ row }) => {
+        const location = row.getValue("location") as string | undefined
+        if (!location) return <span className="text-sm text-muted-foreground">-</span>
+
+        const maxLength = 50
+        const isLong = location.length > maxLength
+        const displayText = isLong ? location.substring(0, maxLength) : location
+
+        if (!isLong) {
+          return <span className="text-sm">{location}</span>
+        }
+
+        return (
+          <div className="flex items-center gap-1">
+            <span className="text-sm">{displayText}</span>
+            <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted flex-shrink-0">
+              ...
+            </Badge>
+          </div>
+        )
+      },
     },
-  },
-]
+    {
+      accessorKey: "webserver",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Web Server" />
+      ),
+      cell: ({ row }) => {
+        const webserver = row.getValue("webserver") as string | undefined
+        if (!webserver) return <span className="text-sm text-muted-foreground">-</span>
+
+        const maxLength = 20
+        const isLong = webserver.length > maxLength
+        const displayText = isLong ? webserver.substring(0, maxLength) : webserver
+
+        if (!isLong) {
+          return <span className="text-sm">{webserver}</span>
+        }
+
+        return (
+          <div className="flex items-center gap-1">
+            <span className="text-sm">{displayText}</span>
+            <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted flex-shrink-0">
+              ...
+            </Badge>
+          </div>
+        )
+      },
+    },
+    {
+      accessorKey: "contentType",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Content Type" />
+      ),
+      cell: ({ row }) => {
+        const ct = row.getValue("contentType") as string | null | undefined
+        return ct ? <span className="text-sm">{ct}</span> : <span className="text-muted-foreground text-sm">-</span>
+      },
+    },
+    {
+      accessorKey: "tech",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Technologies" />
+      ),
+      cell: ({ row }) => {
+        const tech = (row.getValue("tech") as string[] | null | undefined) || []
+        if (!tech.length) return <span className="text-sm text-muted-foreground">-</span>
+
+        const displayTech = tech.slice(0, 2)
+        const hasMore = tech.length > 2
+
+        return (
+          <div className="flex flex-wrap gap-1 max-w-[200px]">
+            {displayTech.map((t, index) => (
+              <Badge key={index} variant="outline" className="text-xs">
+                {t}
+              </Badge>
+            ))}
+            {hasMore && (
+              <Badge variant="secondary" className="text-xs cursor-pointer hover:bg-muted">
+                +{tech.length - 2}
+              </Badge>
+            )}
+          </div>
+        )
+      },
+    },
+    {
+      accessorKey: "bodyPreview",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Body Preview" />
+      ),
+      cell: ({ row }) => {
+        const bodyPreview = row.getValue("bodyPreview") as string | undefined
+        if (!bodyPreview) return <span className="text-sm text-muted-foreground">-</span>
+
+        const maxLength = 30
+        const isLong = bodyPreview.length > maxLength
+        const displayText = isLong ? bodyPreview.substring(0, maxLength) : bodyPreview
+
+        if (!isLong) {
+          return <span className="text-sm">{bodyPreview}</span>
+        }
+
+        return (
+          <div className="flex items-center gap-1">
+            <span className="text-sm">{displayText}</span>
+            <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted flex-shrink-0">
+              ...
+            </Badge>
+          </div>
+        )
+      },
+    },
+    {
+      accessorKey: "vhost",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="VHost" />
+      ),
+      cell: ({ row }) => {
+        const vhost = row.getValue("vhost") as boolean | null | undefined
+        if (vhost === null || vhost === undefined) return <span className="text-sm text-muted-foreground">-</span>
+        return <span className="text-sm font-mono">{vhost ? "true" : "false"}</span>
+      },
+    },
+    {
+      accessorKey: "tags",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Tags" />
+      ),
+      cell: ({ row }) => {
+        const tags = (row.getValue("tags") as string[] | null | undefined) || []
+        if (!tags.length) {
+          return <span className="text-muted-foreground text-sm">-</span>
+        }
+        return (
+          <div className="flex flex-wrap gap-1">
+            {tags.map((tag, idx) => (
+              <Badge
+                key={idx}
+                variant={/xss|sqli|idor|rce|ssrf|lfi|rfi|xxe|csrf|open.?redirect|interesting/i.test(tag) ? "destructive" : "secondary"}
+                className="text-xs"
+              >
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        )
+      },
+      enableSorting: false,
+    },
+    {
+      accessorKey: "responseTime",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Response Time" />
+      ),
+      cell: ({ row }) => {
+        const rt = row.getValue("responseTime") as number | null | undefined
+        if (rt === null || rt === undefined) {
+          return <span className="text-muted-foreground text-sm">-</span>
+        }
+        const formatted = `${rt.toFixed(4)}s`
+        return <span className="font-mono text-emerald-600 dark:text-emerald-400">{formatted}</span>
+      },
+    },
+    {
+      accessorKey: "discoveredAt",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Discovered At" />
+      ),
+      cell: ({ row }) => {
+        const discoveredAt = row.getValue("discoveredAt") as string | undefined
+        return <div className="text-sm">{discoveredAt ? formatDate(discoveredAt) : "-"}</div>
+      },
+    },
+  ]
 }

@@ -611,7 +611,8 @@ class ScanViewSet(viewsets.ModelViewSet):
                 )
 
             # 获取该扫描的所有目录快照（按发现时间倒序）
-            queryset = scan.directory_snapshots.select_related('website').order_by('-discovered_at')
+            # DirectorySnapshot 当前仅关联 Scan，本身不再关联 Website，因此不使用 select_related('website')
+            queryset = scan.directory_snapshots.all().order_by('-discovered_at')
 
             paginator = self.paginator
             page = paginator.paginate_queryset(queryset, request, view=self)
