@@ -205,15 +205,17 @@ def _save_batch_with_retry(
                 'success': True,
                 'saved_count': count
             }
-        
+
         except IntegrityError as e:
+            # 唯一约束等数据完整性错误通常意味着重复数据，这里记录错误但不让整个扫描失败
             logger.error("批次 %d 数据完整性错误，跳过: %s", batch_num, str(e)[:100])
             return {
                 'success': False,
                 'saved_count': 0
             }
-        
+
         except (OperationalError, DatabaseError, InterfaceError) as e:
+            # 数据库级错误（连接中断、表结构不匹配等）：按指数退避重试，最终失败时抛出异常让 Flow 失败
             if attempt < max_retries - 1:
                 wait_time = 2 ** attempt
                 logger.warning(
@@ -222,19 +224,22 @@ def _save_batch_with_retry(
                 )
                 time.sleep(wait_time)
             else:
-                logger.error("批次 %d 保存失败（已重试 %d 次）: %s", batch_num, max_retries, e)
-                return {
-                    'success': False,
-                    'saved_count': 0
-                }
-        
+                logger.error(
+                    "批次 %d 保存失败（已重试 %d 次），将终止任务: %s",
+                    batch_num,
+                    max_retries,
+                    e,
+                    exc_info=True,
+                )
+                # 让上层 Task 感知失败，从而标记整个扫描为失败
+                raise
+
         except Exception as e:
+            # 其他未知异常也不再吞掉，直接抛出以便 Flow 标记为失败
             logger.error("批次 %d 未知错误: %s", batch_num, e, exc_info=True)
-            return {
-                'success': False,
-                'saved_count': 0
-            }
-    
+            raise
+
+    # 理论上不会走到这里，保留兜底返回值以满足类型约束
     return {
         'success': False,
         'saved_count': 0

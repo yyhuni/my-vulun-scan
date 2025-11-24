@@ -31,10 +31,12 @@ class DjangoEndpointRepository:
         try:
             endpoints = []
             for item in items:
+                # Endpoint 模型当前只关联 target，不再依赖 website 外键
+                # 这里按照 EndpointDTO 的字段映射构造 Endpoint 实例
                 endpoints.append(Endpoint(
-                    website_id=item.website_id,
                     target_id=item.target_id,
                     url=item.url,
+                    host=item.host or '',
                     title=item.title or '',
                     status_code=item.status_code,
                     content_length=item.content_length,
