@@ -419,6 +419,11 @@ class DjangoScanRepository:
             
             scan.save(update_fields=list(stats.keys()))
             
+            # 更新 Target 的最后扫描时间
+            if scan.target:
+                scan.target.last_scanned_at = timezone.now()
+                scan.target.save(update_fields=['last_scanned_at'])
+            
             logger.debug("更新缓存统计数据成功 - Scan ID: %s", scan_id)
             return True
         except DatabaseError as e:

@@ -17,6 +17,7 @@ from asgiref.sync import async_to_sync
 
 from apps.common.definitions import ScanStatus
 from apps.scan.repositories import DjangoScanRepository
+from uuid import UUID
 
 logger = logging.getLogger(__name__)
 
@@ -47,12 +48,59 @@ class ScanControlService:
         """
         return _submit_flow_deployment(deployment_name, parameters)
 
+    async def _cancel_flow_runs(
+        self, 
+        flow_run_ids: List[str], 
+        message: str = "扫描任务被取消"
+    ) -> int:
+        """
+        取消多个 Flow Run（内部方法，供 stop_scan 和 delete_scans_two_phase 复用）
+        
+        Args:
+            flow_run_ids: Flow Run ID 列表
+            message: 取消原因消息
+            
+        Returns:
+            成功取消的数量
+        """
+        if not flow_run_ids:
+            return 0
+            
+        from prefect import get_client
+        from prefect.states import Cancelling
+        
+        async def _cancel_single(client, flow_run_id: str) -> bool:
+            try:
+                await asyncio.wait_for(
+                    client.set_flow_run_state(
+                        flow_run_id=UUID(flow_run_id),
+                        state=Cancelling(message=message),
+                        force=True
+                    ),
+                    timeout=10.0
+                )
+                return True
+            except Exception as e:
+                logger.warning(f"取消 Flow Run 失败: {flow_run_id}, 错误: {e}")
+                return False
+        
+        try:
+            async with get_client() as client:
+                tasks = [_cancel_single(client, fid) for fid in flow_run_ids]
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+                return sum(1 for r in results if r is True)
+        except Exception as e:
+            logger.error(f"连接 Prefect Server 失败: {e}")
+            return 0
+
     def delete_scans_two_phase(self, scan_ids: List[int]) -> dict:
         """
         两阶段删除扫描任务
         
-        1. 软删除：立即更新 deleted_at 字段
-        2. 硬删除：提交 Prefect 任务异步执行物理删除
+        流程：
+        1. 取消正在运行的 Flow（防止删除后任务继续执行）
+        2. 软删除：立即更新 deleted_at 字段
+        3. 硬删除：提交 Prefect 任务异步执行物理删除
         
         Args:
             scan_ids: 扫描任务 ID 列表
@@ -61,18 +109,39 @@ class ScanControlService:
             删除结果统计
         """
         # 1. 获取要删除的 Scan 信息
-        scans = self.scan_repo.get_all(prefetch_relations=False).filter(id__in=scan_ids)
-        if not scans.exists():
+        scans = list(self.scan_repo.get_all(prefetch_relations=False).filter(id__in=scan_ids))
+        if not scans:
             raise ValueError("未找到要删除的 Scan")
             
         scan_names = [f"Scan #{s.id}" for s in scans]
         existing_ids = [s.id for s in scans]
         
-        # 2. 第一阶段：软删除
+        # 2. 收集所有正在运行的 Flow Run IDs 并取消
+        all_flow_run_ids = []
+        running_scan_ids = []
+        for scan in scans:
+            if scan.status in [ScanStatus.RUNNING, ScanStatus.INITIATED, ScanStatus.CANCELLING]:
+                if scan.flow_run_ids:
+                    all_flow_run_ids.extend(scan.flow_run_ids)
+                    running_scan_ids.append(scan.id)
+        
+        cancelled_count = 0
+        if all_flow_run_ids:
+            logger.info(f"🛑 取消正在运行的 Flow - Scan IDs: {running_scan_ids}, Flow 数量: {len(all_flow_run_ids)}")
+            try:
+                cancelled_count = async_to_sync(self._cancel_flow_runs)(
+                    all_flow_run_ids,
+                    message="扫描任务被删除，自动取消"
+                )
+                logger.info(f"✓ 已取消 {cancelled_count}/{len(all_flow_run_ids)} 个 Flow Run")
+            except Exception as e:
+                logger.warning(f"取消 Flow 时出错（继续删除）: {e}")
+        
+        # 3. 第一阶段：软删除
         soft_count = self.scan_repo.soft_delete_by_ids(existing_ids)
         logger.info(f"✓ 软删除完成: {soft_count} 个 Scan")
         
-        # 3. 第二阶段：提交硬删除任务
+        # 4. 第二阶段：提交硬删除任务
         logger.info(f"🔵 提交 Prefect 删除任务 - Scan: {', '.join(scan_names[:5])}{'...' if len(scan_names) > 5 else ''}")
         
         try:
@@ -97,7 +166,8 @@ class ScanControlService:
         return {
             'soft_deleted_count': soft_count,
             'scan_names': scan_names,
-            'hard_delete_scheduled': True
+            'hard_delete_scheduled': True,
+            'cancelled_flow_count': cancelled_count
         }
     
     def stop_scan(self, scan_id: int) -> tuple[bool, int]:
@@ -164,100 +234,14 @@ class ScanControlService:
             # 事务结束，锁释放
             # 后续耗时操作在事务外执行，避免长时间持有锁
             
-            # 4. 发送取消信号到 Prefect（使用 Cancelling 状态）
-            # 策略：设置为 Cancelling → Worker 检测 → 终止 Flow → 触发 Handler → 自动更新 DB
+            # 4. 发送取消信号到 Prefect（复用 _cancel_flow_runs 方法）
             cancelled_count = 0
             if flow_run_ids:
-                from prefect import get_client
-                from uuid import UUID
-                
-                async def _cancel_flows():
-                    """
-                    发送取消信号到 Prefect Flow Runs（并行处理，带超时保护）
-                    
-                    工作流程：
-                    1. 并行设置所有 Flow Run 状态为 Cancelling（取消信号）
-                    2. Worker 检测到 Cancelling 状态后会主动终止 Flow 执行
-                    3. Flow 自然进入 Cancelled 状态
-                    4. 触发 on_initiate_scan_flow_cancelled handler
-                    5. Handler 自动更新数据库状态为 CANCELLED
-                    
-                    优势：
-                    - 并行处理，速度更快
-                    - 单个失败不影响其他
-                    - 超时保护（10秒）
-                    - 自动资源管理
-                    """
-                    from prefect.states import Cancelling
-                    
-                    async def _cancel_single_flow(client, flow_run_id: str) -> bool:
-                        """
-                        取消单个 Flow Run（带超时保护）
-                        
-                        Returns:
-                            True: 成功发送取消信号
-                            False: 失败（超时或异常）
-                        """
-                        try:
-                            # 添加 10 秒超时保护
-                            await asyncio.wait_for(
-                                client.set_flow_run_state(
-                                    flow_run_id=UUID(flow_run_id),
-                                    state=Cancelling(message="用户手动取消扫描"),
-                                    force=True
-                                ),
-                                timeout=10.0
-                            )
-                            logger.debug(
-                                "✓ 已发送取消信号 - Flow Run: %s, Scan ID: %s",
-                                flow_run_id, scan_id
-                            )
-                            return True
-                        except asyncio.TimeoutError:
-                            logger.error(
-                                "✗ 发送取消信号超时（10秒）- Flow Run: %s, Scan ID: %s",
-                                flow_run_id, scan_id
-                            )
-                            return False
-                        except Exception as e:
-                            logger.error(
-                                "✗ 发送取消信号失败 - Flow Run: %s, Scan ID: %s, Error: %s",
-                                flow_run_id, scan_id, e
-                            )
-                            return False
-                    
-                    try:
-                        async with get_client() as client:
-                            # 并行处理所有 Flow Run
-                            tasks = [
-                                _cancel_single_flow(client, flow_run_id)
-                                for flow_run_id in flow_run_ids
-                            ]
-                            
-                            # return_exceptions=True: 单个失败不影响其他
-                            results = await asyncio.gather(*tasks, return_exceptions=True)
-                            
-                            # 统计成功数量
-                            success_count = sum(1 for r in results if r is True)
-                            
-                            logger.info(
-                                "取消信号发送完成 - 成功: %d/%d, Scan ID: %s",
-                                success_count, len(flow_run_ids), scan_id
-                            )
-                            
-                            return success_count
-                    
-                    except Exception as e:
-                        # 捕获 get_client() 或其他意外错误
-                        logger.error(
-                            "连接 Prefect Server 失败 - Scan ID: %s, Error: %s",
-                            scan_id, e
-                        )
-                        return 0
-                
                 try:
-                    # 使用 async_to_sync 而不是 asyncio.run，避免 ASGI 事件循环冲突
-                    cancelled_count = async_to_sync(_cancel_flows)()
+                    cancelled_count = async_to_sync(self._cancel_flow_runs)(
+                        flow_run_ids, 
+                        message="用户手动取消扫描"
+                    )
                     logger.info(
                         "✓ 已发送取消信号给 %d/%d 个 Flow Run - Scan ID: %s",
                         cancelled_count, len(flow_run_ids), scan_id

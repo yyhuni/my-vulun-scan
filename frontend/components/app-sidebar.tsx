@@ -90,6 +90,10 @@ const data = {
           title: "扫描引擎", // 扫描引擎
           url: "/scan/engine/",
         },
+        {
+          title: "代理配置", // 代理配置
+          url: "/scan/proxy/",
+        },
       ],
     },
     {
