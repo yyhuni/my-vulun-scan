@@ -28,13 +28,11 @@ from pathlib import Path
 from prefect import task
 from typing import Generator, Optional, Dict, Any, TYPE_CHECKING
 from django.db import IntegrityError, OperationalError, DatabaseError
-from cachetools import LRUCache
 from dataclasses import dataclass
 from urllib.parse import urlparse, urlunparse
 from dateutil.parser import parse as parse_datetime
 from psycopg2 import InterfaceError
 
-from apps.asset.services import SubdomainService, WebSiteService
 from apps.asset.dtos.snapshot import WebsiteSnapshotDTO
 
 from apps.scan.utils import execute_stream
@@ -45,11 +43,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# LRU 缓存配置
-# 最大缓存条目数：10000 条域名记录
-# 优点：自动淘汰最少使用的条目，内存占用可控
-MAX_SUBDOMAIN_CACHE_SIZE = 10000
-
 
 @dataclass
 class ServiceSet:
@@ -58,8 +51,6 @@ class ServiceSet:
     
     提供所有需要的 Service 实例，便于测试时注入 Mock 对象
     """
-    subdomain: SubdomainService
-    website: WebSiteService
     snapshot: "WebsiteSnapshotsService"
     
     @classmethod
@@ -67,8 +58,6 @@ class ServiceSet:
         """创建默认的 Service 集合"""
         from apps.asset.services.snapshot import WebsiteSnapshotsService
         return cls(
-            subdomain=SubdomainService(),
-            website=WebSiteService(),
             snapshot=WebsiteSnapshotsService()
         )
 
@@ -198,7 +187,6 @@ def _save_batch_with_retry(
     scan_id: int,
     target_id: int,
     batch_num: int,
-    subdomain_cache: LRUCache,
     services: ServiceSet,
     max_retries: int = 3
 ) -> dict:
@@ -206,11 +194,10 @@ def _save_batch_with_retry(
     保存一个批次的数据（带重试机制）
     
     Args:
-        batch: 数据批次
+        batch: 要保存的记录批次
         scan_id: 扫描任务ID
         target_id: 目标ID
         batch_num: 批次编号
-        subdomain_cache: 子域名缓存
         services: Service 集合（必须，依赖注入）
         max_retries: 最大重试次数
     
@@ -218,17 +205,15 @@ def _save_batch_with_retry(
         dict: {
             'success': bool,
             'created_websites': int,
-            'skipped_no_subdomain': int,
             'skipped_failed': int
         }
     """
     for attempt in range(max_retries):
         try:
-            stats = _save_batch(batch, scan_id, target_id, batch_num, subdomain_cache, services)
+            stats = _save_batch(batch, scan_id, target_id, batch_num, services)
             return {
                 'success': True,
                 'created_websites': stats.get('created_websites', 0),
-                'skipped_no_subdomain': stats.get('skipped_no_subdomain', 0),
                 'skipped_failed': stats.get('skipped_failed', 0)
             }
         
@@ -238,7 +223,6 @@ def _save_batch_with_retry(
             return {
                 'success': False,
                 'created_websites': 0,
-                'skipped_no_subdomain': 0,
                 'skipped_failed': 0
             }
         
@@ -256,7 +240,6 @@ def _save_batch_with_retry(
                 return {
                     'success': False,
                     'created_websites': 0,
-                    'skipped_no_subdomain': 0,
                     'skipped_failed': 0
                 }
         
@@ -274,14 +257,12 @@ def _save_batch_with_retry(
                 return {
                     'success': False,
                     'created_websites': 0,
-                    'skipped_no_subdomain': 0,
                     'skipped_failed': 0
                 }
     
     return {
         'success': False,
         'created_websites': 0,
-        'skipped_no_subdomain': 0,
         'skipped_failed': 0
     }
 
@@ -291,7 +272,6 @@ def _save_batch(
     scan_id: int, 
     target_id: int, 
     batch_num: int, 
-    subdomain_cache: LRUCache,
     services: ServiceSet
 ) -> dict:
     """
@@ -310,7 +290,6 @@ def _save_batch(
         scan_id: 扫描任务 ID
         target_id: 目标 ID
         batch_num: 批次编号（用于日志）
-        subdomain_cache: 子域名缓存字典
         services: Service 集合（依赖注入）
     
     Returns:
@@ -333,58 +312,19 @@ def _save_batch(
         logger.debug("批次 %d 为空，跳过处理", batch_num)
         return {
             'created_websites': 0,
-            'skipped_no_subdomain': 0,
             'skipped_failed': 0
         }
     
-    # 使用注入的 Service 实例
-    subdomain_service = SubdomainService()
-    
     # 统计变量
-    skipped_no_subdomain = 0
     skipped_failed = 0
     
-    # ========== Step 1: 批量查询 Subdomain ID（host字符串 → subdomain_id转换）==========
-    # 收集当前批次所有 host（字符串形式的域名）
-    hosts = {record.host for record in batch}
-    
-    # 先从缓存命中
-    cached_hosts = hosts & set(subdomain_cache.keys())
-    
-    # 对未命中的一次性批量查库
-    missing_hosts = hosts - cached_hosts
-    if missing_hosts:
-        new_data = subdomain_service.get_by_names_and_target_id(missing_hosts, target_id)
-        # 查到的写回缓存
-        subdomain_cache.update(new_data)
-        # 查不到的也标记为 None，避免重复查询
-        for host in missing_hosts:
-            if host not in subdomain_cache:
-                subdomain_cache[host] = None
-        
-        logger.debug("LRU 缓存更新：新增 %d 项，当前大小 %d", len(new_data), len(subdomain_cache))
-    
-    # 构建 subdomain_map（host → Subdomain对象映射，用于后续获取ID）
-    # 使用 get() 方法更新 LRU 缓存的访问顺序
-    subdomain_map = {}
-    for h in hosts:
-        if h in subdomain_cache:
-            subdomain = subdomain_cache.get(h)  # 使用 get() 更新 LRU 顺序
-            if subdomain is not None:
-                subdomain_map[h] = subdomain
-    
-    # ========== Step 2: 准备 WebsiteSnapshot 数据（内存操作，无需事务）==========
+    # ========== Step 1: 准备 WebsiteSnapshot 数据（内存操作，无需事务）==========
     snapshot_items = []
     
     for record in batch:
         # 跳过失败的请求
         if record.failed:
             skipped_failed += 1
-            continue
-        
-        subdomain = subdomain_map.get(record.host)
-        if not subdomain:
-            skipped_no_subdomain += 1
             continue
         
         # 解析时间戳
@@ -402,12 +342,15 @@ def _save_batch(
         # 如果使用 record.input，两条记录保留原始输入，不会冲突
         normalized_url = normalize_url(record.input)
         
+        # 提取 host 字段（域名或IP地址）
+        host = record.host if record.host else ''
+        
         # 创建 WebsiteSnapshot DTO
         snapshot_dto = WebsiteSnapshotDTO(
             scan_id=scan_id,
-            target_id=target_id,  # 冗余字段，用于同步到资产表
-            subdomain_id=subdomain.id,
+            target_id=target_id,  # 主关联字段
             url=normalized_url,  # 保存原始输入 URL（归一化后）
+            host=host,  # 主机名（域名或IP地址）
             location=record.location,  # location 字段保存重定向信息
             title=record.title[:1000] if record.title else '',
             web_server=record.webserver[:200] if record.webserver else '',
@@ -427,7 +370,6 @@ def _save_batch(
     
     return {
         'created_websites': len(snapshot_items),
-        'skipped_no_subdomain': skipped_no_subdomain,
         'skipped_failed': skipped_failed
     }
 
@@ -576,7 +518,6 @@ def _accumulate_batch_stats(total_stats: dict, batch_result: dict) -> None:
         batch_result: 批次结果字典
     """
     total_stats['created_websites'] += batch_result.get('created_websites', 0)
-    total_stats['skipped_no_subdomain'] += batch_result.get('skipped_no_subdomain', 0)
     total_stats['skipped_failed'] += batch_result.get('skipped_failed', 0)
 
 
@@ -585,7 +526,6 @@ def _process_batch(
     scan_id: int,
     target_id: int,
     batch_num: int,
-    subdomain_cache: LRUCache,
     total_stats: dict,
     failed_batches: list,
     services: ServiceSet
@@ -598,13 +538,12 @@ def _process_batch(
         scan_id: 扫描ID
         target_id: 目标ID
         batch_num: 批次编号
-        subdomain_cache: 子域名缓存
         total_stats: 总统计信息
         failed_batches: 失败批次列表
         services: Service 集合（必须，依赖注入）
     """
     result = _save_batch_with_retry(
-        batch, scan_id, target_id, batch_num, subdomain_cache, services
+        batch, scan_id, target_id, batch_num, services
     )
     
     # 累计统计信息（失败时可能有部分数据已保存）
@@ -622,7 +561,6 @@ def _process_records_in_batches(
     data_generator,
     scan_id: int,
     target_id: int,
-    subdomain_cache: LRUCache,
     batch_size: int,
     services: ServiceSet
 ) -> dict:
@@ -633,7 +571,6 @@ def _process_records_in_batches(
         data_generator: 数据生成器
         scan_id: 扫描ID
         target_id: 目标ID
-        subdomain_cache: 子域名缓存
         batch_size: 批次大小
         services: Service 集合（必须，依赖注入）
         
@@ -651,7 +588,6 @@ def _process_records_in_batches(
     # 统计信息
     total_stats = {
         'created_websites': 0,
-        'skipped_no_subdomain': 0,
         'skipped_failed': 0
     }
     
@@ -663,7 +599,7 @@ def _process_records_in_batches(
         # 达到批次大小，执行保存
         if len(batch) >= batch_size:
             batch_num += 1
-            _process_batch(batch, scan_id, target_id, batch_num, subdomain_cache, total_stats, failed_batches, services)
+            _process_batch(batch, scan_id, target_id, batch_num, total_stats, failed_batches, services)
             batch = []  # 清空批次
             
             # 每20个批次输出进度
@@ -673,7 +609,7 @@ def _process_records_in_batches(
     # 保存最后一批
     if batch:
         batch_num += 1
-        _process_batch(batch, scan_id, target_id, batch_num, subdomain_cache, total_stats, failed_batches, services)
+        _process_batch(batch, scan_id, target_id, batch_num, total_stats, failed_batches, services)
     
     # 检查失败批次
     if failed_batches:
@@ -702,9 +638,9 @@ def _build_final_result(stats: dict) -> dict:
         dict: 最终结果
     """
     logger.info(
-        "✓ 流式保存完成 - 处理记录: %d（%d 批次），创建站点: %d，跳过（无域名）: %d，跳过（失败）: %d",
+        "✓ 流式保存完成 - 处理记录: %d（%d 批次），创建站点: %d，跳过（失败）: %d",
         stats['processed_records'], stats['batch_count'], stats['created_websites'],
-        stats['skipped_no_subdomain'], stats['skipped_failed']
+        stats['skipped_failed']
     )
     
     # 如果没有创建任何记录，给出明确提示
@@ -716,7 +652,6 @@ def _build_final_result(stats: dict) -> dict:
     return {
         'processed_records': stats['processed_records'],
         'created_websites': stats['created_websites'],
-        'skipped_no_subdomain': stats['skipped_no_subdomain'],
         'skipped_failed': stats['skipped_failed']
     }
 
@@ -777,7 +712,6 @@ def run_and_stream_save_websites_task(
         dict: {
             'processed_records': int,  # 处理的记录总数
             'created_websites': int,   # 创建的站点记录数
-            'skipped_no_subdomain': int,  # 因域名不存在跳过的记录数
             'skipped_failed': int,     # 因请求失败跳过的记录数
         }
     
@@ -804,13 +738,12 @@ def run_and_stream_save_websites_task(
         _validate_task_parameters(cmd, target_id, scan_id, cwd)
         
         # 2. 初始化资源
-        subdomain_cache = LRUCache(maxsize=MAX_SUBDOMAIN_CACHE_SIZE)
         data_generator = _parse_httpx_stream_output(cmd, tool_name, cwd, shell, timeout, log_file)
         services = ServiceSet.create_default()
         
         # 3. 流式处理记录并分批保存
         stats = _process_records_in_batches(
-            data_generator, scan_id, target_id, subdomain_cache, batch_size, services
+            data_generator, scan_id, target_id, batch_size, services
         )
         
         # 4. 构建最终结果

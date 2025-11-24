@@ -7,9 +7,9 @@ from typing import List, Optional
 @dataclass
 class WebSiteDTO:
     """网站数据传输对象"""
-    subdomain_id: int
     target_id: int
     url: str
+    host: str
     title: str = ''
     status_code: Optional[int] = None
     content_length: Optional[int] = None

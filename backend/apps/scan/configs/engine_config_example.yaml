@@ -119,3 +119,16 @@ url_fetch:
       request-timeout: 12   # 单请求超时 12 秒（防卡死，katana 参数名是 -timeout）
       
       # 输入类型：url（站点级别，每个站点单独爬取）
+    
+    httpx:
+      enabled: true
+      timeout: auto         # 自动计算（根据 URL 数量，每个 URL 1 秒）
+                            # 或手动指定：timeout: 600
+      # threads: 50         # 可选，并发线程数（httpx 默认 50）
+      # rate-limit: 150     # 可选，每秒发送的请求数量（httpx 默认 150）
+      # request-timeout: 10  # 可选，单个请求的超时时间（httpx 默认 10）秒
+      # retries: 2          # 可选，请求失败重试次数
+      
+      # 用途：判断 URL 存活，过滤无效 URL
+      # 输入类型：url_file（URL 列表文件）
+      # 输出：存活的 URL 及其响应信息（status, title, server, tech 等）

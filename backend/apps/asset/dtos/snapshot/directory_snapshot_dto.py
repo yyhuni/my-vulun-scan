@@ -11,10 +11,13 @@ class DirectorySnapshotDTO:
     目录快照数据传输对象
     
     用于保存扫描过程中发现的目录信息到快照表
+    
+    注意：website_id 和 target_id 只用于传递数据和转换为资产 DTO，不会保存到快照表中。
+    快照只属于 scan。
     """
     scan_id: int
-    website_id: int
-    target_id: int  # 冗余字段，用于同步到资产表时使用
+    website_id: int  # 仅用于传递数据，不保存到数据库
+    target_id: int  # 仅用于传递数据，不保存到数据库
     url: str
     status: Optional[int] = None
     content_length: Optional[int] = None

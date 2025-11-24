@@ -107,13 +107,13 @@ DIRECTORY_SCAN_COMMANDS = {
 
 URL_FETCH_COMMANDS = {
     'waymore': {
-        'base': 'waymore -i {target} -mode U -oU {output_file}',
-        'input_type': 'domain'
+        'base': 'waymore -i {domains_file} -mode U -oU {output_file}',
+        'input_type': 'domains_file'
     },
     
     'katana': {
         'base': (
-            '$HOME/go/bin/katana -u {url} -o {output_file} '
+            '$HOME/go/bin/katana -list {sites_file} -o {output_file} '
             '-jc '                   # 开启 JavaScript 爬取 + 自动解析 .js 文件里的所有端点（最重要）
             '-xhr '                  # 额外从 JS 中提取 XHR/Fetch 请求的 API 路径（再多挖 10-20% 隐藏接口）
             '-kf all '               # 在每个目录下自动 fuzz 所有已知敏感文件（.env、.git、backup、config、ds_store 等 5000+ 条）
@@ -129,7 +129,24 @@ URL_FETCH_COMMANDS = {
             'retry': '-retry {retry}',                  # 失败请求自动重试次数（网络抖动不丢包，推荐 2）
             'request-timeout': '-timeout {request-timeout}'  # 单请求超时秒数（防卡死，推荐 12）
         },
-        'input_type': 'url'
+        'input_type': 'sites_file'
+    },
+    
+    'httpx': {
+        'base': (
+            '$HOME/go/bin/httpx -l {url_file} '
+            '-status-code -content-type -content-length '
+            '-location -title -server -body-preview '
+            '-tech-detect -cdn -vhost '
+            '-random-agent -no-color -json'
+        ),
+        'optional': {
+            'threads': '-threads {threads}',
+            'rate-limit': '-rate-limit {rate-limit}',
+            'request-timeout': '-timeout {request-timeout}',
+            'retries': '-retries {retries}'
+        },
+        'input_type': 'url_file'
     },
 }
 

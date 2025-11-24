@@ -7,6 +7,7 @@ from .asset import (
     IPAddressDTO,
     DirectoryDTO,
     PortDTO,
+    EndpointDTO,
 )
 
 # 快照模块 DTOs
@@ -21,6 +22,7 @@ __all__ = [
     'IPAddressDTO',
     'DirectoryDTO',
     'PortDTO',
+    'EndpointDTO',
     # 快照模块
     'SubdomainSnapshotDTO',
 ]

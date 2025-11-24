@@ -23,7 +23,7 @@ class DjangoDirectorySnapshotRepository:
         """
         批量保存目录快照记录
         
-        使用 ignore_conflicts 策略，如果快照已存在（相同 scan + website + url）则跳过
+        使用 ignore_conflicts 策略，如果快照已存在（相同 scan + url）则跳过
         
         Args:
             items: 目录快照 DTO 列表
@@ -41,7 +41,6 @@ class DjangoDirectorySnapshotRepository:
             snapshot_objects = [
                 DirectorySnapshot(
                     scan_id=item.scan_id,
-                    website_id=item.website_id,
                     url=item.url,
                     status=item.status,
                     content_length=item.content_length,
@@ -55,7 +54,7 @@ class DjangoDirectorySnapshotRepository:
             
             with transaction.atomic():
                 # 批量插入，忽略冲突
-                # 如果 scan + website + url 已存在，跳过
+                # 如果 scan + url 已存在，跳过
                 DirectorySnapshot.objects.bulk_create(
                     snapshot_objects,
                     ignore_conflicts=True

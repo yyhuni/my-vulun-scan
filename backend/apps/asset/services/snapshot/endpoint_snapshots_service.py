@@ -1,0 +1,60 @@
+"""Endpoint Snapshots Service - 业务逻辑层"""
+
+import logging
+from typing import List
+
+from apps.asset.repositories.snapshot import DjangoEndpointSnapshotRepository
+from apps.asset.services.asset import EndpointService
+from apps.asset.dtos.snapshot import EndpointSnapshotDTO
+
+logger = logging.getLogger(__name__)
+
+
+class EndpointSnapshotsService:
+    """端点快照服务 - 统一管理快照和资产同步"""
+    
+    def __init__(self):
+        self.snapshot_repo = DjangoEndpointSnapshotRepository()
+        self.asset_service = EndpointService()
+    
+    def save_and_sync(self, items: List[EndpointSnapshotDTO]) -> None:
+        """
+        保存端点快照并同步到资产表（统一入口）
+        
+        流程：
+        1. 保存到快照表（完整记录）
+        2. 同步到资产表（去重）
+        
+        Args:
+            items: 端点快照 DTO 列表（必须包含 target_id）
+        
+        Raises:
+            ValueError: 如果 items 中的 target_id 为 None
+            Exception: 数据库操作失败
+        """
+        try:
+            logger.debug("保存端点快照并同步到资产表 - 数量: %d", len(items))
+            
+            # 步骤 1: 保存到快照表
+            logger.debug("步骤 1: 保存到快照表")
+            self.snapshot_repo.save_snapshots(items)
+            
+            # 步骤 2: 转换为资产 DTO 并保存到资产表
+            # 注意：去重是通过数据库的 UNIQUE 约束 + ignore_conflicts 实现的
+            # - 新记录：插入资产表
+            # - 已存在的记录：自动跳过
+            logger.debug("步骤 2: 同步到资产表（通过 Service 层）")
+            asset_items = [item.to_asset_dto() for item in items]
+            
+            self.asset_service.bulk_create_endpoints(asset_items)
+            
+            logger.info("端点快照和资产数据保存成功 - 数量: %d", len(items))
+            
+        except Exception as e:
+            logger.error(
+                "保存端点快照失败 - 数量: %d, 错误: %s",
+                len(items),
+                str(e),
+                exc_info=True
+            )
+            raise

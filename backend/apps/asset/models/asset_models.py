@@ -67,75 +67,71 @@ class Endpoint(models.Model):
     """端点模型"""
 
     id = models.AutoField(primary_key=True)
-    website = models.ForeignKey(
-        'WebSite',  # 使用字符串引用
-        on_delete=models.CASCADE,
-        related_name='endpoints',
-        help_text='所属的站点（主关联字段，表示所属关系，不能为空）'
-    )
     target = models.ForeignKey(
         'targets.Target',  # 使用字符串引用
         on_delete=models.CASCADE,
         related_name='endpoints',
-        null=True,
-        blank=True,
-        help_text='所属的扫描目标（冗余字段，用于快速查询）'
-    )
-    scan = models.ForeignKey(
-        'scan.Scan',  # 使用字符串引用
-        on_delete=models.CASCADE,
-        related_name='endpoints',
-        null=True,
-        blank=True,
-        help_text='所属的扫描任务（冗余字段，用于快速查询）'
+        help_text='所属的扫描目标（主关联字段，表示所属关系，不能为空）'
     )
     
-    url = models.CharField(
-        max_length=2000,
-        help_text='完整的HTTP URL（如 http://api.example.com/v1/users）'
-    )
+    url = models.CharField(max_length=2000, help_text='最终访问的完整URL')
     host = models.CharField(
-        max_length=500,
-        # 默认就是 null=False, blank=False
-        help_text='从 URL 提取的主机名（如 api.example.com 或 api.example.com:8080），用于快速查询和分组'
+        max_length=253,
+        blank=True,
+        default='',
+        help_text='主机名（域名或IP地址）'
+    )
+    location = models.CharField(
+        max_length=1000,
+        blank=True,
+        default='',
+        help_text='重定向地址（HTTP 3xx 响应头 Location）'
     )
     discovered_at = models.DateTimeField(auto_now_add=True, help_text='发现时间')
-    content_length = models.IntegerField(
-        null=True,
-        blank=True,
-        help_text='HTTP响应体大小（字节），由httpx或ffuf探测获取'
-    )
-    page_title = models.CharField(
+    title = models.CharField(
         max_length=1000,
-        default='',
         blank=True,
-        help_text='网页标题（HTML title标签内容），由httpx探测获取'
+        default='',
+        help_text='网页标题（HTML <title> 标签内容）'
+    )
+    webserver = models.CharField(
+        max_length=200,
+        blank=True,
+        default='',
+        help_text='服务器类型（HTTP 响应头 Server 值）'
+    )
+    body_preview = models.CharField(
+        max_length=1000,
+        blank=True,
+        default='',
+        help_text='响应正文前N个字符（默认100个字符）'
+    )
+    content_type = models.CharField(
+        max_length=200,
+        blank=True,
+        default='',
+        help_text='响应类型（HTTP Content-Type 响应头）'
+    )
+    tech = ArrayField(
+        models.CharField(max_length=100),
+        blank=True,
+        default=list,
+        help_text='技术栈（服务器/框架/语言等）'
     )
     status_code = models.IntegerField(
         null=True,
         blank=True,
-        help_text='HTTP响应状态码（如200, 404, 500等），由httpx或ffuf探测获取'
+        help_text='HTTP状态码'
     )
-    content_type = models.CharField(
-        max_length=100,
-        default='',
-        blank=True,
-        help_text='HTTP响应的Content-Type（如text/html, application/json等），由httpx探测获取'
-    )
-    response_time = models.FloatField(
+    content_length = models.IntegerField(
         null=True,
         blank=True,
-        help_text='HTTP响应时间（秒），用于性能分析，由httpx探测获取'
+        help_text='响应体大小（单位字节）'
     )
-    webserver = models.CharField(
-        max_length=1000,
-        default='',
+    vhost = models.BooleanField(
+        null=True,
         blank=True,
-        help_text='Web服务器信息（如nginx/1.19.0, Apache/2.4.41等），从Server响应头获取'
-    )
-    is_default = models.BooleanField(
-        default=False,
-        help_text='是否为子域名的默认根端点（如 http://api.example.com/）'
+        help_text='是否支持虚拟主机'
     )
     matched_gf_patterns = ArrayField(
         models.CharField(max_length=100),
@@ -158,18 +154,17 @@ class Endpoint(models.Model):
         ordering = ['-discovered_at']
         indexes = [
             models.Index(fields=['-discovered_at']),
-            models.Index(fields=['website']),      # 优化主关联查询（website.endpoints.all()）
-            models.Index(fields=['scan']),         # 优化从scan_id快速查找下面的端点（冗余字段）
-            models.Index(fields=['target']),       # 优化从target_id快速查找下面的端点（冗余字段）
-            models.Index(fields=['host']),         # 优化通过 host 查询端点
+            models.Index(fields=['target']),       # 优化从target_id快速查找下面的端点（主关联字段）
+            models.Index(fields=['url']),          # URL索引，优化查询性能
+            models.Index(fields=['host']),         # host索引，优化根据主机名查询
             models.Index(fields=['deleted_at', '-discovered_at']),  # 软删除 + 时间索引
         ]
         constraints = [
             # 部分唯一约束：只对未删除记录生效
             models.UniqueConstraint(
-                fields=['url', 'website'],
+                fields=['url', 'target'],
                 condition=models.Q(deleted_at__isnull=True),
-                name='unique_url_website_active'
+                name='unique_url_target_active'
             )
         ]
 
@@ -185,18 +180,16 @@ class WebSite(models.Model):
         'targets.Target',  # 使用字符串引用
         on_delete=models.CASCADE,
         related_name='websites',
-        null=True,
-        blank=True,
-        help_text='所属的扫描目标（冗余字段，用于快速查询）'
-    )
-    subdomain = models.ForeignKey(
-        'Subdomain',  # 同一个 app 内的模型也使用字符串引用
-        on_delete=models.CASCADE,
-        related_name='websites',
-        help_text='所属的子域名（主关联字段，表示所属关系，不能为空）'
+        help_text='所属的扫描目标（主关联字段，表示所属关系，不能为空）'
     )
 
     url = models.CharField(max_length=2000, help_text='最终访问的完整URL')
+    host = models.CharField(
+        max_length=253,
+        blank=True,
+        default='',
+        help_text='主机名（域名或IP地址）'
+    )
     location = models.CharField(
         max_length=1000,
         blank=True,
@@ -265,15 +258,16 @@ class WebSite(models.Model):
         indexes = [
             models.Index(fields=['-discovered_at']),
             models.Index(fields=['url']),  # URL索引，优化查询性能
+            models.Index(fields=['host']),  # host索引，优化根据主机名查询
             models.Index(fields=['target']),     # 优化从target_id快速查找下面的站点
             models.Index(fields=['deleted_at', '-discovered_at']),  # 软删除 + 时间索引
         ]
         constraints = [
             # 部分唯一约束：只对未删除记录生效
             models.UniqueConstraint(
-                fields=['url', 'subdomain'],
+                fields=['url', 'target'],
                 condition=models.Q(deleted_at__isnull=True),
-                name='unique_url_subdomain_active'
+                name='unique_url_target_active'
             )
         ]
 

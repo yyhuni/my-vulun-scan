@@ -1,17 +1,19 @@
-"""Asset DTOs - 资产模块的数据传输对象"""
+"""Asset DTOs - 数据传输对象"""
 
 from .subdomain_dto import SubdomainDTO
-from .website_dto import WebSiteDTO
 from .ip_address_dto import IPAddressDTO
-from .directory_dto import DirectoryDTO
 from .port_dto import PortDTO
+from .website_dto import WebSiteDTO
+from .directory_dto import DirectoryDTO
 from .host_port_mapping_dto import HostPortMappingDTO
+from .endpoint_dto import EndpointDTO
 
 __all__ = [
     'SubdomainDTO',
-    'WebSiteDTO',
     'IPAddressDTO',
-    'DirectoryDTO',
     'PortDTO',
+    'WebSiteDTO',
+    'DirectoryDTO',
     'HostPortMappingDTO',
+    'EndpointDTO',
 ]

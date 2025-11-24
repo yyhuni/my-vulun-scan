@@ -42,7 +42,7 @@ class WebsiteSnapshot(models.Model):
     """
     网站快照
     
-    记录：某次扫描中，某个子域名发现的网站
+    记录：某次扫描中发现的网站
     """
 
     id = models.AutoField(primary_key=True)
@@ -52,15 +52,10 @@ class WebsiteSnapshot(models.Model):
         related_name='website_snapshots',
         help_text='所属的扫描任务'
     )
-    subdomain = models.ForeignKey(
-        'Subdomain',
-        on_delete=models.CASCADE,
-        related_name='website_snapshots',
-        help_text='所属子域名'
-    )
     
     # 扫描结果数据
     url = models.CharField(max_length=2000, help_text='站点URL')
+    host = models.CharField(max_length=253, blank=True, default='', help_text='主机名（域名或IP地址）')
     title = models.CharField(max_length=500, blank=True, default='', help_text='页面标题')
     status = models.IntegerField(null=True, blank=True, help_text='HTTP状态码')
     content_length = models.BigIntegerField(null=True, blank=True, help_text='内容长度')
@@ -84,15 +79,14 @@ class WebsiteSnapshot(models.Model):
         ordering = ['-discovered_at']
         indexes = [
             models.Index(fields=['scan']),
-            models.Index(fields=['subdomain']),
-            models.Index(fields=['scan', 'subdomain']),  # 组合查询
             models.Index(fields=['url']),
+            models.Index(fields=['host']),  # host索引，优化根据主机名查询
             models.Index(fields=['-discovered_at']),
         ]
         constraints = [
-            # 唯一约束：同一次扫描中，同一个子域名的同一个URL只能记录一次
+            # 唯一约束：同一次扫描中，同一个URL只能记录一次
             models.UniqueConstraint(
-                fields=['scan', 'subdomain', 'url'],
+                fields=['scan', 'url'],
                 name='unique_website_per_scan_snapshot'
             ),
         ]
@@ -105,7 +99,7 @@ class DirectorySnapshot(models.Model):
     """
     目录快照
     
-    记录：某次扫描中，某个网站发现的目录
+    记录：某次扫描中发现的目录
     """
 
     id = models.AutoField(primary_key=True)
@@ -114,12 +108,6 @@ class DirectorySnapshot(models.Model):
         on_delete=models.CASCADE,
         related_name='directory_snapshots',
         help_text='所属的扫描任务'
-    )
-    website = models.ForeignKey(
-        'WebSite',
-        on_delete=models.CASCADE,
-        related_name='directory_snapshots',
-        help_text='所属网站'
     )
     
     # 扫描结果数据
@@ -139,15 +127,13 @@ class DirectorySnapshot(models.Model):
         ordering = ['-discovered_at']
         indexes = [
             models.Index(fields=['scan']),
-            models.Index(fields=['website']),
-            models.Index(fields=['scan', 'website']),  # 组合查询
             models.Index(fields=['url']),
             models.Index(fields=['-discovered_at']),
         ]
         constraints = [
-            # 唯一约束：同一次扫描中，同一个网站的同一个目录URL只能记录一次
+            # 唯一约束：同一次扫描中，同一个目录URL只能记录一次
             models.UniqueConstraint(
-                fields=['scan', 'website', 'url'],
+                fields=['scan', 'url'],
                 name='unique_directory_per_scan_snapshot'
             ),
         ]
@@ -225,3 +211,71 @@ class HostPortMappingSnapshot(models.Model):
 
     def __str__(self):
         return f'{self.host} ({self.ip}:{self.port}) [Scan #{self.scan_id}]'
+
+
+class EndpointSnapshot(models.Model):
+    """
+    端点快照
+    
+    记录：某次扫描中发现的端点
+    """
+
+    id = models.AutoField(primary_key=True)
+    scan = models.ForeignKey(
+        'scan.Scan',
+        on_delete=models.CASCADE,
+        related_name='endpoint_snapshots',
+        help_text='所属的扫描任务'
+    )
+    
+    # 扫描结果数据
+    url = models.CharField(max_length=2000, help_text='端点URL')
+    host = models.CharField(
+        max_length=253,
+        blank=True,
+        default='',
+        help_text='主机名（域名或IP地址）'
+    )
+    title = models.CharField(max_length=1000, blank=True, default='', help_text='页面标题')
+    status_code = models.IntegerField(null=True, blank=True, help_text='HTTP状态码')
+    content_length = models.IntegerField(null=True, blank=True, help_text='内容长度')
+    location = models.CharField(max_length=1000, blank=True, default='', help_text='重定向位置')
+    webserver = models.CharField(max_length=200, blank=True, default='', help_text='Web服务器')
+    content_type = models.CharField(max_length=200, blank=True, default='', help_text='内容类型')
+    tech = ArrayField(
+        models.CharField(max_length=100),
+        blank=True,
+        default=list,
+        help_text='技术栈'
+    )
+    body_preview = models.CharField(max_length=1000, blank=True, default='', help_text='响应体预览')
+    vhost = models.BooleanField(null=True, blank=True, help_text='虚拟主机标志')
+    matched_gf_patterns = ArrayField(
+        models.CharField(max_length=100),
+        blank=True,
+        default=list,
+        help_text='匹配的GF模式列表'
+    )
+    discovered_at = models.DateTimeField(auto_now_add=True, help_text='发现时间')
+
+    class Meta:
+        db_table = 'endpoint_snapshot'
+        verbose_name = '端点快照'
+        verbose_name_plural = '端点快照'
+        ordering = ['-discovered_at']
+        indexes = [
+            models.Index(fields=['scan']),
+            models.Index(fields=['url']),
+            models.Index(fields=['host']),  # host索引，优化根据主机名查询
+            models.Index(fields=['-discovered_at']),
+        ]
+        constraints = [
+            # 唯一约束：同一次扫描中，同一个URL只能记录一次
+            models.UniqueConstraint(
+                fields=['scan', 'url'],
+                name='unique_endpoint_per_scan_snapshot'
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.url} (Scan #{self.scan_id})'

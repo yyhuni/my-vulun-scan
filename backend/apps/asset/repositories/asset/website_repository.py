@@ -39,8 +39,8 @@ class DjangoWebSiteRepository:
             website_objects = [
                 WebSite(
                     target_id=item.target_id,
-                    subdomain_id=item.subdomain_id,
                     url=item.url,
+                    host=item.host,
                     location=item.location,
                     title=item.title,
                     webserver=item.webserver,
@@ -56,7 +56,7 @@ class DjangoWebSiteRepository:
 
             with transaction.atomic():
                 # 批量插入或更新
-                # 如果URL和子域名已存在，忽略冲突
+                # 如果URL和目标已存在，忽略冲突
                 WebSite.objects.bulk_create(
                     website_objects,
                     ignore_conflicts=True

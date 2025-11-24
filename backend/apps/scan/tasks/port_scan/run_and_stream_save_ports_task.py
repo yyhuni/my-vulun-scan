@@ -29,7 +29,6 @@ from prefect import task
 from typing import Generator, List, Optional, TYPE_CHECKING
 from django.db import IntegrityError, OperationalError, DatabaseError
 from psycopg2 import InterfaceError
-from cachetools import LRUCache
 from dataclasses import dataclass
 
 from .types import PortScanRecord
@@ -41,11 +40,6 @@ if TYPE_CHECKING:
     from apps.asset.services.snapshot import HostPortMappingSnapshotsService
 
 logger = logging.getLogger(__name__)
-
-# LRU 缓存配置
-# 最大缓存条目数：10000 条域名记录
-# 优点：自动淘汰最少使用的条目，内存占用可控
-MAX_SUBDOMAIN_CACHE_SIZE = 10000
 
 
 @dataclass
@@ -71,7 +65,6 @@ def _save_batch_with_retry(
     scan_id: int,
     target_id: int,
     batch_num: int,
-    subdomain_cache: LRUCache,
     services: ServiceSet,
     max_retries: int = 3
 ) -> dict:
@@ -83,7 +76,6 @@ def _save_batch_with_retry(
         scan_id: 扫描任务ID
         target_id: 目标ID
         batch_num: 批次编号
-        subdomain_cache: 未使用（保留参数兼容性）
         services: Service 集合（必须，包含 HostPortAssociationSnapshotsService）
         max_retries: 最大重试次数
     
@@ -92,7 +84,7 @@ def _save_batch_with_retry(
     """
     for attempt in range(max_retries):
         try:
-            result = _save_batch(batch, scan_id, target_id, batch_num, subdomain_cache, services)
+            result = _save_batch(batch, scan_id, target_id, batch_num, services)
             return result  # {'success': True}
         
         except IntegrityError as e:
@@ -126,7 +118,6 @@ def _save_batch(
     scan_id: int, 
     target_id: int, 
     batch_num: int, 
-    subdomain_cache: LRUCache,
     services: ServiceSet  # Service集合（依赖注入）
 ) -> dict:
     """
@@ -147,7 +138,6 @@ def _save_batch(
         scan_id: 扫描任务 ID
         target_id: 目标 ID
         batch_num: 批次编号（用于日志）
-        subdomain_cache: 未使用（保留参数兼容性）
         services: Service 集合（包含 HostPortAssociationSnapshotsService）
     
     Returns:
@@ -404,7 +394,6 @@ def _process_batch(
     scan_id: int,
     target_id: int,
     batch_num: int,
-    subdomain_cache: LRUCache,
     total_stats: dict,
     failed_batches: list,
     services: ServiceSet
@@ -417,13 +406,12 @@ def _process_batch(
         scan_id: 扫描ID
         target_id: 目标ID
         batch_num: 批次编号
-        subdomain_cache: 子域名缓存
         total_stats: 总统计信息
         failed_batches: 失败批次列表
         services: Service 集合（必须，依赖注入）
     """
     result = _save_batch_with_retry(
-        batch, scan_id, target_id, batch_num, subdomain_cache, services
+        batch, scan_id, target_id, batch_num, services
     )
     
     # 累计统计信息（失败时可能有部分数据已保存）
@@ -441,7 +429,6 @@ def _process_records_in_batches(
     data_generator,
     scan_id: int,
     target_id: int,
-    subdomain_cache: LRUCache,
     batch_size: int,
     services: ServiceSet
 ) -> dict:
@@ -452,7 +439,6 @@ def _process_records_in_batches(
         data_generator: 数据生成器
         scan_id: 扫描ID
         target_id: 目标ID
-        subdomain_cache: 子域名缓存
         batch_size: 批次大小
         services: Service 集合（必须，依赖注入）
         
@@ -490,7 +476,7 @@ def _process_records_in_batches(
         # 达到批次大小，执行保存
         if len(batch) >= batch_size:
             batch_num += 1
-            _process_batch(batch, scan_id, target_id, batch_num, subdomain_cache, total_stats, failed_batches, services)
+            _process_batch(batch, scan_id, target_id, batch_num, total_stats, failed_batches, services)
             batch = []  # 清空批次
             
             # 每20个批次输出进度
@@ -500,7 +486,7 @@ def _process_records_in_batches(
     # 保存最后一批
     if batch:
         batch_num += 1
-        _process_batch(batch, scan_id, target_id, batch_num, subdomain_cache, total_stats, failed_batches, services)
+        _process_batch(batch, scan_id, target_id, batch_num, total_stats, failed_batches, services)
     
     # 检查失败批次
     if failed_batches:
@@ -562,8 +548,6 @@ def _cleanup_resources(data_generator) -> None:
         - 接受 None 值
         - 捕获所有异常，不会导致 finally 块失败
     """
-    # 注：LRUCache 是局部变量，函数结束时会自动释放，无需手动 clear()
-    
     # 确保生成器被正确关闭
     if data_generator is None:
         logger.debug("数据生成器为 None，无需清理")
@@ -655,13 +639,12 @@ def run_and_stream_save_ports_task(
         _validate_task_parameters(cmd, target_id, scan_id, cwd)
         
         # 2. 初始化资源
-        subdomain_cache = LRUCache(maxsize=MAX_SUBDOMAIN_CACHE_SIZE)
         data_generator = _parse_naabu_stream_output(cmd, tool_name, cwd, shell, timeout, log_file)
         services = ServiceSet.create_default()
         
         # 3. 流式处理记录并分批保存
         stats = _process_records_in_batches(
-            data_generator, scan_id, target_id, subdomain_cache, batch_size, services
+            data_generator, scan_id, target_id, batch_size, services
         )
         
         # 4. 构建最终结果

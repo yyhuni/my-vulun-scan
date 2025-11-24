@@ -6,6 +6,7 @@ from .asset import (
     WebSiteService,
     DirectoryService,
     HostPortMappingService,
+    EndpointService,
 )
 
 # 快照模块 Services
@@ -14,6 +15,7 @@ from .snapshot import (
     HostPortMappingSnapshotsService,
     WebsiteSnapshotsService,
     DirectorySnapshotsService,
+    EndpointSnapshotsService,
 )
 
 __all__ = [
@@ -22,9 +24,11 @@ __all__ = [
     'WebSiteService',
     'DirectoryService',
     'HostPortMappingService',
+    'EndpointService',
     # 快照模块
     'SubdomainSnapshotsService',
     'HostPortMappingSnapshotsService',
     'WebsiteSnapshotsService',
     'DirectorySnapshotsService',
+    'EndpointSnapshotsService',
 ]

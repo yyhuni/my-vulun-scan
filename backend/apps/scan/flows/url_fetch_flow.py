@@ -61,13 +61,15 @@ def _setup_url_fetch_directory(scan_workspace_dir: str) -> Path:
     return url_fetch_dir
 
 
-def _export_website_urls(target_id: int, url_fetch_dir: Path) -> tuple[str, int]:
+def _export_website_urls(target_id: int, scan_id: int, url_fetch_dir: Path, input_type: str) -> tuple[str, int]:
     """
     导出目标下的所有网站 URL 到文件（作为获取起点）
     
     Args:
         target_id: 目标 ID
+        scan_id: 扫描 ID
         url_fetch_dir: URL 获取目录
+        input_type: 输入类型 ('domains_file', 'sites_file', 'auto')
         
     Returns:
         tuple: (websites_file, website_count)
@@ -75,31 +77,66 @@ def _export_website_urls(target_id: int, url_fetch_dir: Path) -> tuple[str, int]
     Raises:
         ValueError: 网站数量为 0
     """
-    logger.info("Step 1: 导出网站 URL 列表（作为获取起点）")
+    from apps.scan.tasks.url_fetch import export_websites_task
     
-    # TODO: 调用 export_websites_task
-    # from apps.scan.tasks.url_fetch import export_websites_task
-    # websites_file = str(url_fetch_dir / 'websites.txt')
-    # result = export_websites_task(
-    #     target_id=target_id,
-    #     output_file=websites_file
-    # )
-    # website_count = result['website_count']
-    
-    # 占位符
-    websites_file = str(url_fetch_dir / 'websites.txt')
-    website_count = 0  # TODO: 从任务返回值获取
-    
-    logger.info(
-        "✓ 网站 URL 导出完成 - 文件: %s, 网站数量: %d",
-        websites_file, website_count
-    )
-    
-    if website_count == 0:
-        logger.warning("目标下没有网站，无法执行 URL 获取")
-        raise ValueError("目标下没有网站，无法执行 URL 获取")
-    
-    return websites_file, website_count
+    # 根据 input_type 决定数据源
+    if input_type == 'domains_file':
+        # 从目标导出域名（导出子域名）
+        logger.info("从目标导出域名列表")
+        from apps.asset.models import Subdomain
+        
+        domains_file = str(url_fetch_dir / 'domains.txt')
+        with open(domains_file, 'w') as f:
+            subdomains = Subdomain.objects.filter(target_id=target_id).values_list('name', flat=True)
+            for domain in subdomains.iterator(chunk_size=1000):
+                f.write(f"{domain}\n")
+        
+        domain_count = Subdomain.objects.filter(target_id=target_id).count()
+        logger.info(f"✓ 域名导出完成 - 文件: {domains_file}, 域名数量: {domain_count}")
+        
+        if domain_count == 0:
+            logger.warning("目标下没有域名")
+            raise ValueError("目标下没有域名，无法执行 URL 获取")
+        
+        return domains_file, domain_count
+        
+    elif input_type == 'sites_file':
+        # 从扫描导出站点 URL
+        logger.info("从扫描导出网站 URL 列表")
+        websites_file = str(url_fetch_dir / 'websites.txt')
+        result = export_websites_task(
+            scan_id=scan_id,
+            output_file=websites_file
+        )
+        website_count = result['website_count']
+        
+        logger.info(
+            "✓ 网站 URL 导出完成 - 文件: %s, 网站数量: %d",
+            websites_file, website_count
+        )
+        
+        if website_count == 0:
+            logger.warning("扫描下没有网站")
+            raise ValueError("扫描下没有网站，无法执行 URL 获取")
+        
+        return websites_file, website_count
+        
+    else:  # auto
+        # 自动选择：优先使用站点，没有站点时使用域名
+        logger.info("自动选择输入源")
+        from apps.asset.models import WebSite, Subdomain
+        
+        website_count = WebSite.objects.filter(scan_id=scan_id).count()
+        if website_count > 0:
+            # 使用站点
+            return _export_website_urls(target_id, scan_id, url_fetch_dir, 'sites_file')
+        else:
+            # 使用域名
+            domain_count = Subdomain.objects.filter(target_id=target_id).count()
+            if domain_count > 0:
+                return _export_website_urls(target_id, scan_id, url_fetch_dir, 'domains_file')
+            else:
+                raise ValueError("目标下既没有网站也没有域名，无法执行 URL 获取")
 
 
 def _get_tool_input_type(tool_name: str) -> str:
@@ -160,7 +197,7 @@ def _extract_unique_domains_from_websites(websites_file: str, url_fetch_dir: Pat
     return domains_file, len(domains)
 
 
-def _run_fetchers_sequentially(
+def _run_fetchers_parallel(
     enabled_tools: dict,
     websites_file: str,
     url_fetch_dir: Path,
@@ -169,12 +206,13 @@ def _run_fetchers_sequentially(
     target_name: str
 ) -> tuple[list, list, list]:
     """
-    串行执行 URL 获取工具（写入文件）
+    并行执行 URL 获取工具（写入文件）
     
-    为什么串行？
-    - 避免多个工具同时获取同一站点
-    - 减少目标站点压力
-    - 第一个工具获取后，后续工具可以跳过已获取的 URL
+    注意：httpx 不参与并行获取，它用于后续的存活验证
+    
+    支持两种输入模式：
+    - domain: 域名级别工具（waymore 等）
+    - url: 站点级别工具（katana 等）
     
     根据工具的 input_type 自动选择输入：
     - domain: 使用域名列表（自动去重）
@@ -194,10 +232,16 @@ def _run_fetchers_sequentially(
     Raises:
         RuntimeError: 所有工具均失败
     """
-    logger.info("Step 2: 串行执行 URL 获取工具")
+    logger.info("Step 2: 并行执行 URL 获取工具")
     
-    # TODO: 导入任务函数
-    # from apps.scan.tasks.url_fetch import run_url_fetcher_task
+    # 分离 httpx（验证工具）和其他获取工具
+    fetcher_tools = {k: v for k, v in enabled_tools.items() if k != 'httpx'}
+    
+    if not fetcher_tools:
+        logger.warning("没有启用的 URL 获取工具（httpx 是验证工具，不参与获取）")
+        return [], [], []
+    
+    from apps.scan.tasks.url_fetch import run_url_fetcher_task
     
     # 生成时间戳
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -207,7 +251,7 @@ def _run_fetchers_sequentially(
     domain_count = 0
     need_domains = any(
         _get_tool_input_type(tool_name) == 'domain'
-        for tool_name in enabled_tools.keys()
+        for tool_name in fetcher_tools.keys()
     )
     
     if need_domains:
@@ -218,9 +262,10 @@ def _run_fetchers_sequentially(
     
     result_files = []
     failed_tools = []
+    futures = {}  # 存储并行任务
     
-    # 串行执行每个工具
-    for tool_name, tool_config in enabled_tools.items():
+    # 并行执行每个获取工具（排除 httpx）
+    for tool_name, tool_config in fetcher_tools.items():
         logger.info("使用工具: %s", tool_name)
         
         # 1. 根据工具类型选择输入文件
@@ -274,34 +319,46 @@ def _run_fetchers_sequentially(
             tool_name, input_type, timeout, output_file
         )
         
-        # 6. 执行获取任务
-        try:
-            # TODO: 调用获取任务，需要支持两种模式：
-            # - domain 模式：逐个域名执行（for loop）
-            # - url 模式：逐个站点执行（for loop）
-            # result = run_url_fetcher_task(
-            #     tool=tool_name,
-            #     command=command,
-            #     input_file=input_file,
-            #     input_type=input_type,
-            #     timeout=timeout,
-            #     output_file=output_file
-            # )
-            # if result:
-            #     result_files.append(result)
-            #     logger.info("✓ 工具 %s 执行成功: %s", tool_name, result)
-            # else:
-            #     failed_tools.append({'tool': tool_name, 'reason': '未生成结果文件'})
-            
-            # 占位符
-            result_files.append(output_file)
-            logger.info("✓ 工具 %s 执行成功 [占位符]", tool_name)
-            
-        except Exception as e:
-            logger.error("工具 %s 执行失败: %s", tool_name, e)
-            failed_tools.append({'tool': tool_name, 'reason': str(e)})
+        # 6. 提交并行任务
+        logger.info(
+            "提交任务 - 工具: %s, 输入: %s, 超时: %d秒, 输出: %s",
+            tool_name, input_type, timeout, output_file
+        )
+        
+        future = run_url_fetcher_task.submit(
+            tool_name=tool_name,
+            command_template=command,
+            input_file=input_file,
+            input_type=input_type,
+            output_file=output_file,
+            timeout=timeout
+        )
+        futures[tool_name] = future
     
-    # 7. 检查是否有成功的工具
+    # 7. 等待并行任务完成，收集结果
+    for tool_name, future in futures.items():
+        try:
+            result = future.result()  # 等待任务完成
+            if result and result['success']:
+                result_files.append(result['output_file'])
+                logger.info(
+                    "✓ 工具 %s 执行成功 - 发现 URL: %d",
+                    tool_name, result['url_count']
+                )
+            else:
+                failed_tools.append({
+                    'tool': tool_name,
+                    'reason': '未生成结果或无有效URL'
+                })
+                logger.warning("⚠️ 工具 %s 未生成有效结果", tool_name)
+        except Exception as e:
+            failed_tools.append({
+                'tool': tool_name,
+                'reason': str(e)
+            })
+            logger.error("工具 %s 执行失败: %s", tool_name, e)
+    
+    # 8. 检查是否有成功的工具
     if not result_files:
         error_msg = (
             f"所有 URL 获取工具均失败 - 目标: {target_name}\n"
@@ -311,20 +368,112 @@ def _run_fetchers_sequentially(
         )
         raise RuntimeError(error_msg)
     
-    # 8. 计算成功的工具列表
+    # 9. 计算成功的工具列表
     successful_tool_names = [
         name for name in enabled_tools.keys()
         if name not in [f['tool'] for f in failed_tools]
     ]
     
     logger.info(
-        "✓ 串行获取执行完成 - 成功: %d/%d (成功: %s, 失败: %s)",
+        "✓ 并行获取执行完成 - 成功: %d/%d (成功: %s, 失败: %s)",
         len(result_files), len(enabled_tools),
         ', '.join(successful_tool_names) if successful_tool_names else '无',
         ', '.join([f['tool'] for f in failed_tools]) if failed_tools else '无'
     )
     
     return result_files, failed_tools, successful_tool_names
+
+
+def _validate_and_stream_save_urls(
+    merged_file: str,
+    httpx_config: dict,
+    url_fetch_dir: Path,
+    scan_id: int,
+    target_id: int
+) -> int:
+    """
+    使用 httpx 验证 URL 存活并流式保存到数据库
+    
+    工作流程：
+    1. 构建 httpx 命令
+    2. 流式执行 httpx，实时判断 URL 存活
+    3. 存活的 URL 实时保存为 Endpoint
+    
+    Args:
+        merged_file: 合并后的 URL 文件路径
+        httpx_config: httpx 工具配置
+        url_fetch_dir: URL 获取目录
+        scan_id: 扫描任务 ID
+        target_id: 目标 ID
+        
+    Returns:
+        int: 保存的存活 URL 数量
+    """
+    logger.info("使用 httpx 验证 URL 存活状态...")
+    
+    from apps.scan.utils import build_scan_command
+    from apps.scan.tasks.url_fetch import run_and_stream_save_urls_task
+    
+    # 1. 构建 httpx 命令
+    command_params = {
+        'url_file': merged_file  # 使用合并后的 URL 文件
+    }
+    
+    try:
+        command = build_scan_command(
+            tool_name='httpx',
+            scan_type='url_fetch',
+            command_params=command_params,
+            tool_config=httpx_config
+        )
+    except Exception as e:
+        logger.error("构建 httpx 命令失败: %s", e)
+        # 如果 httpx 失败，降级为直接保存
+        logger.warning("httpx 验证失败，将直接保存所有 URL（不验证存活）")
+        return _save_urls_to_database(merged_file, scan_id, target_id)
+    
+    # 2. 获取超时配置
+    timeout = httpx_config.get('timeout', 'auto')
+    if timeout == 'auto':
+        # 计算 URL 数量，动态设置超时
+        with open(merged_file, 'r') as f:
+            url_count = sum(1 for _ in f)
+        timeout = min(60 + url_count * 1, 7200)  # 每个 URL 1秒，最多 2 小时
+        logger.info("自动计算超时时间: %d 秒（URL 数量: %d）", timeout, url_count)
+    
+    # 3. 生成日志文件路径
+    from datetime import datetime
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    log_file = url_fetch_dir / f"httpx_validation_{timestamp}.log"
+    
+    # 4. 流式执行 httpx 并实时保存存活的 URL
+    try:
+        result = run_and_stream_save_urls_task(
+            cmd=command,
+            tool_name='httpx',
+            scan_id=scan_id,
+            target_id=target_id,
+            cwd=str(url_fetch_dir),
+            shell=True,
+            batch_size=500,  # 批量保存大小
+            timeout=timeout,
+            log_file=str(log_file)
+        )
+        
+        logger.info(
+            "✓ httpx 流式验证完成 - 处理: %d, 存活: %d, 失败: %d",
+            result.get('processed_records', 0),
+            result.get('saved_urls', 0),
+            result.get('failed_urls', 0)
+        )
+        
+        return result.get('saved_urls', 0)
+        
+    except Exception as e:
+        logger.error("httpx 流式验证失败: %s", e, exc_info=True)
+        # 降级处理：直接保存所有 URL
+        logger.warning("降级处理：将直接保存所有 URL（不验证存活）")
+        return _save_urls_to_database(merged_file, scan_id, target_id)
 
 
 def _merge_and_deduplicate_urls(result_files: list, url_fetch_dir: Path) -> tuple[str, int]:
@@ -340,16 +489,18 @@ def _merge_and_deduplicate_urls(result_files: list, url_fetch_dir: Path) -> tupl
     """
     logger.info("Step 3: 合并并去重 URL")
     
-    # TODO: 调用合并去重任务
-    # from apps.scan.tasks.url_fetch import merge_and_validate_urls_task
-    # merged_file = merge_and_validate_urls_task(
-    #     result_files=result_files,
-    #     result_dir=str(url_fetch_dir)
-    # )
+    from apps.scan.tasks.url_fetch import merge_and_deduplicate_urls_task
     
-    # 占位符
-    merged_file = str(url_fetch_dir / 'urls_merged.txt')
-    unique_url_count = 0  # TODO: 从任务返回值获取
+    merged_file = merge_and_deduplicate_urls_task(
+        result_files=result_files,
+        result_dir=str(url_fetch_dir)
+    )
+    
+    # 统计唯一 URL 数量
+    unique_url_count = 0
+    if Path(merged_file).exists():
+        with open(merged_file, 'r') as f:
+            unique_url_count = sum(1 for line in f if line.strip())
     
     logger.info(
         "✓ URL 合并去重完成 - 合并文件: %s, 唯一 URL 数: %d",
@@ -373,21 +524,19 @@ def _save_urls_to_database(merged_file: str, scan_id: int, target_id: int) -> in
     """
     logger.info("Step 4: 保存 URL 到数据库")
     
-    # TODO: 调用保存任务
-    # from apps.scan.tasks.url_fetch import save_urls_task
-    # result = save_urls_task(
-    #     urls_file=merged_file,
-    #     scan_id=scan_id,
-    #     target_id=target_id
-    # )
-    # saved_count = result.get('saved_urls', 0)
+    from apps.scan.tasks.url_fetch import save_urls_task
     
-    # 占位符
-    saved_count = 0  # TODO: 从任务返回值获取
+    result = save_urls_task(
+        urls_file=merged_file,
+        scan_id=scan_id,
+        target_id=target_id
+    )
+    
+    saved_count = result.get('saved_urls', 0)
     
     logger.info(
-        "✓ URL 保存完成 - 保存数量: %d",
-        saved_count
+        "✓ URL 保存完成 - 保存数量: %d, 跳过: %d",
+        saved_count, result.get('skipped_urls', 0)
     )
     
     return saved_count
@@ -407,7 +556,8 @@ def url_fetch_flow(
     target_name: str,
     target_id: int,
     scan_workspace_dir: str,
-    engine_config: str
+    engine_config: str,
+    input_type: str = 'auto'
 ) -> dict:
     """
     URL 获取扫描 Flow
@@ -425,6 +575,7 @@ def url_fetch_flow(
         target_id: 目标 ID
         scan_workspace_dir: 扫描工作空间目录
         engine_config: 引擎配置（YAML 字符串）
+        input_type: 输入类型 ('domains_file', 'sites_file', 'auto')
         
     Returns:
         dict: 扫描结果
@@ -448,7 +599,9 @@ def url_fetch_flow(
         
         # Step 0: 准备工作
         url_fetch_dir = _setup_url_fetch_directory(scan_workspace_dir)
-        websites_file, website_count = _export_website_urls(target_id, url_fetch_dir)
+        websites_file, website_count = _export_website_urls(
+            target_id, scan_id, url_fetch_dir, input_type
+        )
         
         # Step 1: 解析配置，获取启用的工具
         logger.info("Step 1: 解析配置，获取启用的工具")
@@ -465,8 +618,8 @@ def url_fetch_flow(
             ', '.join(enabled_tools.keys())
         )
         
-        # Step 2: 串行运行获取工具（写入文件）
-        result_files, failed_tools, successful_tool_names = _run_fetchers_sequentially(
+        # Step 2: 并行运行获取工具（写入文件）
+        result_files, failed_tools, successful_tool_names = _run_fetchers_parallel(
             enabled_tools=enabled_tools,
             websites_file=websites_file,
             url_fetch_dir=url_fetch_dir,
@@ -481,19 +634,39 @@ def url_fetch_flow(
             url_fetch_dir=url_fetch_dir
         )
         
-        # Step 4: 保存到数据库
-        saved_count = _save_urls_to_database(
-            merged_file=merged_file,
-            scan_id=scan_id,
-            target_id=target_id
-        )
+        # Step 4: 使用 httpx 验证存活并流式保存（如果启用）
+        if 'httpx' in enabled_tools and enabled_tools['httpx'].get('enabled', False):
+            logger.info("Step 4: 使用 httpx 验证 URL 存活并流式保存")
+            validated_count = _validate_and_stream_save_urls(
+                merged_file=merged_file,
+                httpx_config=enabled_tools['httpx'],
+                url_fetch_dir=url_fetch_dir,
+                scan_id=scan_id,
+                target_id=target_id
+            )
+            saved_count = validated_count
+            logger.info("✓ httpx 验证并保存完成 - 存活 URL: %d", validated_count)
+        else:
+            # Step 4 备选: 直接保存（不验证存活）
+            logger.info("Step 4: 保存到数据库（未启用 httpx 验证）")
+            saved_count = _save_urls_to_database(
+                merged_file=merged_file,
+                scan_id=scan_id,
+                target_id=target_id
+            )
         
         logger.info("="*60 + "\n✓ URL 获取扫描完成\n" + "="*60)
         
         # 动态生成已执行的任务列表
         executed_tasks = ['export_websites', 'parse_config']
         executed_tasks.extend([f'run_fetcher ({tool})' for tool in successful_tool_names])
-        executed_tasks.extend(['merge_and_deduplicate', 'save_urls'])
+        executed_tasks.append('merge_and_deduplicate')
+        
+        # 根据是否使用 httpx 验证添加不同的任务
+        if 'httpx' in enabled_tools and enabled_tools['httpx'].get('enabled', False):
+            executed_tasks.append('httpx_validation_and_save')
+        else:
+            executed_tasks.append('save_urls')
         
         return {
             'success': True,

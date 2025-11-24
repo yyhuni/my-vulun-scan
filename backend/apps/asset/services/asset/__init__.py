@@ -4,10 +4,12 @@ from .subdomain_service import SubdomainService
 from .website_service import WebSiteService
 from .directory_service import DirectoryService
 from .host_port_mapping_service import HostPortMappingService
+from .endpoint_service import EndpointService
 
 __all__ = [
     'SubdomainService',
     'WebSiteService',
     'DirectoryService',
     'HostPortMappingService',
+    'EndpointService',
 ]
