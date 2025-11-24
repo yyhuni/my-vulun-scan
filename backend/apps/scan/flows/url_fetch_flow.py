@@ -21,6 +21,7 @@ from apps.common.prefect_django_setup import setup_django_for_prefect
 
 import logging
 import os
+import subprocess
 from pathlib import Path
 from datetime import datetime
 import uuid
@@ -35,6 +36,33 @@ from apps.scan.handlers.scan_flow_handlers import (
 from apps.scan.utils import config_parser, build_scan_command
 
 logger = logging.getLogger(__name__)
+
+
+def calculate_timeout_by_line_count(
+	tool_config: dict,
+	file_path: str,
+	base_per_time: int = 1,
+) -> int:
+	try:
+		result = subprocess.run(
+			['wc', '-l', file_path],
+			capture_output=True,
+			text=True,
+			check=True,
+		)
+		line_count = int(result.stdout.strip().split()[0])
+		timeout = line_count * base_per_time
+		logger.info(
+			"timeout 自动计算: 文件=%s, 行数=%d, 每行时间=%d秒, timeout=%d秒",
+			file_path,
+			line_count,
+			base_per_time,
+			timeout,
+		)
+		return timeout
+	except Exception as e:
+		logger.warning("wc -l 计算行数失败: %s，将使用默认 timeout: 600秒", e)
+		return 600
 
 
 def _setup_url_fetch_directory(scan_workspace_dir: str) -> Path:
@@ -243,13 +271,42 @@ def _prepare_tool_execution(
         logger.error("构建 %s 命令失败: %s", tool_name, e)
         return {'error': f'命令构建失败: {e}'}
     
-    # 4. 返回执行参数
+    # 4. 计算超时时间（支持 auto）
+    raw_timeout = tool_config.get('timeout', 3600)
+    timeout = 3600
+    if isinstance(raw_timeout, str) and raw_timeout == 'auto':
+        # 当配置为 auto 时，参考 site_scan_flow，根据输入文件行数自动计算
+        try:
+            timeout = calculate_timeout_by_line_count(
+                tool_config=tool_config,
+                file_path=input_file,
+                base_per_time=1
+            )
+        except Exception as e:
+            logger.warning(
+                "工具 %s 自动计算 timeout 失败，将使用默认 3600 秒: %s",
+                tool_name,
+                e,
+            )
+            timeout = 3600
+    else:
+        try:
+            timeout = int(raw_timeout)
+        except (TypeError, ValueError):
+            logger.warning(
+                "工具 %s 的 timeout 配置无效(%s)，将使用默认 3600 秒",
+                tool_name,
+                raw_timeout,
+            )
+            timeout = 3600
+
+    # 5. 返回执行参数
     return {
         'command': command,
         'input_file': input_file,
         'input_type': input_type,
         'output_file': output_file,
-        'timeout': tool_config.get('timeout', 3600)
+        'timeout': timeout,
     }
 
 
