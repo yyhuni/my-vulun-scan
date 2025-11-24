@@ -164,7 +164,7 @@ class Endpoint(models.Model):
             models.UniqueConstraint(
                 fields=['url', 'target'],
                 condition=models.Q(deleted_at__isnull=True),
-                name='unique_url_target_active'
+                name='unique_endpoint_url_target_active'
             )
         ]
 
@@ -267,7 +267,7 @@ class WebSite(models.Model):
             models.UniqueConstraint(
                 fields=['url', 'target'],
                 condition=models.Q(deleted_at__isnull=True),
-                name='unique_url_target_active'
+                name='unique_website_url_target_active'
             )
         ]
 
