@@ -407,7 +407,7 @@ class DjangoScanRepository:
             stats = {
                 'cached_subdomains_count': scan.subdomain_snapshots.count(),
                 'cached_websites_count': scan.website_snapshots.count(), 
-                'cached_endpoints_count': 0,  # 暂无端点快照表
+                'cached_endpoints_count': scan.endpoint_snapshots.count(),
                 'cached_ips_count': ips_count,
                 'cached_directories_count': scan.directory_snapshots.count(),
                 'stats_updated_at': timezone.now()
