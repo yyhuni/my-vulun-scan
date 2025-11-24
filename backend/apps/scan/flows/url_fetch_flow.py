@@ -63,8 +63,6 @@ def calculate_timeout_by_line_count(
 	except Exception as e:
 		logger.warning("wc -l 计算行数失败: %s，将使用默认 timeout: 600秒", e)
 		return 600
-
-
 def _setup_url_fetch_directory(scan_workspace_dir: str) -> Path:
     """
     创建并验证 URL 获取工作目录
@@ -264,10 +262,12 @@ def _prepare_tool_execution(
     if isinstance(raw_timeout, str) and raw_timeout == "auto":
         # 当配置为 auto 时，根据输入文件行数自动计算
         try:
+            # katana / waymore 每个站点需要更长时间，这里按 360 秒/行；其他工具默认 1 秒/行
+            base_per_time = 360 if tool_name in ("katana", "waymore") else 1
             timeout = calculate_timeout_by_line_count(
                 tool_config=tool_config,
                 file_path=input_file,
-                base_per_time=1,
+                base_per_time=base_per_time,
             )
         except Exception as e:  # pragma: no cover - 防御性日志
             logger.warning(
@@ -549,14 +549,31 @@ def _validate_and_stream_save_urls(
         logger.warning("降级处理：将直接保存所有 URL（不验证存活）")
         return _save_urls_to_database(merged_file, scan_id, target_id)
     
-    # 3. 动态计算超时时间
-    timeout = httpx_config.get('timeout', 'auto')
-    if timeout == 'auto':
-        # 基础时间 + 每个 URL 的处理时间
-        timeout = min(60 + url_count * 2, 7200)  # 每个 URL 2秒，最多 2 小时
-        logger.info("自动计算超时时间: %d 秒", timeout)
+    # 3. 动态计算超时时间（统一使用 calculate_timeout_by_line_count）
+    raw_timeout = httpx_config.get('timeout', 'auto')
+    timeout = 3600
+    if isinstance(raw_timeout, str) and raw_timeout == 'auto':
+        # 使用行数 × 每URL基础时间(2秒) 作为基础，再叠加 60 秒并加上 7200 秒上限
+        base_timeout = calculate_timeout_by_line_count(
+            tool_config=httpx_config,
+            file_path=merged_file,
+            base_per_time=2,
+        )
+        timeout = min(60 + base_timeout, 7200)
+        logger.info(
+            "自动计算 httpx 超时时间: %d 秒 (基础: 60秒, 每URL: 2秒, 上限: 7200秒)",
+            timeout,
+        )
     else:
-        logger.info("使用配置的超时时间: %d 秒", timeout)
+        try:
+            timeout = int(raw_timeout)
+        except (TypeError, ValueError):
+            logger.warning(
+                "httpx 的 timeout 配置无效(%s)，将使用默认 3600 秒",
+                raw_timeout,
+            )
+            timeout = 3600
+        logger.info("使用配置的 httpx 超时时间: %d 秒", timeout)
     
     # 4. 生成日志文件路径
     from datetime import datetime
@@ -593,8 +610,8 @@ def _validate_and_stream_save_urls(
         
     except Exception as e:
         logger.error("httpx 流式验证失败: %s", e, exc_info=True)
-        logger.warning("降级处理：将直接保存所有 URL（不验证存活）")
-        return _save_urls_to_database(merged_file, scan_id, target_id)
+        # 不再做降级处理，保持失败语义，由上层 Flow 统一处理异常
+        raise
 
 
 def _merge_and_deduplicate_urls(result_files: list, url_fetch_dir: Path) -> tuple[str, int]:
