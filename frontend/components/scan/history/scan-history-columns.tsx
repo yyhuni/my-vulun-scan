@@ -33,6 +33,7 @@ import {
   ChevronDown,
   Copy,
   Check,
+  CircleArrowRight,
   StopCircle,
 } from "lucide-react"
 import {
@@ -348,19 +349,6 @@ export const createScanHistoryColumns = ({
     cell: ({ row }) => {
       const targetName = row.getValue("targetName") as string
       const targetId = row.original.target
-      const [copied, setCopied] = React.useState(false)
-      
-      const handleCopy = async (e: React.MouseEvent) => {
-        e.stopPropagation()
-        try {
-          await navigator.clipboard.writeText(targetName)
-          setCopied(true)
-          toast.success("已复制目标名称")
-          setTimeout(() => setCopied(false), 2000)
-        } catch {
-          toast.error('复制失败')
-        }
-      }
       
       const maxLength = 30
       const isLong = targetName.length > maxLength
@@ -399,20 +387,19 @@ export const createScanHistoryColumns = ({
               </Popover>
             )}
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={`h-6 w-6 flex-shrink-0 hover:bg-accent transition-opacity ${
-              copied ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-            }`}
-            onClick={handleCopy}
-          >
-            {copied ? (
-              <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-            ) : (
-              <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-            )}
-          </Button>
+          {targetId && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 flex-shrink-0 hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={(e) => {
+                e.stopPropagation()
+                navigate(`/target/${targetId}/details`)
+              }}
+            >
+              <CircleArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+            </Button>
+          )}
         </div>
       )
     },
