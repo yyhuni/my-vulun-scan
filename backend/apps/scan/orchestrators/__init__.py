@@ -4,9 +4,8 @@
 提供工作流编排相关的类和函数
 """
 
-from .flow_orchestrator import FlowOrchestrator, parse_engine_config
+from .flow_orchestrator import FlowOrchestrator
 
 __all__ = [
     'FlowOrchestrator',
-    'parse_engine_config',
 ]
