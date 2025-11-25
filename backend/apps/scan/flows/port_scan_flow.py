@@ -270,8 +270,15 @@ def _run_scans_sequentially(
             failed_tools.append({'tool': tool_name, 'reason': reason})
             continue
         
-        # 2. 获取超时时间
+        # 2. 获取超时时间（支持 'auto' 动态计算）
         config_timeout = tool_config['timeout']
+        if config_timeout == 'auto':
+            # 动态计算超时时间
+            config_timeout = calculate_port_scan_timeout(
+                tool_config=tool_config,
+                file_path=str(domains_file)
+            )
+            logger.info(f"✓ 工具 {tool_name} 动态计算 timeout: {config_timeout}秒")
         
         # 2.1 生成日志文件路径
         from datetime import datetime

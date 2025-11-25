@@ -198,10 +198,16 @@ def _run_scans_sequentially(
             failed_tools.append({'tool': tool_name, 'reason': reason})
             continue
         
-        # 2. 获取超时时间（动态计算）
+        # 2. 获取超时时间（支持 'auto' 动态计算）
         config_timeout = tool_config.get('timeout', 300)
-        timeout = calculate_timeout_by_line_count(tool_config, urls_file, base_per_time=1)
-        timeout = max(timeout, config_timeout)  # 取更大值保证安全
+        if config_timeout == 'auto':
+            # 动态计算超时时间
+            timeout = calculate_timeout_by_line_count(tool_config, urls_file, base_per_time=1)
+            logger.info(f"✓ 工具 {tool_name} 动态计算 timeout: {timeout}秒")
+        else:
+            # 使用配置的超时时间和动态计算的较大值
+            dynamic_timeout = calculate_timeout_by_line_count(tool_config, urls_file, base_per_time=1)
+            timeout = max(dynamic_timeout, config_timeout)
         
         # 2.1 生成日志文件路径（类似端口扫描）
         from datetime import datetime
@@ -209,8 +215,8 @@ def _run_scans_sequentially(
         log_file = site_scan_dir / f"{tool_name}_{timestamp}.log"
         
         logger.info(
-            "开始执行 %s 站点扫描 - URL数: %d, 动态超时: %ds, 配置超时: %ds, 最终超时: %ds",
-            tool_name, total_urls, timeout, config_timeout, timeout
+            "开始执行 %s 站点扫描 - URL数: %d, 最终超时: %ds",
+            tool_name, total_urls, timeout
         )
         
         # 3. 执行扫描任务

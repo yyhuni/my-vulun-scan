@@ -143,8 +143,12 @@ def _run_scans_parallel(
             logger.error(f"构建 {tool_name} 命令失败: {e}")
             continue
         
-        # 1.3 获取超时时间（已在 config_parser 中验证）
+        # 1.3 获取超时时间（支持 'auto' 动态计算）
         timeout = tool_config['timeout']
+        if timeout == 'auto':
+            # 子域名发现工具通常运行时间较长，使用默认值 600 秒
+            timeout = 600
+            logger.info(f"✓ 工具 {tool_name} 使用默认 timeout: {timeout}秒")
         
         # 1.4 提交任务
         logger.debug(

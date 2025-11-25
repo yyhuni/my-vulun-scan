@@ -245,9 +245,13 @@ def _run_scans_sequentially(
                 failed_sites.append(site_url)
                 continue
             
-            # 单个站点超时：从配置中获取
+            # 单个站点超时：从配置中获取（支持 'auto' 动态计算）
             # ffuf 逐个站点扫描，timeout 就是单个站点的超时时间
             site_timeout = tool_config.get('timeout', 300)
+            if site_timeout == 'auto':
+                # 动态计算超时时间（基于字典行数）
+                site_timeout = calculate_directory_scan_timeout(tool_config)
+                logger.info(f"✓ 工具 {tool_name} 动态计算 timeout: {site_timeout}秒")
             
             # 生成日志文件路径
             from datetime import datetime
