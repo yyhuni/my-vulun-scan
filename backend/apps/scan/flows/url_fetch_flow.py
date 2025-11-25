@@ -218,7 +218,7 @@ def _prepare_tool_execution(
     tool_config: dict,
     input_type: str,
     assets_files: dict,
-    url_fetch_dir: Path,
+    url_fetch_dir: Path
 ) -> dict:
     """准备单个工具的执行参数"""
 
@@ -765,14 +765,14 @@ def url_fetch_flow(
     target_name: str,
     target_id: int,
     scan_workspace_dir: str,
-    engine_config: str
+    enabled_tools: dict
 ) -> dict:
     """
     URL 获取扫描 Flow
     
     执行流程：
     1. 准备工作目录
-    2. 解析配置，获取启用的工具
+    2. 验证工具配置
     3. 根据启用的工具导出所需的资产文件
     4. 并行运行获取工具
     5. 合并并去重 URL
@@ -783,7 +783,7 @@ def url_fetch_flow(
         target_name: 目标名称
         target_id: 目标 ID
         scan_workspace_dir: 扫描工作目录
-        engine_config: 引擎配置（YAML 格式字符串）
+        enabled_tools: 启用的工具配置
         
     Returns:
         dict: 扫描结果
@@ -809,18 +809,10 @@ def url_fetch_flow(
         logger.info("Step 1: 准备工作目录")
         url_fetch_dir = _setup_url_fetch_directory(scan_workspace_dir)
         
-        # Step 2: 解析配置，获取启用的工具
-        logger.info("Step 2: 解析配置，获取启用的工具")
-        enabled_tools = config_parser.parse_enabled_tools(
-            scan_type='url_fetch',
-            engine_config=engine_config
-        )
-        
-        if not enabled_tools:
-            raise RuntimeError("没有启用的 URL 获取工具，请检查引擎配置。")
-        
+        # Step 2: 工具配置信息
+        logger.info("Step 2: 工具配置信息")
         logger.info(
-            "✓ 配置解析完成 - 启用工具: %s",
+            "✓ 启用工具: %s",
             ', '.join(enabled_tools.keys())
         )
         

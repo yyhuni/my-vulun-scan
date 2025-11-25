@@ -332,7 +332,7 @@ def directory_scan_flow(
     target_name: str,
     target_id: int,
     scan_workspace_dir: str,
-    engine_config: str
+    enabled_tools: dict
 ) -> dict:
     """
     目录扫描 Flow
@@ -345,7 +345,7 @@ def directory_scan_flow(
     工作流程：
         Step 0: 创建工作目录
         Step 1: 导出站点 URL 列表到文件（供扫描工具使用）
-        Step 2: 解析配置，获取启用的工具
+        Step 2: 验证工具配置
         Step 3: 串行执行扫描工具并实时保存结果
     
     ffuf 输出字段：
@@ -362,8 +362,8 @@ def directory_scan_flow(
         target_name: 目标名称
         target_id: 目标 ID
         scan_workspace_dir: 扫描工作空间目录
-        engine_config: 引擎配置（YAML 字符串，必需）
-    
+        enabled_tools: 启用的工具配置字典
+        
     Returns:
         dict: {
             'success': bool,
@@ -401,8 +401,8 @@ def directory_scan_flow(
             raise ValueError("target_id 不能为空")
         if not scan_workspace_dir:
             raise ValueError("scan_workspace_dir 不能为空")
-        if not engine_config:
-            raise ValueError("engine_config 不能为空")
+        if not enabled_tools:
+            raise ValueError("enabled_tools 不能为空")
         
         # Step 0: 创建工作目录
         directory_scan_dir = _setup_directory_scan_directory(scan_workspace_dir)
@@ -425,22 +425,10 @@ def directory_scan_flow(
                 'executed_tasks': ['export_sites']
             }
         
-        # Step 2: 解析配置，获取启用的工具
-        logger.info("Step 2: 解析配置，获取启用的工具")
-        enabled_tools = config_parser.parse_enabled_tools(
-            scan_type='directory_scan',
-            engine_config=engine_config,
-            timeout_calculator=calculate_directory_scan_timeout,
-            timeout_calculator_kwargs={
-                'base_per_word': 0.02  # 每个单词 20ms
-            }
-        )
-        
-        if not enabled_tools:
-            raise RuntimeError("没有启用的目录扫描工具，请检查引擎配置。")
-        
+        # Step 2: 工具配置信息
+        logger.info("Step 2: 工具配置信息")
         logger.info(
-            "✓ 配置解析完成 - 启用工具: %s",
+            "✓ 启用工具: %s",
             ', '.join(enabled_tools.keys())
         )
         

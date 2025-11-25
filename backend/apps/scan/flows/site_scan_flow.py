@@ -333,7 +333,7 @@ def site_scan_flow(
     target_name: str,
     target_id: int,
     scan_workspace_dir: str,
-    engine_config: str
+    enabled_tools: dict
 ) -> dict:
     """
     站点扫描 Flow
@@ -437,25 +437,10 @@ def site_scan_flow(
                 }
             }
         
-        # Step 2: 解析配置，获取启用的工具
-        logger.info("Step 2: 解析配置，获取启用的工具")
-        
-        # 解析配置，传入 timeout 计算函数和参数
-        enabled_tools = config_parser.parse_enabled_tools(
-            scan_type='site_scan',
-            engine_config=engine_config,
-            timeout_calculator=calculate_timeout_by_line_count,
-            timeout_calculator_kwargs={
-                'file_path': urls_file,
-                'base_per_time': 1  # 每个 URL 1秒
-            }
-        )
-        
-        if not enabled_tools:
-            raise RuntimeError("没有启用的站点扫描工具，请检查引擎配置。")
-        
+        # Step 2: 工具配置信息
+        logger.info("Step 2: 工具配置信息")
         logger.info(
-            "✓ 配置解析完成 - 启用工具: %s",
+            "✓ 启用工具: %s",
             ', '.join(enabled_tools.keys())
         )
         

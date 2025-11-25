@@ -366,7 +366,7 @@ def port_scan_flow(
     target_name: str,
     target_id: int,
     scan_workspace_dir: str,
-    engine_config: str
+    enabled_tools: dict
 ) -> dict:
     """
     端口扫描 Flow
@@ -433,8 +433,8 @@ def port_scan_flow(
             raise ValueError("target_id 不能为空")
         if not scan_workspace_dir:
             raise ValueError("scan_workspace_dir 不能为空")
-        if not engine_config:
-            raise ValueError("engine_config 不能为空")
+        if not enabled_tools:
+            raise ValueError("enabled_tools 不能为空")
         
         logger.info(
             "="*60 + "\n" +
@@ -472,27 +472,10 @@ def port_scan_flow(
                 }
             }
         
-        # Step 2: 解析配置，获取启用的工具
-        logger.info("Step 2: 解析配置，获取启用的工具")
-        
-        # 解析配置，传入 timeout 计算函数和参数
-        # timeout 会根据 目标数 × 端口数 × 0.5秒 自动计算
-        enabled_tools = config_parser.parse_enabled_tools(
-            scan_type='port_scan',
-            engine_config=engine_config,
-            timeout_calculator=calculate_port_scan_timeout,
-            timeout_calculator_kwargs={
-                'file_path': domains_file,
-                # 可选：调整基础速率（默认 0.5秒/端口-目标对）
-                # 'base_per_pair': 0.5
-            }
-        )
-        
-        if not enabled_tools:
-            raise RuntimeError("没有启用的端口扫描工具，请检查引擎配置。")
-        
+        # Step 2: 工具配置信息
+        logger.info("Step 2: 工具配置信息")
         logger.info(
-            "✓ 配置解析完成 - 启用工具: %s",
+            "✓ 启用工具: %s",
             ', '.join(enabled_tools.keys())
         )
         

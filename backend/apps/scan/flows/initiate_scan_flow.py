@@ -30,6 +30,7 @@ from apps.scan.handlers import (
     on_initiate_scan_flow_cancelled,
     on_initiate_scan_flow_crashed
 )
+from prefect.futures import wait
 from apps.scan.tasks.workspace_tasks import create_scan_workspace_task
 from apps.scan.orchestrators import FlowOrchestrator
 
@@ -61,29 +62,15 @@ def initiate_scan_flow(
     
     根据 YAML 配置动态编排工作流：
     - 解析 engine_config (YAML)
-    - 检测配置中的扫描类型（subdomain_discovery, port_scan, site_scan, directory_scan）
-    - 按照 YAML 中的顺序依次执行对应的 Flow
-    - 每个 Flow 独立执行，不传递数据
-    
-    示例 YAML：
-    ```yaml
-    subdomain_discovery:
-      tools:
-        subfinder:
-          enabled: true
-    
-    port_scan:
-      tools:
-        naabu:
-          enabled: true
-    
-    site_scan:
-      tools:
-        httpx:
-          enabled: true
-    ```
-    
-    将依次执行：subdomain_discovery_flow → port_scan_flow → site_scan_flow
+    - 检测启用的扫描类型
+    - 按照定义的阶段执行：
+      Stage 1: Discovery (顺序执行)
+        - subdomain_discovery
+        - port_scan
+        - site_scan
+      Stage 2: Analysis (并行执行)
+        - url_fetch
+        - directory_scan
     
     Args:
         scan_id: 扫描任务 ID
@@ -94,14 +81,7 @@ def initiate_scan_flow(
         engine_config: 引擎配置（YAML 格式字符串）
     
     Returns:
-        dict: {
-            'success': bool,
-            'scan_id': int,
-            'target': str,
-            'scan_workspace_dir': str,
-            'executed_flows': list,
-            'results': dict
-        }
+        dict: 执行结果摘要
     
     Raises:
         ValueError: 参数验证失败或配置无效
@@ -133,17 +113,14 @@ def initiate_scan_flow(
         # ==================== Task 2: 解析配置，生成执行计划 ====================
         orchestrator = FlowOrchestrator(engine_config)
         
+        # FlowOrchestrator 已经解析了所有工具配置
+        enabled_tools_by_type = orchestrator.enabled_tools_by_type
+        
         logger.info(
             f"执行计划生成成功：\n"
             f"  扫描类型: {' → '.join(orchestrator.scan_types)}\n"
             f"  总共 {len(orchestrator.scan_types)} 个 Flow"
         )
-        
-        # 验证配置
-        validation = orchestrator.validate()
-        if validation['warnings']:
-            for warning in validation['warnings']:
-                logger.warning(f"⚠️  {warning}")
         
         # ==================== 初始化阶段进度 ====================
         # 在解析完配置后立即初始化，此时已有完整的 scan_types 列表
@@ -159,42 +136,100 @@ def initiate_scan_flow(
         target_service.update_last_scanned_at(target_id)
         logger.info(f"✓ 更新 Target 最后扫描时间 - Target ID: {target_id}")
         
-        # ==================== Task 3: 执行 Flow（按 YAML 顺序，Subflow 方式） ====================
+        # ==================== Task 3: 执行 Flow（动态阶段执行）====================
         # 注意：各阶段状态更新由 scan_flow_handlers.py 自动处理（running/completed/failed）
         executed_flows = []
         results = {}
         
-        for scan_type, flow_func in orchestrator.iter_flows():
-            logger.info(f"\n{'='*60}\n执行 Flow: {scan_type}\n{'='*60}")
+        # 通用执行参数
+        flow_kwargs = {
+            'scan_id': scan_id,
+            'target_name': target_name,
+            'target_id': target_id,
+            'scan_workspace_dir': str(scan_workspace_path)
+        }
+
+        def record_flow_result(scan_type, result=None, error=None):
+            """
+            统一的结果记录函数
             
-            if not flow_func:
-                logger.warning(f"跳过未实现的 Flow: {scan_type}")
-                continue
-            
-            # 在 @flow 中执行子 @flow（Subflow）
-            # 进度更新由子 Flow 的 Handlers 自动处理
-            try:
-                flow_result = flow_func(
-                    scan_id=scan_id,
-                    target_name=target_name,
-                    target_id=target_id,
-                    scan_workspace_dir=str(scan_workspace_path),
-                    engine_config=engine_config
-                )
-                
-                executed_flows.append(scan_type)
-                results[scan_type] = flow_result
-                logger.info(f"✓ {scan_type} 执行成功")
-                
-            except Exception as e:
-                # 任何 Flow 失败都中止整个扫描流程
-                # 进度更新由子 Flow 的 on_failed handler 处理
-                error_msg = f"{scan_type} 执行失败，中止扫描流程: {str(e)}"
+            Args:
+                scan_type: 扫描类型名称
+                result: 执行结果（成功时）
+                error: 异常对象（失败时）
+            """
+            if error:
+                # 失败处理
+                error_msg = f"{scan_type} 执行失败: {str(error)}"
                 logger.error(error_msg)
                 executed_flows.append(f"{scan_type} (失败)")
-                results[scan_type] = {'success': False, 'error': str(e)}
-                raise RuntimeError(error_msg) from e
-        
+                results[scan_type] = {'success': False, 'error': str(error)}
+                raise RuntimeError(error_msg) from error
+            else:
+                # 成功处理
+                executed_flows.append(scan_type)
+                results[scan_type] = result
+                logger.info(f"✓ {scan_type} 执行成功")
+
+        def get_valid_flows(flow_names):
+            """
+            获取有效的 Flow 函数列表，并为每个 Flow 准备专属参数
+            
+            Args:
+                flow_names: 扫描类型名称列表
+                
+            Returns:
+                list: [(scan_type, flow_func, flow_specific_kwargs), ...] 有效的函数列表
+            """
+            valid_flows = []
+            for scan_type in flow_names:
+                flow_func = orchestrator.get_flow_function(scan_type)
+                if flow_func:
+                    # 为每个 Flow 准备专属的参数（包含对应的 enabled_tools）
+                    flow_specific_kwargs = dict(flow_kwargs)
+                    flow_specific_kwargs['enabled_tools'] = enabled_tools_by_type.get(scan_type, {})
+                    valid_flows.append((scan_type, flow_func, flow_specific_kwargs))
+                else:
+                    logger.warning(f"跳过未实现的 Flow: {scan_type}")
+            return valid_flows
+
+        # ---------------------------------------------------------
+        # 动态阶段执行（基于 FlowOrchestrator 定义）
+        # ---------------------------------------------------------
+        for mode, enabled_flows in orchestrator.get_execution_stages():
+            if mode == 'sequential':
+                # 顺序执行
+                logger.info(f"\n{'='*60}\n顺序执行阶段: {', '.join(enabled_flows)}\n{'='*60}")
+                for scan_type, flow_func, flow_specific_kwargs in get_valid_flows(enabled_flows):
+                    logger.info(f"\n{'='*60}\n执行 Flow: {scan_type}\n{'='*60}")
+                    try:
+                        result = flow_func(**flow_specific_kwargs)
+                        record_flow_result(scan_type, result=result)
+                    except Exception as e:
+                        record_flow_result(scan_type, error=e)
+                    
+            elif mode == 'parallel':
+                # 并行执行
+                logger.info(f"\n{'='*60}\n并行执行阶段: {', '.join(enabled_flows)}\n{'='*60}")
+                futures = []
+                
+                # 提交所有并行任务
+                for scan_type, flow_func, flow_specific_kwargs in get_valid_flows(enabled_flows):
+                    future = flow_func.submit(**flow_specific_kwargs)
+                    futures.append((scan_type, future))
+                
+                # 等待所有并行任务完成
+                if futures:
+                    wait([f for _, f in futures])
+                    
+                    # 检查结果（复用统一的结果处理逻辑）
+                    for scan_type, future in futures:
+                        try:
+                            result = future.result()
+                            record_flow_result(scan_type, result=result)
+                        except Exception as e:
+                            record_flow_result(scan_type, error=e)
+
         # ==================== 完成 ====================
         logger.info(
             "="*60 + "\n" +

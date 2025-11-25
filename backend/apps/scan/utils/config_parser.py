@@ -23,81 +23,33 @@ from typing import Dict, Any, Optional, Callable
 logger = logging.getLogger(__name__)
 
 
-def _parse_engine_config(engine_config_str: Optional[str]) -> Dict[str, Any]:
-    """
-    解析引擎配置（YAML 字符串）
-    
-    Args:
-        engine_config_str: YAML 格式的引擎配置字符串
-    
-    Returns:
-        引擎配置字典
-    """
-    if not engine_config_str or not engine_config_str.strip():
-        return {}
-    
-    try:
-        config = yaml.safe_load(engine_config_str) or {}
-        logger.debug(f"解析引擎配置成功: {len(config)} 个配置项")
-        return config
-    except yaml.YAMLError as e:
-        logger.error(f"解析引擎配置失败: {e}")
-        return {}
-
-
-def parse_enabled_tools(
+def parse_enabled_tools_from_dict(
     scan_type: str,
-    engine_config: str,
+    parsed_config: Dict[str, Any],
     timeout_calculator: Optional[Callable[..., int]] = None,
     timeout_calculator_kwargs: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Dict[str, Any]]:
     """
-    解析 YAML 配置，获取启用的工具及其配置
+    从解析后的配置字典中获取启用的工具及其配置（避免重复 YAML 解析）
     
     Args:
         scan_type: 扫描类型 (subdomain_discovery, port_scan, site_scan, directory_scan)
-        engine_config: 引擎配置（YAML 字符串，必需）
+        parsed_config: 已解析的配置字典
         timeout_calculator: 超时时间计算回调函数（可选）
-                          当 timeout 配置为 "auto" 时，调用此函数计算实际超时时间
         timeout_calculator_kwargs: 传递给 timeout_calculator 的参数字典（可选）
     
     Returns:
         启用的工具配置字典 {tool_name: tool_config}
-        例如: {
-            'subfinder': {'enabled': True, 'threads': 10, 'timeout': 600},
-            'amass_passive': {'enabled': True, 'timeout': 300}
-        }
     
     Raises:
         ValueError: 配置格式错误或必需参数缺失/无效时抛出
-        - engine_config 为空或空白字符串
-        - 工具配置不是字典类型
-        - enabled 字段类型不是 bool
-        - enabled=true 但缺少 timeout 参数
-        - timeout 参数类型不是 int 或 "auto"
-        - timeout 参数值 <= 0
-        - timeout="auto" 但未提供 timeout_calculator
-    
-    Example:
-        >>> enabled_tools = parse_enabled_tools('subdomain_discovery', yaml_config)
-        >>> for tool_name, tool_config in enabled_tools.items():
-        ...     timeout = tool_config['timeout']  # 保证存在且有效
-        ...     threads = tool_config.get('threads', 50)
-    
-    Note:
-        - 返回的是工具配置字典，不是工具名列表
-        - 采用严格验证模式：配置错误立即报错，不会跳过
-        - 所有启用的工具保证包含有效的 timeout 参数
-        - 命令构建逻辑在 command_helper 中实现
     """
-    # 参数验证
-    if not engine_config or not engine_config.strip():
-        raise ValueError(f"engine_config 不能为空 - scan_type: {scan_type}")
+    if not parsed_config:
+        logger.warning(f"配置字典为空 - scan_type: {scan_type}")
+        return {}
     
-    # 1. 解析引擎配置
-    parsed_config = _parse_engine_config(engine_config)
     if scan_type not in parsed_config:
-        logger.warning(f"引擎配置中未找到扫描类型: {scan_type}")
+        logger.warning(f"配置中未找到扫描类型: {scan_type}")
         return {}
     
     scan_config = parsed_config[scan_type]
@@ -107,7 +59,7 @@ def parse_enabled_tools(
     
     tools = scan_config['tools']
     
-    # 2. 过滤出启用的工具
+    # 过滤出启用的工具（复用原有验证逻辑）
     enabled_tools = {}
     for name, config in tools.items():
         if not isinstance(config, dict):
@@ -179,3 +131,5 @@ def parse_enabled_tools(
     )
     
     return enabled_tools
+
+

@@ -224,7 +224,7 @@ def subdomain_discovery_flow(
     target_name: str,
     target_id: int,
     scan_workspace_dir: str,
-    engine_config: str
+    enabled_tools: dict
 ) -> dict:
     """
     子域名发现扫描流程
@@ -272,8 +272,8 @@ def subdomain_discovery_flow(
             raise ValueError("target_id 不能为空")
         if not scan_workspace_dir:
             raise ValueError("scan_workspace_dir 不能为空")
-        if not engine_config:
-            raise ValueError("engine_config 不能为空")
+        if enabled_tools is None:
+            raise ValueError("enabled_tools 不能为空")
         
         # 如果未提供目标域名，跳过扫描
         if not target_name:
@@ -335,18 +335,10 @@ def subdomain_discovery_flow(
             "="*60
         )
         
-        # Step 1: 解析配置，获取启用的工具
-        logger.info("Step 1: 解析配置，获取启用的工具")
-        enabled_tools = config_parser.parse_enabled_tools(
-            scan_type='subdomain_discovery',
-            engine_config=engine_config
-        )
-        
-        if not enabled_tools:
-            raise RuntimeError("没有启用的扫描工具，请检查引擎配置。")
-        
+        # Step 1: 工具配置信息
+        logger.info("Step 1: 工具配置信息")
         logger.info(
-            "✓ 配置解析完成 - 启用工具: %s",
+            "✓ 启用工具: %s",
             ', '.join(enabled_tools.keys())
         )
         

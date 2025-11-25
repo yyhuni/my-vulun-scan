@@ -169,6 +169,30 @@ COMMAND_TEMPLATES = {
     'url_fetch': URL_FETCH_COMMANDS,
 }
 
+# ==================== 扫描类型配置 ====================
+
+# 执行阶段定义（按顺序执行）
+EXECUTION_STAGES = [
+    {
+        'mode': 'sequential',
+        'flows': ['subdomain_discovery', 'port_scan', 'site_scan']
+    },
+    {
+        'mode': 'parallel',
+        'flows': ['url_fetch', 'directory_scan']
+    }
+]
+
+
+def get_supported_scan_types():
+    """
+    获取支持的扫描类型
+    
+    Returns:
+        list: 支持的扫描类型列表（从 COMMAND_TEMPLATES 的 keys 获取）
+    """
+    return list(COMMAND_TEMPLATES.keys())
+
 
 def get_command_template(scan_type: str, tool_name: str) -> dict:
     """

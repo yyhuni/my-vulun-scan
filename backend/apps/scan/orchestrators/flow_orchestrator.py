@@ -13,7 +13,9 @@ Flow 的执行由 initiate_scan_flow (Prefect @flow) 负责
 
 import logging
 import yaml
-from typing import Dict, List, Optional, Callable
+from typing import Dict, List, Optional, Callable, Any
+
+from apps.scan.configs.command_templates import get_supported_scan_types, EXECUTION_STAGES
 
 logger = logging.getLogger(__name__)
 
@@ -25,15 +27,6 @@ class FlowOrchestrator:
     负责解析 YAML 配置并生成执行计划，不执行具体的 Flow
     """
     
-    # 支持的扫描类型
-    SUPPORTED_SCAN_TYPES = [
-        'subdomain_discovery',
-        'port_scan',
-        'site_scan',
-        'directory_scan',
-        'url_fetch',
-    ]
-    
     def __init__(self, engine_config: str):
         """
         初始化编排器
@@ -44,9 +37,38 @@ class FlowOrchestrator:
         Raises:
             ValueError: 配置为空或解析失败
         """
-        self.raw_config = engine_config
-        self.config = self._parse_config(engine_config)
+        if not engine_config or not engine_config.strip():
+            raise ValueError("引擎配置不能为空")
+        
+        try:
+            self.config = yaml.safe_load(engine_config) or {}
+        except yaml.YAMLError as e:
+            logger.error(f"引擎配置解析失败: {e}")
+            raise ValueError(f"引擎配置解析失败: {e}")
+        
+        if not self.config:
+            raise ValueError("引擎配置为空")
+        
+        # 检测启用的扫描类型
         self.scan_types = self._detect_scan_types()
+        
+        # 解析所有扫描类型的工具配置
+        from apps.scan.utils.config_parser import parse_enabled_tools_from_dict
+        self.enabled_tools_by_type = {}
+        for scan_type in self.scan_types:
+            try:
+                enabled_tools = parse_enabled_tools_from_dict(
+                    scan_type=scan_type,
+                    parsed_config=self.config
+                )
+                if enabled_tools:
+                    self.enabled_tools_by_type[scan_type] = enabled_tools
+                    logger.debug(f"✓ {scan_type}: {len(enabled_tools)} 个启用工具")
+            except Exception as e:
+                logger.error(f"解析 {scan_type} 工具配置失败: {e}")
+                raise
+        
+        logger.info(f"✓ FlowOrchestrator 初始化完成，{len(self.enabled_tools_by_type)} 个扫描类型有启用的工具")
     
     def _parse_config(self, engine_config: str) -> Dict:
         """
@@ -77,30 +99,83 @@ class FlowOrchestrator:
     
     def _detect_scan_types(self) -> List[str]:
         """
-        检测配置中的扫描类型（按 YAML 顺序）
+        检测配置中已启用的扫描类型（按 YAML 顺序）
         
         Returns:
-            list: 扫描类型列表（按 YAML 中的顺序）
+            list: 已启用的扫描类型列表
         
         Raises:
             ValueError: 未检测到有效的扫描类型
         """
-        # 保持 YAML 中的顺序
+        # 保持 YAML 中的顺序，且只包含已启用的类型
+        supported_scan_types = get_supported_scan_types()
         scan_types = [
             key for key in self.config.keys() 
-            if key in self.SUPPORTED_SCAN_TYPES
+            if key in supported_scan_types and self.is_scan_type_enabled(key)
         ]
         
         if not scan_types:
             raise ValueError(
-                f"未检测到有效的扫描类型。\n"
+                f"未检测到已启用的扫描类型。\n"
                 f"配置中的 key: {list(self.config.keys())}\n"
-                f"支持的扫描类型: {self.SUPPORTED_SCAN_TYPES}"
+                f"支持的扫描类型: {supported_scan_types}"
             )
         
-        logger.info(f"检测到的扫描类型（按顺序）: {scan_types}")
+        logger.info(f"检测到已启用的扫描类型（按顺序）: {scan_types}")
         return scan_types
     
+    def is_scan_type_enabled(self, scan_type: str) -> bool:
+        """
+        判断指定扫描类型是否启用（存在配置且有启用的工具）
+        
+        Args:
+            scan_type: 扫描类型
+            
+        Returns:
+            bool: 是否启用
+        """
+        if scan_type not in self.config:
+            return False
+            
+        scan_config = self.config.get(scan_type, {})
+        tools = scan_config.get('tools', {})
+        
+        # 检查是否有任何工具被启用
+        for tool_config in tools.values():
+            if tool_config.get('enabled', False):
+                return True
+                
+        return False
+
+    def get_execution_stages(self):
+        """
+        迭代器：获取所有执行阶段
+        
+        Yields:
+            tuple: (mode, enabled_flows)
+            - mode: 执行模式（'sequential' 或 'parallel'）
+            - enabled_flows: 该阶段中已启用的扫描类型列表
+            
+        Example:
+            for mode, flows in orchestrator.get_execution_stages():
+                if mode == 'sequential':
+                    for flow in flows:
+                        execute_flow(flow)
+                else:  # parallel
+                    execute_parallel(flows)
+        """
+        for stage in EXECUTION_STAGES:
+            # 筛选出已启用的流程
+            enabled_flows = [
+                flow for flow in stage['flows'] 
+                if flow in self.scan_types
+            ]
+            
+            # 只返回有启用流程的阶段
+            if enabled_flows:
+                logger.debug(f"阶段 {stage['mode']}: {enabled_flows}")
+                yield stage['mode'], enabled_flows
+
     def get_flow_function(self, scan_type: str) -> Optional[Callable]:
         """
         获取指定扫描类型的 Flow 函数（延迟导入）
@@ -134,72 +209,4 @@ class FlowOrchestrator:
         else:
             logger.warning(f"未实现的扫描类型: {scan_type}")
             return None
-    
-    def iter_flows(self):
-        """
-        迭代器：遍历所有需要执行的 Flow
-        
-        Yields:
-            tuple: (scan_type, flow_func)
-            
-        Example:
-            for scan_type, flow_func in orchestrator.iter_flows():
-                if flow_func:
-                    flow_func(...)
-        """
-        for scan_type in self.scan_types:
-            flow_func = self.get_flow_function(scan_type)
-            yield scan_type, flow_func
-    
-    def validate(self) -> Dict:
-        """
-        验证配置完整性
-        
-        Returns:
-            dict: {
-                'valid': bool,
-                'scan_types': list,
-                'warnings': list,
-                'errors': list
-            }
-        """
-        warnings = []
-        errors = []
-        
-        # 检查每个扫描类型是否有工具配置
-        for scan_type in self.scan_types:
-            scan_config = self.config.get(scan_type, {})
-            tools = scan_config.get('tools', {})
-            
-            if not tools:
-                warnings.append(f"{scan_type} 没有配置工具")
-            else:
-                # 检查是否有启用的工具
-                enabled_tools = [
-                    tool_name for tool_name, tool_config in tools.items()
-                    if tool_config.get('enabled', False)
-                ]
-                
-                if not enabled_tools:
-                    warnings.append(f"{scan_type} 没有启用的工具")
-        
-        return {
-            'valid': len(errors) == 0,
-            'scan_types': self.scan_types,
-            'warnings': warnings,
-            'errors': errors
-        }
 
-
-# 便捷函数：快速解析配置
-def parse_engine_config(engine_config: str) -> FlowOrchestrator:
-    """
-    快速创建 FlowOrchestrator 实例
-    
-    Args:
-        engine_config: YAML 格式的引擎配置
-    
-    Returns:
-        FlowOrchestrator: 编排器实例
-    """
-    return FlowOrchestrator(engine_config)
