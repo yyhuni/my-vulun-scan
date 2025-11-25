@@ -77,8 +77,9 @@ export interface GetScansResponse {
  * 发起扫描请求参数
  */
 export interface InitiateScanRequest {
-  organizationId?: number  // 组织ID（与targetId二选一）
-  targetId?: number        // 目标ID（与organizationId二选一）
+  organizationId?: number  // 组织ID（三选一）
+  targetId?: number        // 目标ID（三选一）
+  targetName?: string      // 目标名称（三选一）- 快速扫描，自动创建目标
   engineId: number         // 扫描引擎ID（必填）
 }
 

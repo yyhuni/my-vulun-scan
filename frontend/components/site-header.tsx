@@ -7,6 +7,8 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 import { NotificationDrawer } from "@/components/notifications"
 // 导入主题切换组件
 import { ThemeToggle } from "@/components/theme-toggle"
+// 导入快速扫描组件
+import { QuickScanDialog } from "@/components/scan/quick-scan-dialog"
 
 /**
  * 网站头部组件
@@ -29,6 +31,9 @@ export function SiteHeader() {
 
         {/* 右侧按钮区域,使用 ml-auto 推到最右边 */}
         <div className="ml-auto flex items-center gap-2">
+          {/* 快速扫描按钮 */}
+          <QuickScanDialog />
+          
           {/* 通知抽屉按钮 */}
           <NotificationDrawer />
           

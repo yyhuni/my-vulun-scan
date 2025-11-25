@@ -42,7 +42,7 @@
   --font-sans: Plus Jakarta Sans, sans-serif;
   --font-mono: IBM Plex Mono, monospace;
   --font-serif: Lora, serif;
-  --radius: 1.4rem;
+  --radius: 0.625rem;
   --tracking-tighter: calc(var(--tracking-normal) - 0.05em);
   --tracking-tight: calc(var(--tracking-normal) - 0.025em);
   --tracking-wide: calc(var(--tracking-normal) + 0.025em);
@@ -69,7 +69,7 @@
 }
 
 :root {
-  --radius: 1.4rem;
+  --radius: 0.625rem;
   --background: oklch(0.9940 0 0);
   --foreground: oklch(0 0 0);
   --card: oklch(0.9940 0 0);
@@ -157,7 +157,7 @@
   --sidebar-border: oklch(0.3289 0.0092 268.3843);
   --sidebar-ring: oklch(0.6132 0.2294 291.7437);
   --destructive-foreground: oklch(1.0000 0 0);
-  --radius: 1.4rem;
+  --radius: 0.625rem;
   --font-sans: Plus Jakarta Sans, sans-serif;
   --font-serif: Lora, serif;
   --font-mono: IBM Plex Mono, monospace;
