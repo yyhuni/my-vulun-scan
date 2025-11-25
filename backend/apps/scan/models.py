@@ -62,6 +62,11 @@ class Scan(models.Model):
     objects = SoftDeleteManager()  # 默认管理器：只返回未删除的记录
     all_objects = models.Manager()  # 全量管理器：包括已删除的记录（用于硬删除）
 
+    # ==================== 进度跟踪字段 ====================
+    progress = models.IntegerField(default=0, help_text='扫描进度 0-100')
+    current_stage = models.CharField(max_length=50, blank=True, default='', help_text='当前扫描阶段')
+    stage_progress = models.JSONField(default=dict, help_text='各阶段进度详情')
+
     # ==================== 缓存统计字段 ====================
     cached_subdomains_count = models.IntegerField(default=0, help_text='缓存的子域名数量')
     cached_websites_count = models.IntegerField(default=0, help_text='缓存的网站数量')

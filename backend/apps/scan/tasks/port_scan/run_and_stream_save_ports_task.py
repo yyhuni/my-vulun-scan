@@ -321,7 +321,7 @@ def _parse_naabu_stream_output(
     except subprocess.TimeoutExpired as e:
         # 超时异常：简洁输出，不显示堆栈
         error_msg = f"流式解析命令输出超时 - 命令执行超过 {timeout} 秒"
-        logger.error(error_msg)
+        logger.warning(error_msg)  # 超时是可预期的
         raise RuntimeError(error_msg) from e
     
     except (IOError, OSError) as e:
@@ -494,7 +494,7 @@ def _process_records_in_batches(
             f"流式保存端口扫描结果时出现失败批次，处理记录: {total_records}，"
             f"失败批次: {failed_batches}"
         )
-        logger.error(error_msg)
+        logger.warning(error_msg)  # 超时是可预期的
         raise RuntimeError(error_msg)
     
     return {
@@ -653,7 +653,7 @@ def run_and_stream_save_ports_task(
     except subprocess.TimeoutExpired:
         # 超时异常：部分数据已保存，但扫描未完成
         # 这是预期行为：流式处理会实时保存已解析的数据
-        logger.error(
+        logger.warning(
             "⚠️ 端口扫描任务超时 - target_id=%s, 超时=%s秒\n"
             "注意：超时前已解析的数据已保存到数据库，但扫描未完全完成。\n"
             "建议：增加超时时间或减少扫描目标数量。",

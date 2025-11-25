@@ -161,7 +161,7 @@ def _parse_ffuf_stream_output(
     except subprocess.TimeoutExpired as e:
         # 超时异常：简洁输出，不显示堆栈
         error_msg = f"流式解析命令输出超时 - 命令执行超过 {timeout} 秒"
-        logger.error(error_msg)
+        logger.warning(error_msg)  # 超时是可预期的
         raise RuntimeError(error_msg) from e
     except Exception as e:
         # 其他异常：输出详细堆栈以便调试
@@ -448,8 +448,8 @@ def run_and_stream_save_directories_task(
         
     except subprocess.TimeoutExpired:
         # 超时异常直接向上传播，保留异常类型
-        logger.error(
-            "目录扫描任务超时 - site_url=%s, 超时=%s秒",
+        logger.warning(
+            "⚠️ 目录扫描任务超时 - site_url=%s, 超时=%s秒",
             site_url, timeout
         )
         raise

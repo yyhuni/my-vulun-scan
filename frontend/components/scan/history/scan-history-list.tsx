@@ -20,8 +20,9 @@ import {
 } from "@/components/ui/alert-dialog"
 import { toast } from "sonner"
 import { useScans } from "@/hooks/use-scans"
-import { deleteScan, bulkDeleteScans, stopScan } from "@/services/scan.service"
+import { deleteScan, bulkDeleteScans, stopScan, getScan } from "@/services/scan.service"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { ScanProgressDialog, buildScanProgressData, type ScanProgressData } from "@/components/scan/scan-progress-dialog"
 
 /**
  * 扫描历史列表组件
@@ -35,6 +36,10 @@ export function ScanHistoryList() {
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
   const [stopDialogOpen, setStopDialogOpen] = useState(false)
   const [scanToStop, setScanToStop] = useState<ScanRecord | null>(null)
+  
+  // 进度弹窗状态
+  const [progressDialogOpen, setProgressDialogOpen] = useState(false)
+  const [progressData, setProgressData] = useState<ScanProgressData | null>(null)
   
   // 分页状态
   const [pagination, setPagination] = useState({
@@ -152,6 +157,22 @@ export function ScanHistoryList() {
       setScanToStop(null)
     }
   }
+  
+  // 查看扫描进度（获取单个扫描的最新数据）
+  const handleViewProgress = async (scan: ScanRecord) => {
+    try {
+      // 获取单个扫描的最新数据，而不是刷新整个列表
+      const freshScan = await getScan(scan.id)
+      const progressData = buildScanProgressData(freshScan)
+      setProgressData(progressData)
+      setProgressDialogOpen(true)
+    } catch (error) {
+      // 如果获取失败，使用当前数据
+      const progressData = buildScanProgressData(scan)
+      setProgressData(progressData)
+      setProgressDialogOpen(true)
+    }
+  }
 
   // 确认批量删除
   const confirmBulkDelete = async () => {
@@ -184,6 +205,7 @@ export function ScanHistoryList() {
         navigate,
         handleDelete: handleDeleteScan,
         handleStop: handleStopScan,
+        handleViewProgress,
       }),
     [navigate]
   )
@@ -218,7 +240,7 @@ export function ScanHistoryList() {
   // 计算统计数据
   const totalScans = data?.total || 0
   const runningCount = scans.filter(s => s.status === "running").length
-  const successfulCount = scans.filter(s => s.status === "successful").length
+  const successfulCount = scans.filter(s => s.status === "completed").length
   const totalAssets = scans.reduce((sum, s) => sum + s.summary.subdomains + s.summary.endpoints, 0)
 
   return (
@@ -358,6 +380,13 @@ export function ScanHistoryList() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* 扫描进度弹窗 */}
+      <ScanProgressDialog
+        open={progressDialogOpen}
+        onOpenChange={setProgressDialogOpen}
+        data={progressData}
+      />
     </>
   )
 }

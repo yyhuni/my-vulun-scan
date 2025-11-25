@@ -495,6 +495,63 @@ class DjangoScanRepository:
                 e
             )
             return False
+    
+    
+    def update_progress(
+        self,
+        scan_id: int,
+        progress: int | None = None,
+        current_stage: str | None = None,
+        stage_progress: dict | None = None
+    ) -> bool:
+        """
+        更新扫描进度信息
+        
+        Args:
+            scan_id: 扫描任务 ID
+            progress: 进度百分比 0-100（可选）
+            current_stage: 当前阶段（可选）
+            stage_progress: 各阶段详情（可选）
+        
+        Returns:
+            是否更新成功
+        """
+        try:
+            update_fields = {}
+            
+            if progress is not None:
+                update_fields['progress'] = progress
+            
+            if current_stage is not None:
+                update_fields['current_stage'] = current_stage
+            
+            if stage_progress is not None:
+                update_fields['stage_progress'] = stage_progress
+            
+            if not update_fields:
+                return True  # 无需更新
+            
+            updated = Scan.objects.filter(id=scan_id).update(**update_fields)
+            
+            if updated > 0:
+                logger.debug(
+                    "更新扫描进度 - Scan ID: %s, progress: %s, stage: %s",
+                    scan_id,
+                    progress,
+                    current_stage
+                )
+                return True
+            else:
+                logger.warning("Scan 不存在，无法更新进度 - Scan ID: %s", scan_id)
+                return False
+                
+        except Exception as e:
+            logger.error(
+                "更新扫描进度失败 - Scan ID: %s, 错误: %s",
+                scan_id,
+                e
+            )
+            return False
 
 
 # 导出接口

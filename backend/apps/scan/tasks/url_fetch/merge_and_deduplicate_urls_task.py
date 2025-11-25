@@ -117,7 +117,7 @@ def merge_and_deduplicate_urls_task(
 
     except subprocess.TimeoutExpired:
         error_msg = "合并去重超时（>60分钟），请检查数据量或系统资源"
-        logger.error(error_msg)
+        logger.warning(error_msg)  # 超时是可预期的
         raise RuntimeError(error_msg)
 
     except subprocess.CalledProcessError as e:

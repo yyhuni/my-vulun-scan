@@ -145,7 +145,15 @@ def initiate_scan_flow(
             for warning in validation['warnings']:
                 logger.warning(f"⚠️  {warning}")
         
+        # ==================== 初始化阶段进度 ====================
+        # 在解析完配置后立即初始化，此时已有完整的 scan_types 列表
+        from apps.scan.services import ScanService
+        scan_service = ScanService()
+        scan_service.init_stage_progress(scan_id, orchestrator.scan_types)
+        logger.info(f"✓ 初始化阶段进度 - Stages: {orchestrator.scan_types}")
+        
         # ==================== Task 3: 执行 Flow（按 YAML 顺序，Subflow 方式） ====================
+        # 注意：各阶段状态更新由 scan_flow_handlers.py 自动处理（running/completed/failed）
         executed_flows = []
         results = {}
         
@@ -157,6 +165,7 @@ def initiate_scan_flow(
                 continue
             
             # 在 @flow 中执行子 @flow（Subflow）
+            # 进度更新由子 Flow 的 Handlers 自动处理
             try:
                 flow_result = flow_func(
                     scan_id=scan_id,
@@ -172,6 +181,7 @@ def initiate_scan_flow(
                 
             except Exception as e:
                 # 任何 Flow 失败都中止整个扫描流程
+                # 进度更新由子 Flow 的 on_failed handler 处理
                 error_msg = f"{scan_type} 执行失败，中止扫描流程: {str(e)}"
                 logger.error(error_msg)
                 executed_flows.append(f"{scan_type} (失败)")

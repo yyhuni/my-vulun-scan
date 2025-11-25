@@ -190,6 +190,28 @@ class ScanService:
         """更新缓存统计数据（委托给 ScanStateService）"""
         return self.state_service.update_cached_stats(scan_id)
     
+    # ==================== 进度跟踪方法（委托给 ScanStateService） ====================
+    
+    def init_stage_progress(self, scan_id: int, stages: list[str]) -> bool:
+        """初始化阶段进度（委托给 ScanStateService）"""
+        return self.state_service.init_stage_progress(scan_id, stages)
+    
+    def start_stage(self, scan_id: int, stage: str) -> bool:
+        """开始执行某个阶段（委托给 ScanStateService）"""
+        return self.state_service.start_stage(scan_id, stage)
+    
+    def complete_stage(self, scan_id: int, stage: str, detail: str | None = None) -> bool:
+        """完成某个阶段（委托给 ScanStateService）"""
+        return self.state_service.complete_stage(scan_id, stage, detail)
+    
+    def fail_stage(self, scan_id: int, stage: str, error: str | None = None) -> bool:
+        """标记某个阶段失败（委托给 ScanStateService）"""
+        return self.state_service.fail_stage(scan_id, stage, error)
+    
+    def cancel_running_stages(self, scan_id: int, final_status: str = "cancelled") -> bool:
+        """取消所有正在运行的阶段（委托给 ScanStateService）"""
+        return self.state_service.cancel_running_stages(scan_id, final_status)
+    
     # ==================== 删除和控制方法（委托给 ScanControlService） ====================
     
     def delete_scans_two_phase(self, scan_ids: List[int]) -> dict:

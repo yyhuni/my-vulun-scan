@@ -164,7 +164,7 @@ def _parse_httpx_stream_output(
                 
     except subprocess.TimeoutExpired as e:
         error_msg = f"流式解析命令输出超时 - 命令执行超过 {timeout} 秒"
-        logger.error(error_msg)
+        logger.warning(error_msg)  # 超时是可预期的，使用 warning 级别
         raise RuntimeError(error_msg) from e
     except Exception as e:
         logger.error("流式解析命令输出失败: %s", e, exc_info=True)
@@ -456,7 +456,7 @@ def run_and_stream_save_urls_task(
         return stats
         
     except subprocess.TimeoutExpired:
-        logger.error(
+        logger.warning(
             "⚠️ URL 验证任务超时 - target_id=%s, 超时=%s秒",
             target_id, timeout
         )

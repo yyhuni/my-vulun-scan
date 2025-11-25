@@ -123,8 +123,15 @@ function CopyableCell({
 /**
  * 状态徽章组件
  * 使用 shadcn Badge 的标准 variant
+ * Running/Initiated 状态可点击查看进度详情
  */
-function StatusBadge({ status }: { status: ScanStatus }) {
+function StatusBadge({ 
+  status, 
+  onClick 
+}: { 
+  status: ScanStatus
+  onClick?: () => void 
+}) {
   const config: Record<ScanStatus, {
     icon: React.ComponentType<{ className?: string }>
     label: string
@@ -177,12 +184,27 @@ function StatusBadge({ status }: { status: ScanStatus }) {
 
   const { icon: Icon, label, variant, className } = config[status]
 
-  return (
+  const badge = (
     <Badge variant={variant} className={className}>
-      <Icon className="h-3.5 w-3.5" />
+      <Icon className={`h-3.5 w-3.5 ${status === "running" ? "animate-spin" : ""}`} />
       {label}
+      {onClick && <span className="ml-0.5 text-xs opacity-60">›</span>}
     </Badge>
   )
+
+  if (onClick) {
+    return (
+      <button 
+        onClick={onClick}
+        className="cursor-pointer hover:scale-105 transition-transform"
+        title="点击查看进度详情"
+      >
+        {badge}
+      </button>
+    )
+  }
+
+  return badge
 }
 
 // 列创建函数的参数类型
@@ -191,6 +213,7 @@ interface CreateColumnsProps {
   navigate: (path: string) => void
   handleDelete: (scan: ScanRecord) => void
   handleStop: (scan: ScanRecord) => void
+  handleViewProgress?: (scan: ScanRecord) => void
 }
 
 /**
@@ -290,6 +313,7 @@ export const createScanHistoryColumns = ({
   navigate,
   handleDelete,
   handleStop,
+  handleViewProgress,
 }: CreateColumnsProps): ColumnDef<ScanRecord>[] => [
   // 选择列
   {
@@ -545,7 +569,12 @@ export const createScanHistoryColumns = ({
     ),
     cell: ({ row }) => {
       const status = row.getValue("status") as ScanStatus
-      return <StatusBadge status={status} />
+      return (
+        <StatusBadge 
+          status={status} 
+          onClick={handleViewProgress ? () => handleViewProgress(row.original) : undefined}
+        />
+      )
     },
   },
 
@@ -556,6 +585,7 @@ export const createScanHistoryColumns = ({
     cell: ({ row }) => {
       const progress = row.getValue("progress") as number
       const status = row.original.status
+      const currentStage = row.original.currentStage
       
       // 如果状态是completed，显示100%
       const displayProgress = status === "completed" ? 100 : progress

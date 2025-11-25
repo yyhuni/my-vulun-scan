@@ -149,17 +149,17 @@ def merge_and_validate_task(
         
     except subprocess.TimeoutExpired:
         error_msg = "合并去重超时（>60分钟），请检查数据量或系统资源"
-        logger.error(error_msg)
+        logger.warning(error_msg)  # 超时是可预期的
         raise RuntimeError(error_msg)
     
     except subprocess.CalledProcessError as e:
         error_msg = f"系统命令执行失败: {e.stderr if e.stderr else str(e)}"
-        logger.error(error_msg)
+        logger.warning(error_msg)  # 超时是可预期的
         raise RuntimeError(error_msg) from e
     
     except IOError as e:
         error_msg = f"文件读写失败: {e}"
-        logger.error(error_msg)
+        logger.warning(error_msg)  # 超时是可预期的
         raise RuntimeError(error_msg) from e
     
     except Exception as e:
