@@ -398,7 +398,8 @@ def _collect_task_results(
                 'tool': tool_name,
                 'reason': str(e)
             })
-            logger.error("工具 %s 执行失败: %s", tool_name, e)
+            # 单个工具失败不是错误，只要有其他工具成功即可
+            logger.warning("⚠️ 工具 %s 执行失败（将继续使用其他工具）: %s", tool_name, e)
     
     # 计算成功的工具列表
     failed_tool_names = [f['tool'] for f in failed_tools]

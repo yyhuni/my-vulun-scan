@@ -95,7 +95,7 @@ url_fetch:
   tools:
     waymore:
       enabled: true
-      timeout: 600      # 10 分钟（必需）
+      timeout: auto      # 工具级别总超时：自动计算（根据站点数量）
                         # waymore 从历史归档中获取 URL，通常需要较长时间
                         # 输入类型：domain（域名级别，自动去重同域名站点）
     

@@ -14,6 +14,8 @@ from datetime import datetime
 from prefect import task
 from typing import Optional
 
+from apps.scan.utils import execute_and_wait
+
 logger = logging.getLogger(__name__)
 
 
@@ -108,23 +110,25 @@ def clean_urls_task(
     if filters:
         cmd_parts.extend(['-f'] + [str(f) for f in filters])
     
-    logger.debug("uro 命令: %s", ' '.join(cmd_parts))
+    # 5. 构建命令字符串
+    command = ' '.join(cmd_parts)
+    log_file = str(output_path / f"uro_{timestamp}.log")
     
-    # 5. 执行 uro
+    logger.debug("uro 命令: %s", command)
+    
+    # 6. 使用 execute_and_wait 执行（会自动发送通知）
     try:
-        result = subprocess.run(
-            cmd_parts,
-            capture_output=True,
-            text=True,
+        result = execute_and_wait(
+            tool_name='uro',
+            command=command,
             timeout=timeout,
-            cwd=str(output_path)
+            log_file=log_file
         )
         
-        if result.returncode != 0:
+        if result['returncode'] != 0:
             logger.warning(
-                "uro 返回非零状态码: %d, stderr: %s",
-                result.returncode,
-                result.stderr
+                "uro 返回非零状态码: %d",
+                result['returncode']
             )
             # uro 可能正常完成但返回非零，检查输出文件
             if not output_file.exists():
@@ -134,28 +138,19 @@ def clean_urls_task(
                     'input_count': input_count,
                     'output_count': input_count,
                     'removed_count': 0,
-                    'error': f'uro 执行失败: {result.stderr}'
+                    'error': f'uro 执行失败 (returncode: {result["returncode"]})'
                 }
                 
-    except subprocess.TimeoutExpired:
-        logger.error("uro 执行超时（%d秒）", timeout)
+    except RuntimeError as e:
+        # execute_and_wait 超时或执行失败会抛出 RuntimeError
+        logger.error("uro 执行失败: %s", e)
         return {
             'success': False,
             'output_file': input_file,
             'input_count': input_count,
             'output_count': input_count,
             'removed_count': 0,
-            'error': f'执行超时（{timeout}秒）'
-        }
-    except FileNotFoundError:
-        logger.error("uro 工具未安装或不在 PATH 中")
-        return {
-            'success': False,
-            'output_file': input_file,
-            'input_count': input_count,
-            'output_count': input_count,
-            'removed_count': 0,
-            'error': 'uro 工具未安装'
+            'error': str(e)
         }
     except Exception as e:
         logger.error("uro 执行异常: %s", e)
@@ -168,7 +163,7 @@ def clean_urls_task(
             'error': str(e)
         }
     
-    # 6. 统计清理后的 URL 数量
+    # 7. 统计清理后的 URL 数量
     output_count = 0
     if output_file.exists():
         try:
