@@ -282,7 +282,6 @@ class TargetViewSet(viewsets.ModelViewSet):
                 'targetId': target.id,
                 'targetName': target.name,
                 'deletedCount': result['soft_deleted_count'],
-                'deletedTargets': result['target_names'],
                 'detail': {
                     'phase1': '软删除完成，用户已看不到数据',
                     'phase2': '硬删除已提交到 Prefect，将在后台执行'

@@ -625,8 +625,6 @@ def _merge_and_deduplicate_urls(result_files: list, url_fetch_dir: Path) -> tupl
     Returns:
         tuple: (merged_file, unique_url_count)
     """
-    logger.info("Step 3: 合并并去重 URL")
-    
     from apps.scan.tasks.url_fetch import merge_and_deduplicate_urls_task
     
     merged_file = merge_and_deduplicate_urls_task(
@@ -646,6 +644,72 @@ def _merge_and_deduplicate_urls(result_files: list, url_fetch_dir: Path) -> tupl
     )
     
     return merged_file, unique_url_count
+
+
+def _clean_urls_with_uro(
+    merged_file: str,
+    uro_config: dict,
+    url_fetch_dir: Path
+) -> tuple[str, int, int]:
+    """
+    使用 uro 清理合并后的 URL 列表
+    
+    uro 功能：
+    - 去除重复和相似的 URL
+    - 根据扩展名过滤（whitelist/blacklist）
+    - 智能过滤无效 URL
+    
+    Args:
+        merged_file: 合并后的 URL 文件路径
+        uro_config: uro 工具配置
+        url_fetch_dir: URL 获取目录
+        
+    Returns:
+        tuple: (cleaned_file, cleaned_count, removed_count)
+    """
+    from apps.scan.tasks.url_fetch import clean_urls_task
+    
+    # 提取配置参数
+    raw_timeout = uro_config.get('timeout', 60)
+    whitelist = uro_config.get('whitelist')
+    blacklist = uro_config.get('blacklist')
+    filters = uro_config.get('filters')
+    
+    # 计算超时时间（支持 auto 模式）
+    if isinstance(raw_timeout, str) and raw_timeout == 'auto':
+        # uro 是本地处理工具，速度很快，按 0.01 秒/URL 计算
+        timeout = calculate_timeout_by_line_count(
+            tool_config=uro_config,
+            file_path=merged_file,
+            base_per_time=1,  # 每 100 个 URL 约 1 秒
+        )
+        # 最小 30 秒，最大 300 秒
+        timeout = max(30, min(timeout, 300))
+        logger.info("uro 自动计算超时时间: %d 秒", timeout)
+    else:
+        try:
+            timeout = int(raw_timeout)
+        except (TypeError, ValueError):
+            logger.warning("uro timeout 配置无效(%s)，使用默认 60 秒", raw_timeout)
+            timeout = 60
+    
+    # 调用 task
+    result = clean_urls_task(
+        input_file=merged_file,
+        output_dir=str(url_fetch_dir),
+        timeout=timeout,
+        whitelist=whitelist,
+        blacklist=blacklist,
+        filters=filters
+    )
+    
+    # 处理结果
+    if result['success']:
+        return result['output_file'], result['output_count'], result['removed_count']
+    else:
+        # 失败时使用原始文件
+        logger.warning("uro 清理失败: %s，使用原始合并文件", result.get('error', '未知错误'))
+        return merged_file, result['input_count'], 0
 
 
 def _save_urls_to_database(merged_file: str, scan_id: int, target_id: int) -> int:
@@ -781,11 +845,25 @@ def url_fetch_flow(
             url_fetch_dir=url_fetch_dir
         )
         
-        # Step 6: 使用 httpx 验证存活并流式保存（如果启用）
-        if 'httpx' in enabled_tools and enabled_tools['httpx'].get('enabled', False):
-            logger.info("Step 6: 使用 httpx 验证 URL 存活并流式保存")
-            validated_count = _validate_and_stream_save_urls(
+        # Step 6: 使用 uro 清理 URL（如果启用）
+        url_file_for_validation = merged_file  # 默认使用合并后的文件
+        uro_removed_count = 0
+        
+        if 'uro' in enabled_tools and enabled_tools['uro'].get('enabled', False):
+            logger.info("Step 6: 使用 uro 清理 URL")
+            url_file_for_validation, cleaned_count, uro_removed_count = _clean_urls_with_uro(
                 merged_file=merged_file,
+                uro_config=enabled_tools['uro'],
+                url_fetch_dir=url_fetch_dir
+            )
+        else:
+            logger.info("Step 6: 跳过 uro 清理（未启用）")
+        
+        # Step 7: 使用 httpx 验证存活并流式保存（如果启用）
+        if 'httpx' in enabled_tools and enabled_tools['httpx'].get('enabled', False):
+            logger.info("Step 7: 使用 httpx 验证 URL 存活并流式保存")
+            validated_count = _validate_and_stream_save_urls(
+                merged_file=url_file_for_validation,  # 使用清理后的文件
                 httpx_config=enabled_tools['httpx'],
                 url_fetch_dir=url_fetch_dir,
                 scan_id=scan_id,
@@ -794,10 +872,10 @@ def url_fetch_flow(
             saved_count = validated_count
             logger.info("✓ httpx 验证并保存完成 - 存活 URL: %d", validated_count)
         else:
-            # Step 6 备选: 直接保存（不验证存活）
-            logger.info("Step 6: 保存到数据库（未启用 httpx 验证）")
+            # Step 7 备选: 直接保存（不验证存活）
+            logger.info("Step 7: 保存到数据库（未启用 httpx 验证）")
             saved_count = _save_urls_to_database(
-                merged_file=merged_file,
+                merged_file=url_file_for_validation,  # 使用清理后的文件
                 scan_id=scan_id,
                 target_id=target_id
             )
@@ -808,6 +886,10 @@ def url_fetch_flow(
         executed_tasks = ['setup_directory', 'parse_config', 'export_required_assets']
         executed_tasks.extend([f'run_fetcher ({tool})' for tool in successful_tool_names])
         executed_tasks.append('merge_and_deduplicate')
+        
+        # 根据是否使用 uro 添加任务
+        if 'uro' in enabled_tools and enabled_tools['uro'].get('enabled', False):
+            executed_tasks.append('uro_clean')
         
         # 根据是否使用 httpx 验证添加不同的任务
         if 'httpx' in enabled_tools and enabled_tools['httpx'].get('enabled', False):

@@ -26,6 +26,36 @@ MAX_LOG_TAIL_LINES = 1000  # 日志文件读取的最大行数
 # ENABLE_COMMAND_LOGGING=false: 只输出错误到log_file_path
 ENABLE_COMMAND_LOGGING = os.getenv('ENABLE_COMMAND_LOGGING', 'false').lower() == 'true'
 
+# 命令执行通知配置
+# ENABLE_COMMAND_NOTIFICATION=true: 发送命令执行开始通知（默认）
+# ENABLE_COMMAND_NOTIFICATION=false: 不发送通知
+ENABLE_COMMAND_NOTIFICATION = os.getenv('ENABLE_COMMAND_NOTIFICATION', 'true').lower() == 'true'
+
+
+def _send_command_notification(tool_name: str, command: str, timeout: int) -> None:
+    """
+    发送命令执行开始通知
+    
+    Args:
+        tool_name: 工具名称
+        command: 执行的命令
+        timeout: 超时时间（秒）
+    """
+    if not ENABLE_COMMAND_NOTIFICATION:
+        return
+    
+    try:
+        from apps.scan.notifications import create_notification, NotificationLevel
+        
+        create_notification(
+            title=f"{tool_name} 开始执行",
+            message=f"命令: {command}\n超时: {timeout}秒",
+            level=NotificationLevel.LOW
+        )
+    except Exception as e:
+        # 通知发送失败不影响命令执行
+        logger.debug(f"发送命令通知失败（不影响执行）: {e}")
+
 
 class CommandExecutor:
     """
@@ -123,6 +153,9 @@ class CommandExecutor:
             raise ValueError("扫描命令不能为空")
         if timeout <= 0:
             raise ValueError(f"超时时间必须大于0: {timeout}")
+        
+        # 发送命令执行通知
+        _send_command_notification(tool_name, command, timeout)
         
         logger.info("开始运行扫描工具: %s", tool_name)
         
@@ -270,6 +303,9 @@ class CommandExecutor:
         Raises:
             subprocess.TimeoutExpired: 命令执行超时
         """
+        # 发送命令执行通知
+        _send_command_notification(tool_name, cmd, timeout or 0)
+        
         logger.info(f"执行命令: {cmd}")
         
         # 记录开始时间（用于命令日志）

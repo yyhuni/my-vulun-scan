@@ -120,6 +120,40 @@ url_fetch:
       
       # 输入类型：url（站点级别，每个站点单独爬取）
     
+    uro:
+      enabled: true
+      timeout: auto         # 自动计算（根据 URL 数量，每 100 个约 1 秒）
+                            # 范围：30 秒 ~ 300 秒
+                            # 或手动指定：timeout: 60
+      
+      # ========== 可选参数 ==========
+      # whitelist:          # 只保留指定扩展名的 URL（如：php,asp,jsp）
+      #   - php
+      #   - asp
+      # blacklist:            # 排除指定扩展名的 URL（静态资源）
+      #   - jpg
+      #   - jpeg
+      #   - png
+      #   - gif
+      #   - svg
+      #   - ico
+      #   - css
+      #   - woff
+      #   - woff2
+      #   - ttf
+      #   - eot
+      #   - mp4
+      #   - mp3
+      #   - pdf
+      # filters:             # 额外的过滤规则，参考 uro 文档
+      #   - hasparams        # 只保留有参数的 URL
+      #   - hasext           # 只保留有扩展名的 URL
+      #   - vuln             # 只保留可能有漏洞的 URL
+      
+      # 用途：清理合并后的 URL 列表，去除冗余和无效 URL
+      # 输入类型：merged_file（合并后的 URL 文件）
+      # 输出：清理后的 URL 列表
+    
     httpx:
       enabled: true
       timeout: auto         # 自动计算（根据 URL 数量，每个 URL 1 秒）

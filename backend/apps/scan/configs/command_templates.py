@@ -132,6 +132,15 @@ URL_FETCH_COMMANDS = {
         'input_type': 'sites_file'
     },
     
+    'uro': {
+        'base': 'uro -i {input_file} -o {output_file}',
+        'optional': {
+            'whitelist': '-w {whitelist}',      # 只保留指定扩展名的 URL（空格分隔）
+            'blacklist': '-b {blacklist}',      # 排除指定扩展名的 URL（空格分隔）
+            'filters': '-f {filters}'           # 额外的过滤规则（空格分隔）
+        }
+    },
+    
     'httpx': {
         'base': (
             '$HOME/go/bin/httpx -l {url_file} '

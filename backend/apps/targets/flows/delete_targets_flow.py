@@ -49,19 +49,25 @@ def delete_targets_flow(target_ids: List[int]) -> Dict:
     logger.info(f"  数量: {len(target_ids)}")
     logger.info("="*60)
     
+    futures = []
+    
+    # 提交所有删除任务
+    for target_id in target_ids:
+        future = hard_delete_target_task.submit(target_id=target_id)
+        futures.append((target_id, future))
+    
+    # 收集结果
     results = []
     success_count = 0
     failed_count = 0
     total_deleted = 0
     
-    # 逐个删除目标（Prefect Task自动管理重试和错误处理）
-    for target_id in target_ids:
+    for target_id, future in futures:
         try:
-            result = hard_delete_target_task.submit(target_id=target_id)
+            result = future.result()  # 等待 Future 完成并获取结果
             results.append(result)
             success_count += 1
-            total_deleted += result['deleted_count']
-            
+            total_deleted += result.get('deleted_count', 0)
         except Exception as e:
             logger.error(f"❌ 删除目标失败 (ID: {target_id}) - {e}")
             failed_count += 1

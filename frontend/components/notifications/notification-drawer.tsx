@@ -138,10 +138,10 @@ export function NotificationDrawer() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium leading-none">
+                    <p className="text-sm font-medium leading-snug break-all">
                       {notification.title}
                     </p>
-                    <div className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap break-words">
+                    <div className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap break-all overflow-hidden">
                       {notification.description}
                     </div>
                   </div>
