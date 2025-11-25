@@ -203,7 +203,7 @@ export function QuickScanDialog({ trigger }: QuickScanDialogProps) {
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogTrigger asChild>
         {trigger || (
-          <Button size="sm" className="gap-1.5">
+          <Button variant="ghost" size="sm" className="gap-1.5">
             <Zap className="h-4 w-4" />
             快速扫描
           </Button>
