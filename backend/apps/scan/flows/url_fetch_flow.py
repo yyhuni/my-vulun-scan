@@ -170,8 +170,11 @@ def _export_required_assets(
     """
     from apps.scan.tasks.url_fetch import export_target_assets_task
     
-    # 排除 httpx（它使用合并后的 url_file，不需要从数据库导出）
-    fetcher_tools = {k: v for k, v in enabled_tools.items() if k != 'httpx'}
+    # 排除 httpx 和 uro（它们使用合并后的文件，不需要从数据库导出）
+    # - httpx: 验证并保存 URL
+    # - uro: 清理合并后的 URL
+    non_fetcher_tools = {'httpx', 'uro'}
+    fetcher_tools = {k: v for k, v in enabled_tools.items() if k not in non_fetcher_tools}
     
     # 批量获取获取工具的输入类型（已验证有效性）
     tool_input_types = _get_tools_input_types(fetcher_tools)
@@ -442,8 +445,11 @@ def _run_fetchers_parallel(
     """
     logger.info("Step 2: 并行执行 URL 获取工具")
     
-    # 分离 httpx（用于验证）和其他获取工具
-    fetcher_tools = {k: v for k, v in enabled_tools.items() if k != 'httpx'}
+    # 分离 httpx/uro 和其他获取工具
+    # - httpx: 用于验证 URL 存活
+    # - uro: 用于清理合并后的 URL
+    non_fetcher_tools = {'httpx', 'uro'}
+    fetcher_tools = {k: v for k, v in enabled_tools.items() if k not in non_fetcher_tools}
     
     if not fetcher_tools:
         raise ValueError(
