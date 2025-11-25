@@ -178,3 +178,21 @@ class DjangoTargetRepository:
                 exc_info=True
             )
             raise
+    
+    def update_last_scanned_at(self, target_id: int, scanned_at) -> bool:
+        """
+        更新目标的最后扫描时间
+        
+        Args:
+            target_id: 目标 ID
+            scanned_at: 扫描时间
+        
+        Returns:
+            是否更新成功
+        """
+        try:
+            updated = Target.objects.filter(id=target_id).update(last_scanned_at=scanned_at)
+            return updated > 0
+        except Exception as e:
+            logger.error("更新最后扫描时间失败 - Target ID: %s, 错误: %s", target_id, e)
+            return False

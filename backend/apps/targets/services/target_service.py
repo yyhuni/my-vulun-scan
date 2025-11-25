@@ -75,6 +75,19 @@ class TargetService:
         """
         return self.repo.get_all()
     
+    def update_last_scanned_at(self, target_id: int) -> bool:
+        """
+        更新目标的最后扫描时间
+        
+        Args:
+            target_id: 目标 ID
+        
+        Returns:
+            是否更新成功
+        """
+        from django.utils import timezone
+        return self.repo.update_last_scanned_at(target_id, timezone.now())
+    
     # ==================== 创建操作 ====================
     
     def create_or_get_target(

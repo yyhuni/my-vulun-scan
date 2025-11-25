@@ -152,6 +152,13 @@ def initiate_scan_flow(
         scan_service.init_stage_progress(scan_id, orchestrator.scan_types)
         logger.info(f"✓ 初始化阶段进度 - Stages: {orchestrator.scan_types}")
         
+        # ==================== 更新 Target 最后扫描时间 ====================
+        # 在开始扫描时更新，表示"最后一次扫描开始时间"
+        from apps.targets.services import TargetService
+        target_service = TargetService()
+        target_service.update_last_scanned_at(target_id)
+        logger.info(f"✓ 更新 Target 最后扫描时间 - Target ID: {target_id}")
+        
         # ==================== Task 3: 执行 Flow（按 YAML 顺序，Subflow 方式） ====================
         # 注意：各阶段状态更新由 scan_flow_handlers.py 自动处理（running/completed/failed）
         executed_flows = []

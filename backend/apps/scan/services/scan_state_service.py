@@ -391,23 +391,22 @@ class ScanStateService:
             stage_progress = scan.stage_progress
             updated = False
             
-            reason = "扫描已取消" if final_status == "cancelled" else "扫描已崩溃"
-            
             for stage, info in stage_progress.items():
                 status = info.get("status")
                 order = info.get("order", 0)
                 
                 if status == "running":
+                    # 正在运行的阶段标记为 final_status（cancelled/crashed）
                     stage_progress[stage] = {
                         "status": final_status,
                         "order": order,
                     }
                     updated = True
                 elif status == "pending":
+                    # 未开始的阶段统一标记为 cancelled
                     stage_progress[stage] = {
-                        "status": "skipped",
+                        "status": "cancelled",
                         "order": order,
-                        "reason": reason
                     }
                     updated = True
             

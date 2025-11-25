@@ -12,7 +12,7 @@ export type ScanStage = string
 /**
  * 阶段进度状态
  */
-export type StageStatus = "pending" | "running" | "completed" | "failed" | "skipped" | "cancelled" | "crashed"
+export type StageStatus = "pending" | "running" | "completed" | "failed" | "cancelled" | "crashed"
 
 /**
  * 单个阶段的进度信息

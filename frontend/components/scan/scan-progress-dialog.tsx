@@ -64,8 +64,6 @@ function StageStatusIcon({ status }: { status: StageStatus }) {
       return <IconCircleX className="h-5 w-5 text-orange-500" />
     case "crashed":
       return <IconCircleX className="h-5 w-5 text-purple-500" />
-    case "skipped":
-      return <IconClock className="h-5 w-5 text-muted-foreground/50" />
     default:
       return <IconClock className="h-5 w-5 text-muted-foreground" />
   }
@@ -127,9 +125,6 @@ function StageRow({ stage }: { stage: StageDetail }) {
             已崩溃
           </Badge>
         )}
-        {stage.status === "skipped" && (
-          <span className="text-sm text-muted-foreground/50">已跳过</span>
-        )}
       </div>
     </div>
   )
@@ -168,7 +163,7 @@ export function ScanProgressDialog({
           {data.startedAt && (
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">开始时间</span>
-              <span className="font-mono text-xs">{data.startedAt}</span>
+              <span className="font-mono text-xs">{formatDateTime(data.startedAt)}</span>
             </div>
           )}
         </div>
@@ -206,6 +201,27 @@ function formatDuration(seconds?: number): string | undefined {
   const minutes = Math.floor(seconds / 60)
   const secs = Math.round(seconds % 60)
   return secs > 0 ? `${minutes}m ${secs}s` : `${minutes}m`
+}
+
+/**
+ * 格式化日期时间（ISO 字符串 -> 可读格式）
+ */
+function formatDateTime(isoString?: string): string {
+  if (!isoString) return ""
+  try {
+    const date = new Date(isoString)
+    return date.toLocaleString("zh-CN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    })
+  } catch {
+    return isoString
+  }
 }
 
 /**
