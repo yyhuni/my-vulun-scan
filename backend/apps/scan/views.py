@@ -9,8 +9,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 from .models import Scan
-from .serializers import ScanSerializer, ScanHistorySerializer
+from .serializers import ScanSerializer, ScanHistorySerializer, QuickScanSerializer
 from .services.scan_service import ScanService
+from apps.targets.services.target_service import TargetService
+from apps.targets.services.organization_service import OrganizationService
+from apps.engine.services.engine_service import EngineService
 from apps.common.definitions import ScanStatus
 from apps.common.pagination import BasePagination
 from apps.asset.serializers import (
@@ -90,6 +93,82 @@ class ScanViewSet(viewsets.ModelViewSet):
             logger.exception("删除扫描任务时发生错误")
             raise APIException('服务器错误，请稍后重试')
     
+    @action(detail=False, methods=['post'])
+    def quick(self, request):
+        """
+        快速扫描接口
+        
+        功能：
+        1. 接收目标列表和引擎配置
+        2. 自动批量创建/获取目标
+        3. 立即发起批量扫描
+        
+        请求参数：
+        {
+            "targets": [{"name": "example.com"}, {"name": "1.1.1.1"}],
+            "engine_id": 1
+        }
+        """
+        serializer = QuickScanSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        targets_data = serializer.validated_data['targets']
+        engine_id = serializer.validated_data.get('engine_id')
+        
+        try:
+            # 1. 批量创建/获取目标
+            target_service = TargetService()
+            batch_result = target_service.batch_create_targets(
+                targets_data=targets_data,
+                organization_id=None  # 快速扫描不关联组织
+            )
+            
+            # 收集所有目标对象（包括新创建和已存在的）
+            # batch_create_targets 返回的是统计信息，我们需要获取目标对象列表
+            # 这里重新查询刚刚创建/获取的目标
+            target_names = [t['name'] for t in targets_data]
+            targets = target_service.get_targets_by_names(target_names)
+            
+            if not targets:
+                return Response(
+                    {'error': '没有有效的目标可供扫描'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # 2. 获取扫描引擎
+            engine_service = EngineService()
+            engine = engine_service.get_engine(engine_id)
+            if not engine:
+                raise ValidationError(f'扫描引擎 ID {engine_id} 不存在')
+            
+            # 3. 批量发起扫描
+            scan_service = ScanService()
+            created_scans = scan_service.create_scans(
+                targets=targets,
+                engine=engine
+            )
+            
+            # 序列化返回结果
+            scan_serializer = ScanSerializer(created_scans, many=True)
+            
+            return Response({
+                'message': f'快速扫描已启动：{len(created_scans)} 个任务',
+                'target_stats': {
+                    'created': batch_result['created_count'],
+                    'failed': batch_result['failed_count']
+                },
+                'scans': scan_serializer.data
+            }, status=status.HTTP_201_CREATED)
+            
+        except ValidationError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception("快速扫描启动失败")
+            return Response(
+                {'error': '服务器内部错误，请稍后重试'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
     @action(detail=False, methods=['post'])
     def initiate(self, request):
         """

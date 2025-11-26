@@ -86,4 +86,50 @@ class ScanHistorySerializer(serializers.ModelSerializer):
                 'low': 0
             }
         }
+
+
+class QuickScanSerializer(serializers.Serializer):
+    """
+    快速扫描序列化器
+    
+    功能：
+    - 接收目标列表和引擎配置
+    - 自动创建/获取目标
+    - 立即发起扫描
+    """
+    
+    # 批量创建的最大数量限制
+    MAX_BATCH_SIZE = 1000
+    
+    # 目标列表
+    targets = serializers.ListField(
+        child=serializers.DictField(),
+        help_text='目标列表，每个目标包含 name 字段'
+    )
+    
+    # 扫描引擎 ID
+    engine_id = serializers.IntegerField(
+        required=True,
+        help_text='使用的扫描引擎 ID (必填)'
+    )
+    
+    def validate_targets(self, value):
+        """验证目标列表"""
+        if not value:
+            raise serializers.ValidationError("目标列表不能为空")
+        
+        # 检查数量限制，防止服务器过载
+        if len(value) > self.MAX_BATCH_SIZE:
+            raise serializers.ValidationError(
+                f"快速扫描最多支持 {self.MAX_BATCH_SIZE} 个目标，当前提交了 {len(value)} 个"
+            )
+        
+        # 验证每个目标的必填字段
+        for idx, target in enumerate(value):
+            if 'name' not in target:
+                raise serializers.ValidationError(f"第 {idx + 1} 个目标缺少 name 字段")
+            if not target['name']:
+                raise serializers.ValidationError(f"第 {idx + 1} 个目标的 name 不能为空")
+        
+        return value
     

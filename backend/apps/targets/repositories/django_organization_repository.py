@@ -19,6 +19,31 @@ logger = logging.getLogger(__name__)
 class DjangoOrganizationRepository:
     """Organization Django ORM 仓储实现"""
     
+    def bulk_add_targets(self, organization_id: int, targets: List[Target]) -> None:
+        """
+        批量添加目标到组织
+        
+        Args:
+            organization_id: 组织 ID
+            targets: Target 对象列表
+        """
+        if not targets:
+            return
+            
+        # 使用 through model 批量插入，避免 N 次 add()
+        ThroughModel = Organization.targets.through
+        relations = [
+            ThroughModel(organization_id=organization_id, target_id=t.id)
+            for t in targets
+        ]
+        
+        try:
+            # 使用 ignore_conflicts 忽略已存在的关联
+            ThroughModel.objects.bulk_create(relations, ignore_conflicts=True)
+        except Exception as e:
+            logger.error(f"批量关联目标失败: {e}")
+            raise
+
     def get_by_id(self, organization_id: int) -> Organization | None:
         """
         根据 ID 获取组织

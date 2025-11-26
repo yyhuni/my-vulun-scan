@@ -84,6 +84,19 @@ class OrganizationService:
         """
         return self.repo.get_all_with_stats()
     
+    # ==================== 创建操作 ====================
+    
+    def bulk_add_targets(self, organization_id: int, targets: List) -> None:
+        """
+        批量添加目标到组织
+        
+        Args:
+            organization_id: 组织 ID
+            targets: Target 对象列表
+        """
+        logger.debug("批量关联目标到组织 - Org ID: %s, Targets: %s", organization_id, len(targets))
+        self.repo.bulk_add_targets(organization_id, targets)
+
     # ==================== 删除操作 ====================
     
     def delete_organizations_two_phase(self, organization_ids: List[int]) -> Dict:

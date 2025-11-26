@@ -74,13 +74,32 @@ export interface GetScansResponse {
 }
 
 /**
- * 发起扫描请求参数
+ * 发起扫描请求参数（用于已存在的目标/组织）
  */
 export interface InitiateScanRequest {
-  organizationId?: number  // 组织ID（三选一）
-  targetId?: number        // 目标ID（三选一）
-  targetName?: string      // 目标名称（三选一）- 快速扫描，自动创建目标
+  organizationId?: number  // 组织ID（二选一）
+  targetId?: number        // 目标ID（二选一）
   engineId: number         // 扫描引擎ID（必填）
+}
+
+/**
+ * 快速扫描请求参数（自动创建目标并扫描）
+ */
+export interface QuickScanRequest {
+  targets: { name: string }[]  // 目标列表
+  engine_id: number            // 扫描引擎ID（必填）
+}
+
+/**
+ * 快速扫描响应
+ */
+export interface QuickScanResponse {
+  message: string
+  targetStats: {
+    created: number
+    failed: number
+  }
+  scans: ScanTask[]
 }
 
 /**

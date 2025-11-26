@@ -4,6 +4,8 @@ import type {
   GetScansResponse,
   InitiateScanRequest,
   InitiateScanResponse,
+  QuickScanRequest,
+  QuickScanResponse,
   ScanRecord
 } from '@/types/scan.types'
 
@@ -26,12 +28,22 @@ export async function getScan(id: number): Promise<ScanRecord> {
 }
 
 /**
- * 发起扫描任务
+ * 发起扫描任务（针对已存在的目标/组织）
  * @param data - 扫描请求参数
  * @returns 扫描任务信息
  */
 export async function initiateScan(data: InitiateScanRequest): Promise<InitiateScanResponse> {
   const res = await api.post<InitiateScanResponse>('/scans/initiate/', data)
+  return res.data
+}
+
+/**
+ * 快速扫描（自动创建目标并立即扫描）
+ * @param data - 快速扫描请求参数
+ * @returns 扫描任务信息
+ */
+export async function quickScan(data: QuickScanRequest): Promise<QuickScanResponse> {
+  const res = await api.post<QuickScanResponse>('/scans/quick/', data)
   return res.data
 }
 

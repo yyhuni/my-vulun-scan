@@ -71,30 +71,33 @@ def detect_target_type(name: str) -> str:
         name: 目标名称（应该已经规范化）
         
     Returns:
-        str: 目标类型 ('domain', 'ip', 'cidr')
+        str: 目标类型 ('domain', 'ip', 'cidr') - 使用 Target.TargetType 枚举值
         
     Raises:
         ValueError: 如果无法识别目标类型
     """
+    # 在函数内部导入模型，避免 AppRegistryNotReady 错误
+    from apps.targets.models import Target
+
     if not name:
         raise ValueError("目标名称不能为空")
     
     # 检查是否是 CIDR 格式（包含 /）
     if '/' in name:
         validate_cidr(name)
-        return 'cidr'
+        return Target.TargetType.CIDR
     
     # 检查是否是 IP 地址
     try:
         validate_ip(name)
-        return 'ip'
+        return Target.TargetType.IP
     except ValueError:
         pass
     
     # 检查是否是合法域名
     try:
         validate_domain(name)
-        return 'domain'
+        return Target.TargetType.DOMAIN
     except ValueError:
         pass
     

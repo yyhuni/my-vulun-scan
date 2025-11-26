@@ -377,7 +377,6 @@ class TargetViewSet(viewsets.ModelViewSet):
         返回：
         {
             "created_count": 2,
-            "reused_count": 0,
             "failed_count": 0,
             "failed_targets": [
                 {"name": "xxx", "reason": "无法识别的目标格式"}

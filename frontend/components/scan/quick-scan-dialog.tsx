@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { useRouter } from "next/navigation"
 import {
   Dialog,
   DialogContent,
@@ -19,7 +18,7 @@ import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { Zap, Target, Settings, Check, ChevronRight, ChevronLeft, Loader2, ChevronDown, ChevronUp } from "lucide-react"
 import { getEngines } from "@/services/engine.service"
-import { initiateScan } from "@/services/scan.service"
+import { quickScan } from "@/services/scan.service"
 import type { ScanEngine } from "@/types/engine.types"
 
 // 步骤定义
@@ -34,7 +33,6 @@ interface QuickScanDialogProps {
 }
 
 export function QuickScanDialog({ trigger }: QuickScanDialogProps) {
-  const router = useRouter()
   const [open, setOpen] = React.useState(false)
   const [step, setStep] = React.useState(1)
   const [isLoading, setIsLoading] = React.useState(false)
@@ -45,6 +43,17 @@ export function QuickScanDialog({ trigger }: QuickScanDialogProps) {
   const [selectedEngineId, setSelectedEngineId] = React.useState<string>("")
   const [expandedEngineId, setExpandedEngineId] = React.useState<string | null>(null)
   const [engines, setEngines] = React.useState<ScanEngine[]>([])
+  
+  // 行号列和输入框的 ref（用于同步滚动）
+  const lineNumbersRef = React.useRef<HTMLDivElement | null>(null)
+  const textareaRef = React.useRef<HTMLTextAreaElement | null>(null)
+  
+  // 同步输入框和行号列的滚动
+  const handleTextareaScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
+    if (lineNumbersRef.current) {
+      lineNumbersRef.current.scrollTop = e.currentTarget.scrollTop
+    }
+  }
   
   // 解析目标列表（多行）
   const parseTargets = (input: string): string[] => {
@@ -165,28 +174,27 @@ export function QuickScanDialog({ trigger }: QuickScanDialogProps) {
     
     setIsSubmitting(true)
     try {
-      // 逐个发起扫描任务
-      let successCount = 0
-      let failCount = 0
+      // 调用快速扫描接口，一次性提交所有目标
+      const response = await quickScan({
+        targets: targets.map(name => ({ name })),
+        engine_id: Number(selectedEngineId),
+      })
       
-      for (const target of targets) {
-        try {
-          await initiateScan({
-            targetName: target,
-            engineId: Number(selectedEngineId),
-          })
-          successCount++
-        } catch {
-          failCount++
-        }
-      }
+      const { targetStats, scans } = response
       
-      if (successCount > 0) {
-        toast.success(`已创建 ${successCount} 个扫描任务${failCount > 0 ? `，${failCount} 个失败` : ""}`)
+      if (scans.length > 0) {
+        toast.success(response.message || `已创建 ${scans.length} 个扫描任务`, {
+          description: targetStats.failed > 0 
+            ? `${targetStats.created} 个目标成功，${targetStats.failed} 个失败`
+            : undefined
+        })
         handleClose(false)
-        router.push("/scan/history/")
       } else {
-        toast.error("创建扫描任务失败")
+        toast.error("创建扫描任务失败", {
+          description: targetStats.failed > 0 
+            ? `${targetStats.failed} 个目标处理失败`
+            : undefined
+        })
       }
     } catch (error: any) {
       toast.error(error?.response?.data?.detail || error?.response?.data?.error || "创建扫描任务失败")
@@ -263,21 +271,46 @@ export function QuickScanDialog({ trigger }: QuickScanDialogProps) {
           {step === 1 && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="target">目标</Label>
-                <Textarea
-                  id="target"
-                  placeholder="每行输入一个目标，支持域名、IP 或 CIDR&#10;example.com&#10;192.168.1.1&#10;10.0.0.0/24"
-                  value={targetInput}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setTargetInput(e.target.value)}
-                  className="min-h-[120px] font-mono text-sm"
-                  autoFocus
-                />
+                <Label htmlFor="target">目标列表</Label>
+                <div className="flex border rounded-md overflow-hidden h-[180px]">
+                  {/* 行号列 - 固定宽度 */}
+                  <div className="flex-shrink-0 w-10 border-r bg-muted/50">
+                    <div 
+                      ref={lineNumbersRef}
+                      className="py-2 px-1.5 text-right font-mono text-xs text-muted-foreground leading-[1.4] h-full overflow-y-auto scrollbar-hide"
+                    >
+                      {Array.from({ length: Math.max(targetInput.split('\n').length, 8) }, (_, i) => (
+                        <div key={i + 1} className="h-[20px]">
+                          {i + 1}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {/* 输入框区域 - 占据剩余空间 */}
+                  <div className="flex-1 overflow-hidden">
+                    <Textarea
+                      ref={textareaRef}
+                      id="target"
+                      value={targetInput}
+                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setTargetInput(e.target.value)}
+                      onScroll={handleTextareaScroll}
+                      placeholder={`请输入目标，每行一个
+支持域名、IP、CIDR
+例如：
+example.com
+192.168.1.1
+10.0.0.0/8`}
+                      className="font-mono h-full overflow-y-auto resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 leading-[1.4] text-sm py-2"
+                      style={{ lineHeight: '20px' }}
+                      autoFocus
+                    />
+                  </div>
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  每行一个目标，支持域名、IP 地址或 CIDR 范围
-                  {parsedTargets.length > 0 && (
-                    <span className="ml-2 text-primary">
-                      已输入 {parsedTargets.length} 个目标
-                    </span>
+                  {parsedTargets.length > 0 ? (
+                    <span className="text-primary">{parsedTargets.length} 个目标</span>
+                  ) : (
+                    "0 个目标"
                   )}
                 </p>
               </div>

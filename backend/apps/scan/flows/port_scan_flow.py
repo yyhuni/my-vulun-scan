@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Callable
 from prefect import flow
 from apps.scan.tasks.port_scan import (
-    export_domains_task,
+    export_scan_targets_task,
     run_and_stream_save_ports_task
 )
 from apps.scan.handlers.scan_flow_handlers import (
@@ -181,43 +181,45 @@ def _setup_port_scan_directory(scan_workspace_dir: str) -> Path:
     return port_scan_dir
 
 
-def _export_target_domains(target_id: int, port_scan_dir: Path) -> tuple[str, int]:
+def _export_scan_targets(target_id: int, port_scan_dir: Path) -> tuple[str, int, str]:
     """
-    导出目标域名到文件
+    导出扫描目标到文件
+    
+    根据 Target 类型自动决定导出内容：
+    - DOMAIN: 从 Subdomain 表导出子域名
+    - IP: 直接写入 target.name
+    - CIDR: 展开 CIDR 范围内的所有 IP
     
     Args:
         target_id: 目标 ID
         port_scan_dir: 端口扫描目录
         
     Returns:
-        tuple: (domains_file, domain_count)
-        
-    Raises:
-        ValueError: 域名数量为 0
+        tuple: (targets_file, target_count, target_type)
     """
-    logger.info("Step 1: 导出目标域名列表")
+    logger.info("Step 1: 导出扫描目标列表")
     
-    domains_file = str(port_scan_dir / 'domains.txt')
-    export_result = export_domains_task(
+    targets_file = str(port_scan_dir / 'targets.txt')
+    export_result = export_scan_targets_task(
         target_id=target_id,
-        output_file=domains_file,
+        output_file=targets_file,
         batch_size=1000  # 每次读取 1000 条，优化内存占用
     )
     
-    domain_count = export_result['total_count']
+    target_count = export_result['total_count']
+    target_type = export_result.get('target_type', 'unknown')
     
     logger.info(
-        "✓ 域名导出完成 - 文件: %s, 数量: %d",
+        "✓ 扫描目标导出完成 - 类型: %s, 文件: %s, 数量: %d",
+        target_type,
         export_result['output_file'],
-        domain_count
+        target_count
     )
     
-    if domain_count == 0:
-        logger.warning("目标下没有域名，无法执行端口扫描")
-        # 不抛出异常，由上层决定如何处理
-        # raise ValueError("目标下没有域名，无法执行端口扫描")
+    if target_count == 0:
+        logger.warning("目标下没有可扫描的地址，无法执行端口扫描")
     
-    return export_result['output_file'], domain_count
+    return export_result['output_file'], target_count, target_type
 
 
 def _run_scans_sequentially(
@@ -455,20 +457,21 @@ def port_scan_flow(
         # Step 0: 创建工作目录
         port_scan_dir = _setup_port_scan_directory(scan_workspace_dir)
         
-        # Step 1: 导出目标域名列表到文件
-        domains_file, domain_count = _export_target_domains(target_id, port_scan_dir)
+        # Step 1: 导出扫描目标列表到文件（根据 Target 类型自动决定内容）
+        targets_file, target_count, target_type = _export_scan_targets(target_id, port_scan_dir)
         
-        if domain_count == 0:
-            logger.warning("目标下没有域名，跳过端口扫描")
+        if target_count == 0:
+            logger.warning("目标下没有可扫描的地址，跳过端口扫描")
             return {
                 'success': True,
                 'scan_id': scan_id,
                 'target': target_name,
                 'scan_workspace_dir': scan_workspace_dir,
-                'domains_file': domains_file,
-                'domain_count': 0,
+                'targets_file': targets_file,
+                'target_count': 0,
+                'target_type': target_type,
                 'processed_records': 0,
-                'executed_tasks': ['export_domains'],
+                'executed_tasks': ['export_scan_targets'],
                 'tool_stats': {
                     'total': 0,
                     'successful': 0,
@@ -490,7 +493,7 @@ def port_scan_flow(
         logger.info("Step 3: 串行执行扫描工具")
         tool_stats, processed_records, successful_tool_names, failed_tools = _run_scans_sequentially(
             enabled_tools=enabled_tools,
-            domains_file=domains_file,
+            domains_file=targets_file,  # 现在是 targets_file，兼容原参数名
             port_scan_dir=port_scan_dir,
             scan_id=scan_id,
             target_id=target_id,
@@ -500,7 +503,7 @@ def port_scan_flow(
         logger.info("="*60 + "\n✓ 端口扫描完成\n" + "="*60)
         
         # 动态生成已执行的任务列表
-        executed_tasks = ['export_domains', 'parse_config']
+        executed_tasks = ['export_scan_targets', 'parse_config']
         executed_tasks.extend([f'run_and_stream_save_ports ({tool})' for tool in tool_stats.keys()])
         
         return {
@@ -508,8 +511,9 @@ def port_scan_flow(
             'scan_id': scan_id,
             'target': target_name,
             'scan_workspace_dir': scan_workspace_dir,
-            'domains_file': domains_file,
-            'domain_count': domain_count,
+            'targets_file': targets_file,
+            'target_count': target_count,
+            'target_type': target_type,
             'processed_records': processed_records,
             'executed_tasks': executed_tasks,
             'tool_stats': {

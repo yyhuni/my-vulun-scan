@@ -6,6 +6,7 @@ Target Django ORM 仓储实现
 
 import logging
 from typing import List, Tuple, Dict
+from django.db import transaction, IntegrityError, OperationalError, DatabaseError
 from django.utils import timezone
 
 from ..models import Target
@@ -18,6 +19,36 @@ logger = logging.getLogger(__name__)
 class DjangoTargetRepository:
     """Target Django ORM 仓储实现"""
     
+    def bulk_create_ignore_conflicts(self, targets: List[Target]) -> None:
+        """
+        批量创建目标，忽略冲突
+        
+        Args:
+            targets: Target 对象列表
+        """
+        if not targets:
+            return
+            
+        try:
+            Target.objects.bulk_create(targets, ignore_conflicts=True)
+        except Exception as e:
+            logger.error(f"批量创建目标失败: {e}")
+            raise
+
+    def get_by_names(self, names: List[str]) -> List[Target]:
+        """
+        根据名称列表批量获取目标
+        
+        Args:
+            names: 目标名称列表
+            
+        Returns:
+            Target 对象列表
+        """
+        if not names:
+            return []
+        return list(Target.objects.filter(name__in=names))
+
     def get_by_id(self, target_id: int) -> Target | None:
         """
         根据 ID 获取目标
