@@ -16,6 +16,7 @@ from .scan_creation_service import ScanCreationService
 from .scan_state_service import ScanStateService
 from .scan_control_service import ScanControlService
 from .scan_stats_service import ScanStatsService
+from .scheduled_scan_service import ScheduledScanService
 
 __all__ = [
     'ScanService',           # 主入口（向后兼容）
@@ -23,5 +24,6 @@ __all__ = [
     'ScanStateService',
     'ScanControlService',
     'ScanStatsService',
+    'ScheduledScanService',
 ]
 

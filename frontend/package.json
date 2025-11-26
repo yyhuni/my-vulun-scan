@@ -53,6 +53,7 @@
     "nextjs-toploader": "^3.9.17",
     "psl": "^1.15.0",
     "react": "19.1.0",
+    "react-day-picker": "^9.11.2",
     "react-dom": "19.1.0",
     "react-hook-form": "^7.65.0",
     "recharts": "2.15.4",

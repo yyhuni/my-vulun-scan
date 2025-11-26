@@ -5,6 +5,7 @@ from ..common.definitions import ScanStatus
 
 
 
+
 class SoftDeleteManager(models.Manager):
     """软删除管理器：默认只返回未删除的记录"""
     
@@ -88,3 +89,84 @@ class Scan(models.Model):
 
     def __str__(self):
         return f"Scan #{self.id} - {self.target.name}"
+
+
+class ScheduledScan(models.Model):
+    """
+    定时扫描任务模型
+    
+    通过 Prefect Deployment 实现定时调度：
+    - 每个 ScheduledScan 对应一个 Prefect Deployment
+    - 启用/禁用通过控制 Deployment 的 schedule 状态实现
+    - 支持 cron 表达式进行灵活调度
+    """
+    
+    id = models.AutoField(primary_key=True)
+    
+    # 基本信息
+    name = models.CharField(max_length=200, help_text='任务名称')
+    description = models.TextField(blank=True, default='', help_text='任务描述')
+    
+    # 关联的扫描引擎
+    engine = models.ForeignKey(
+        'engine.ScanEngine',
+        on_delete=models.CASCADE,
+        related_name='scheduled_scans',
+        help_text='使用的扫描引擎'
+    )
+    
+    # 关联的目标（多对多，支持扫描多个目标）
+    targets = models.ManyToManyField(
+        'targets.Target',
+        related_name='scheduled_scans',
+        help_text='扫描目标列表'
+    )
+    
+    # 调度配置 - 直接使用 Cron 表达式
+    cron_expression = models.CharField(
+        max_length=100,
+        default='0 2 * * *',
+        help_text='Cron 表达式，格式：分 时 日 月 周'
+    )
+    
+    # 状态
+    is_enabled = models.BooleanField(default=True, db_index=True, help_text='是否启用')
+    
+    # Prefect Deployment 关联
+    deployment_id = models.CharField(
+        max_length=100,
+        blank=True,
+        default='',
+        db_index=True,
+        help_text='Prefect Deployment ID'
+    )
+    
+    # 执行统计
+    run_count = models.IntegerField(default=0, help_text='已执行次数')
+    last_run_time = models.DateTimeField(null=True, blank=True, help_text='上次执行时间')
+    next_run_time = models.DateTimeField(null=True, blank=True, help_text='下次执行时间')
+    
+    # 时间戳
+    created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
+    updated_at = models.DateTimeField(auto_now=True, help_text='更新时间')
+    
+    # 软删除
+    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True, help_text='删除时间')
+    
+    # 管理器
+    objects = SoftDeleteManager()
+    all_objects = models.Manager()
+    
+    class Meta:
+        db_table = 'scheduled_scan'
+        verbose_name = '定时扫描任务'
+        verbose_name_plural = '定时扫描任务'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['-created_at']),
+            models.Index(fields=['is_enabled', '-created_at']),
+            models.Index(fields=['deleted_at', '-created_at']),
+        ]
+    
+    def __str__(self):
+        return f"ScheduledScan #{self.id} - {self.name}"

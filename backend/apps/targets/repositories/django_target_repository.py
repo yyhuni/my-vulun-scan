@@ -19,6 +19,34 @@ logger = logging.getLogger(__name__)
 class DjangoTargetRepository:
     """Target Django ORM 仓储实现"""
     
+    def count_by_ids(self, target_ids: List[int]) -> int:
+        """
+        统计给定 ID 列表中存在的目标数量
+        
+        Args:
+            target_ids: 目标 ID 列表
+        
+        Returns:
+            存在的目标数量
+        """
+        if not target_ids:
+            return 0
+        return Target.objects.filter(id__in=target_ids).count()
+    
+    def get_by_ids(self, target_ids: List[int]) -> List[Target]:
+        """
+        根据 ID 列表批量获取目标
+        
+        Args:
+            target_ids: 目标 ID 列表
+        
+        Returns:
+            Target 对象列表
+        """
+        if not target_ids:
+            return []
+        return list(Target.objects.filter(id__in=target_ids))
+    
     def bulk_create_ignore_conflicts(self, targets: List[Target]) -> None:
         """
         批量创建目标，忽略冲突

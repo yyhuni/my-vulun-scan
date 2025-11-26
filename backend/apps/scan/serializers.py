@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Scan
+from .models import Scan, ScheduledScan
 
 
 class ScanSerializer(serializers.ModelSerializer):
@@ -132,4 +132,79 @@ class QuickScanSerializer(serializers.Serializer):
                 raise serializers.ValidationError(f"第 {idx + 1} 个目标的 name 不能为空")
         
         return value
+
+
+# ==================== 定时扫描序列化器 ====================
+
+class ScheduledScanSerializer(serializers.ModelSerializer):
+    """定时扫描任务序列化器（用于列表和详情）"""
     
+    # 关联字段
+    engine_name = serializers.CharField(source='engine.name', read_only=True)
+    target_ids = serializers.SerializerMethodField()
+    target_domains = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = ScheduledScan
+        fields = [
+            'id', 'name', 'description',
+            'engine', 'engine_name',
+            'target_ids', 'target_domains',
+            'cron_expression',
+            'is_enabled', 'deployment_id',
+            'run_count', 'last_run_time', 'next_run_time',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = [
+            'id', 'deployment_id', 'run_count',
+            'last_run_time', 'next_run_time',
+            'created_at', 'updated_at'
+        ]
+    
+    def get_target_ids(self, obj):
+        """获取目标 ID 列表"""
+        return list(obj.targets.values_list('id', flat=True))
+    
+    def get_target_domains(self, obj):
+        """获取目标域名列表"""
+        return list(obj.targets.values_list('name', flat=True))
+
+
+class CreateScheduledScanSerializer(serializers.Serializer):
+    """创建定时扫描任务序列化器"""
+    
+    name = serializers.CharField(max_length=200, help_text='任务名称')
+    description = serializers.CharField(required=False, allow_blank=True, default='', help_text='任务描述')
+    engine_id = serializers.IntegerField(help_text='扫描引擎 ID')
+    target_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        min_length=1,
+        help_text='目标 ID 列表'
+    )
+    cron_expression = serializers.CharField(
+        max_length=100,
+        default='0 2 * * *',
+        help_text='Cron 表达式，格式：分 时 日 月 周'
+    )
+    is_enabled = serializers.BooleanField(default=True, help_text='是否立即启用')
+
+
+class UpdateScheduledScanSerializer(serializers.Serializer):
+    """更新定时扫描任务序列化器"""
+    
+    name = serializers.CharField(max_length=200, required=False, help_text='任务名称')
+    description = serializers.CharField(required=False, allow_blank=True, help_text='任务描述')
+    engine_id = serializers.IntegerField(required=False, help_text='扫描引擎 ID')
+    target_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        required=False,
+        help_text='目标 ID 列表'
+    )
+    cron_expression = serializers.CharField(max_length=100, required=False, help_text='Cron 表达式')
+    is_enabled = serializers.BooleanField(required=False, help_text='是否启用')
+
+
+class ToggleScheduledScanSerializer(serializers.Serializer):
+    """切换定时扫描启用状态序列化器"""
+    
+    is_enabled = serializers.BooleanField(help_text='是否启用')

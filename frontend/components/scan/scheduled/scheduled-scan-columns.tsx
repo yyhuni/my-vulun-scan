@@ -38,10 +38,7 @@ import {
   IconAdjustments,
 } from "@tabler/icons-react"
 import { toast } from "sonner"
-import type {
-  ScheduledScan,
-  ScheduleFrequency,
-} from "@/types/scheduled-scan.types"
+import type { ScheduledScan } from "@/types/scheduled-scan.types"
 
 /**
  * 可复制单元格组件
@@ -123,46 +120,54 @@ function CopyableCell({
 }
 
 /**
- * 执行频率徽章组件
- * 使用 shadcn Badge 的标准 variant
+ * 解析 Cron 表达式为人类可读格式
  */
-function FrequencyBadge({ frequency }: { frequency: ScheduleFrequency }) {
-  const config = {
-    once: {
-      icon: IconClock,
-      label: "仅一次",
-      variant: "secondary" as const,
-    },
-    daily: {
-      icon: IconCalendar,
-      label: "每天",
-      variant: "default" as const,
-    },
-    weekly: {
-      icon: IconCalendarRepeat,
-      label: "每周",
-      variant: "outline" as const,
-    },
-    monthly: {
-      icon: IconCalendarTime,
-      label: "每月",
-      variant: "secondary" as const,
-    },
-    custom: {
-      icon: IconAdjustments,
-      label: "自定义",
-      variant: "outline" as const,
-    },
+function parseCronExpression(cron: string): string {
+  if (!cron) return '-'
+  
+  const parts = cron.split(' ')
+  if (parts.length !== 5) return cron
+  
+  const [minute, hour, day, month, weekday] = parts
+  
+  // 每分钟
+  if (minute === '*' && hour === '*' && day === '*' && month === '*' && weekday === '*') {
+    return '每分钟'
   }
-
-  const { icon: Icon, label, variant } = config[frequency]
-
-  return (
-    <Badge variant={variant}>
-      <Icon className="h-3.5 w-3.5" />
-      {label}
-    </Badge>
-  )
+  
+  // 每N分钟
+  if (minute.startsWith('*/') && hour === '*') {
+    return `每 ${minute.slice(2)} 分钟`
+  }
+  
+  // 每小时
+  if (minute !== '*' && hour === '*' && day === '*') {
+    return `每小时 ${minute}分`
+  }
+  
+  // 每N小时
+  if (hour.startsWith('*/')) {
+    return `每 ${hour.slice(2)} 小时 ${minute}分`
+  }
+  
+  // 每天
+  if (day === '*' && month === '*' && weekday === '*') {
+    return `每天 ${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`
+  }
+  
+  // 每周
+  const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+  if (day === '*' && month === '*' && weekday !== '*') {
+    const dayName = weekdays[parseInt(weekday)] || weekday
+    return `每${dayName} ${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`
+  }
+  
+  // 每月
+  if (day !== '*' && month === '*' && weekday === '*') {
+    return `每月${day}号 ${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`
+  }
+  
+  return cron
 }
 
 /**
@@ -290,12 +295,12 @@ export const createScheduledScanColumns = ({
 
   // 扫描引擎列
   {
-    accessorKey: "engine_name",
+    accessorKey: "engineName",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="扫描引擎" />
     ),
     cell: ({ row }) => {
-      const engineName = row.getValue("engine_name") as string
+      const engineName = row.getValue("engineName") as string
       return (
         <Badge variant="secondary">
           {engineName}
@@ -304,24 +309,32 @@ export const createScheduledScanColumns = ({
     },
   },
 
-  // 执行频率列
+  // Cron 表达式列
   {
-    accessorKey: "frequency",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="执行频率" />
-    ),
+    accessorKey: "cronExpression",
+    header: "调度时间",
     cell: ({ row }) => {
-      const frequency = row.getValue("frequency") as ScheduleFrequency
-      return <FrequencyBadge frequency={frequency} />
+      const cron = row.original.cronExpression
+      return (
+        <div className="flex flex-col gap-1">
+          <span className="text-sm">
+            {parseCronExpression(cron)}
+          </span>
+          <code className="text-xs text-muted-foreground font-mono">
+            {cron}
+          </code>
+        </div>
+      )
     },
+    enableSorting: false,
   },
 
   // 目标域名列
   {
-    accessorKey: "target_domains",
+    accessorKey: "targetDomains",
     header: "目标域名",
     cell: ({ row }) => {
-      const domains = row.getValue("target_domains") as string[]
+      const domains = row.getValue("targetDomains") as string[]
       if (!domains || domains.length === 0) {
         return <div className="text-sm text-muted-foreground">-</div>
       }
@@ -345,12 +358,12 @@ export const createScheduledScanColumns = ({
 
   // 启用状态列
   {
-    accessorKey: "is_enabled",
+    accessorKey: "isEnabled",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="状态" />
     ),
     cell: ({ row }) => {
-      const isEnabled = row.getValue("is_enabled") as boolean
+      const isEnabled = row.getValue("isEnabled") as boolean
       const scan = row.original
       return (
         <div className="flex items-center gap-2">
@@ -370,12 +383,12 @@ export const createScheduledScanColumns = ({
 
   // 下次执行时间列
   {
-    accessorKey: "next_run_time",
+    accessorKey: "nextRunTime",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="下次执行" />
     ),
     cell: ({ row }) => {
-      const nextRunTime = row.getValue("next_run_time") as string | undefined
+      const nextRunTime = row.getValue("nextRunTime") as string | undefined
       return (
         <div className="text-sm text-muted-foreground">
           {nextRunTime ? formatDate(nextRunTime) : "-"}
@@ -386,12 +399,12 @@ export const createScheduledScanColumns = ({
 
   // 执行次数列
   {
-    accessorKey: "run_count",
+    accessorKey: "runCount",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="执行次数" />
     ),
     cell: ({ row }) => {
-      const count = row.getValue("run_count") as number
+      const count = row.getValue("runCount") as number
       return (
         <div className="text-sm text-muted-foreground font-mono">{count}</div>
       )
@@ -400,12 +413,12 @@ export const createScheduledScanColumns = ({
 
   // 上次执行时间列
   {
-    accessorKey: "last_run_time",
+    accessorKey: "lastRunTime",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="上次执行" />
     ),
     cell: ({ row }) => {
-      const lastRunTime = row.getValue("last_run_time") as string | undefined
+      const lastRunTime = row.getValue("lastRunTime") as string | undefined
       return (
         <div className="text-sm text-muted-foreground">
           {lastRunTime ? formatDate(lastRunTime) : "-"}

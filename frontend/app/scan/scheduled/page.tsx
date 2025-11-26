@@ -1,9 +1,15 @@
 "use client"
 
 import React from "react"
-import { toast } from "sonner"
 import { ScheduledScanDataTable } from "@/components/scan/scheduled/scheduled-scan-data-table"
 import { createScheduledScanColumns } from "@/components/scan/scheduled/scheduled-scan-columns"
+import { CreateScheduledScanDialog } from "@/components/scan/scheduled/create-scheduled-scan-dialog"
+import { EditScheduledScanDialog } from "@/components/scan/scheduled/edit-scheduled-scan-dialog"
+import { 
+  useScheduledScans, 
+  useDeleteScheduledScan, 
+  useToggleScheduledScan 
+} from "@/hooks/use-scheduled-scans"
 import type { ScheduledScan } from "@/types/scheduled-scan.types"
 
 /**
@@ -11,100 +17,16 @@ import type { ScheduledScan } from "@/types/scheduled-scan.types"
  * 管理定时扫描任务配置
  */
 export default function ScheduledScanPage() {
-  const [scheduledScans, setScheduledScans] = React.useState<ScheduledScan[]>([])
-  const [isLoading, setIsLoading] = React.useState(true)
+  const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
+  const [editDialogOpen, setEditDialogOpen] = React.useState(false)
+  const [editingScheduledScan, setEditingScheduledScan] = React.useState<ScheduledScan | null>(null)
+  
+  // 使用实际 API
+  const { data, isLoading, refetch } = useScheduledScans()
+  const { mutate: deleteScheduledScan } = useDeleteScheduledScan()
+  const { mutate: toggleScheduledScan } = useToggleScheduledScan()
 
-  // 模拟数据加载
-  React.useEffect(() => {
-    // TODO: 替换为实际的 API 调用
-    const mockData: ScheduledScan[] = [
-      {
-        id: 1,
-        name: "每日安全巡检",
-        description: "每天凌晨对所有主域名进行全面安全扫描",
-        engine_id: 1,
-        engine_name: "全面扫描引擎",
-        frequency: "daily",
-        target_domains: ["example.com", "test.com", "demo.com"],
-        is_enabled: true,
-        next_run_time: "2024-01-20T00:00:00Z",
-        last_run_time: "2024-01-19T00:00:00Z",
-        run_count: 45,
-        created_at: "2024-01-01T10:00:00Z",
-        updated_at: "2024-01-19T00:05:00Z",
-        created_by: "admin",
-      },
-      {
-        id: 2,
-        name: "周末漏洞检测",
-        description: "每周末对重要业务域名进行漏洞检测",
-        engine_id: 2,
-        engine_name: "快速扫描引擎",
-        frequency: "weekly",
-        target_domains: ["important.com", "business.com"],
-        is_enabled: true,
-        next_run_time: "2024-01-21T10:00:00Z",
-        last_run_time: "2024-01-14T10:00:00Z",
-        run_count: 12,
-        created_at: "2024-01-05T14:30:00Z",
-        updated_at: "2024-01-14T10:15:00Z",
-        created_by: "admin",
-      },
-      {
-        id: 3,
-        name: "月度全面扫描",
-        description: "每月1号对所有资产进行全面扫描和漏洞评估",
-        engine_id: 1,
-        engine_name: "全面扫描引擎",
-        frequency: "monthly",
-        target_domains: ["example.com", "test.com", "demo.com", "app.com"],
-        is_enabled: true,
-        next_run_time: "2024-02-01T00:00:00Z",
-        last_run_time: "2024-01-01T00:00:00Z",
-        run_count: 3,
-        created_at: "2023-11-01T09:00:00Z",
-        updated_at: "2024-01-01T00:30:00Z",
-        created_by: "admin",
-      },
-      {
-        id: 4,
-        name: "临时漏洞复测",
-        description: "针对特定漏洞的一次性复测任务",
-        engine_id: 2,
-        engine_name: "快速扫描引擎",
-        frequency: "once",
-        target_domains: ["vulnerable.com"],
-        is_enabled: false,
-        next_run_time: "2024-01-25T15:00:00Z",
-        run_count: 0,
-        created_at: "2024-01-18T16:20:00Z",
-        updated_at: "2024-01-18T16:20:00Z",
-        created_by: "security_team",
-      },
-      {
-        id: 5,
-        name: "自定义深夜扫描",
-        description: "使用 Cron 表达式配置的深夜扫描任务",
-        engine_id: 3,
-        engine_name: "自定义扫描引擎",
-        frequency: "custom",
-        cron_expression: "0 2 * * *",
-        target_domains: ["target1.com", "target2.com", "target3.com"],
-        is_enabled: true,
-        next_run_time: "2024-01-20T02:00:00Z",
-        last_run_time: "2024-01-19T02:00:00Z",
-        run_count: 89,
-        created_at: "2023-10-15T11:00:00Z",
-        updated_at: "2024-01-19T02:30:00Z",
-        created_by: "admin",
-      },
-    ]
-
-    setTimeout(() => {
-      setScheduledScans(mockData)
-      setIsLoading(false)
-    }, 500)
-  }, [])
+  const scheduledScans = data?.scheduledScans || []
 
   // 格式化日期
   const formatDate = React.useCallback((dateString: string) => {
@@ -120,59 +42,28 @@ export default function ScheduledScanPage() {
 
   // 查看任务详情
   const handleView = React.useCallback((scan: ScheduledScan) => {
-    toast.info(`查看定时任务: ${scan.name}`)
     // TODO: 导航到详情页
-    // router.push(`/scan/scheduled/${scan.id}`)
   }, [])
 
   // 编辑任务
   const handleEdit = React.useCallback((scan: ScheduledScan) => {
-    toast.info(`编辑定时任务: ${scan.name}`)
-    // TODO: 打开编辑对话框或导航到编辑页面
+    setEditingScheduledScan(scan)
+    setEditDialogOpen(true)
   }, [])
 
   // 删除任务
   const handleDelete = React.useCallback((scan: ScheduledScan) => {
-    toast.promise(
-      new Promise((resolve) => {
-        setTimeout(() => {
-          setScheduledScans((prev) => prev.filter((s) => s.id !== scan.id))
-          resolve(true)
-        }, 1000)
-      }),
-      {
-        loading: `正在删除任务: ${scan.name}...`,
-        success: "定时任务删除成功",
-        error: "定时任务删除失败",
-      }
-    )
-  }, [])
+    deleteScheduledScan(scan.id)
+  }, [deleteScheduledScan])
 
   // 切换任务启用状态
   const handleToggleStatus = React.useCallback((scan: ScheduledScan, enabled: boolean) => {
-    toast.promise(
-      new Promise((resolve) => {
-        setTimeout(() => {
-          setScheduledScans((prev) =>
-            prev.map((s) =>
-              s.id === scan.id ? { ...s, is_enabled: enabled } : s
-            )
-          )
-          resolve(true)
-        }, 500)
-      }),
-      {
-        loading: `正在${enabled ? "启用" : "禁用"}任务...`,
-        success: `定时任务已${enabled ? "启用" : "禁用"}`,
-        error: "操作失败",
-      }
-    )
-  }, [])
+    toggleScheduledScan({ id: scan.id, isEnabled: enabled })
+  }, [toggleScheduledScan])
 
   // 添加新任务
   const handleAddNew = React.useCallback(() => {
-    toast.info("打开新建定时任务对话框")
-    // TODO: 打开新建对话框
+    setCreateDialogOpen(true)
   }, [])
 
   // 创建列定义
@@ -227,6 +118,21 @@ export default function ScheduledScanPage() {
           addButtonText="新建定时扫描"
         />
       </div>
+
+      {/* 新建定时扫描对话框 */}
+      <CreateScheduledScanDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onSuccess={() => refetch()}
+      />
+
+      {/* 编辑定时扫描对话框 */}
+      <EditScheduledScanDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        scheduledScan={editingScheduledScan}
+        onSuccess={() => refetch()}
+      />
     </div>
   )
 }

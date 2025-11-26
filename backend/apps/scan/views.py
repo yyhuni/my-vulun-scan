@@ -8,9 +8,15 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from .models import Scan
-from .serializers import ScanSerializer, ScanHistorySerializer, QuickScanSerializer
+from .models import Scan, ScheduledScan
+from .serializers import (
+    ScanSerializer, ScanHistorySerializer, QuickScanSerializer,
+    ScheduledScanSerializer, CreateScheduledScanSerializer,
+    UpdateScheduledScanSerializer, ToggleScheduledScanSerializer
+)
 from .services.scan_service import ScanService
+from .services.scheduled_scan_service import ScheduledScanService
+from .repositories import ScheduledScanDTO
 from apps.targets.services.target_service import TargetService
 from apps.targets.services.organization_service import OrganizationService
 from apps.engine.services.engine_service import EngineService

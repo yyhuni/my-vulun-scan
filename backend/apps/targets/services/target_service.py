@@ -22,6 +22,20 @@ class TargetService:
         """初始化服务，注入 Repository 依赖"""
         self.repo = DjangoTargetRepository()
     
+    # ==================== 查询方法 ====================
+    
+    def count_existing_ids(self, target_ids: List[int]) -> int:
+        """
+        统计给定 ID 列表中实际存在的目标数量
+        
+        Args:
+            target_ids: 目标 ID 列表
+        
+        Returns:
+            存在的目标数量
+        """
+        return self.repo.count_by_ids(target_ids)
+    
     # ==================== Prefect 任务提交 ====================
     
     async def _submit_delete_flow(self, deployment_name: str, parameters: Dict) -> str:
