@@ -180,12 +180,16 @@
 }
 
 @layer base {
-  html, body {
+
+  html,
+  body {
     height: 100%;
   }
+
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
     /* 禁止页面级滚动，滚动交给主内容容器 */
@@ -244,11 +248,14 @@
 
   /* 隐藏滚动条但保持可滚动 */
   .scrollbar-hide {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
   }
 
   .scrollbar-hide::-webkit-scrollbar {
-    display: none;  /* Chrome, Safari and Opera */
+    display: none;
+    /* Chrome, Safari and Opera */
   }
 }

@@ -1,11 +1,12 @@
 "use client"
 
 import React, { useState, useMemo } from "react"
+import { AlertTriangle } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useTarget } from "@/hooks/use-targets"
-import { 
+import {
   useTargetSubdomains,
-  useScanSubdomains 
+  useScanSubdomains
 } from "@/hooks/use-subdomains"
 import { SubdomainsDataTable } from "./subdomains-data-table"
 import { createSubdomainColumns } from "./subdomains-columns"
@@ -158,7 +159,7 @@ export function SubdomainsDetailView({
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <div className="rounded-full bg-destructive/10 p-3 mb-4">
-          <span className="text-destructive">⚠️</span>
+          <AlertTriangle className="h-10 w-10 text-destructive" />
         </div>
         <h3 className="text-lg font-semibold mb-2">加载失败</h3>
         <p className="text-muted-foreground text-center mb-4">

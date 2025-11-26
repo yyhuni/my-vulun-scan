@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { Building2, Target as TargetIcon, Globe, LinkIcon, TrendingUp } from "lucide-react"
+import { Building2, Target as TargetIcon, Globe, LinkIcon, TrendingUp, AlertTriangle } from "lucide-react"
 import { TargetsDataTable } from "./targets/targets-data-table"
 import { createTargetColumns } from "./targets/targets-columns"
 import { AddTargetDialog } from "./targets/add-target-dialog"
@@ -28,9 +28,9 @@ import { toast } from "sonner"
  * 组织详情视图组件
  * 显示组织的统计信息和目标列表
  */
-export function OrganizationDetailView({ 
-  organizationId 
-}: { 
+export function OrganizationDetailView({
+  organizationId
+}: {
   organizationId: string
 }) {
   const [selectedTargets, setSelectedTargets] = useState<Target[]>([])
@@ -38,7 +38,7 @@ export function OrganizationDetailView({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [targetToDelete, setTargetToDelete] = useState<Target | null>(null)
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
-  
+
   // 分页状态
   const [pagination, setPagination] = useState({
     pageIndex: 0,
@@ -47,7 +47,7 @@ export function OrganizationDetailView({
 
   // 使用解除关联 mutation
   const unlinkTargets = useUnlinkTargetsFromOrganization()
-  
+
   // 使用 React Query 获取组织基本信息
   const {
     data: organization,
@@ -104,7 +104,7 @@ export function OrganizationDetailView({
     setDeleteDialogOpen(false)
     const targetId = targetToDelete.id
     setTargetToDelete(null)
-    
+
     // 调用解除关联 API
     unlinkTargets.mutate({
       organizationId: parseInt(organizationId),
@@ -125,10 +125,10 @@ export function OrganizationDetailView({
     if (selectedTargets.length === 0) return
 
     const targetIds = selectedTargets.map(target => target.id)
-    
+
     setBulkDeleteDialogOpen(false)
     setSelectedTargets([])
-    
+
     // 调用批量解除关联 API
     unlinkTargets.mutate({
       organizationId: parseInt(organizationId),
@@ -169,13 +169,13 @@ export function OrganizationDetailView({
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <div className="rounded-full bg-destructive/10 p-3 mb-4">
-          <span className="text-destructive">⚠️</span>
+          <AlertTriangle className="h-10 w-10 text-destructive" />
         </div>
         <h3 className="text-lg font-semibold mb-2">加载失败</h3>
         <p className="text-muted-foreground text-center mb-4">
           {error.message || "加载数据时出现错误，请重试"}
         </p>
-        <button 
+        <button
           onClick={() => refetch()}
           className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
         >
@@ -336,7 +336,7 @@ export function OrganizationDetailView({
           onPaginationChange={handlePaginationChange}
         />
       </div>
-      
+
       {/* 添加目标对话框 */}
       <AddTargetDialog
         organizationId={parseInt(organizationId)}
@@ -357,8 +357,8 @@ export function OrganizationDetailView({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmDelete} 
+            <AlertDialogAction
+              onClick={confirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               确认解除
@@ -390,8 +390,8 @@ export function OrganizationDetailView({
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmBulkDelete} 
+            <AlertDialogAction
+              onClick={confirmBulkDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               确认解除 {selectedTargets.length} 个关联

@@ -203,7 +203,7 @@ class FlowOrchestrator:
             return directory_scan_flow
 
         elif scan_type == 'url_fetch':
-            from apps.scan.flows.url_fetch_flow import url_fetch_flow
+            from apps.scan.flows.url_fetch import url_fetch_flow
             return url_fetch_flow
         
         else:

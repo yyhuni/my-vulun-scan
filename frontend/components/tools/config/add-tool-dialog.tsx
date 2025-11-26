@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { Wrench } from "lucide-react"
+import { Wrench, AlertTriangle } from "lucide-react"
 import { IconPlus } from "@tabler/icons-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -69,20 +69,20 @@ interface AddToolDialogProps {
  */
 function generateVersionCommand(toolName: string, installCommand: string): string {
   if (!toolName) return ""
-  
+
   const lowerName = toolName.toLowerCase().trim()
   const lowerInstall = installCommand.toLowerCase()
-  
+
   // Python 工具
   if (lowerInstall.includes("python") || lowerInstall.includes(".py")) {
     return `python ${lowerName}.py -v`
   }
-  
+
   // Go 工具
   if (lowerInstall.includes("go install") || lowerInstall.includes("go get")) {
     return `${lowerName} -version`
   }
-  
+
   // 默认尝试常见的版本命令
   return `${lowerName} --version`
 }
@@ -97,15 +97,15 @@ function generateVersionCommand(toolName: string, installCommand: string): strin
  * 4. 支持多分类标签选择
  * 5. 支持安装、更新、版本命令配置
  */
-export function AddToolDialog({ 
+export function AddToolDialog({
   tool,
-  onAdd, 
-  open: externalOpen, 
-  onOpenChange: externalOnOpenChange 
+  onAdd,
+  open: externalOpen,
+  onOpenChange: externalOnOpenChange
 }: AddToolDialogProps) {
   // 判断是编辑模式还是添加模式
   const isEditMode = !!tool
-  
+
   // 对话框开关状态 - 支持外部控制
   const [internalOpen, setInternalOpen] = useState(false)
   const open = externalOpen !== undefined ? externalOpen : internalOpen
@@ -117,7 +117,7 @@ export function AddToolDialog({
   // 使用 React Query 的创建和更新工具 mutation
   const createTool = useCreateTool()
   const updateTool = useUpdateTool()
-  
+
   // 初始化表单
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -154,7 +154,7 @@ export function AddToolDialog({
   const watchInstallCommand = form.watch("installCommand")
   const watchVersionCommand = form.watch("versionCommand")
   const watchCategoryNames = form.watch("categoryNames")
-  
+
   // 自动生成版本命令
   useEffect(() => {
     if (watchName && watchInstallCommand && !watchVersionCommand) {
@@ -180,10 +180,10 @@ export function AddToolDialog({
     const onSuccessCallback = (response: { tool?: Tool }) => {
       // 重置表单
       form.reset()
-      
+
       // 关闭对话框
       setOpen(false)
-      
+
       // 调用外部回调
       if (onAdd && response?.tool) {
         onAdd(response.tool)
@@ -240,7 +240,7 @@ export function AddToolDialog({
           </Button>
         </DialogTrigger>
       )}
-      
+
       {/* 对话框内容 */}
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -252,7 +252,7 @@ export function AddToolDialog({
             配置扫描工具的基本信息和执行命令。标有 * 的字段为必填项。
           </DialogDescription>
         </DialogHeader>
-        
+
         {/* 表单 */}
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -260,7 +260,7 @@ export function AddToolDialog({
               {/* 基本信息部分 */}
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-muted-foreground">基本信息</h3>
-                
+
                 {/* 工具名称 */}
                 <FormField
                   control={form.control}
@@ -281,7 +281,7 @@ export function AddToolDialog({
                     </FormItem>
                   )}
                 />
-                
+
                 {/* 仓库地址 */}
                 <FormField
                   control={form.control}
@@ -322,7 +322,7 @@ export function AddToolDialog({
                     </FormItem>
                   )}
                 />
-                
+
                 {/* 工具描述 */}
                 <FormField
                   control={form.control}
@@ -348,13 +348,13 @@ export function AddToolDialog({
                 {/* 分类标签 */}
                 <div className="grid gap-2">
                   <FormLabel>分类标签</FormLabel>
-                  
+
                   {/* 已选择的标签 */}
                   {watchCategoryNames.length > 0 && (
                     <div className="flex flex-wrap gap-2 p-3 border rounded-md bg-muted/50">
                       {watchCategoryNames.map((categoryName) => (
-                        <Badge 
-                          key={categoryName} 
+                        <Badge
+                          key={categoryName}
                           variant="default"
                           className="flex items-center gap-1 px-2 py-1"
                         >
@@ -378,7 +378,7 @@ export function AddToolDialog({
                       availableCategories.map((categoryName) => {
                         const isSelected = watchCategoryNames.includes(categoryName)
                         return (
-                          <Badge 
+                          <Badge
                             key={categoryName}
                             variant={isSelected ? "secondary" : "outline"}
                             className="cursor-pointer hover:bg-secondary/80 transition-colors"
@@ -419,7 +419,10 @@ export function AddToolDialog({
                         <span className="block"><strong>示例：</strong></span>
                         <span className="block">• 使用 git: <code className="bg-muted px-1 py-0.5 rounded">git clone https://github.com/user/tool</code></span>
                         <span className="block">• 使用 go: <code className="bg-muted px-1 py-0.5 rounded">go install -v github.com/tool@latest</code></span>
-                        <span className="block text-amber-600">⚠️ 注意：go get 已不再支持，请使用 go install</span>
+                        <span className="flex items-center gap-1 text-amber-600">
+                          <AlertTriangle className="h-3.5 w-3.5" />
+                          注意：go get 已不再支持，请使用 go install
+                        </span>
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -487,24 +490,24 @@ export function AddToolDialog({
                 />
               </div>
             </div>
-            
+
             {/* 对话框底部按钮 */}
             <DialogFooter>
-              <Button 
-                type="button" 
-                variant="outline" 
+              <Button
+                type="button"
+                variant="outline"
                 onClick={() => handleOpenChange(false)}
                 disabled={createTool.isPending || updateTool.isPending}
               >
                 取消
               </Button>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={createTool.isPending || updateTool.isPending || !form.formState.isValid}
               >
                 {(createTool.isPending || updateTool.isPending) ? (
                   <>
-                    <LoadingSpinner/>
+                    <LoadingSpinner />
                     {isEditMode ? "保存中..." : "创建中..."}
                   </>
                 ) : (

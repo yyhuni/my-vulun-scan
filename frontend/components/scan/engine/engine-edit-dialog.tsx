@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef } from "react"
-import { FileCode, Save, X, AlertCircle, CheckCircle2 } from "lucide-react"
+import { FileCode, Save, X, AlertCircle, CheckCircle2, AlertTriangle } from "lucide-react"
 import Editor from "@monaco-editor/react"
 import * as yaml from "js-yaml"
 import {
@@ -291,7 +291,7 @@ screenshot:
         // TODO: 调用实际的 API 保存 YAML 配置
         await new Promise(resolve => setTimeout(resolve, 1000))
       }
-      
+
       toast.success("配置保存成功", {
         description: `引擎 "${engine.name}" 的配置已更新`,
       })
@@ -409,11 +409,10 @@ screenshot:
                   </div>
                 </div>
               )}
-              {hasChanges && !yamlError && (
-                <p className="text-xs text-amber-600 dark:text-amber-400">
-                  ⚠️ 您有未保存的更改
-                </p>
-              )}
+              <p className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                您有未保存的更改
+              </p>
             </div>
           </div>
 

@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useMemo } from "react"
+import { AlertTriangle } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { TargetsDataTable } from "./targets-data-table"
@@ -27,9 +28,9 @@ import type { Target } from "@/types/target.types"
  * 用于显示和管理组织下的目标列表
  * 支持通过组织ID获取数据
  */
-export function OrganizationTargetsDetailView({ 
-  organizationId 
-}: { 
+export function OrganizationTargetsDetailView({
+  organizationId
+}: {
   organizationId: string
 }) {
   const [selectedTargets, setSelectedTargets] = useState<Target[]>([])
@@ -37,10 +38,10 @@ export function OrganizationTargetsDetailView({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [targetToDelete, setTargetToDelete] = useState<Target | null>(null)
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
-  
+
   // 使用解除关联 mutation
   const unlinkTargets = useUnlinkTargetsFromOrganization()
-  
+
   // 分页状态
   const [pagination, setPagination] = useState({
     pageIndex: 0,
@@ -101,7 +102,7 @@ export function OrganizationTargetsDetailView({
     setDeleteDialogOpen(false)
     const targetId = targetToDelete.id
     setTargetToDelete(null)
-    
+
     // 调用解除关联 API
     unlinkTargets.mutate({
       organizationId: parseInt(organizationId),
@@ -122,10 +123,10 @@ export function OrganizationTargetsDetailView({
     if (selectedTargets.length === 0) return
 
     const targetIds = selectedTargets.map(target => target.id)
-    
+
     setBulkDeleteDialogOpen(false)
     setSelectedTargets([])
-    
+
     // 调用批量解除关联 API
     unlinkTargets.mutate({
       organizationId: parseInt(organizationId),
@@ -168,13 +169,13 @@ export function OrganizationTargetsDetailView({
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <div className="rounded-full bg-destructive/10 p-3 mb-4">
-          <span className="text-destructive">⚠️</span>
+          <AlertTriangle className="h-10 w-10 text-destructive" />
         </div>
         <h3 className="text-lg font-semibold mb-2">加载失败</h3>
         <p className="text-muted-foreground text-center mb-4">
           {error.message || "加载目标数据时出现错误，请重试"}
         </p>
-        <button 
+        <button
           onClick={() => refetch()}
           className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
         >
@@ -224,7 +225,7 @@ export function OrganizationTargetsDetailView({
         } : undefined}
         onPaginationChange={handlePaginationChange}
       />
-      
+
       {/* 添加目标对话框 */}
       <AddTargetDialog
         organizationId={parseInt(organizationId)}
@@ -245,8 +246,8 @@ export function OrganizationTargetsDetailView({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmDelete} 
+            <AlertDialogAction
+              onClick={confirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               确认解除
@@ -279,8 +280,8 @@ export function OrganizationTargetsDetailView({
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmBulkDelete} 
+            <AlertDialogAction
+              onClick={confirmBulkDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               确认解除 {selectedTargets.length} 个关联

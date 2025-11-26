@@ -15,7 +15,7 @@ export class SubdomainService {
   }): Promise<BatchCreateSubdomainsResponse> {
     const response = await api.post<BatchCreateSubdomainsResponse>('/domains/create/', {
       domains: data.domains,
-      assetId: data.assetId  // ✅ 驼峰，拦截器转换为 asset_id
+      assetId: data.assetId  // [OK] 驼峰，拦截器转换为 asset_id
     })
     return response.data
   }

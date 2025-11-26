@@ -33,9 +33,9 @@
  *    { pageSize: 10, createdAt: "2024-01-01" }
  *    
  * 5. 前端直接使用（camelCase）：
- *    response.data.pageSize  // ✅ 直接使用
+ *    response.data.pageSize  // [OK] 直接使用
  * 
- * ⚠️ 关键点：命名转换由后端统一处理，前端无需转换
+ * [NOTE] 关键点：命名转换由后端统一处理，前端无需转换
  */
 
 import axios, { AxiosRequestConfig } from 'axios';
@@ -67,7 +67,7 @@ apiClient.interceptors.request.use(
   (config) => {
     // 只在开发环境输出调试日志
     if (process.env.NODE_ENV === 'development') {
-      console.log('🚀 API Request:', {
+      console.log('[REQUEST] API Request:', {
         method: config.method?.toUpperCase(),
         url: config.url,
         baseURL: config.baseURL,
@@ -76,12 +76,12 @@ apiClient.interceptors.request.use(
         params: config.params
       });
     }
-    
+
     return config;
   },
   (error) => {
     if (process.env.NODE_ENV === 'development') {
-      console.error('❌ Request Error:', error);
+      console.error('[ERROR] Request Error:', error);
     }
     return Promise.reject(error);
   }
@@ -102,14 +102,14 @@ apiClient.interceptors.response.use(
   (response) => {
     // 只在开发环境输出调试日志
     if (process.env.NODE_ENV === 'development') {
-      console.log('✅ API Response:', {
+      console.log('[RESPONSE] API Response:', {
         status: response.status,
         statusText: response.statusText,
         url: response.config.url,
         data: response.data
       });
     }
-    
+
     return response;
   },
   (error) => {
@@ -124,15 +124,15 @@ apiClient.interceptors.response.use(
         message: error.message,
         code: error.code
       }
-      
+
       // 只有当至少有一个有效属性时才输出
       if (Object.values(errorInfo).some(v => v !== undefined)) {
-        console.error('❌ API Error:', errorInfo);
+        console.error('[ERROR] API Error:', errorInfo);
       } else {
-        console.error('❌ API Error: Unknown error', error);
+        console.error('[ERROR] API Error: Unknown error', error);
       }
     }
-    
+
     return Promise.reject(error);
   }
 );
@@ -160,8 +160,8 @@ export default apiClient;
  * 
  * 3. 响应数据（已经是 camelCase）：
  *    const response = await api.get('/organizations')
- *    response.data.pageSize  // ✅ 直接使用 camelCase
- *    response.data.createdAt // ✅ 直接使用 camelCase
+ *    response.data.pageSize  // [OK] 直接使用 camelCase
+ *    response.data.createdAt // [OK] 直接使用 camelCase
  * 
  * 类型参数：
  * - T: 响应数据的类型（可选）
@@ -175,7 +175,7 @@ export const api = {
    * @returns Promise<AxiosResponse<T>>
    */
   get: <T = unknown>(url: string, config?: AxiosRequestConfig) => apiClient.get<T>(url, config),
-  
+
   /**
    * POST 请求
    * @param url - 请求路径（相对于 baseURL）
@@ -184,7 +184,7 @@ export const api = {
    * @returns Promise<AxiosResponse<T>>
    */
   post: <T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig) => apiClient.post<T>(url, data, config),
-  
+
   /**
    * PUT 请求
    * @param url - 请求路径（相对于 baseURL）
@@ -193,7 +193,7 @@ export const api = {
    * @returns Promise<AxiosResponse<T>>
    */
   put: <T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig) => apiClient.put<T>(url, data, config),
-  
+
   /**
    * PATCH 请求（部分更新）
    * @param url - 请求路径（相对于 baseURL）
@@ -202,7 +202,7 @@ export const api = {
    * @returns Promise<AxiosResponse<T>>
    */
   patch: <T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig) => apiClient.patch<T>(url, data, config),
-  
+
   /**
    * DELETE 请求
    * @param url - 请求路径（相对于 baseURL）
@@ -240,29 +240,29 @@ export const getErrorMessage = (error: unknown): string => {
   if (axios.isCancel(error)) {
     return '请求已被取消';
   }
-  
+
   // 类型守卫：检查是否为错误对象
-  const err = error as { 
-    code?: string; 
-    response?: { data?: { message?: string } }; 
-    message?: string 
+  const err = error as {
+    code?: string;
+    response?: { data?: { message?: string } };
+    message?: string
   }
-  
+
   // 请求超时（超过 30 秒）
   if (err.code === 'ECONNABORTED') {
     return '请求超时，请稍后重试';
   }
-  
+
   // 后端返回的错误消息（已经过驼峰转换）
   if (err.response?.data?.message) {
     return err.response.data.message;
   }
-  
+
   // axios 自身的错误消息
   if (err.message) {
     return err.message;
   }
-  
+
   // 兜底错误消息
   return '发生未知错误';
 };

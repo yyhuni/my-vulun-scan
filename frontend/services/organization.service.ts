@@ -131,7 +131,7 @@ export class OrganizationService {
       message: string
       deletedOrganizationCount: number
     }>('/organizations/batch_delete/', {
-      organizationIds  // ✅ 使用驼峰命名，拦截器会自动转换为 organization_ids
+      organizationIds  // [OK] 使用驼峰命名，拦截器会自动转换为 organization_ids
     })
     return response.data
   }

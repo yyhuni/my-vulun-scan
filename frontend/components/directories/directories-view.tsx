@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useCallback, useMemo, useState } from "react"
+import { AlertTriangle } from "lucide-react"
 import { DirectoriesDataTable } from "./directories-data-table"
 import { createDirectoryColumns } from "./directories-columns"
 import { DataTableSkeleton } from "@/components/ui/data-table-skeleton"
@@ -76,11 +77,11 @@ export function DirectoriesView({
 
   const paginationInfo = data
     ? {
-        total: data.total,
-        page: data.page,
-        pageSize: data.pageSize,
-        totalPages: data.totalPages,
-      }
+      total: data.total,
+      page: data.page,
+      pageSize: data.pageSize,
+      totalPages: data.totalPages,
+    }
     : undefined
 
   const handleSelectionChange = useCallback((selectedRows: Directory[]) => {
@@ -107,7 +108,7 @@ export function DirectoriesView({
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <div className="rounded-full bg-destructive/10 p-3 mb-4">
-          <span className="text-destructive">⚠️</span>
+          <AlertTriangle className="h-10 w-10 text-destructive" />
         </div>
         <h3 className="text-lg font-semibold mb-2">加载失败</h3>
         <p className="text-muted-foreground text-center mb-4">

@@ -11,12 +11,12 @@ export function useRoutePrefetch(currentPath?: string) {
   const router = useRouter()
 
   useEffect(() => {
-    console.log('🚀 路由预加载 Hook 已挂载，将在 2 秒后开始预加载...')
-    
+    console.log('[START] 路由预加载 Hook 已挂载，将在 2 秒后开始预加载...')
+
     // 延迟 2 秒后开始预加载，避免影响当前页面性能
     const timer = setTimeout(() => {
-      console.log('⏰ 2 秒已到，开始预加载路由...')
-      
+      console.log('[TIMER] 2 秒已到，开始预加载路由...')
+
       const routes = [
         '/assets/organization',
         '/assets/domain',
@@ -25,12 +25,12 @@ export function useRoutePrefetch(currentPath?: string) {
         '/scan/history',
         '/dashboard',
       ]
-      
+
       routes.forEach((route) => {
-        console.log(`  ↳ 预加载: ${route}`)
+        console.log(`  -> 预加载: ${route}`)
         router.prefetch(route)
       })
-      
+
       // 如果提供了当前路径，智能预加载相关动态路由
       if (currentPath) {
         // 如果是域名详情页（如 /assets/domain/146），预加载子路由
@@ -38,16 +38,16 @@ export function useRoutePrefetch(currentPath?: string) {
         if (domainIdMatch) {
           const domainId = domainIdMatch[1]
           router.prefetch(`/assets/domain/${domainId}/endpoints`)
-          console.log(`  ↳ 智能预加载域名子路由: /assets/domain/${domainId}/endpoints`)
+          console.log(`  -> 智能预加载域名子路由: /assets/domain/${domainId}/endpoints`)
         }
       }
-      
-      console.log('✅ 所有路由预加载请求已发送')
-      console.log('💡 提示：开发模式下预加载可能不明显，请在生产构建中测试')
+
+      console.log('[DONE] 所有路由预加载请求已发送')
+      console.log('[INFO] 提示：开发模式下预加载可能不明显，请在生产构建中测试')
     }, 2000)
 
     return () => {
-      console.log('🔄 路由预加载 Hook 已卸载')
+      console.log('[UNMOUNT] 路由预加载 Hook 已卸载')
       clearTimeout(timer)
     }
   }, [router, currentPath])
@@ -69,13 +69,13 @@ export function useSmartRoutePrefetch(currentPath: string) {
       } else if (currentPath.includes('/assets/domain')) {
         // 在域名页面，预加载端点页面
         router.prefetch('/assets/endpoint')
-        
+
         // 如果是域名详情页（如 /assets/domain/146），预加载子路由
         const domainIdMatch = currentPath.match(/\/assets\/domain\/(\d+)$/)
         if (domainIdMatch) {
           const domainId = domainIdMatch[1]
           router.prefetch(`/assets/domain/${domainId}/endpoints`)
-          console.log(`  ↳ 预加载域名子路由: /assets/domain/${domainId}/endpoints`)
+          console.log(`  -> 预加载域名子路由: /assets/domain/${domainId}/endpoints`)
         }
       } else if (currentPath.includes('/assets/scan')) {
         // 在扫描页面，预加载资产页面

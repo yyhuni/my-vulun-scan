@@ -19,7 +19,7 @@
 # Django 环境初始化（导入即生效）
 from apps.common.prefect_django_setup import setup_django_for_prefect
 
-from prefect import flow
+from prefect import flow, task
 from pathlib import Path
 import logging
 
@@ -37,6 +37,11 @@ from apps.scan.orchestrators import FlowOrchestrator
 logger = logging.getLogger(__name__)
 
 
+@task(name="run_subflow")
+def _run_subflow_task(scan_type: str, flow_func, flow_kwargs: dict):
+    """包装子 Flow 的 Task，用于在并行阶段并发执行子 Flow。"""
+    logger.info("开始执行子 Flow: %s", scan_type)
+    return flow_func(**flow_kwargs)
 
 
 @flow(
@@ -209,19 +214,24 @@ def initiate_scan_flow(
                         record_flow_result(scan_type, error=e)
                     
             elif mode == 'parallel':
-                # 并行执行
+                # 并行执行阶段：通过 Task 包装子 Flow，并使用 Prefect TaskRunner 并发运行
                 logger.info(f"\n{'='*60}\n并行执行阶段: {', '.join(enabled_flows)}\n{'='*60}")
                 futures = []
-                
-                # 提交所有并行任务
+
+                # 提交所有并行子 Flow 任务
                 for scan_type, flow_func, flow_specific_kwargs in get_valid_flows(enabled_flows):
-                    future = flow_func.submit(**flow_specific_kwargs)
+                    logger.info(f"\n{'='*60}\n提交并行子 Flow 任务: {scan_type}\n{'='*60}")
+                    future = _run_subflow_task.submit(
+                        scan_type=scan_type,
+                        flow_func=flow_func,
+                        flow_kwargs=flow_specific_kwargs,
+                    )
                     futures.append((scan_type, future))
-                
-                # 等待所有并行任务完成
+
+                # 等待所有并行子 Flow 完成
                 if futures:
                     wait([f for _, f in futures])
-                    
+
                     # 检查结果（复用统一的结果处理逻辑）
                     for scan_type, future in futures:
                         try:

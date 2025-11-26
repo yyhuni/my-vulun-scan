@@ -24,8 +24,8 @@ export interface GetSubdomainsResponse {
   domains: Subdomain[]
   total: number
   page: number
-  pageSize: number      // ✅ 使用驼峰命名
-  totalPages: number    // ✅ 使用驼峰命名
+  pageSize: number      // [OK] 使用驼峰命名
+  totalPages: number    // [OK] 使用驼峰命名
 }
 
 // 获取所有子域名请求参数
