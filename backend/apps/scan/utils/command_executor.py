@@ -9,6 +9,7 @@
 import logging
 import os
 import re
+import signal
 import subprocess
 import threading
 from datetime import datetime
@@ -87,6 +88,29 @@ class CommandExecutor:
         except Exception as e:
             logger.warning(f"无法写入命令信息头: {e}")
 
+    def _kill_process_tree(self, process: subprocess.Popen) -> None:
+        """
+        强制终止进程树
+        
+        当使用 shell=True 时，process.pid 是 shell 的 PID。
+        如果不杀掉整个进程组，shell 的子进程（实际工具）会变成孤儿进程继续运行。
+        """
+        if process.poll() is not None:
+            return
+
+        try:
+            # 尝试杀掉进程组（需要进程启动时设置 start_new_session=True）
+            os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+            logger.debug(f"已终止进程组: PGID={process.pid}")
+        except ProcessLookupError:
+            pass  # 进程已不存在
+        except Exception as e:
+            logger.warning(f"终止进程组失败 ({e})，尝试普通 kill")
+            try:
+                process.kill()
+            except:
+                pass
+
     def execute_and_wait(
         self,
         tool_name: str,
@@ -133,6 +157,9 @@ class CommandExecutor:
         # 记录开始时间（用于计算执行时间）
         start_time = datetime.now()
         
+        process = None
+        log_file_handle = None
+        
         try:
             logger.debug("执行命令: %s", command)
             if log_file_path:
@@ -140,49 +167,36 @@ class CommandExecutor:
             else:
                 logger.debug("日志输出: 丢弃")
             
-            # 执行扫描
-            # 简化策略：ENABLE_COMMAND_LOGGING 控制输出策略
+            # 准备输出流
+            stdout_target = subprocess.DEVNULL
+            stderr_target = subprocess.DEVNULL
+            
             if log_file_path:
-                # 有日志文件路径
+                log_file_handle = open(log_file_path, 'w', encoding='utf-8', buffering=1)
                 if ENABLE_COMMAND_LOGGING:
-                    # 输出所有内容（命令输出 + 错误）到日志文件
-                    with open(log_file_path, 'w', encoding='utf-8', buffering=1) as log_f:
-                        result = subprocess.run(
-                            command,
-                            stdin=subprocess.DEVNULL,  # 关闭 stdin，防止工具等待输入
-                            shell=True,
-                            stdout=log_f,
-                            stderr=subprocess.STDOUT,  # 合并到 stdout
-                            timeout=timeout,
-                            check=False,
-                            text=True
-                        )
+                    stdout_target = log_file_handle
+                    stderr_target = subprocess.STDOUT
                 else:
-                    # 只输出错误到日志文件（原有逻辑）
-                    with open(log_file_path, 'w', encoding='utf-8', buffering=1) as log_f:
-                        result = subprocess.run(
-                            command,
-                            stdin=subprocess.DEVNULL,  # 关闭 stdin，防止工具等待输入
-                            shell=True,
-                            stdout=subprocess.DEVNULL,
-                            stderr=log_f,
-                            timeout=timeout,
-                            check=False
-                        )
-            else:
-                # 无日志文件路径：丢弃所有输出
-                result = subprocess.run(
-                    command,
-                    stdin=subprocess.DEVNULL,  # 关闭 stdin，防止工具等待输入
-                    shell=True,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    timeout=timeout,
-                    check=False
-                )
+                    stderr_target = log_file_handle
+
+            # 启动进程
+            # 使用 start_new_session=True 创建新会话，使子进程成为新进程组的首领
+            # 这样我们可以通过 killpg 杀掉整个进程树
+            process = subprocess.Popen(
+                command,
+                stdin=subprocess.DEVNULL,
+                shell=True,
+                stdout=stdout_target,
+                stderr=stderr_target,
+                text=True,
+                start_new_session=True
+            )
+            
+            # 等待完成
+            process.communicate(timeout=timeout)
             
             # 检查执行结果
-            returncode = result.returncode
+            returncode = process.returncode
             success = (returncode == 0)
             
             # 计算执行时间
@@ -210,8 +224,8 @@ class CommandExecutor:
                 'success': success,
                 'returncode': returncode,
                 'log_file': str(log_file_path) if log_file_path else None,
-                'command_log_file': command_log_file,  # 同 log_file（兼容性）
-                'duration': duration  # 新增：执行时间
+                'command_log_file': command_log_file,
+                'duration': duration
             }
             
         except subprocess.TimeoutExpired as e:
@@ -224,7 +238,6 @@ class CommandExecutor:
             
             error_msg = f"扫描工具 {tool_name} 执行超时（{timeout}秒，实际执行: {duration:.2f}秒）"
             logger.error(error_msg)
-            # 超时时日志文件已保留
             if log_file_path and log_file_path.exists():
                 logger.debug("超时日志已保存: %s", log_file_path)
             raise RuntimeError(error_msg) from e
@@ -233,11 +246,25 @@ class CommandExecutor:
             error_msg = f"扫描工具 {tool_name} 执行失败: {e}"
             logger.error(error_msg)
             raise RuntimeError(error_msg) from e
-        
+            
         except Exception as e:
-            error_msg = f"扫描工具 {tool_name} 执行异常: {e}"
+            # 捕获所有异常（包括 Prefect 取消引发的 CancelledError 等）
+            # 确保在 finally 块中清理进程
+            error_msg = f"扫描工具 {tool_name} 执行异常（可能是被中断）: {e}"
             logger.error(error_msg, exc_info=True)
             raise
+            
+        finally:
+            # 关键修复：确保进程树被清理
+            if process:
+                self._kill_process_tree(process)
+                
+            # 关闭文件句柄
+            if log_file_handle:
+                try:
+                    log_file_handle.close()
+                except:
+                    pass
     
     def execute_stream(
         self,
@@ -293,41 +320,34 @@ class CommandExecutor:
             # 打开日志文件
             log_file_handle = open(log_file_path, 'w', encoding='utf-8', buffering=1)
             
+            stdout_target = subprocess.PIPE
+            stderr_target = log_file_handle
             if ENABLE_COMMAND_LOGGING:
-                # 输出所有内容到日志文件，同时流式返回
-                process = subprocess.Popen(
-                    command,
-                    stdin=subprocess.DEVNULL,  # 关闭 stdin，防止工具等待输入
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,  # 合并错误输出
-                    cwd=cwd,
-                    universal_newlines=True,
-                    encoding=encoding,
-                    shell=shell
-                )
-            else:
-                # 只输出错误到日志文件
-                process = subprocess.Popen(
-                    command,
-                    stdin=subprocess.DEVNULL,  # 关闭 stdin，防止工具等待输入
-                    stdout=subprocess.PIPE,
-                    stderr=log_file_handle,  # 错误直接写入日志文件
-                    cwd=cwd,
-                    universal_newlines=True,
-                    encoding=encoding,
-                    shell=shell
-                )
+                stderr_target = subprocess.STDOUT
+            
+            process = subprocess.Popen(
+                command,
+                stdin=subprocess.DEVNULL,
+                stdout=stdout_target,
+                stderr=stderr_target,
+                cwd=cwd,
+                universal_newlines=True,
+                encoding=encoding,
+                shell=shell,
+                start_new_session=True  # 关键：创建新进程组
+            )
         else:
             # 无日志文件：正常流式输出
             process = subprocess.Popen(
                 command,
-                stdin=subprocess.DEVNULL,  # 关闭 stdin，防止工具等待输入
+                stdin=subprocess.DEVNULL,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 cwd=cwd,
                 universal_newlines=True,
                 encoding=encoding,
-                shell=shell
+                shell=shell,
+                start_new_session=True  # 关键：创建新进程组
             )
             
         # 超时控制：使用 Timer 在指定时间后终止进程
@@ -337,7 +357,7 @@ class CommandExecutor:
             timed_out_event.set()
             if process.poll() is None:  # 进程还在运行
                 logger.warning(f"命令执行超时（{timeout}秒），正在终止进程: {cmd}")
-                process.kill()
+                self._kill_process_tree(process)  # 使用新的终止方法
             
         timer = None
         if timeout is not None:
@@ -384,7 +404,6 @@ class CommandExecutor:
                 timer.join(timeout=0.1)  # 等待 timer 线程完全结束，避免悬挂
             
             # 2. 清理进程资源
-            # 注意：使用 timed_out_event 避免竞态条件
             exit_code = None
             
             if timed_out_event.is_set():
@@ -393,22 +412,25 @@ class CommandExecutor:
                 try:
                     exit_code = process.wait(timeout=1.0)  # 等待进程完全退出
                 except subprocess.TimeoutExpired:
-                    # 极端情况：进程仍未退出，强制终止
                     logger.warning("进程在超时后仍未退出，强制终止")
-                    process.kill()
-                    exit_code = -1  # 超时退出码
+                    self._kill_process_tree(process)
+                    exit_code = -1
             else:
                 # 正常结束：等待进程自然结束
+                # 如果是被外部中断（如 CancelledError），poll() 应为 None，需要 kill
+                if process.poll() is None:
+                    logger.info(f"流式执行被中断，清理进程: {tool_name}")
+                    self._kill_process_tree(process)
+                
                 try:
                     exit_code = process.wait(timeout=GRACEFUL_SHUTDOWN_TIMEOUT)
                 except subprocess.TimeoutExpired:
-                    # 程序未能在预期时间内结束，强制终止
                     logger.warning(
                         "程序未能在%d秒内自然结束，强制终止: %s",
                         GRACEFUL_SHUTDOWN_TIMEOUT, cmd
                     )
-                    process.kill()
-                    exit_code = -2  # 强制终止退出码
+                    self._kill_process_tree(process)
+                    exit_code = -2
             
             # 3. 关闭进程流
             if process.stdout:
