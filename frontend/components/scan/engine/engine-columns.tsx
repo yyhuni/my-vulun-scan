@@ -43,11 +43,11 @@ function parseEngineFeatures(engine: ScanEngine) {
       const config = yaml.load(engine.configuration) as any
       return {
         subdomain_discovery: !!config?.subdomain_discovery,
-        http_crawl: !!config?.http_crawl,
         port_scan: !!config?.port_scan,
+        site_scan: !!config?.site_scan,
+        directory_scan: !!config?.directory_scan,
+        url_fetch: !!config?.url_fetch || !!config?.fetch_url, // 兼容 fetch_url
         osint: !!config?.osint,
-        directory_files_discovery: !!config?.dir_file_fuzz,
-        fetch_urls: !!config?.fetch_url,
         vulnerability_scan: !!config?.vulnerability_scan,
         waf_detection: !!config?.waf_detection,
         screenshot: !!config?.screenshot,
@@ -60,11 +60,11 @@ function parseEngineFeatures(engine: ScanEngine) {
   // 回退到引擎对象的直接属性
   return {
     subdomain_discovery: engine.subdomain_discovery,
-    http_crawl: false,
     port_scan: engine.port_scan,
+    site_scan: engine.site_scan,
+    directory_scan: engine.directory_scan,
+    url_fetch: engine.url_fetch,
     osint: engine.osint,
-    directory_files_discovery: engine.directory_files_discovery,
-    fetch_urls: engine.fetch_urls,
     vulnerability_scan: engine.vulnerability_scan,
     waf_detection: engine.waf_detection,
     screenshot: engine.screenshot,
@@ -236,17 +236,6 @@ export const createEngineColumns = ({
     enableSorting: false,
   },
 
-  // HTTP Crawl
-  {
-    id: "http_crawl",
-    header: "HTTP Crawl",
-    cell: ({ row }) => {
-      const features = parseEngineFeatures(row.original)
-      return <FeatureStatus enabled={features.http_crawl} />
-    },
-    enableSorting: false,
-  },
-
   // Port Scan
   {
     id: "port_scan",
@@ -258,6 +247,39 @@ export const createEngineColumns = ({
     enableSorting: false,
   },
 
+  // Site Scan (原 HTTP Crawl)
+  {
+    id: "site_scan",
+    header: "Site Scan",
+    cell: ({ row }) => {
+      const features = parseEngineFeatures(row.original)
+      return <FeatureStatus enabled={features.site_scan} />
+    },
+    enableSorting: false,
+  },
+
+  // Directory Scan
+  {
+    id: "directory_scan",
+    header: "Directory Scan",
+    cell: ({ row }) => {
+      const features = parseEngineFeatures(row.original)
+      return <FeatureStatus enabled={features.directory_scan} />
+    },
+    enableSorting: false,
+  },
+
+  // URL Fetch
+  {
+    id: "url_fetch",
+    header: "URL Fetch",
+    cell: ({ row }) => {
+      const features = parseEngineFeatures(row.original)
+      return <FeatureStatus enabled={features.url_fetch} />
+    },
+    enableSorting: false,
+  },
+
   // OSINT
   {
     id: "osint",
@@ -265,28 +287,6 @@ export const createEngineColumns = ({
     cell: ({ row }) => {
       const features = parseEngineFeatures(row.original)
       return <FeatureStatus enabled={features.osint} />
-    },
-    enableSorting: false,
-  },
-
-  // Directory & Files Discovery
-  {
-    id: "directory_files_discovery",
-    header: "Directory & Files Discovery",
-    cell: ({ row }) => {
-      const features = parseEngineFeatures(row.original)
-      return <FeatureStatus enabled={features.directory_files_discovery} />
-    },
-    enableSorting: false,
-  },
-
-  // Fetch URLs
-  {
-    id: "fetch_urls",
-    header: "Fetch URLs",
-    cell: ({ row }) => {
-      const features = parseEngineFeatures(row.original)
-      return <FeatureStatus enabled={features.fetch_urls} />
     },
     enableSorting: false,
   },

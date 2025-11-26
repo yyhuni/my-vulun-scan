@@ -49,172 +49,90 @@ export function EngineEditDialog({
 # 引擎类型: ${engine.type}
 # 描述: ${engine.description || "无描述"}
 
-# 子域名发现配置
+# ==================== 子域名发现 ====================
 subdomain_discovery:
-  uses_tools:
-    - subfinder
-    - chaos
-    - ctfr
-    - sublist3r
-    - tlsx
-    - oneforall
-    - netlas
-  enable_http_crawl: true
-  threads: 30
-  timeout: 5
+  tools:
+    subfinder:
+      enabled: true
+      timeout: 600      # 10 分钟（必需）
+      
+    amass_passive:
+      enabled: true
+      timeout: 600      # 10 分钟（必需）
+      
+    amass_active:
+      enabled: true
+      timeout: 1800     # 30 分钟（必需）
+      
+    sublist3r:
+      enabled: true
+      timeout: 900      # 15 分钟（必需）
+      
+    oneforall:
+      enabled: true
+      timeout: 1200     # 20 分钟（必需）
 
-# HTTP 爬虫配置
-http_crawl: {}
 
-# 端口扫描配置
+# ==================== 端口扫描 ====================
 port_scan:
-  enable_http_crawl: true
-  timeout: 5
-  # exclude_ports: []
-  # exclude_subdomains: []
-  ports:
-    - top-100
-  rate_limit: 150
-  threads: 30
-  passive: false
-  # use_naabu_config: false
-  # enable_nmap: true
-  # nmap_cmd: ''
-  # nmap_script: ''
-  # nmap_script_args: ''
+  tools:
+    naabu_active:
+      enabled: true
+      timeout: auto     # 自动计算
+      threads: 5
+      top-ports: 100
+      rate: 10
+      
+    naabu_passive:
+      enabled: true
+      timeout: auto
 
-# OSINT 开源情报收集配置
-osint:
-  discover:
-    - emails
-    - metainfo
-    - employees
-  dorks:
-    - login_pages
-    - admin_panels
-    - dashboard_pages
-    - stackoverflow
-    - social_media
-    - project_management
-    - code_sharing
-    - config_files
-    - jenkins
-    - wordpress_files
-    - php_error
-    - exposed_documents
-    - db_files
-    - git_exposed
-  intensity: normal
-  documents_limit: 50
 
-# 目录文件模糊测试配置
-dir_file_fuzz:
-  auto_calibration: true
-  enable_http_crawl: true
-  rate_limit: 150
-  extensions:
-    - html
-    - php
-    - git
-    - yaml
-    - conf
-    - cnf
-    - config
-    - gz
-    - env
-    - log
-    - db
-    - mysql
-    - bak
-    - asp
-    - aspx
-    - txt
-    - sql
-    - json
-    - yml
-    - pdf
-  follow_redirect: false
-  max_time: 0
-  match_http_status:
-    - 200
-    - 204
-  recursive_level: 2
-  stop_on_error: false
-  timeout: 5
-  threads: 30
-  wordlist_name: dicc
+# ==================== 站点扫描 ====================
+site_scan:
+  tools:
+    httpx:
+      enabled: true
+      timeout: auto         # 自动计算
 
-# URL 抓取配置
-fetch_url:
-  uses_tools:
-    - gospider
-    - hakrawler
-    - waybackurls
-    - katana
-    - gau
-  remove_duplicate_endpoints: true
-  duplicate_fields:
-    - content_length
-    - page_title
-  enable_http_crawl: true
-  gf_patterns:
-    - debug_logic
-    - idor
-    - interestingEXT
-    - interestingparams
-    - interestingsubs
-    - lfi
-    - rce
-    - redirect
-    - sqli
-    - ssrf
-    - ssti
-    - xss
-  ignore_file_extensions:
-    - png
-    - jpg
-    - jpeg
-    - gif
-    - mp4
-    - mpeg
-    - mp3
-  threads: 30
 
-# 漏洞扫描配置
-vulnerability_scan:
-  run_nuclei: true
-  run_dalfox: true
-  run_crlfuzz: true
-  enable_http_crawl: true
-  concurrency: 50
-  intensity: normal
-  rate_limit: 150
-  retries: 1
-  timeout: 5
-  fetch_gpt_report: false
-  nuclei:
-    use_nuclei_config: false
-    severities:
-      - unknown
-      - info
-      - low
-      - medium
-      - high
-      - critical
+# ==================== 目录扫描 ====================
+directory_scan:
+  tools:
+    ffuf:
+      enabled: true
+      timeout: auto                            # 自动计算超时时间
+      wordlist: ~/Desktop/dirsearch_dicc.txt   # 词表文件路径（必需）
+      delay: 0.1-2.0
+      threads: 10
+      request_timeout: 10
+      match_codes: 200,201,301,302,401,403
 
-# WAF 检测配置
-waf_detection: {}
 
-# 截图配置
-screenshot:
-  enable_http_crawl: true
-  intensity: normal
-  timeout: 10
-  threads: 40
-
-# 自定义请求头（可选）
-# custom_headers:
-#   - "Cookie: Test"
+# ==================== URL 获取 ====================
+url_fetch:
+  tools:
+    waymore:
+      enabled: true
+      timeout: auto
+    
+    katana:
+      enabled: true
+      timeout: auto
+      depth: 5
+      threads: 10
+      rate-limit: 30
+      random-delay: 1
+      retry: 2
+      request-timeout: 12
+    
+    uro:
+      enabled: true
+      timeout: auto
+    
+    httpx:
+      enabled: true
+      timeout: auto
 `
   }
 

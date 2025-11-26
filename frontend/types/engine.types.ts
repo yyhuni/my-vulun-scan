@@ -27,13 +27,14 @@ export interface ScanEngine {
   capabilities?: string[]  // 引擎能力列表
   // 功能支持标识
   subdomain_discovery?: boolean    // 子域名发现
+  port_scan?: boolean              // 端口扫描
+  site_scan?: boolean              // 站点扫描
+  directory_scan?: boolean         // 目录扫描
+  url_fetch?: boolean              // URL 获取
+  vulnerability_scan?: boolean     // 漏洞扫描
   waf_detection?: boolean          // WAF检测
   screenshot?: boolean             // 截图
   osint?: boolean                  // OSINT
-  port_scan?: boolean              // 端口扫描
-  directory_files_discovery?: boolean  // 目录和文件发现
-  fetch_urls?: boolean             // 获取URLs
-  vulnerability_scan?: boolean     // 漏洞扫描
 }
 
 // 创建引擎请求
