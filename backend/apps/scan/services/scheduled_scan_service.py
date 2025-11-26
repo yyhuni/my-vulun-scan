@@ -244,7 +244,7 @@ class ScheduledScanService:
         # 2. 计算并更新下次执行时间
         scheduled_scan = self.repo.get_by_id(scheduled_scan_id)
         if scheduled_scan and scheduled_scan.cron_expression:
-            next_run_time = self._calculate_next_run_time(scheduled_scan.cron_expression)
+            next_run_time = self._calculate_next_run_time(scheduled_scan)
             if next_run_time:
                 self.repo.update_next_run_time(scheduled_scan_id, next_run_time)
         
@@ -384,6 +384,9 @@ class ScheduledScanService:
         """
         if not scheduled_scan.deployment_id:
             return
+        
+        # 从数据库重新获取最新状态，确保 is_enabled 是最新的
+        scheduled_scan.refresh_from_db()
         
         target_ids = list(scheduled_scan.targets.values_list('id', flat=True))
         cron_expr = scheduled_scan.cron_expression
