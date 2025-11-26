@@ -41,6 +41,7 @@ import { TargetValidator } from "@/lib/target-validator"
 import { useOrganizations } from "@/hooks/use-organizations"
 import { useBatchCreateTargets } from "@/hooks/use-targets"
 import { toast } from "sonner"
+import type { BatchCreateTargetsRequest } from "@/types/target.types"
 
 // 组件属性类型定义
 interface AddTargetDialogProps {
@@ -145,10 +146,6 @@ export function AddTargetDialog({
       return
     }
 
-    if (!formData.organizationId) {
-      return
-    }
-
     if (invalidTargets.length > 0) {
       return
     }
@@ -166,12 +163,18 @@ export function AddTargetDialog({
       return
     }
 
+    // 组装请求数据（组织为可选字段）
+    const payload: BatchCreateTargetsRequest = {
+      targets: targetList,
+    }
+
+    if (formData.organizationId) {
+      payload.organization_id = parseInt(formData.organizationId, 10)
+    }
+
     // 调用批量创建 API
     batchCreateTargets.mutate(
-      {
-        targets: targetList,
-        organization_id: parseInt(formData.organizationId),
-      },
+      payload,
       {
         onSuccess: (batchCreateResult) => {
           // 重置表单
@@ -215,7 +218,7 @@ export function AddTargetDialog({
   }
 
   // 表单验证
-  const isFormValid = formData.targets.trim().length > 0 && formData.organizationId && invalidTargets.length === 0
+  const isFormValid = formData.targets.trim().length > 0 && invalidTargets.length === 0
   
   // 同步输入框和行号列的滚动
   const handleTextareaScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
@@ -336,7 +339,7 @@ example.com
             {/* 所属组织（可选择、可搜索、分页） */}
             <div className="grid gap-2">
               <Label htmlFor="organization">
-                所属组织 <span className="text-destructive">*</span>
+                关联组织（可选）
               </Label>
               <Button
                 variant="outline"

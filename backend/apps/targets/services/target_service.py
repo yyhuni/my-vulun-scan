@@ -5,7 +5,9 @@ Target 业务逻辑服务层（Service）
 """
 
 import logging
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Any, Optional
+
+from django.db import transaction
 
 from ..models import Target
 from ..repositories.django_target_repository import DjangoTargetRepository
@@ -114,6 +116,114 @@ class TargetService:
             logger.debug("目标已存在 - ID: %s, Name: %s", target.id, name)
         
         return target, created
+    
+    def batch_create_targets(
+        self,
+        targets_data: List[Dict[str, Any]],
+        organization_id: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        批量创建目标
+        
+        Args:
+            targets_data: 目标数据列表，每个元素包含 name 字段
+            organization_id: 可选，关联到指定组织的 ID
+        
+        Returns:
+            {
+                'created_count': int,
+                'reused_count': int,
+                'failed_count': int,
+                'failed_targets': List[Dict],
+                'message': str
+            }
+        
+        Raises:
+            ValueError: 组织 ID 不存在时抛出
+        """
+        from apps.asset.services.asset.subdomain_service import SubdomainService
+        from apps.common.normalizer import normalize_target
+        from apps.common.validators import detect_target_type
+        from .organization_service import OrganizationService
+        
+        subdomain_service = SubdomainService()
+        
+        created_targets = []
+        reused_targets = []
+        failed_targets = []
+        
+        # 如果指定了组织，先获取组织对象
+        organization = None
+        if organization_id:
+            org_service = OrganizationService()
+            organization = org_service.get_organization(organization_id)
+            if not organization:
+                raise ValueError(f'组织 ID {organization_id} 不存在')
+        
+        # 使用事务确保原子性
+        with transaction.atomic():
+            for target_data in targets_data:
+                name = target_data.get('name')
+                
+                try:
+                    # 1. 规范化
+                    normalized_name = normalize_target(name)
+                    # 2. 验证并检测类型
+                    target_type = detect_target_type(normalized_name)
+                except ValueError as e:
+                    # 无法识别的格式，记录失败原因
+                    failed_targets.append({
+                        'name': name,
+                        'reason': str(e)
+                    })
+                    continue
+                
+                # 3. 写入：创建或获取目标
+                target, created = self.create_or_get_target(
+                    name=normalized_name,
+                    target_type=target_type
+                )
+                
+                # 如果指定了组织，关联目标到组织
+                if organization:
+                    organization.targets.add(target)
+                
+                # 如果是域名类型，同时创建 Subdomain 记录
+                if target_type == Target.TargetType.DOMAIN:
+                    subdomain_service.get_or_create(
+                        name=normalized_name,
+                        target_id=target.id,
+                    )
+                
+                # 记录创建或复用的目标
+                if created:
+                    created_targets.append(target)
+                else:
+                    reused_targets.append(target)
+        
+        # 构建响应消息
+        message_parts = []
+        if created_targets:
+            message_parts.append(f'成功创建 {len(created_targets)} 个目标')
+        if reused_targets:
+            message_parts.append(f'复用 {len(reused_targets)} 个已存在的目标')
+        if failed_targets:
+            message_parts.append(f'失败 {len(failed_targets)} 个目标')
+        
+        message = '，'.join(message_parts) if message_parts else '无目标被处理'
+        
+        logger.info(
+            "批量创建目标完成 - 创建: %d, 复用: %d, 失败: %d",
+            len(created_targets), len(reused_targets), len(failed_targets)
+        )
+        
+        return {
+            'created_count': len(created_targets),
+            'reused_count': len(reused_targets),
+            'failed_count': len(failed_targets),
+            'failed_targets': failed_targets,
+            'message': message
+        }
     
     # ==================== 删除操作 ====================
     

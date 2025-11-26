@@ -9,10 +9,7 @@ from .models import Organization, Target
 from .serializers import OrganizationSerializer, TargetSerializer, TargetDetailSerializer, BatchCreateTargetSerializer
 from .services.target_service import TargetService
 from .services.organization_service import OrganizationService
-from apps.common.normalizer import normalize_target
-from apps.common.validators import detect_target_type
 from apps.common.pagination import BasePagination
-from apps.asset.models.asset_models import Subdomain
 
 logger = logging.getLogger(__name__)
 
@@ -388,82 +385,24 @@ class TargetViewSet(viewsets.ModelViewSet):
             "message": "成功创建 2 个目标"
         }
         """
+        # 1. 参数验证
         serializer = BatchCreateTargetSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
         targets_data = serializer.validated_data['targets']
         organization_id = serializer.validated_data.get('organization_id')
         
-        created_targets = []
-        reused_targets = []
-        failed_targets = []
+        # 2. 调用 Service 层处理业务逻辑
+        try:
+            result = self.target_service.batch_create_targets(
+                targets_data=targets_data,
+                organization_id=organization_id
+            )
+        except ValueError as e:
+            raise ValidationError(str(e))
         
-        # 如果指定了组织，先获取组织对象
-        organization = None
-        if organization_id:
-            org_service = OrganizationService()
-            organization = org_service.get_organization(organization_id)
-            if not organization:
-                raise ValidationError(f'组织 ID {organization_id} 不存在')
-        
-        # 使用事务确保原子性
-        with transaction.atomic():
-            for target_data in targets_data:
-                name = target_data.get('name')
-                
-                try:
-                    # 1. 规范化
-                    normalized_name = normalize_target(name)
-                    # 2. 验证并检测类型
-                    target_type = detect_target_type(normalized_name)
-                except ValueError as e:
-                    # 无法识别的格式，记录失败原因
-                    failed_targets.append({
-                        'name': name,
-                        'reason': str(e)
-                    })
-                    continue
-                
-                # 3. 写入：通过 Service 层创建或获取目标
-                target, created = self.target_service.create_or_get_target(
-                    name=normalized_name,
-                    target_type=target_type
-                )
-                
-                # 如果指定了组织，关联目标到组织
-                if organization:
-                    organization.targets.add(target)
-                
-                if target_type == Target.TargetType.DOMAIN:
-                    Subdomain.objects.get_or_create(
-                        name=normalized_name,
-                        target=target,
-                    )
-                
-                # 记录创建或复用的目标
-                if created:
-                    created_targets.append(target)
-                else:
-                    reused_targets.append(target)
-        
-        # 构建响应消息
-        message_parts = []
-        if created_targets:
-            message_parts.append(f'成功创建 {len(created_targets)} 个目标')
-        if reused_targets:
-            message_parts.append(f'复用 {len(reused_targets)} 个已存在的目标')
-        if failed_targets:
-            message_parts.append(f'失败 {len(failed_targets)} 个目标')
-        
-        message = '，'.join(message_parts) if message_parts else '无目标被处理'
-        
-        return Response({
-            'created_count': len(created_targets),
-            'reused_count': len(reused_targets),
-            'failed_count': len(failed_targets),
-            'failed_targets': failed_targets,
-            'message': message
-        }, status=status.HTTP_201_CREATED)
+        # 3. 返回响应
+        return Response(result, status=status.HTTP_201_CREATED)
     
     @action(detail=True, methods=['get'])
     def subdomains(self, request, pk=None):
