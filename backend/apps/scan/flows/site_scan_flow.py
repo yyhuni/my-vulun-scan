@@ -359,7 +359,7 @@ def site_scan_flow(
         target_name: 目标名称
         target_id: 目标 ID
         scan_workspace_dir: 扫描工作空间目录
-        engine_config: 引擎配置（YAML 字符串，必需）
+        enabled_tools: 启用的工具配置字典
     
     Returns:
         dict: {
@@ -407,8 +407,6 @@ def site_scan_flow(
             raise ValueError("target_id 不能为空")
         if not scan_workspace_dir:
             raise ValueError("scan_workspace_dir 不能为空")
-        if not engine_config:
-            raise ValueError("engine_config 不能为空")
         
         # Step 0: 创建工作目录
         site_scan_dir = _setup_site_scan_directory(scan_workspace_dir)

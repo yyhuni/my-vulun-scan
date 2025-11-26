@@ -245,7 +245,7 @@ def subdomain_discovery_flow(
         target_name: 目标名称（域名）
         target_id: 目标 ID
         scan_workspace_dir: Scan 工作空间目录（由 Service 层创建）
-        engine_config: 引擎配置（YAML 字符串，必需）
+        enabled_tools: 启用的工具配置字典
     
     Returns:
         dict: {
