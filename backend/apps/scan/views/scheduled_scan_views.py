@@ -9,13 +9,13 @@ from rest_framework.response import Response
 from django.core.exceptions import ValidationError
 import logging
 
-from .models import ScheduledScan
-from .serializers import (
+from ..models import ScheduledScan
+from ..serializers import (
     ScheduledScanSerializer, CreateScheduledScanSerializer,
     UpdateScheduledScanSerializer, ToggleScheduledScanSerializer
 )
-from .services.scheduled_scan_service import ScheduledScanService
-from .repositories import ScheduledScanDTO
+from ..services.scheduled_scan_service import ScheduledScanService
+from ..repositories import ScheduledScanDTO
 from apps.common.pagination import BasePagination
 
 
