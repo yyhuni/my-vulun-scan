@@ -153,13 +153,18 @@ class ScheduledScanService:
         if not scheduled_scan:
             return None
         
-        # 如果调度配置变更，需要更新 Prefect Deployment
-        schedule_changed = (
-            dto.cron_expression is not None and dto.cron_expression != existing.cron_expression or
-            dto.is_enabled is not None and dto.is_enabled != existing.is_enabled
+        # 如果调度配置或参数变更，需要更新 Prefect Deployment
+        existing_target_ids = set(existing.targets.values_list('id', flat=True))
+        new_target_ids = set(dto.target_ids) if dto.target_ids else existing_target_ids
+        
+        deployment_changed = (
+            (dto.cron_expression is not None and dto.cron_expression != existing.cron_expression) or
+            (dto.is_enabled is not None and dto.is_enabled != existing.is_enabled) or
+            (dto.engine_id is not None and dto.engine_id != existing.engine_id) or
+            (dto.target_ids is not None and new_target_ids != existing_target_ids)
         )
         
-        if schedule_changed:
+        if deployment_changed:
             try:
                 self._update_prefect_deployment(scheduled_scan)
             except Exception as e:
@@ -224,7 +229,7 @@ class ScheduledScanService:
     
     def record_run(self, scheduled_scan_id: int) -> bool:
         """
-        记录一次执行（增加执行次数并更新上次执行时间）
+        记录一次执行（增加执行次数、更新上次执行时间、计算下次执行时间）
         
         Args:
             scheduled_scan_id: 定时扫描 ID
@@ -232,7 +237,18 @@ class ScheduledScanService:
         Returns:
             是否成功
         """
-        return self.repo.increment_run_count(scheduled_scan_id)
+        # 1. 增加执行次数并更新上次执行时间
+        if not self.repo.increment_run_count(scheduled_scan_id):
+            return False
+        
+        # 2. 计算并更新下次执行时间
+        scheduled_scan = self.repo.get_by_id(scheduled_scan_id)
+        if scheduled_scan and scheduled_scan.cron_expression:
+            next_run_time = self._calculate_next_run_time(scheduled_scan.cron_expression)
+            if next_run_time:
+                self.repo.update_next_run_time(scheduled_scan_id, next_run_time)
+        
+        return True
     
     # ==================== 删除方法 ====================
     
