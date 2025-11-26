@@ -72,17 +72,6 @@ function parseEngineFeatures(engine: ScanEngine) {
 }
 
 /**
- * 引擎类型徽章组件
- */
-function EngineTypeBadge({ type }: { type: EngineType }) {
-  return (
-    <Badge variant="secondary">
-      Default Engine
-    </Badge>
-  )
-}
-
-/**
  * 功能支持状态组件
  */
 function FeatureStatus({ enabled }: { enabled?: boolean }) {
@@ -210,18 +199,6 @@ export const createEngineColumns = ({
           {name}
         </button>
       )
-    },
-  },
-
-  // 类型列
-  {
-    accessorKey: "type",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="类型" />
-    ),
-    cell: ({ row }) => {
-      const type = row.getValue("type") as EngineType
-      return <EngineTypeBadge type={type} />
     },
   },
 

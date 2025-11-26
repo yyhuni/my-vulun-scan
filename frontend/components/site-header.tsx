@@ -23,12 +23,6 @@ export function SiteHeader() {
         {/* 侧边栏切换按钮,带有负左边距以对齐 */}
         <SidebarTrigger className="-ml-1" />
 
-        {/* 垂直分隔线,高度为 4 个单位 */}
-        <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
-
-        {/* 页面标题 */}
-        <h1 className="text-base font-medium">Documents</h1>
-
         {/* 右侧按钮区域,使用 ml-auto 推到最右边 */}
         <div className="ml-auto flex items-center gap-2">
           {/* 快速扫描按钮 */}
