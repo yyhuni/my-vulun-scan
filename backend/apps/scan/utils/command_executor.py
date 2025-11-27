@@ -8,6 +8,7 @@
 
 import logging
 import os
+from django.conf import settings
 import re
 import signal
 import subprocess
@@ -25,7 +26,7 @@ MAX_LOG_TAIL_LINES = 1000  # 日志文件读取的最大行数
 # 命令日志配置（从环境变量读取）
 # ENABLE_COMMAND_LOGGING=true: 输出所有内容（命令输出+错误）到log_file_path
 # ENABLE_COMMAND_LOGGING=false: 只输出错误到log_file_path
-ENABLE_COMMAND_LOGGING = os.getenv('ENABLE_COMMAND_LOGGING', 'false').lower() == 'true'
+ENABLE_COMMAND_LOGGING = getattr(settings, 'ENABLE_COMMAND_LOGGING', False)
 
 
 class CommandExecutor:

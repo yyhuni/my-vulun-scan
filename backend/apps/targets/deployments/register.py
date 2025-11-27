@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../..'))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 import django
 django.setup()
+from django.conf import settings
 
 from .target_deployment import create_target_deployment
 from .organization_deployment import create_organization_deployment
@@ -33,7 +34,7 @@ def register_all_deployments():
     
     try:
         # 获取工作池名称
-        work_pool_name = os.getenv('PREFECT_DEFAULT_WORK_POOL_NAME', 'development-pool')
+        work_pool_name = settings.PREFECT_DEFAULT_WORK_POOL_NAME
         
         # 1. 部署 Target 删除 Deployment
         print("\n1. 部署 delete-targets-on-demand...")

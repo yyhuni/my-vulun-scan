@@ -10,6 +10,7 @@ Worker 部署脚本服务
 """
 
 from pathlib import Path
+from django.conf import settings
 
 # 脚本目录 (从 services 目录往上找)
 SCRIPTS_DIR = Path(__file__).parent.parent.parent.parent / "scripts" / "worker"
@@ -57,6 +58,19 @@ def get_start_worker_script(api_url: str) -> str:
     
     变量替换：
     - {{API_URL}}: Prefect API 地址
+    - {{DB_*}}: 数据库配置（从 settings 获取）
     """
     script = _read_script("start_worker.sh")
-    return script.replace("{{API_URL}}", api_url.rstrip('/'))
+    
+    # 获取数据库配置
+    db_config = settings.DATABASES['default']
+    
+    # 替换变量
+    script = script.replace("{{API_URL}}", api_url.rstrip('/'))
+    script = script.replace("{{DB_NAME}}", db_config.get('NAME', ''))
+    script = script.replace("{{DB_USER}}", db_config.get('USER', ''))
+    script = script.replace("{{DB_PASSWORD}}", db_config.get('PASSWORD', ''))
+    script = script.replace("{{DB_HOST}}", db_config.get('HOST', ''))
+    script = script.replace("{{DB_PORT}}", str(db_config.get('PORT', '5432')))
+    
+    return script

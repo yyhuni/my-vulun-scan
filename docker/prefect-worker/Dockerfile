@@ -103,8 +103,8 @@ RUN cd $SCAN_TOOLS_PATH \
     && cd OneForAll && pip install -r requirements.txt
 
 # 6. 复制项目代码
-# 注意：构建上下文需要在项目根目录
-COPY . /app/
+# 只复制后端代码，排除前端和其他无关文件
+COPY backend /app/backend/
 
 # 7. 安装项目依赖
 RUN pip install --no-cache-dir -r /app/backend/requirements.txt

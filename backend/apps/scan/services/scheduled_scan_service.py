@@ -8,12 +8,12 @@
 """
 import asyncio
 import logging
-import os
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Optional, Tuple
 from datetime import datetime
 
 from django.core.exceptions import ValidationError
+from django.conf import settings
 
 from apps.scan.models import ScheduledScan
 from apps.scan.repositories import DjangoScheduledScanRepository, ScheduledScanDTO
@@ -361,7 +361,7 @@ class ScheduledScanService:
             from apps.scan.flows.scheduled_scan_flow import scheduled_scan_flow
             from prefect.client.schemas.schedules import CronSchedule
             
-            work_pool_name = os.getenv('PREFECT_DEFAULT_WORK_POOL_NAME', 'development-pool')
+            work_pool_name = settings.PREFECT_DEFAULT_WORK_POOL_NAME
             deployment_name = f"scheduled-scan-{scheduled_scan.id}"
             
             # Flow 参数
@@ -419,7 +419,7 @@ class ScheduledScanService:
             from prefect.client.schemas.filters import FlowRunFilter
             from prefect.client.schemas.objects import StateType
             
-            work_pool_name = os.getenv('PREFECT_DEFAULT_WORK_POOL_NAME', 'development-pool')
+            work_pool_name = settings.PREFECT_DEFAULT_WORK_POOL_NAME
             deployment_name = f"scheduled-scan-{scheduled_scan.id}"
             
             parameters = {

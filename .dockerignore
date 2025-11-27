@@ -1,0 +1,45 @@
+# Git
+.git
+.gitignore
+
+# Environment Files (Security Risk!)
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# IDE
+.idea
+.vscode
+.windsurf
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+build/
+dist/
+*.egg-info/
+
+# Frontend (Explicitly exclude just in case)
+frontend/
+node_modules/
+
+# Docker
+docker/
+Dockerfile*
+docker-compose*

@@ -4,10 +4,10 @@
 使用 Python 原生字符串格式化，零依赖。
 """
 
-import os
+from django.conf import settings
 
 # ==================== 路径配置 ====================
-SCAN_TOOLS_BASE_PATH = os.getenv('SCAN_TOOLS_PATH', '/opt/github')
+SCAN_TOOLS_BASE_PATH = getattr(settings, 'SCAN_TOOLS_BASE_PATH', '/opt/github')
 
 # ==================== 子域名发现 ====================
 

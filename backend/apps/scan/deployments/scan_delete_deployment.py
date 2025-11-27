@@ -6,7 +6,7 @@ Scan 删除任务的 Deployment 配置
 Prefect 3.x 版本
 """
 
-import os
+from django.conf import settings
 from apps.scan.flows.scan_delete_flow import delete_scans_flow
 
 
@@ -17,7 +17,7 @@ def create_scan_delete_deployment():
     Returns:
         Deployment 对象（已配置但未部署）
     """
-    work_pool_name = os.getenv('PREFECT_DEFAULT_WORK_POOL_NAME', 'development-pool')
+    work_pool_name = settings.PREFECT_DEFAULT_WORK_POOL_NAME
     
     return delete_scans_flow.from_source(
         source=".",

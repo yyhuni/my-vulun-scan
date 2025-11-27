@@ -4,7 +4,7 @@ Organization 删除 Deployment 配置
 创建单个 Organization 删除任务的 Deployment
 """
 
-import os
+from django.conf import settings
 from apps.targets.flows.delete_organizations_flow import delete_organizations_flow
 
 
@@ -15,7 +15,7 @@ def create_organization_deployment():
     Returns:
         Deployment 对象（已配置但未部署）
     """
-    work_pool_name = os.getenv('PREFECT_DEFAULT_WORK_POOL_NAME', 'development-pool')
+    work_pool_name = settings.PREFECT_DEFAULT_WORK_POOL_NAME
     
     return delete_organizations_flow.from_source(
         source=".",

@@ -253,4 +253,7 @@ from config.logging_config import get_logging_config
 
 LOGGING = get_logging_config(debug=DEBUG)
 
-
+# 命令执行日志开关（供 apps.scan.utils.command_executor 使用）
+ENABLE_COMMAND_LOGGING = os.getenv('ENABLE_COMMAND_LOGGING', 'false').lower() == 'true'
+PREFECT_DEFAULT_WORK_POOL_NAME = os.getenv('PREFECT_DEFAULT_WORK_POOL_NAME', 'development-pool')
+SCAN_TOOLS_BASE_PATH = os.getenv('SCAN_TOOLS_PATH', '/opt/github')

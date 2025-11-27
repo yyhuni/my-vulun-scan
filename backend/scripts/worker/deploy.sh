@@ -130,9 +130,21 @@ verify_docker() {
 pull_images() {
     log_step "3/4" "准备镜像..."
     
-    # 这里可以拉取预构建的镜像
-    # 目前暂时跳过，后续可以添加
-    log_info "镜像准备完成（使用本地构建）"
+    IMAGE_NAME="yyhuni/xingrin-worker:latest"
+    
+    log_info "从 Docker Hub 拉取镜像: ${IMAGE_NAME}"
+    
+    if sudo docker pull "${IMAGE_NAME}"; then
+        log_success "镜像拉取成功"
+    else
+        log_error "镜像拉取失败，请检查网络或镜像名称"
+        exit 1
+    fi
+    
+    # 重新标记为本地统一名称，方便启动脚本使用
+    sudo docker tag "${IMAGE_NAME}" xingrin-worker:latest
+    
+    log_info "镜像准备完成"
 }
 
 # 显示完成信息

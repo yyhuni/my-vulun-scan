@@ -6,7 +6,7 @@
 Prefect 3.x 版本
 """
 
-import os
+from django.conf import settings
 from apps.scan.flows.initiate_scan_flow import initiate_scan_flow
 
 
@@ -17,7 +17,7 @@ def create_scan_deployment():
     Returns:
         Deployment 对象（已配置但未部署）
     """
-    work_pool_name = os.getenv('PREFECT_DEFAULT_WORK_POOL_NAME', 'development-pool')
+    work_pool_name = settings.PREFECT_DEFAULT_WORK_POOL_NAME
     
     return initiate_scan_flow.from_source(
         source=".",
