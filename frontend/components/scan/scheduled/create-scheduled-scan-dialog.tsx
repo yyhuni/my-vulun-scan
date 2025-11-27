@@ -13,7 +13,6 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
@@ -58,7 +57,6 @@ export function CreateScheduledScanDialog({
 
   // 表单状态
   const [name, setName] = React.useState("")
-  const [description, setDescription] = React.useState("")
   const [engineId, setEngineId] = React.useState<number | null>(null)
   const [selectedTargetIds, setSelectedTargetIds] = React.useState<number[]>([])
   const [cronExpression, setCronExpression] = React.useState("0 2 * * *")
@@ -66,7 +64,6 @@ export function CreateScheduledScanDialog({
   // 重置表单
   const resetForm = () => {
     setName("")
-    setDescription("")
     setEngineId(null)
     setSelectedTargetIds([])
     setCronExpression("0 2 * * *")
@@ -108,7 +105,6 @@ export function CreateScheduledScanDialog({
 
     const request: CreateScheduledScanRequest = {
       name: name.trim(),
-      description: description.trim(),
       engine_id: engineId,
       target_ids: selectedTargetIds,
       cron_expression: cronExpression.trim(),
@@ -149,16 +145,6 @@ export function CreateScheduledScanDialog({
               />
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="description">任务描述</Label>
-              <Textarea
-                id="description"
-                placeholder="描述这个定时扫描任务的用途..."
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={2}
-              />
-            </div>
           </div>
 
           {/* 扫描引擎 */}

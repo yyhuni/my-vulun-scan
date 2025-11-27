@@ -95,7 +95,6 @@ class ScheduledScanViewSet(viewsets.ViewSet):
         
         请求体:
         - name: 任务名称
-        - description: 任务描述（可选）
         - engine_id: 扫描引擎 ID
         - target_ids: 目标 ID 列表
         - cron_expression: Cron 表达式（格式：分 时 日 月 周）
@@ -112,7 +111,6 @@ class ScheduledScanViewSet(viewsets.ViewSet):
             data = serializer.validated_data
             dto = ScheduledScanDTO(
                 name=data['name'],
-                description=data.get('description', ''),
                 engine_id=data['engine_id'],
                 target_ids=data['target_ids'],
                 cron_expression=data.get('cron_expression', '0 2 * * *'),
@@ -175,7 +173,6 @@ class ScheduledScanViewSet(viewsets.ViewSet):
             data = serializer.validated_data
             dto = ScheduledScanDTO(
                 name=data.get('name'),
-                description=data.get('description'),
                 engine_id=data.get('engine_id'),
                 target_ids=data.get('target_ids'),
                 cron_expression=data.get('cron_expression'),

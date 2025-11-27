@@ -147,7 +147,7 @@ class ScheduledScanSerializer(serializers.ModelSerializer):
     class Meta:
         model = ScheduledScan
         fields = [
-            'id', 'name', 'description',
+            'id', 'name',
             'engine', 'engine_name',
             'target_ids', 'target_domains',
             'cron_expression',
@@ -174,7 +174,6 @@ class CreateScheduledScanSerializer(serializers.Serializer):
     """创建定时扫描任务序列化器"""
     
     name = serializers.CharField(max_length=200, help_text='任务名称')
-    description = serializers.CharField(required=False, allow_blank=True, default='', help_text='任务描述')
     engine_id = serializers.IntegerField(help_text='扫描引擎 ID')
     target_ids = serializers.ListField(
         child=serializers.IntegerField(),
@@ -193,7 +192,6 @@ class UpdateScheduledScanSerializer(serializers.Serializer):
     """更新定时扫描任务序列化器"""
     
     name = serializers.CharField(max_length=200, required=False, help_text='任务名称')
-    description = serializers.CharField(required=False, allow_blank=True, help_text='任务描述')
     engine_id = serializers.IntegerField(required=False, help_text='扫描引擎 ID')
     target_ids = serializers.ListField(
         child=serializers.IntegerField(),

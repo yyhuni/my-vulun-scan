@@ -22,7 +22,6 @@ class ScheduledScanDTO:
     """定时扫描 DTO"""
     id: Optional[int] = None
     name: str = ''
-    description: str = ''
     engine_id: int = 0
     target_ids: List[int] = None
     cron_expression: Optional[str] = None
@@ -99,7 +98,6 @@ class DjangoScheduledScanRepository:
         with transaction.atomic():
             scheduled_scan = ScheduledScan.objects.create(
                 name=dto.name,
-                description=dto.description,
                 engine_id=dto.engine_id,
                 cron_expression=dto.cron_expression,
                 is_enabled=dto.is_enabled,
@@ -131,8 +129,6 @@ class DjangoScheduledScanRepository:
                 # 更新基本字段
                 if dto.name:
                     scheduled_scan.name = dto.name
-                if dto.description is not None:
-                    scheduled_scan.description = dto.description
                 if dto.engine_id:
                     scheduled_scan.engine_id = dto.engine_id
                 if dto.cron_expression:

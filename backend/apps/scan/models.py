@@ -105,7 +105,6 @@ class ScheduledScan(models.Model):
     
     # 基本信息
     name = models.CharField(max_length=200, help_text='任务名称')
-    description = models.TextField(blank=True, default='', help_text='任务描述')
     
     # 关联的扫描引擎
     engine = models.ForeignKey(

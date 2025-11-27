@@ -9,7 +9,6 @@ export type ScheduledScanStatus = "active" | "paused" | "expired"
 export interface ScheduledScan {
   id: number
   name: string
-  description?: string
   engine: number // 关联的扫描引擎ID
   engineName: string // 关联的扫描引擎名称
   targetIds: number[] // 目标 ID 列表
@@ -27,7 +26,6 @@ export interface ScheduledScan {
 // 创建定时扫描请求
 export interface CreateScheduledScanRequest {
   name: string
-  description?: string
   engine_id: number
   target_ids: number[]
   cron_expression: string // Cron 表达式，格式：分 时 日 月 周
@@ -37,7 +35,6 @@ export interface CreateScheduledScanRequest {
 // 更新定时扫描请求
 export interface UpdateScheduledScanRequest {
   name?: string
-  description?: string
   engine_id?: number
   target_ids?: number[]
   cron_expression?: string
