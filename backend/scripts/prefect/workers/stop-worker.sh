@@ -10,6 +10,7 @@ NC='\033[0m' # No Color
 
 # 获取脚本所在目录
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PID_DIR="$SCRIPT_DIR/.pids"
 
 # 函数：显示帮助
 show_help() {
@@ -34,8 +35,8 @@ show_help() {
 # 函数：停止单个 Worker
 stop_worker() {
     local worker_name=$1
-    local pid_file="$SCRIPT_DIR/worker-${worker_name}.pid"
-    local log_file="$SCRIPT_DIR/worker-${worker_name}.log"
+    local pid_file="$PID_DIR/worker-${worker_name}.pid"
+    local log_file="$PID_DIR/worker-${worker_name}.log"
     
     if [ -f "$pid_file" ]; then
         local pid=$(cat "$pid_file")
@@ -65,7 +66,7 @@ stop_all_workers() {
     echo "停止所有 Prefect Workers..."
     
     # 查找所有 worker PID 文件
-    local worker_pids=($(find "$SCRIPT_DIR" -name "worker-*.pid" 2>/dev/null || true))
+    local worker_pids=($(find "$PID_DIR" -name "worker-*.pid" 2>/dev/null || true))
     
     if [ ${#worker_pids[@]} -eq 0 ]; then
         echo -e "${YELLOW}⚠ 没有找到运行中的 Workers${NC}"

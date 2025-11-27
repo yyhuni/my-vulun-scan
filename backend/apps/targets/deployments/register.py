@@ -51,6 +51,7 @@ def register_all_deployments():
         print("\n" + "=" * 60)
         print("✅ 所有 Targets Deployments 注册成功！")
         print("=" * 60)
+        print("Success: All Targets Deployments registered")
         
         print(f"\n📋 部署信息:")
         print(f"  - delete-targets-on-demand (按需删除)")

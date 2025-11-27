@@ -1,18 +1,24 @@
 #!/bin/bash
 # ============================================
-# XingRin Worker 部署脚本
-# 用途：安装 Docker 并部署 Worker 容器
+# XingRin 安装脚本 (通用)
+# 用途：安装 Docker、拉取代码、构建镜像
 # 支持：Ubuntu / Debian
+# 适用：主机 & Worker VPS
 # 特点：幂等执行，支持升级
 # ============================================
 
 set -e
 
 # 版本标记
-DEPLOY_VERSION="v1"
+INSTALL_VERSION="v1"
 MARKER_DIR="/opt/xingrin"
-DEPLOY_MARKER="${MARKER_DIR}/.deploy_done_${DEPLOY_VERSION}"
+INSTALL_MARKER="${MARKER_DIR}/.install_done_${INSTALL_VERSION}"
 DOCKER_MARKER="${MARKER_DIR}/.docker_installed"
+
+# 项目配置
+GITHUB_REPO="https://github.com/yyhuni/my-vulun-scan.git"
+GITHUB_BRANCH="feature/migrate-to-prefect"
+SRC_DIR="${MARKER_DIR}/src"
 
 # 颜色定义
 RED='\033[0;31m'
@@ -50,7 +56,7 @@ check_bootstrap() {
     fi
 }
 
-# 检测操作系统（仅支持 Ubuntu/Debian）
+# 检测操作系统
 detect_os() {
     if [ -f /etc/os-release ]; then
         . /etc/os-release
@@ -61,7 +67,6 @@ detect_os() {
         exit 1
     fi
     
-    # 仅支持 Ubuntu/Debian
     if [[ "$OS" != "ubuntu" && "$OS" != "debian" ]]; then
         log_error "仅支持 Ubuntu/Debian 系统，当前系统: ${OS}"
         exit 1
@@ -111,7 +116,6 @@ verify_docker() {
     log_step "2/4" "验证 Docker..."
     
     if ! docker info >/dev/null 2>&1; then
-        # 尝试使用 sudo
         if sudo docker info >/dev/null 2>&1; then
             log_warn "Docker 需要 sudo 权限运行"
             DOCKER_CMD="sudo docker"
@@ -126,52 +130,79 @@ verify_docker() {
     log_success "Docker 运行正常"
 }
 
-# 拉取镜像
-pull_images() {
-    log_step "3/4" "准备镜像..."
+# 拉取项目代码
+pull_source() {
+    log_step "3/4" "拉取项目代码..."
     
-    IMAGE_NAME="yyhuni/xingrin-worker:latest"
-    
-    log_info "从 Docker Hub 拉取镜像: ${IMAGE_NAME}"
-    
-    if sudo docker pull "${IMAGE_NAME}"; then
-        log_success "镜像拉取成功"
+    if [ -d "${SRC_DIR}/.git" ]; then
+        log_info "更新项目代码..."
+        cd "${SRC_DIR}"
+        git fetch origin
+        git checkout "${GITHUB_BRANCH}"
+        git pull origin "${GITHUB_BRANCH}"
+        log_success "代码更新完成"
     else
-        log_error "镜像拉取失败，请检查网络或镜像名称"
-        exit 1
+        log_info "从 GitHub 克隆项目: ${GITHUB_REPO}"
+        mkdir -p "${SRC_DIR}"
+        git clone -b "${GITHUB_BRANCH}" "${GITHUB_REPO}" "${SRC_DIR}"
+        log_success "代码克隆完成"
+    fi
+}
+
+# 构建镜像
+build_image() {
+    log_step "4/4" "构建 Docker 镜像..."
+    
+    cd "${SRC_DIR}"
+    
+    # 检查是否需要重新构建
+    if $DOCKER_CMD images xingrin-worker:latest --format "{{.ID}}" 2>/dev/null | grep -q .; then
+        log_info "镜像已存在"
+        read -p "是否重新构建镜像？(y/N): " rebuild
+        if [[ "$rebuild" != "y" && "$rebuild" != "Y" ]]; then
+            log_info "跳过镜像构建"
+            return 0
+        fi
     fi
     
-    # 重新标记为本地统一名称，方便启动脚本使用
-    sudo docker tag "${IMAGE_NAME}" xingrin-worker:latest
+    log_info "开始构建镜像（首次构建可能需要 10-20 分钟）..."
+    log_info "注意：镜像只包含工具和依赖，代码通过 volume 挂载"
     
-    log_info "镜像准备完成"
+    if $DOCKER_CMD build -t xingrin-worker:latest -f docker/prefect-worker/Dockerfile .; then
+        log_success "镜像构建成功"
+    else
+        log_error "镜像构建失败"
+        exit 1
+    fi
 }
 
 # 显示完成信息
 show_completion() {
-    log_step "4/4" "部署完成"
-    
     echo ""
     log_info "=========================================="
-    log_success "  ✓ Worker 部署准备完成"
+    log_success "  ✓ 安装完成"
     log_info "=========================================="
+    echo ""
+    log_info "项目代码位置: ${SRC_DIR}"
+    log_info "更新代码: cd ${SRC_DIR} && git pull"
     echo ""
     log_info "下一步操作："
     echo ""
-    echo "  # 启动 Worker（替换 <服务器IP> 为实际地址）"
-    echo "  docker run -d --name xingrin-worker \\"
-    echo "    -e PREFECT_API_URL=http://<服务器IP>:4200/api \\"
-    echo "    xingrin-worker:latest"
+    echo "  # 主机（运行全部服务）："
+    echo "  ./start-server.sh"
+    echo ""
+    echo "  # Worker VPS（只运行 Worker）："
+    echo "  ./start-worker.sh"
     echo ""
     
-    # 写入部署标记
-    echo "Deploy completed at $(date)" | sudo tee "$DEPLOY_MARKER" > /dev/null
+    # 写入安装标记
+    echo "Install completed at $(date)" | tee "$INSTALL_MARKER" > /dev/null
 }
 
 # 主流程
 main() {
     log_info "=========================================="
-    log_info "  XingRin Worker 部署"
+    log_info "  XingRin 安装"
     log_info "=========================================="
     echo ""
     
@@ -179,7 +210,8 @@ main() {
     detect_os
     install_docker
     verify_docker
-    pull_images
+    pull_source
+    build_image
     show_completion
 }
 

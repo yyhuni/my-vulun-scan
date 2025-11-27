@@ -18,7 +18,18 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 BACKEND_DIR="$( cd "$SCRIPT_DIR/../../.." && pwd )"
 PROJECT_ROOT="$( cd "$BACKEND_DIR/.." && pwd )"
+PID_DIR="$SCRIPT_DIR/.pids"
 PYTHON="$PROJECT_ROOT/.venv/bin/python"
+
+# 创建 PID 目录
+mkdir -p "$PID_DIR"
+
+# 加载 .env 文件（如果存在）
+if [ -f "$BACKEND_DIR/.env" ]; then
+    set -a
+    source "$BACKEND_DIR/.env"
+    set +a
+fi
 
 # 默认配置
 DEFAULT_POOL="development-pool"
@@ -36,6 +47,7 @@ show_help() {
     echo "  -p, --pool <name>      工作池名称 (默认: $DEFAULT_POOL)"
     echo "  -l, --limit <number>   并发任务限制 (默认: $DEFAULT_LIMIT)"
     echo "  -n, --name <name>      Worker 名称 (默认: 自动生成)"
+    echo "  -a, --api-url <url>    Prefect API URL (从 .env 读取)"
     echo "  -f, --foreground       前台运行（不后台化）"
     echo "  -h, --help             显示此帮助信息"
     echo ""
@@ -54,6 +66,7 @@ show_help() {
 POOL_NAME="$DEFAULT_POOL"
 LIMIT="$DEFAULT_LIMIT"
 WORKER_NAME="$DEFAULT_NAME"
+API_URL="${PREFECT_API_URL:-}"
 FOREGROUND=false
 
 while [[ $# -gt 0 ]]; do
@@ -68,6 +81,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         -n|--name)
             WORKER_NAME="$2"
+            shift 2
+            ;;
+        -a|--api-url)
+            API_URL="$2"
             shift 2
             ;;
         -f|--foreground)
@@ -87,23 +104,39 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# 检查 API URL 是否配置
+if [ -z "$API_URL" ]; then
+    echo -e "${RED}❌ 未配置 PREFECT_API_URL${NC}"
+    echo ""
+    echo "请在 .env 文件中配置："
+    echo "  PREFECT_API_URL=http://<服务器IP>:4200/api"
+    echo ""
+    echo "或通过命令行参数指定："
+    echo "  $0 -a http://<服务器IP>:4200/api"
+    exit 1
+fi
+
 echo "🔧 Prefect Worker 启动脚本"
 echo "=========================="
 echo "  Worker 名称: $WORKER_NAME"
 echo "  工作池: $POOL_NAME"
 echo "  并发限制: $LIMIT"
+echo "  API URL: $API_URL"
 echo "  运行模式: $([ "$FOREGROUND" = true ] && echo "前台" || echo "后台")"
+
+# 设置环境变量
+export PREFECT_API_URL="$API_URL"
+export DJANGO_SETTINGS_MODULE="config.settings"
 
 # 检查 Prefect Server 是否运行
 echo ""
 echo "检查 Prefect Server..."
-if ! curl -s http://localhost:4200/api/health > /dev/null 2>&1; then
-    echo -e "${RED}❌ Prefect Server 未运行${NC}"
-    echo "请先启动 Prefect Server："
-    echo "  ./scripts/prefect/server/start-server.sh"
-    exit 1
+if ! curl -s "${API_URL%/api}/api/health" > /dev/null 2>&1; then
+    echo -e "${YELLOW}⚠ 无法连接 Prefect Server: $API_URL${NC}"
+    echo "Worker 仍将启动，等待 Server 可用..."
+else
+    echo -e "${GREEN}✓ Prefect Server 已运行${NC}"
 fi
-echo -e "${GREEN}✓ Prefect Server 已运行${NC}"
 
 # 切换到 backend 目录（重要：确保读取 .env 文件）
 cd "$BACKEND_DIR"
@@ -114,8 +147,11 @@ WORKER_CMD="$WORKER_CMD --pool $POOL_NAME"
 WORKER_CMD="$WORKER_CMD --limit $LIMIT"
 WORKER_CMD="$WORKER_CMD --name $WORKER_NAME"
 
-LOG_FILE="$SCRIPT_DIR/worker-${WORKER_NAME}.log"
-PID_FILE="$SCRIPT_DIR/worker-${WORKER_NAME}.pid"
+# 日志放在 backend/logs/prefect/，PID 放在 .pids
+LOG_DIR="$BACKEND_DIR/logs/prefect"
+mkdir -p "$LOG_DIR"
+LOG_FILE="$LOG_DIR/worker-${WORKER_NAME}.log"
+PID_FILE="$PID_DIR/worker-${WORKER_NAME}.pid"
 
 echo ""
 echo "启动 Prefect Worker..."

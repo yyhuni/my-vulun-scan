@@ -63,9 +63,7 @@ stop_service() {
 
 # 1. 停止 Prefect Deployments
 echo "停止 Prefect Deployments..."
-stop_service "扫描任务 Deployment" "scan-deployment"
-stop_service "清理任务 Deployment" "cleanup-deployment"
-echo -e "${YELLOW}⚠ 删除任务 Deployment 未运行${NC}"
+"$SCRIPT_DIR/../prefect/deployments/stop-deployments.sh"
 
 # 2. 停止 Daphne ASGI 服务器
 echo ""
@@ -83,12 +81,13 @@ fi
 # 3. 停止 Prefect Worker
 echo ""
 echo "停止 Prefect Worker..."
-stop_service "Prefect Worker" "prefect-worker"
+"$SCRIPT_DIR/../prefect/workers/stop-worker.sh" -a
+
 
 # 4. 停止 Prefect Server
 echo ""
 echo "停止 Prefect Server..."
-stop_service "Prefect Server" "prefect-server"
+"$SCRIPT_DIR/../prefect/server/stop-server.sh"
 
 # 额外检查：清理任何残留的 Prefect Server 进程
 if pgrep -f "prefect server start" > /dev/null 2>&1; then

@@ -32,3 +32,9 @@ def create_cleanup_deployment():
 
 
 __all__ = ['create_cleanup_deployment']
+
+
+if __name__ == "__main__":
+    deployment = create_cleanup_deployment()
+    deployment.apply()
+    print("Success: cleanup-old-scans-daily deployment applied")

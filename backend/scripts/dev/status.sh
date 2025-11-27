@@ -49,29 +49,25 @@ check_service() {
     fi
 }
 
-# 检查各个服务
-check_service "Prefect Server" "prefect-server" "http://localhost:4200/api/health"
-echo ""
+# 本地服务状态
+echo -e "${BLUE}本地服务:${NC}"
 check_service "Daphne ASGI 服务器" "daphne" "http://localhost:8888/api/"
 echo ""
 
-# 检查 Prefect Worker（使用 pgrep）
-printf "%-25s" "Prefect Worker:"
-if pgrep -f "prefect worker" > /dev/null 2>&1; then
-    WORKER_PID=$(pgrep -f "prefect worker")
-    echo -e "${GREEN}运行中${NC} (PID: $WORKER_PID)"
-else
-    echo -e "${RED}已停止${NC}"
-fi
+# 分割线 + Prefect 组件状态（全部委托给 scripts/prefect 下的脚本）
+echo -e "${BLUE}----------------------------------------${NC}"
+echo -e "${BLUE}Prefect 组件状态:${NC}"
+echo -e "${BLUE}----------------------------------------${NC}"
 echo ""
 
-check_service "扫描任务 Deployment" "scan-deployment"
-check_service "清理任务 Deployment" "cleanup-deployment"
-check_service "删除任务 Deployment" "delete-deployment"
-
+# 为避免下游脚本非 0 退出导致整个脚本中断，这里暂时关闭 set -e
+set +e
+"$SCRIPT_DIR/../prefect/server/status-server.sh" | sed 's/^/  /'
 echo ""
-echo -e "${YELLOW}注意: Deployment 进程显示'已停止'是正常的，因为使用分离模式部署。${NC}"
-echo -e "${YELLOW}      部署任务已注册到 Prefect Server，由 Worker 执行。${NC}"
+"$SCRIPT_DIR/../prefect/workers/status-workers.sh" | sed 's/^/  /'
+echo ""
+"$SCRIPT_DIR/../prefect/deployments/status-deployments.sh" | sed 's/^/  /'
+set -e
 
 # 显示日志文件位置
 echo ""
@@ -91,6 +87,6 @@ fi
 echo ""
 echo -e "${BLUE}管理命令:${NC}"
 echo "  - 查看日志: tail -f $PID_DIR/<服务名>.log"
-echo "  - 重启服务: ./script/dev/restart.sh"
-echo "  - 停止服务: ./script/dev/stop.sh"
+echo "  - 重启服务: ./scripts/dev/restart.sh"
+echo "  - 停止服务: ./scripts/dev/stop.sh"
 echo ""

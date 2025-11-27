@@ -30,15 +30,7 @@ echo ""
 echo -e "${YELLOW}[1/4] 停止所有服务...${NC}"
 echo ""
 
-# 停止 Prefect Worker（使用 pkill）
-echo "停止 Prefect Worker..."
-if pkill -f "prefect worker" 2>/dev/null; then
-    echo -e "${GREEN}✓ Prefect Worker 已停止${NC}"
-else
-    echo -e "${YELLOW}⚠ Prefect Worker 未运行${NC}"
-fi
-
-# 停止其他服务（包括 Prefect Server）
+# 停止其他服务（包括 Prefect Server 和 Workers）
 if [ -f "$SCRIPT_DIR/stop.sh" ]; then
     "$SCRIPT_DIR/stop.sh" || true
 fi

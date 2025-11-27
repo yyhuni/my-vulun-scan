@@ -35,6 +35,7 @@ PyYAML==6.0.1
 colorlog==6.8.2  # 彩色日志输出
 python-json-logger==2.0.7  # JSON 结构化日志
 Jinja2==3.1.4  # 命令模板引擎
+croniter>=2.0.0  # Cron 表达式解析（定时扫描）
 
 # 缓存
 cachetools>=5.3.0

@@ -24,8 +24,12 @@ if [ -n "$PREFECT_PID" ]; then
         echo -e "  ${GREEN}✓ API 健康检查通过${NC}"
         echo "  访问地址: http://localhost:4200"
         
-        # 获取 Prefect 版本信息
-        VERSION=$(curl -s http://localhost:4200/api/admin/version 2>/dev/null | grep -o '"version":"[^"]*"' | cut -d'"' -f4 2>/dev/null || echo "未知")
+        # 获取 Prefect 版本信息（解析失败时显示“未知”）
+        VERSION_JSON=$(curl -s http://localhost:4200/api/admin/version 2>/dev/null || echo "")
+        VERSION=$(echo "$VERSION_JSON" | grep -o '"version":"[^"]*"' | cut -d'"' -f4 2>/dev/null || echo "")
+        if [ -z "$VERSION" ]; then
+            VERSION="未知"
+        fi
         echo "  Prefect 版本: $VERSION"
     else
         echo -e "  ${YELLOW}⚠ API 健康检查失败${NC}"
@@ -65,9 +69,11 @@ fi
 echo ""
 echo "日志文件:"
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+BACKEND_DIR="$( cd "$SCRIPT_DIR/../../.." && pwd )"
+PID_DIR="$SCRIPT_DIR/.pids"
 
-# 日志文件放在当前脚本目录
-LOG_FILE="$SCRIPT_DIR/prefect-server.log"
+# 日志文件放在 backend/logs/prefect/
+LOG_FILE="$BACKEND_DIR/logs/prefect/server.log"
 
 if [ -f "$LOG_FILE" ]; then
     echo "  日志位置: $LOG_FILE"

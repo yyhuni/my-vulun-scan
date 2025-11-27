@@ -102,20 +102,21 @@ RUN cd $SCAN_TOOLS_PATH \
     && git clone https://github.com/shmilylty/OneForAll.git \
     && cd OneForAll && pip install -r requirements.txt
 
-# 6. 复制项目代码
-# 只复制后端代码，排除前端和其他无关文件
-COPY backend /app/backend/
+# 6. 复制 requirements.txt 并安装项目依赖
+# 注意：实际代码通过 volume 挂载，这里只安装依赖
+COPY backend/requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
 
-# 7. 安装项目依赖
-RUN pip install --no-cache-dir -r /app/backend/requirements.txt
-
-# 8. 创建必要的输出和配置目录
+# 7. 创建工作目录和必要的子目录
 RUN mkdir -p /app/backend/logs \
     && mkdir -p /app/backend/scripts/dev/.pids
 
-# 设置工作目录到 backend，方便运行 prefect
+# 设置工作目录到 backend
+# 实际代码通过 -v 挂载到 /app/backend
 WORKDIR /app/backend
 
 # 默认命令：启动 Prefect Worker
-# 注意：启动时可以通过环境变量覆盖 PREFECT_API_URL 和 pool 名称
+# 注意：
+# - 启动时通过 -v 挂载宿主机代码目录
+# - 通过环境变量设置 PREFECT_API_URL 和 pool 名称
 CMD ["prefect", "worker", "start", "--pool", "development-pool"]

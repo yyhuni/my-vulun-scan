@@ -10,9 +10,10 @@ NC='\033[0m' # No Color
 
 # 获取脚本所在目录
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PID_DIR="$SCRIPT_DIR/.pids"
 
-# PID文件放在当前脚本目录
-PID_FILE="$SCRIPT_DIR/prefect-server.pid"
+# PID文件放在 PID_DIR
+PID_FILE="$PID_DIR/prefect-server.pid"
 
 echo "🛑 Prefect Server 停止脚本"
 echo "========================="

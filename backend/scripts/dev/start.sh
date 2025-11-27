@@ -19,9 +19,11 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 BACKEND_DIR="$( cd "$SCRIPT_DIR/../.." && pwd )"
 PROJECT_ROOT="$( cd "$BACKEND_DIR/.." && pwd )"
 PID_DIR="$SCRIPT_DIR/.pids"
+LOG_DIR="$BACKEND_DIR/logs/server"
 
-# 创建 PID 目录
+# 创建目录
 mkdir -p "$PID_DIR"
+mkdir -p "$LOG_DIR"
 
 echo -e "${BLUE}=============================="
 echo -e "  XingRin 开发环境启动"
@@ -70,55 +72,20 @@ except Exception as e:
 fi
 echo -e "${GREEN}✓ Redis 已运行${NC}"
 
-# 4. 检查 Prefect Server
+# 4. 检查并启动 Prefect Server
 echo ""
 echo "检查 Prefect Server..."
 
-# 检查是否有进程在运行
-PREFECT_PID=$(pgrep -f "prefect server start" 2>/dev/null || echo "")
-
-if [ -z "$PREFECT_PID" ]; then
-    echo -e "${YELLOW}⚠ Prefect Server 未运行，正在启动...${NC}"
-    
-    # 启动 Prefect Server（后台，切换到 backend 目录读取 .env）
-    cd "$BACKEND_DIR"
-    nohup $PROJECT_ROOT/.venv/bin/prefect server start > "$PID_DIR/prefect-server.log" 2>&1 &
-    cd "$SCRIPT_DIR"  # 切换回脚本目录
-    NEW_PID=$!
-    echo $NEW_PID > "$PID_DIR/prefect-server.pid"
-    
-    echo "等待 Prefect Server 启动..."
-    
-    # 使用重试机制验证启动（最多等待 30 秒）
-    MAX_RETRIES=15
-    RETRY_COUNT=0
-    SERVER_STARTED=false
-    
-    while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-        if curl -s http://localhost:4200/api/health > /dev/null 2>&1; then
-            SERVER_STARTED=true
-            break
-        fi
-        RETRY_COUNT=$((RETRY_COUNT + 1))
-        echo "  尝试 $RETRY_COUNT/$MAX_RETRIES..."
-        sleep 2
-    done
-    
-    if $SERVER_STARTED; then
-        echo -e "${GREEN}✓ Prefect Server 已启动 (PID: $NEW_PID)${NC}"
-        echo "  访问: http://localhost:4200"
-    else
-        echo -e "${RED}✗ Prefect Server 启动失败${NC}"
-        echo "  查看日志: tail -f $PID_DIR/prefect-server.log"
-        exit 1
+# 调用 Server 启动脚本
+if "$SCRIPT_DIR/../prefect/server/start-server.sh"; then
+    # 读取 PID
+    if [ -f "$SCRIPT_DIR/../prefect/server/prefect-server.pid" ]; then
+        SERVER_PID=$(cat "$SCRIPT_DIR/../prefect/server/prefect-server.pid")
+        echo -e "${GREEN}✓ Prefect Server 已就绪 (PID: $SERVER_PID)${NC}"
     fi
 else
-    echo -e "${GREEN}✓ Prefect Server 已运行 (PID: $PREFECT_PID)${NC}"
-    # 创建 PID 文件（如果不存在）
-    if [ ! -f "$PID_DIR/prefect-server.pid" ]; then
-        echo $PREFECT_PID > "$PID_DIR/prefect-server.pid"
-        echo "  已创建 PID 文件"
-    fi
+    echo -e "${RED}✗ Prefect Server 启动失败${NC}"
+    exit 1
 fi
 
 # 5. 检查数据库
@@ -146,7 +113,7 @@ fi
 if [ ! -f "$PID_DIR/daphne.pid" ]; then
     cd "$BACKEND_DIR"
     # 添加 WebSocket 超时配置：--websocket_timeout 3600（1小时）
-    nohup $PROJECT_ROOT/.venv/bin/daphne -b 0.0.0.0 -p 8888 --websocket_timeout 3600 config.asgi:application > "$PID_DIR/daphne.log" 2>&1 &
+    nohup $PROJECT_ROOT/.venv/bin/daphne -b 0.0.0.0 -p 8888 --websocket_timeout 3600 config.asgi:application > "$LOG_DIR/daphne.log" 2>&1 &
     echo $! > "$PID_DIR/daphne.pid"
     sleep 2
     
@@ -170,69 +137,20 @@ echo -e "${GREEN}✓ 本地开发模式已启用${NC}"
 echo ""
 echo "启动 Prefect Deployments..."
 
-cd "$BACKEND_DIR"  # 切换到 backend 目录读取 .env
+# 调用 Deployment 启动脚本
+"$SCRIPT_DIR/../prefect/deployments/start-deployments.sh"
 
-# 注册所有 Scan 相关任务 Deployments（扫描 + 清理 + 删除）
-echo "  - 注册 Scan 相关任务..."
-nohup $PYTHON -m apps.scan.deployments.register > "$PID_DIR/scan-deployment.log" 2>&1 &
-echo $! > "$PID_DIR/scan-deployment.pid"
-
-# 注册 Targets 删除任务 Deployments（目标 + 组织）
-echo "  - 注册 Targets 删除任务..."
-nohup $PYTHON -m apps.targets.deployments.register > "$PID_DIR/targets-delete-deployment.log" 2>&1 &
-echo $! > "$PID_DIR/targets-delete-deployment.pid"
-
-sleep 5
-
-# 验证 Deployments 启动状态（所有都是分离模式）
-SCAN_SUCCESS=false
-TARGETS_SUCCESS=false
-
-# 检查 Scan Deployments（扫描 + 清理 + 删除）
-if grep -q "✅ 所有 Scan Deployments 注册成功！" "$PID_DIR/scan-deployment.log" 2>/dev/null; then
-    SCAN_SUCCESS=true
-fi
-
-# 检查 Targets Deployments
-if grep -q "✅ 所有 Targets Deployments 注册成功！" "$PID_DIR/targets-delete-deployment.log" 2>/dev/null; then
-    TARGETS_SUCCESS=true
-fi
-
-# 验证结果
-if [ "$SCAN_SUCCESS" = true ] && [ "$TARGETS_SUCCESS" = true ]; then
-    echo -e "${GREEN}✓ 所有 Prefect Deployments 已启动${NC}"
-    echo "  - 扫描任务: 分离模式部署成功"
-    echo "  - 清理任务: 分离模式部署成功"
-    echo "  - 删除任务: 分离模式部署成功"
-else
-    echo -e "${YELLOW}⚠ 部分 Deployments 可能未完成部署${NC}"
-    echo "  状态检查:"
-    echo "    - Scan 任务: $(if [ "$SCAN_SUCCESS" = true ]; then echo "✓ 部署成功"; else echo "⚠ 请检查日志"; fi)"
-    echo "    - Targets 任务: $(if [ "$TARGETS_SUCCESS" = true ]; then echo "✓ 部署成功"; else echo "⚠ 请检查日志"; fi)"
-    echo "  查看日志:"
-    echo "    - tail -f $PID_DIR/scan-deployment.log"
-    echo "    - tail -f $PID_DIR/targets-delete-deployment.log"
-    echo ""
-    echo -e "${YELLOW}  继续启动 Worker...${NC}"
-fi
-
-# 9. 启动 Prefect Worker（分离模式部署需要）
+# 9. 启动 Prefect Worker（可选）
 echo ""
-echo "启动 Prefect Worker..."
-echo "  - 工作池: development-pool"
-nohup $PYTHON -m prefect worker start --pool development-pool > "$PID_DIR/prefect-worker.log" 2>&1 &
-echo $! > "$PID_DIR/prefect-worker.pid"
+echo -n -e "${YELLOW}[XingRin]${NC} 是否启动本地 Prefect Worker？(用于执行任务) [y/N]: "
+read -r START_WORKER
 
-sleep 2
-
-# 验证 Worker 启动
-if ps -p $(cat "$PID_DIR/prefect-worker.pid" 2>/dev/null) > /dev/null 2>&1; then
-    echo -e "${GREEN}✓ Prefect Worker 已启动${NC}"
-    echo "  - 支持分离模式部署执行"
+if [[ "$START_WORKER" =~ ^[Yy]$ ]]; then
+    # 调用 worker 启动脚本（后台运行）
+    "$SCRIPT_DIR/../prefect/workers/start-worker.sh" -p development-pool -n dev-worker
 else
-    echo -e "${RED}✗ Prefect Worker 启动失败${NC}"
-    echo "  查看日志: tail -f $PID_DIR/prefect-worker.log"
-    exit 1
+    echo "跳过启动 Prefect Worker"
+    echo "  注意：任务将处于 Scheduled 状态，直到有 Worker 接入"
 fi
 
 # 10. 显示状态
@@ -248,23 +166,26 @@ echo "    • HTTP API:        http://localhost:8888/api/"
 echo "    • WebSocket:       ws://localhost:8888/ws/notifications/"
 echo "    • Swagger:         http://localhost:8888/swagger/"
 echo ""
-echo "Prefect Deployments:"
-echo "  - Scan 任务:        分离模式部署成功"
-echo "    • initiate-scan-on-demand (扫描)"
-echo "    • cleanup-old-scans-daily (清理，每天凌晨2:00)"
-echo "    • delete-scans (删除)"
-echo "  - Targets 任务:     分离模式部署成功"
-echo "    • delete-targets (目标删除)"
-echo "    • delete-organizations (组织删除)"
-echo "  - Worker:           运行中 (PID: $(cat $PID_DIR/prefect-worker.pid))"
-echo "    • 工作池:          development-pool"
+echo "Prefect 组件状态:"
+"$SCRIPT_DIR/../prefect/deployments/status-deployments.sh" | sed 's/^/  /'
+
+# 根据新的 .pids 目录判断 Worker 状态
+WORKER_PID_FILE="$SCRIPT_DIR/../prefect/workers/.pids/worker-dev-worker.pid"
+if [ -f "$WORKER_PID_FILE" ] && ps -p "$(cat "$WORKER_PID_FILE")" > /dev/null 2>&1; then
+    echo "  - Worker:           运行中 (PID: $(cat "$WORKER_PID_FILE"))"
+    echo "    • 工作池:          development-pool"
+else
+    echo "  - Worker:           未启动"
+fi
+
 echo ""
 echo "日志文件:"
-echo "  - Prefect:          $PID_DIR/prefect-server.log"
-echo "  - Daphne:           $PID_DIR/daphne.log"
-echo "  - Scan Deployments: $PID_DIR/scan-deployment.log"
-echo "  - Targets 删除:     $PID_DIR/targets-delete-deployment.log"
-echo "  - Worker:           $PID_DIR/prefect-worker.log"
+echo "  - Daphne:           $LOG_DIR/daphne.log"
+echo "  - Prefect Server:   $BACKEND_DIR/logs/prefect/server.log"
+WORKER_LOG_FILE="$BACKEND_DIR/logs/prefect/worker-dev-worker.log"
+if [ -f "$WORKER_LOG_FILE" ]; then
+    echo "  - Worker:           $WORKER_LOG_FILE"
+fi
 echo ""
 echo "管理命令:"
 echo "  - 查看状态: ./scripts/dev/status.sh"

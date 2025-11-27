@@ -31,3 +31,9 @@ def create_scan_deployment():
 
 
 __all__ = ['create_scan_deployment']
+
+
+if __name__ == "__main__":
+    deployment = create_scan_deployment()
+    deployment.apply()
+    print("Success: initiate-scan-on-demand deployment applied")

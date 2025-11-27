@@ -10,12 +10,18 @@ NC='\033[0m' # No Color
 
 # 获取脚本所在目录和项目根目录
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PID_DIR="$SCRIPT_DIR/.pids"
 BACKEND_DIR="$( cd "$SCRIPT_DIR/../../.." && pwd )"
 PROJECT_ROOT="$( cd "$BACKEND_DIR/.." && pwd )"
 
-# 日志和PID文件放在当前脚本目录
-LOG_FILE="$SCRIPT_DIR/prefect-server.log"
-PID_FILE="$SCRIPT_DIR/prefect-server.pid"
+# PID 文件放在 .pids 目录，日志放在 backend/logs/prefect/
+LOG_DIR="$BACKEND_DIR/logs/prefect"
+mkdir -p "$LOG_DIR"
+LOG_FILE="$LOG_DIR/server.log"
+PID_FILE="$PID_DIR/prefect-server.pid"
+
+# 创建 PID 目录
+mkdir -p "$PID_DIR"
 
 echo "🚀 Prefect Server 启动脚本"
 echo "=========================="

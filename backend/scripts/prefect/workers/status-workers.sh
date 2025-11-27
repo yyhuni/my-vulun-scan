@@ -11,7 +11,15 @@ NC='\033[0m' # No Color
 
 # 获取脚本所在目录和项目根目录
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PID_DIR="$SCRIPT_DIR/.pids"
 BACKEND_DIR="$( cd "$SCRIPT_DIR/../../.." && pwd )"
+LOG_DIR="$BACKEND_DIR/logs/prefect"
+
+# API URL（优先使用环境变量），并导出给 Prefect CLI 使用
+PREFECT_API_URL="${PREFECT_API_URL:-http://localhost:4200/api}"
+export PREFECT_API_URL
+API_URL="$PREFECT_API_URL"
+SERVER_URL="${API_URL%/api}"
 
 echo "📊 Prefect Workers 状态"
 echo "======================"
@@ -19,7 +27,8 @@ echo "======================"
 # 检查 Prefect Server 连接
 echo ""
 echo "Prefect Server 连接:"
-if curl -s http://localhost:4200/api/health > /dev/null 2>&1; then
+echo "  API URL: $API_URL"
+if curl -s "${SERVER_URL}/api/health" > /dev/null 2>&1; then
     echo -e "  ${GREEN}✓ Server 连接正常${NC}"
 else
     echo -e "  ${RED}❌ 无法连接到 Prefect Server${NC}"
@@ -31,7 +40,7 @@ echo ""
 echo "本地 Workers:"
 echo "============"
 
-local_workers=($(find "$SCRIPT_DIR" -name "worker-*.pid" 2>/dev/null || true))
+local_workers=($(find "$PID_DIR" -name "worker-*.pid" 2>/dev/null || true))
 
 if [ ${#local_workers[@]} -eq 0 ]; then
     echo -e "${YELLOW}⚠ 没有找到本地 Worker 进程${NC}"
@@ -61,27 +70,11 @@ echo ""
 echo "Prefect Server 中的 Workers:"
 echo "============================"
 
-if curl -s http://localhost:4200/api/health > /dev/null 2>&1; then
-    # 尝试获取 Workers 信息（需要 Prefect CLI）
-    cd "$BACKEND_DIR"
-    
-    if command -v prefect > /dev/null 2>&1; then
-        # 使用 prefect CLI 获取 worker 信息
-        WORKERS_INFO=$(timeout 10 prefect worker ls 2>/dev/null || echo "")
-        
-        if [ -n "$WORKERS_INFO" ]; then
-            echo "$WORKERS_INFO"
-        else
-            echo -e "${YELLOW}⚠ 无法获取 Server 中的 Workers 信息${NC}"
-            echo "  可能原因："
-            echo "  - 没有 Workers 连接到 Server"
-            echo "  - Prefect CLI 配置问题"
-        fi
-    else
-        echo -e "${YELLOW}⚠ Prefect CLI 不可用${NC}"
-    fi
+if curl -s "${SERVER_URL}/api/health" > /dev/null 2>&1; then
+    # 当前 Prefect 版本的 CLI 只提供 worker start，不支持通过 CLI 列出 Workers，改为指引到 UI
+    echo "  当前 Prefect CLI 不支持列出 Workers，请在 Prefect UI 查看: ${SERVER_URL}/workers"
 else
-    echo -e "${RED}❌ 无法连接到 Prefect Server${NC}"
+    echo -e "${YELLOW}⚠ 无法连接到 Prefect Server，无法获取 Workers 信息${NC}"
 fi
 
 # 显示工作池信息
@@ -89,9 +82,13 @@ echo ""
 echo "工作池信息:"
 echo "=========="
 
-if curl -s http://localhost:4200/api/health > /dev/null 2>&1 && command -v prefect > /dev/null 2>&1; then
+if curl -s "${SERVER_URL}/api/health" > /dev/null 2>&1 && command -v prefect > /dev/null 2>&1; then
     cd "$BACKEND_DIR"
-    POOLS_INFO=$(timeout 10 prefect work-pool ls 2>/dev/null || echo "")
+    if command -v timeout > /dev/null 2>&1; then
+        POOLS_INFO=$(timeout 10 prefect work-pool ls 2>/dev/null || echo "")
+    else
+        POOLS_INFO=$(prefect work-pool ls 2>/dev/null || echo "")
+    fi
     
     if [ -n "$POOLS_INFO" ]; then
         echo "$POOLS_INFO"
@@ -109,7 +106,7 @@ echo "========"
 
 for pid_file in "${local_workers[@]}"; do
     worker_name=$(basename "$pid_file" .pid | sed 's/worker-//')
-    log_file="$SCRIPT_DIR/worker-${worker_name}.log"
+    log_file="$LOG_DIR/worker-${worker_name}.log"
     
     if [ -f "$log_file" ]; then
         file_size=$(du -h "$log_file" | cut -f1)
@@ -127,6 +124,6 @@ echo "  停止所有: ./scripts/prefect/workers/stop-worker.sh -a"
 
 echo ""
 echo "🔗 相关链接:"
-echo "  Prefect UI: http://localhost:4200"
-echo "  Workers 页面: http://localhost:4200/workers"
-echo "  Work Pools: http://localhost:4200/work-pools"
+echo "  Prefect UI: $SERVER_URL"
+echo "  Workers 页面: $SERVER_URL/workers"
+echo "  Work Pools: $SERVER_URL/work-pools"
