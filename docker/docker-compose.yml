@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "${REDIS_PORT}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  server:
+    build:
+      context: ..
+      dockerfile: docker/server/Dockerfile
+    restart: always
+    ports:
+      - "${SERVER_PORT}:8888"
+      - "${PREFECT_UI_PORT}:4200"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - PREFECT_API_URL=http://server:4200/api
+      - PREFECT_SERVER_API_HOST=0.0.0.0
+      - PREFECT_API_DATABASE_CONNECTION_URL=${PREFECT_API_DATABASE_CONNECTION_URL}
+      - SECRET_KEY=${DJANGO_SECRET_KEY}
+      - DEBUG=${DEBUG}
+      - ENVIRONMENT=${ENVIRONMENT}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      - SCAN_RESULTS_DIR=${SCAN_RESULTS_DIR}
+      - LOG_DIR=${LOG_DIR}
+      - PREFECT_DEFAULT_WORK_POOL_NAME=${PREFECT_DEFAULT_WORK_POOL_NAME}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ../backend/logs:/app/backend/logs
+      - ../backend/results:/app/backend/results
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/api/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  worker:
+    build:
+      context: ..
+      dockerfile: docker/worker/Dockerfile
+    restart: always
+    environment:
+      - PREFECT_API_URL=http://server:4200/api
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - SCAN_RESULTS_DIR=${SCAN_RESULTS_DIR}
+      - LOG_DIR=${LOG_DIR}
+    depends_on:
+      server:
+        condition: service_healthy
+    volumes:
+      - ../backend/logs:/app/backend/logs
+      - ../backend/results:/app/backend/results
+
+volumes:
+  postgres_data:
