@@ -15,6 +15,7 @@ import {
   IconRadar, // 雷达扫描图标
   IconTool, // 工具图标
   IconFlask, // 实验瓶图标
+  IconServer, // 服务器图标
 } from "@tabler/icons-react"
 // 导入路径名 hook
 import { usePathname } from "next/navigation"
@@ -137,6 +138,11 @@ const data = {
       name: "磁盘管理", // 硬盘使用情况
       url: "/disk/",
       icon: IconDatabase,
+    },
+    {
+      name: "Worker 管理", // 分布式扫描节点管理
+      url: "/settings/workers/",
+      icon: IconServer,
     },
     {
       name: "通知设置", // 通知设置

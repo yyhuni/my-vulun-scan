@@ -1,5 +1,8 @@
+"""
+扫描引擎序列化器
+"""
 from rest_framework import serializers
-from .models import ScanEngine
+from apps.engine.models import ScanEngine
 
 
 class ScanEngineSerializer(serializers.ModelSerializer):
@@ -40,4 +43,3 @@ class ScanEngineSerializer(serializers.ModelSerializer):
             except yaml.YAMLError as e:
                 raise serializers.ValidationError(f"YAML 格式错误: {str(e)}")
         return value
-

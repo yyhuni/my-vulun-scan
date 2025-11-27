@@ -1,7 +1,10 @@
+"""
+扫描引擎 Views
+"""
 from rest_framework import viewsets
 
-from .models import ScanEngine
-from .serializers import ScanEngineSerializer
+from apps.engine.models import ScanEngine
+from apps.engine.serializers import ScanEngineSerializer
 
 
 class ScanEngineViewSet(viewsets.ModelViewSet):

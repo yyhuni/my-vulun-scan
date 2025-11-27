@@ -45,8 +45,8 @@ urlpatterns = [
     # 扫描 API
     path('api/', include('apps.scan.urls')),
     
-    # 引擎 API
-    path('api/engines/', include('apps.engine.urls')),
+    # 引擎 & Worker API
+    path('api/', include('apps.engine.urls')),
     
     # 资产 API
     path('api/', include('apps.asset.urls')),
