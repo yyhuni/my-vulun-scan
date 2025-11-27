@@ -60,6 +60,13 @@ interface ScheduledScanDataTableProps {
   searchPlaceholder?: string
   searchColumn?: string
   addButtonText?: string
+  // 服务端分页相关
+  page?: number
+  pageSize?: number
+  total?: number
+  totalPages?: number
+  onPageChange?: (page: number) => void
+  onPageSizeChange?: (pageSize: number) => void
 }
 
 /**
@@ -74,18 +81,21 @@ export function ScheduledScanDataTable({
   searchPlaceholder = "搜索任务名称...",
   searchColumn = "name",
   addButtonText = "新建定时扫描",
+  // 服务端分页
+  page = 1,
+  pageSize = 10,
+  total = 0,
+  totalPages = 1,
+  onPageChange,
+  onPageSizeChange,
 }: ScheduledScanDataTableProps) {
   // 表格状态管理
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [sorting, setSorting] = React.useState<SortingState>([])
-  const [pagination, setPagination] = React.useState<{
-    pageIndex: number
-    pageSize: number
-  }>({
-    pageIndex: 0,
-    pageSize: 10,
-  })
+
+  // 服务端分页：不使用 TanStack Table 的分页，而是手动控制
+  const isServerPagination = !!onPageChange
 
   // 过滤有效数据
   const validData = React.useMemo(() => {
@@ -102,19 +112,24 @@ export function ScheduledScanDataTable({
       sorting,
       columnVisibility,
       columnFilters,
-      pagination,
+      // 服务端分页时不使用内部分页状态
+      ...(isServerPagination ? {} : {
+        pagination: { pageIndex: page - 1, pageSize }
+      }),
     },
     getRowId: (row) => row.id.toString(),
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
-    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    // 服务端分页时不使用客户端分页
+    ...(isServerPagination ? {} : { getPaginationRowModel: getPaginationRowModel() }),
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
+    // 服务端分页：告诉 table 总行数
+    ...(isServerPagination ? { manualPagination: true, pageCount: totalPages } : {}),
   })
 
 
@@ -258,20 +273,20 @@ export function ScheduledScanDataTable({
               Rows per page
             </Label>
             <Select
-              value={`${table.getState().pagination.pageSize}`}
+              value={`${pageSize}`}
               onValueChange={(value) => {
-                table.setPageSize(Number(value))
+                if (onPageSizeChange) {
+                  onPageSizeChange(Number(value))
+                }
               }}
             >
               <SelectTrigger className="h-8 w-[90px]" id="rows-per-page">
-                <SelectValue
-                  placeholder={table.getState().pagination.pageSize}
-                />
+                <SelectValue placeholder={pageSize} />
               </SelectTrigger>
               <SelectContent side="top">
-                {[10, 20, 50, 100, 200, 500, 1000].map((pageSize) => (
-                  <SelectItem key={pageSize} value={`${pageSize}`}>
-                    {pageSize}
+                {[10, 20, 50, 100, 200, 500, 1000].map((size) => (
+                  <SelectItem key={size} value={`${size}`}>
+                    {size}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -279,9 +294,8 @@ export function ScheduledScanDataTable({
           </div>
 
           {/* 页码信息 */}
-          <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-            Page {table.getState().pagination.pageIndex + 1} of{" "}
-            {table.getPageCount()}
+          <div className="flex w-[120px] items-center justify-center text-sm font-medium">
+            Page {page} of {totalPages} ({total} items)
           </div>
 
           {/* 分页按钮 */}
@@ -289,8 +303,8 @@ export function ScheduledScanDataTable({
             <Button
               variant="outline"
               className="hidden h-8 w-8 p-0 lg:flex"
-              onClick={() => table.setPageIndex(0)}
-              disabled={!table.getCanPreviousPage()}
+              onClick={() => onPageChange?.(1)}
+              disabled={page <= 1}
             >
               <span className="sr-only">Go to first page</span>
               <IconChevronsLeft />
@@ -298,8 +312,8 @@ export function ScheduledScanDataTable({
             <Button
               variant="outline"
               className="h-8 w-8 p-0"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
+              onClick={() => onPageChange?.(page - 1)}
+              disabled={page <= 1}
             >
               <span className="sr-only">Go to previous page</span>
               <IconChevronLeft />
@@ -307,8 +321,8 @@ export function ScheduledScanDataTable({
             <Button
               variant="outline"
               className="h-8 w-8 p-0"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
+              onClick={() => onPageChange?.(page + 1)}
+              disabled={page >= totalPages}
             >
               <span className="sr-only">Go to next page</span>
               <IconChevronRight />
@@ -316,8 +330,8 @@ export function ScheduledScanDataTable({
             <Button
               variant="outline"
               className="hidden h-8 w-8 p-0 lg:flex"
-              onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-              disabled={!table.getCanNextPage()}
+              onClick={() => onPageChange?.(totalPages)}
+              disabled={page >= totalPages}
             >
               <span className="sr-only">Go to last page</span>
               <IconChevronsRight />

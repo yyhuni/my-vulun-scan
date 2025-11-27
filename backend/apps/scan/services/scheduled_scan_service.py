@@ -45,6 +45,10 @@ class ScheduledScanService:
         """根据 ID 获取定时扫描任务"""
         return self.repo.get_by_id(scheduled_scan_id)
     
+    def get_queryset(self):
+        """获取所有定时扫描任务的查询集"""
+        return self.repo.get_queryset()
+
     def get_all(self, page: int = 1, page_size: int = 10) -> Tuple[List[ScheduledScan], int]:
         """分页获取所有定时扫描任务"""
         return self.repo.get_all(page, page_size)
@@ -167,6 +171,21 @@ class ScheduledScanService:
         if deployment_changed:
             try:
                 self._update_prefect_deployment(scheduled_scan)
+                
+                # 如果 Cron 表达式或启用状态变化，重新计算 next_run_time
+                cron_changed = dto.cron_expression is not None and dto.cron_expression != existing.cron_expression
+                enabled_changed = dto.is_enabled is not None and dto.is_enabled != existing.is_enabled
+                
+                if (cron_changed or enabled_changed) and scheduled_scan.is_enabled:
+                    next_run_time = self._calculate_next_run_time(scheduled_scan)
+                    if next_run_time:
+                        self.repo.update_next_run_time(scheduled_scan.id, next_run_time)
+                        scheduled_scan.next_run_time = next_run_time
+                elif not scheduled_scan.is_enabled:
+                    # 如果任务被禁用，清空下次执行时间
+                    self.repo.update_next_run_time(scheduled_scan.id, None)
+                    scheduled_scan.next_run_time = None
+                    
             except Exception as e:
                 logger.error("更新 Prefect Deployment 失败: %s", e)
         
@@ -258,7 +277,7 @@ class ScheduledScanService:
         
         流程：
         1. 删除 Prefect Deployment
-        2. 软删除数据库记录
+        2. 硬删除数据库记录
         
         Args:
             scheduled_scan_id: 定时扫描 ID
@@ -277,8 +296,8 @@ class ScheduledScanService:
             except Exception as e:
                 logger.error("删除 Prefect Deployment 失败: %s", e)
         
-        # 2. 软删除数据库记录
-        return self.repo.soft_delete(scheduled_scan_id)
+        # 2. 硬删除数据库记录
+        return self.repo.hard_delete(scheduled_scan_id)
     
     # ==================== 手动触发执行 ====================
     
@@ -380,7 +399,7 @@ class ScheduledScanService:
     def _update_prefect_deployment(self, scheduled_scan: ScheduledScan) -> None:
         """
         使用官方推荐的模式更新 Deployment
-        重新应用 deployment 来更新配置
+        重新应用 deployment 来更新配置，并清理旧的 Scheduled Flow Runs
         """
         if not scheduled_scan.deployment_id:
             return
@@ -390,10 +409,15 @@ class ScheduledScanService:
         
         target_ids = list(scheduled_scan.targets.values_list('id', flat=True))
         cron_expr = scheduled_scan.cron_expression
+        deployment_id = scheduled_scan.deployment_id
         
         def update():
+            import asyncio
             from apps.scan.flows.scheduled_scan_flow import scheduled_scan_flow
+            from prefect import get_client
             from prefect.client.schemas.schedules import CronSchedule
+            from prefect.client.schemas.filters import FlowRunFilter
+            from prefect.client.schemas.objects import StateType
             
             work_pool_name = os.getenv('PREFECT_DEFAULT_WORK_POOL_NAME', 'development-pool')
             deployment_name = f"scheduled-scan-{scheduled_scan.id}"
@@ -423,7 +447,44 @@ class ScheduledScanService:
                 paused=not scheduled_scan.is_enabled,
             )
             
+            logger.info(
+                "更新 Deployment - ID: %s, Name: %s, is_enabled: %s, paused: %s",
+                scheduled_scan.id, deployment_name, scheduled_scan.is_enabled, not scheduled_scan.is_enabled
+            )
+            
             deployment.apply()
+            
+            # 关键修复：取消所有已排程的 Scheduled Flow Runs
+            # 这样 Prefect 调度器会根据新的 cron 表达式重新创建执行计划
+            async def _cancel_scheduled_runs():
+                async with get_client() as client:
+                    # 查询该 Deployment 下所有 Scheduled 状态的 Flow Runs
+                    scheduled_runs = await client.read_flow_runs(
+                        flow_run_filter=FlowRunFilter(
+                            deployment_id={"any_": [deployment_id]},
+                            state={"type": {"any_": [StateType.SCHEDULED]}}
+                        ),
+                        limit=100  # 通常预排程不会超过 100 个
+                    )
+                    
+                    if scheduled_runs:
+                        logger.info(
+                            "清理旧的 Scheduled Flow Runs - Deployment: %s, 数量: %d",
+                            deployment_id, len(scheduled_runs)
+                        )
+                        for run in scheduled_runs:
+                            try:
+                                await client.delete_flow_run(run.id)
+                            except Exception as e:
+                                logger.warning("删除 Flow Run 失败: %s - %s", run.id, e)
+            
+            # 执行异步清理
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(_cancel_scheduled_runs())
+            finally:
+                loop.close()
         
         self._run_in_thread(update)
     
@@ -441,14 +502,21 @@ class ScheduledScanService:
                         deployment_id=deployment_id,
                         deployment=update,
                     )
+                    logger.info(
+                        "设置 Deployment 状态成功 - ID: %s, Active: %s (paused=%s)",
+                        deployment_id, active, not active
+                    )
             
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             try:
                 loop.run_until_complete(_toggle())
+            except Exception as e:
+                logger.error("设置 Deployment 状态失败 - ID: %s, Error: %s", deployment_id, e)
             finally:
                 loop.close()
         
+        # 同步执行，等待完成
         self._run_in_thread(toggle)
     
     def _delete_prefect_deployment(self, deployment_id: str) -> None:

@@ -46,7 +46,7 @@ export interface UpdateScheduledScanRequest {
 
 // API 响应
 export interface GetScheduledScansResponse {
-  scheduledScans: ScheduledScan[]
+  results: ScheduledScan[]
   total: number
   page: number
   pageSize: number

@@ -53,6 +53,15 @@ class DjangoScheduledScanRepository:
         except ScheduledScan.DoesNotExist:
             return None
     
+    def get_queryset(self):
+        """
+        获取所有定时扫描任务的查询集
+        
+        Returns:
+            QuerySet
+        """
+        return ScheduledScan.objects.select_related('engine').prefetch_related('targets').order_by('-created_at')
+
     def get_all(self, page: int = 1, page_size: int = 10) -> Tuple[List[ScheduledScan], int]:
         """
         分页查询所有定时扫描任务
@@ -60,7 +69,7 @@ class DjangoScheduledScanRepository:
         Returns:
             (定时扫描列表, 总数)
         """
-        queryset = ScheduledScan.objects.select_related('engine').prefetch_related('targets').order_by('-created_at')
+        queryset = self.get_queryset()
         total = queryset.count()
         
         offset = (page - 1) * page_size

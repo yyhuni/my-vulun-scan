@@ -21,12 +21,18 @@ export default function ScheduledScanPage() {
   const [editDialogOpen, setEditDialogOpen] = React.useState(false)
   const [editingScheduledScan, setEditingScheduledScan] = React.useState<ScheduledScan | null>(null)
   
+  // 分页状态
+  const [page, setPage] = React.useState(1)
+  const [pageSize, setPageSize] = React.useState(10)
+  
   // 使用实际 API
-  const { data, isLoading, refetch } = useScheduledScans()
+  const { data, isLoading, refetch } = useScheduledScans({ page, pageSize })
   const { mutate: deleteScheduledScan } = useDeleteScheduledScan()
   const { mutate: toggleScheduledScan } = useToggleScheduledScan()
 
-  const scheduledScans = data?.scheduledScans || []
+  const scheduledScans = data?.results || []
+  const total = data?.total || 0
+  const totalPages = data?.totalPages || 1
 
   // 格式化日期
   const formatDate = React.useCallback((dateString: string) => {
@@ -60,6 +66,17 @@ export default function ScheduledScanPage() {
   const handleToggleStatus = React.useCallback((scan: ScheduledScan, enabled: boolean) => {
     toggleScheduledScan({ id: scan.id, isEnabled: enabled })
   }, [toggleScheduledScan])
+
+  // 页码变化处理
+  const handlePageChange = React.useCallback((newPage: number) => {
+    setPage(newPage)
+  }, [])
+
+  // 每页数量变化处理
+  const handlePageSizeChange = React.useCallback((newPageSize: number) => {
+    setPageSize(newPageSize)
+    setPage(1) // 重置到第一页
+  }, [])
 
   // 添加新任务
   const handleAddNew = React.useCallback(() => {
@@ -116,6 +133,12 @@ export default function ScheduledScanPage() {
           searchPlaceholder="搜索任务名称..."
           searchColumn="name"
           addButtonText="新建定时扫描"
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          onPageSizeChange={handlePageSizeChange}
         />
       </div>
 

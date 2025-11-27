@@ -56,35 +56,31 @@ class ScheduledScanViewSet(viewsets.ViewSet):
         """
         获取定时扫描任务列表
         
-        查询参数:
-        - page: 页码（必传）
-        - pageSize: 每页数量（必传）
+        支持标准分页参数：
+        - page: 页码 (必填)
+        - pageSize: 每页数量 (必填)
         """
         try:
-            page_param = request.query_params.get('page')
-            page_size_param = request.query_params.get('pageSize')
-            
-            if not page_param or not page_size_param:
+            # 强制检查分页参数
+            if not request.query_params.get('page') or not request.query_params.get('pageSize'):
                 return Response(
-                    {'error': '缺少必要参数: page 和 pageSize'},
+                    {'error': '必须提供分页参数 page 和 pageSize'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
+
+            # 获取 QuerySet
+            queryset = self.service.get_queryset()
             
-            page = int(page_param)
-            page_size = int(page_size_param)
+            # 使用 DRF 标准分页流程
+            page = self.paginator.paginate_queryset(queryset, request, view=self)
             
-            scheduled_scans, total = self.service.get_all(page, page_size)
-            serializer = ScheduledScanSerializer(scheduled_scans, many=True)
+            if page is not None:
+                serializer = ScheduledScanSerializer(page, many=True)
+                return self.paginator.get_paginated_response(serializer.data)
             
-            total_pages = (total + page_size - 1) // page_size
-            
-            return Response({
-                'scheduled_scans': serializer.data,
-                'total': total,
-                'page': page,
-                'pageSize': page_size,
-                'totalPages': total_pages
-            })
+            # 如果不分页（通常不会发生，除非分页配置关闭），返回所有数据
+            serializer = ScheduledScanSerializer(queryset, many=True)
+            return Response(serializer.data)
             
         except Exception as e:
             logger.exception("获取定时扫描列表失败")
