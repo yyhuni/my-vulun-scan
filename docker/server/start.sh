@@ -26,7 +26,6 @@ echo "  ✓ 数据库迁移完成"
 
 # 3. 注册 Prefect Deployments
 echo "  [3/4] 注册 Prefect Deployments..."
-export PYTHONPATH=/app/backend
 
 # 扫描任务
 echo "    - 注册扫描任务..."
