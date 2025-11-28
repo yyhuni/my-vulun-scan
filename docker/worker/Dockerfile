@@ -4,7 +4,7 @@ FROM golang:1.24 AS go-builder
 ENV GOPROXY=https://goproxy.cn,direct
 ENV CGO_ENABLED=0
 
-# 安装 ProjectDiscovery 工具集
+# 安装 ProjectDiscovery 工具
 RUN go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest && \
     go install -v github.com/projectdiscovery/naabu/v2/cmd/naabu@latest && \
     go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest && \
