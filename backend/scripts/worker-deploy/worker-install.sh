@@ -16,7 +16,7 @@ DOCKER_MARKER="${MARKER_DIR}/.docker_installed"
 
 # 项目配置
 GITHUB_REPO="https://github.com/yyhuni/my-vulun-scan.git"
-GITHUB_BRANCH="feature/migrate-to-prefect"
+GITHUB_BRANCH="main"
 SRC_DIR="${MARKER_DIR}/src"
 
 # 颜色定义
