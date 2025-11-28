@@ -246,6 +246,21 @@ if [ -f "$DOCKER_DIR/.env.example" ]; then
         fi
         success "远程 PostgreSQL 连接验证通过"
         
+        # 尝试创建业务数据库（如果不存在）
+        info "检查并创建数据库..."
+        db_name=$(grep "^DB_NAME=" "$DOCKER_DIR/.env" | cut -d= -f2)
+        db_name=${db_name:-xingrin}
+        prefect_db=$(grep "^PREFECT_DB_NAME=" "$DOCKER_DIR/.env" | cut -d= -f2)
+        prefect_db=${prefect_db:-prefect}
+        
+        docker run --rm -e PGPASSWORD="$db_password" postgres:15 \
+            psql "postgresql://$db_user@$db_host:$db_port/postgres" \
+            -c "CREATE DATABASE $db_name;" 2>/dev/null || true
+        docker run --rm -e PGPASSWORD="$db_password" postgres:15 \
+            psql "postgresql://$db_user@$db_host:$db_port/postgres" \
+            -c "CREATE DATABASE $prefect_db;" 2>/dev/null || true
+        success "数据库准备完成"
+        
         sed -i "s/^DB_HOST=.*/DB_HOST=$db_host/" "$DOCKER_DIR/.env"
         sed -i "s/^DB_PORT=.*/DB_PORT=$db_port/" "$DOCKER_DIR/.env"
         sed -i "s/^DB_USER=.*/DB_USER=$db_user/" "$DOCKER_DIR/.env"
