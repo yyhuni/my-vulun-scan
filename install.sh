@@ -104,6 +104,41 @@ auto_fill_docker_env_secrets() {
     success "密钥生成完成"
 }
 
+# 显示安装总结信息
+show_summary() {
+    echo
+    if [ "$1" == "success" ]; then
+        header "🎉 服务已成功启动！"
+    else
+        header "安装完成 Summary"
+    fi
+
+    if [ -f "$DOCKER_DIR/.env" ]; then
+        # 从 .env 读取配置用于显示
+        DB_PASSWORD=$(grep "^DB_PASSWORD=" "$DOCKER_DIR/.env" | cut -d= -f2)
+        DJANGO_KEY=$(grep "^DJANGO_SECRET_KEY=" "$DOCKER_DIR/.env" | cut -d= -f2)
+        
+        echo -e "${YELLOW}🔑 当前配置信息：${RESET}"
+        echo -e "------------------------------------------------------------"
+        printf "  %-16s %s\n" "数据库用户:" "postgres"
+        printf "  %-16s %s\n" "数据库密码:" "${DB_PASSWORD:-未知}"
+        printf "  %-16s %s\n" "Django 密钥:" "${DJANGO_KEY:0:16}... (已保存)"
+        echo -e "------------------------------------------------------------"
+        echo
+    fi
+
+    echo -e "${GREEN}🌍 访问地址：${RESET}"
+    printf "   %-16s %s\n" "Prefect UI:" "http://localhost:4200"
+    printf "   %-16s %s\n" "XingRin API:" "http://localhost:8888"
+    echo
+    
+    if [ "$1" != "success" ]; then
+        echo -e "${GREEN}🚀 后续启动命令：${RESET}"
+        echo -e "   cd docker && ./start.sh"
+        echo
+    fi
+}
+
 # ==============================================================================
 # 📦 安装流程
 # ==============================================================================
@@ -168,18 +203,7 @@ fi
 # ==============================================================================
 # 🎉 完成总结
 # ==============================================================================
-echo
-header "安装完成 Summary"
-
-if [ -n "$GENERATED_DB_PASSWORD" ]; then
-    echo -e "${YELLOW}🔑 自动生成的配置信息：${RESET}"
-    echo -e "------------------------------------------------------------"
-    printf "  %-16s %s\n" "数据库用户:" "postgres"
-    printf "  %-16s %s\n" "数据库密码:" "$GENERATED_DB_PASSWORD"
-    printf "  %-16s %s\n" "Django 密钥:" "${GENERATED_DJANGO_KEY:0:16}... (已保存)"
-    echo -e "------------------------------------------------------------"
-    echo
-fi
+show_summary "pending"
 
 # 询问是否启动
 echo -n -e "${BOLD}${CYAN}❓ 是否立即启动服务？(y/n) ${RESET}"
@@ -189,14 +213,10 @@ echo
 if [[ $should_start =~ ^[Yy]$ ]]; then
     step "正在启动服务..."
     chmod +x "$DOCKER_DIR/start.sh"
+    
+    # 直接运行，保留 Docker 输出
     "$DOCKER_DIR/start.sh"
-else
-    echo
-    echo -e "${GREEN}🚀 后续启动命令：${RESET}"
-    echo -e "   cd docker && ./start.sh"
-    echo
-    echo -e "${GREEN}🌍 访问地址（启动后）：${RESET}"
-    printf "   %-16s %s\n" "Prefect UI:" "http://localhost:4200"
-    printf "   %-16s %s\n" "XingRin API:" "http://localhost:8888"
-    echo
+    
+    # 运行完后，重新显示总结
+    show_summary "success"
 fi
