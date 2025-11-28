@@ -9,7 +9,7 @@ import NextTopLoader from "nextjs-toploader"
 import Script from "next/script"
 import { QueryProvider } from "@/components/providers/query-provider"
 import { ThemeProvider } from "@/components/providers/theme-provider"
-import { Noto_Sans_SC } from "next/font/google"
+// Google Fonts 在中国大陆无法访问，直接使用 fallback 字体
 
 // 导入公共布局组件
 import { AppSidebar } from "@/components/app-sidebar"
@@ -26,13 +26,13 @@ export const metadata: Metadata = {
   generator: "XingRin", // 生成器标识
 }
 
-// 全站字体：Noto Sans SC（简体中文），兼顾中英文显示，系统字体作为回退
-const notoSans = Noto_Sans_SC({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "700"],
-  display: "swap",
-  fallback: ["system-ui", "-apple-system", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "sans-serif"],
-})
+// 使用原有的 fallback 字体栈，不依赖 Google Fonts
+const fontConfig = {
+  className: "font-sans",
+  style: {
+    fontFamily: "system-ui, -apple-system, PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif"
+  }
+}
 
 /**
  * 根布局组件
@@ -49,7 +49,7 @@ export default function RootLayout({
     // 设置 HTML 根元素,语言为中文
     // suppressHydrationWarning 避免主题切换时的 hydration 警告
     <html lang="zh-CN" suppressHydrationWarning>
-      <body className={notoSans.className}>
+      <body className={fontConfig.className} style={fontConfig.style}>
         {/* 加载外部脚本 - 使用 beforeInteractive 策略确保在页面交互前加载 */}
         <Script
           src="https://tweakcn.com/live-preview.min.js"
