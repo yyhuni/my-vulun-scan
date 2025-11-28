@@ -40,11 +40,6 @@ services:
       - "${PREFECT_UI_PORT}:4200"
     env_file:
       - .env
-    environment:
-      - DB_HOST=postgres
-      - REDIS_HOST=redis
-      - PREFECT_API_URL=http://server:4200/api
-      - PREFECT_SERVER_API_HOST=0.0.0.0
     depends_on:
       postgres:
         condition: service_healthy
