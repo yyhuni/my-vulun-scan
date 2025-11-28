@@ -1,0 +1,17 @@
+# 远程 Worker 独立部署
+# 使用方法：
+#   1. 复制 .env.example -> .env
+#   2. 修改 .env 中的远程主机配置
+#   3. docker compose up -d --build
+
+services:
+  worker:
+    build:
+      context: ../..
+      dockerfile: docker/worker/Dockerfile
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - ../../backend/logs:/app/backend/logs
+      - ../../backend/results:/app/backend/results

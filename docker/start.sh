@@ -36,10 +36,24 @@ if [ ! -f .env ]; then
     exit 1
 fi
 
+# ==================== 检查数据库配置 ====================
+
+# 读取 DB_HOST 配置
+DB_HOST=$(grep -E "^DB_HOST=" .env | cut -d'=' -f2 | tr -d ' "'"'" || echo "postgres")
+
+# 判断是否使用本地数据库
+if [[ "$DB_HOST" == "postgres" || "$DB_HOST" == "localhost" || "$DB_HOST" == "127.0.0.1" ]]; then
+    echo "📦 使用本地 PostgreSQL 容器"
+    PROFILE_ARG="--profile local-db"
+else
+    echo "🌐 使用远程 PostgreSQL: $DB_HOST"
+    PROFILE_ARG=""
+fi
+
 # ==================== 启动服务 ====================
 
 echo "🚀 正在启动容器服务..."
-${COMPOSE_CMD} up -d --build
+${COMPOSE_CMD} ${PROFILE_ARG} up -d --build
 echo "✅ Services started!"
 echo "  - Prefect UI: http://localhost:4200"
 echo "  - Django API: http://localhost:8888"

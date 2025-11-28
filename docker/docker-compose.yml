@@ -1,7 +1,11 @@
 version: '3.8'
 
 services:
+  # PostgreSQL（可选，使用远程数据库时不启动）
+  # 本地模式: docker compose --profile local-db up -d
+  # 远程模式: docker compose up -d（需配置 DB_HOST 为远程地址）
   postgres:
+    profiles: ["local-db"]
     image: postgres:15
     restart: always
     environment:
@@ -41,8 +45,6 @@ services:
     env_file:
       - .env
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
     volumes:

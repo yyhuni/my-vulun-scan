@@ -115,12 +115,15 @@ show_summary() {
 
     if [ -f "$DOCKER_DIR/.env" ]; then
         # 从 .env 读取配置用于显示
+        DB_HOST=$(grep "^DB_HOST=" "$DOCKER_DIR/.env" | cut -d= -f2)
+        DB_USER=$(grep "^DB_USER=" "$DOCKER_DIR/.env" | cut -d= -f2)
         DB_PASSWORD=$(grep "^DB_PASSWORD=" "$DOCKER_DIR/.env" | cut -d= -f2)
         
-        echo -e "${YELLOW}🔑 当前配置信息：${RESET}"
+        echo -e "${YELLOW}🔑 数据库配置：${RESET}"
         echo -e "------------------------------------------------------------"
-        printf "  %-16s %s\n" "数据库用户:" "postgres"
-        printf "  %-16s %s\n" "数据库密码:" "${DB_PASSWORD:-未知}"
+        echo -e "  服务器地址: ${DB_HOST:-未知}"
+        echo -e "  用户名: ${DB_USER:-未知}"
+        echo -e "  密码: ${DB_PASSWORD:-未知}"
         echo -e "------------------------------------------------------------"
         echo
     fi
@@ -192,6 +195,54 @@ else
         cp "$DOCKER_DIR/.env.example" "$DOCKER_DIR/.env"
         success "已复制: docker/.env.example -> docker/.env"
         auto_fill_docker_env_secrets "$DOCKER_DIR/.env"
+        
+        # 询问数据库配置
+        echo ""
+        echo -n -e "${BOLD}${CYAN}❓ 是否使用远程 PostgreSQL 数据库？(y/N) ${RESET}"
+        read -n 1 -r use_remote_db
+        echo
+        
+        if [[ $use_remote_db =~ ^[Yy]$ ]]; then
+            echo -e "${CYAN}   请输入远程 PostgreSQL 配置：${RESET}"
+            
+            # 服务器地址（必填）
+            echo -n -e "   ${CYAN}服务器地址: ${RESET}"
+            read -r db_host
+            if [ -z "$db_host" ]; then
+                error "服务器地址不能为空"
+                exit 1
+            fi
+            
+            # 端口（可选）
+            echo -n -e "   ${CYAN}端口 [5432]: ${RESET}"
+            read -r db_port
+            db_port=${db_port:-5432}
+            
+            # 用户名（必填）
+            echo -n -e "   ${CYAN}用户名: ${RESET}"
+            read -r db_user
+            if [ -z "$db_user" ]; then
+                error "用户名不能为空"
+                exit 1
+            fi
+            
+            # 密码（必填）
+            echo -n -e "   ${CYAN}密码: ${RESET}"
+            read -rs db_password
+            echo
+            if [ -z "$db_password" ]; then
+                error "密码不能为空"
+                exit 1
+            fi
+            
+            sed -i "s/^DB_HOST=.*/DB_HOST=$db_host/" "$DOCKER_DIR/.env"
+            sed -i "s/^DB_PORT=.*/DB_PORT=$db_port/" "$DOCKER_DIR/.env"
+            sed -i "s/^DB_USER=.*/DB_USER=$db_user/" "$DOCKER_DIR/.env"
+            sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=$db_password/" "$DOCKER_DIR/.env"
+            success "已配置远程数据库: $db_user@$db_host:$db_port"
+        else
+            info "使用本地 PostgreSQL 容器"
+        fi
     else
         error "未找到 docker/.env.example"
         exit 1
@@ -199,21 +250,12 @@ else
 fi
 
 # ==============================================================================
+# 🚀 启动服务
+# ==============================================================================
+step "正在启动服务..."
+"$ROOT_DIR/start.sh"
+
+# ==============================================================================
 # 🎉 完成总结
 # ==============================================================================
-show_summary "pending"
-
-# 询问是否启动
-echo -n -e "${BOLD}${CYAN}❓ 是否立即启动服务？(y/n) ${RESET}"
-read -n 1 -r should_start
-echo
-
-if [[ $should_start =~ ^[Yy]$ ]]; then
-    step "正在启动服务..."
-    
-    # 调用根目录的启动脚本
-    "$ROOT_DIR/start.sh"
-    
-    # 运行完后，重新显示总结
-    show_summary "success"
-fi
+show_summary "success"

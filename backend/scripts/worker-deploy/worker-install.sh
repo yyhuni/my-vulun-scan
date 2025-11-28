@@ -1,9 +1,8 @@
 #!/bin/bash
 # ============================================
-# XingRin 安装脚本 (通用)
-# 用途：安装 Docker、拉取代码、构建镜像
+# XingRin 远程 Worker 安装脚本
+# 用途：安装 Docker、拉取代码、准备环境
 # 支持：Ubuntu / Debian
-# 适用：主机 & Worker VPS
 # 特点：幂等执行，支持升级
 # ============================================
 
@@ -149,50 +148,44 @@ pull_source() {
     fi
 }
 
-# 构建镜像
-build_image() {
-    log_step "4/4" "构建 Docker 镜像..."
+# 准备配置文件
+prepare_env() {
+    log_step "4/4" "准备配置文件..."
     
-    cd "${SRC_DIR}"
+    WORKER_DIR="${SRC_DIR}/docker/worker"
     
-    # 检查是否需要重新构建
-    if $DOCKER_CMD images xingrin-worker:latest --format "{{.ID}}" 2>/dev/null | grep -q .; then
-        log_info "镜像已存在"
-        read -p "是否重新构建镜像？(y/N): " rebuild
-        if [[ "$rebuild" != "y" && "$rebuild" != "Y" ]]; then
-            log_info "跳过镜像构建"
-            return 0
+    if [ ! -f "${WORKER_DIR}/.env" ]; then
+        if [ -f "${WORKER_DIR}/.env.example" ]; then
+            cp "${WORKER_DIR}/.env.example" "${WORKER_DIR}/.env"
+            log_warn "已创建 .env 文件，请修改其中的配置！"
         fi
-    fi
-    
-    log_info "开始构建镜像（首次构建可能需要 10-20 分钟）..."
-    log_info "注意：镜像只包含工具和依赖，代码通过 volume 挂载"
-    
-    if $DOCKER_CMD build -t xingrin-worker:latest -f docker/prefect-worker/Dockerfile .; then
-        log_success "镜像构建成功"
     else
-        log_error "镜像构建失败"
-        exit 1
+        log_info ".env 文件已存在"
     fi
 }
 
 # 显示完成信息
 show_completion() {
+    WORKER_DIR="${SRC_DIR}/docker/worker"
+    
     echo ""
     log_info "=========================================="
     log_success "  ✓ 安装完成"
     log_info "=========================================="
     echo ""
     log_info "项目代码位置: ${SRC_DIR}"
-    log_info "更新代码: cd ${SRC_DIR} && git pull"
     echo ""
-    log_info "下一步操作："
+    log_warn "下一步操作："
     echo ""
-    echo "  # 主机（运行全部服务）："
-    echo "  ./start-server.sh"
+    echo "  1. 编辑配置文件，填写主机地址："
+    echo "     vi ${WORKER_DIR}/.env"
     echo ""
-    echo "  # Worker VPS（只运行 Worker）："
-    echo "  ./start-worker.sh"
+    echo "  2. 启动 Worker："
+    echo "     cd ${WORKER_DIR}"
+    echo "     docker compose up -d --build"
+    echo ""
+    echo "  3. 查看日志："
+    echo "     docker compose logs -f"
     echo ""
     
     # 写入安装标记
@@ -211,7 +204,7 @@ main() {
     install_docker
     verify_docker
     pull_source
-    build_image
+    prepare_env
     show_completion
 }
 

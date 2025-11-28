@@ -132,17 +132,7 @@ class WorkerDeployConsumer(AsyncWebsocketConsumer):
             }))
             return
         
-        from apps.engine.models import WorkerNode
-        
-        try:
-            self.worker = await sync_to_async(WorkerNode.objects.get)(id=self.worker_id)
-        except WorkerNode.DoesNotExist:
-            await self.send(text_data=json.dumps({
-                'type': 'error',
-                'message': 'Worker 不存在'
-            }))
-            return
-        
+        # self.worker 已在 _auto_ssh_connect 中查询
         try:
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())

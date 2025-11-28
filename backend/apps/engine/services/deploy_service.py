@@ -1,9 +1,9 @@
 """
 Worker 部署脚本服务
 
-脚本文件位置：backend/scripts/deploy/
+脚本文件位置：backend/scripts/worker-deploy/
 - bootstrap.sh: 环境初始化（安装 git、tmux、curl 等基础依赖）
-- install.sh: 安装脚本（安装 Docker、拉取代码、构建镜像）
+- worker-install.sh: Worker 安装脚本（安装 Docker、拉取代码、构建镜像）
 - start-worker.sh: Worker 容器启动脚本
 - watchdog.sh: 看门狗核心逻辑（心跳上报、容器监控）
 - watchdog-install.sh: Watchdog 服务安装（Systemd 配置）
@@ -13,7 +13,7 @@ from pathlib import Path
 from django.conf import settings
 
 # 脚本目录 (从 services 目录往上找)
-SCRIPTS_DIR = Path(__file__).parent.parent.parent.parent / "scripts" / "deploy"
+SCRIPTS_DIR = Path(__file__).parent.parent.parent.parent / "scripts" / "worker-deploy"
 
 
 def _read_script(filename: str) -> str:
@@ -31,8 +31,8 @@ def get_bootstrap_script() -> str:
 
 
 def get_deploy_script() -> str:
-    """获取安装脚本（幂等）- Docker + 代码 + 镜像"""
-    return _read_script("install.sh")
+    """获取 Worker 安装脚本（幂等）- Docker + 代码 + 镜像"""
+    return _read_script("worker-install.sh")
 
 
 def get_watchdog_install_script(api_url: str, worker_id: int) -> str:
