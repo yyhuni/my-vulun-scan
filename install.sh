@@ -181,10 +181,22 @@ if [ -n "$GENERATED_DB_PASSWORD" ]; then
     echo
 fi
 
-echo -e "${GREEN}🚀 启动服务：${RESET}"
-echo -e "   cd docker && ./start.sh"
+# 询问是否启动
+echo -n -e "${BOLD}${CYAN}❓ 是否立即启动服务？(y/n) ${RESET}"
+read -n 1 -r should_start
 echo
-echo -e "${GREEN}🌍 访问地址：${RESET}"
-printf "   %-16s %s\n" "Prefect UI:" "http://localhost:4200"
-printf "   %-16s %s\n" "XingRin API:" "http://localhost:8888"
-echo
+
+if [[ $should_start =~ ^[Yy]$ ]]; then
+    step "正在启动服务..."
+    chmod +x "$DOCKER_DIR/start.sh"
+    "$DOCKER_DIR/start.sh"
+else
+    echo
+    echo -e "${GREEN}🚀 后续启动命令：${RESET}"
+    echo -e "   cd docker && ./start.sh"
+    echo
+    echo -e "${GREEN}🌍 访问地址（启动后）：${RESET}"
+    printf "   %-16s %s\n" "Prefect UI:" "http://localhost:4200"
+    printf "   %-16s %s\n" "XingRin API:" "http://localhost:8888"
+    echo
+fi
