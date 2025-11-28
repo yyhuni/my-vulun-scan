@@ -49,5 +49,7 @@ ENV PYTHONPATH=/app/backend
 ENV PREFECT_API_URL="http://server:4200/api"
 
 # 5. 启动 Worker
-# 注意：这里假设 development-pool 已经创建，如果没有，需要在启动脚本中处理
-CMD ["prefect", "worker", "start", "--pool", "development-pool"]
+COPY docker/worker/start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+CMD ["/app/start.sh"]

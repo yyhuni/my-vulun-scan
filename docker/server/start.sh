@@ -34,12 +34,15 @@ python -m apps.scan.deployments.initiate_scan_deployment
 echo "    - 注册清理任务..."
 python -m apps.scan.deployments.cleanup_deployment
 # 删除任务
-echo "    - 注册删除任务..."
+echo "    - 注册 Targets 删除任务..."
 python -m apps.targets.deployments.register
+
+echo "    - 注册 Asset 删除任务..."
+python -m apps.asset.deployments.register
 
 echo "  ✓ Deployments 注册完成"
 
-# 4. 启动 Django Daphne 服务
-echo "  [4/4] 启动 Django Daphne..."
+# 4. 启动 Django Daphne 服务 (ASGI)
+echo "  [4/4] 启动 Django Daphne (ASGI)..."
 cd /app/backend
 daphne -b 0.0.0.0 -p 8888 config.asgi:application
