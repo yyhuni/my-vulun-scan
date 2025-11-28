@@ -54,9 +54,8 @@ ENV GOPROXY=https://goproxy.cn,direct
 # 3. 安装 Python 依赖
 COPY backend/requirements.txt .
 
-# 升级 pip 以支持 --break-system-packages，并安装依赖
-RUN pip3 install --upgrade pip --break-system-packages && \
-    pip3 install --no-cache-dir -r requirements.txt --break-system-packages
+# 直接安装依赖 (Ubuntu 24.04 自带 pip 24.0+，支持 --break-system-packages)
+RUN pip3 install --no-cache-dir -r requirements.txt --break-system-packages
 
 # 4. 复制后端代码
 COPY backend /app/backend
