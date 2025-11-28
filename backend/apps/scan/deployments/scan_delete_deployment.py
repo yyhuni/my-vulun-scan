@@ -17,7 +17,8 @@ def create_scan_delete_deployment():
     Returns:
         Deployment 对象（已配置但未部署）
     """
-    work_pool_name = settings.PREFECT_DEFAULT_WORK_POOL_NAME
+    # Scan 删除任务使用维护工作池
+    work_pool_name = settings.PREFECT_MAINTENANCE_WORK_POOL_NAME
     
     return delete_scans_flow.from_source(
         source=".",

@@ -361,7 +361,7 @@ class ScheduledScanService:
             from apps.scan.flows.scheduled_scan_flow import scheduled_scan_flow
             from prefect.client.schemas.schedules import CronSchedule
             
-            work_pool_name = settings.PREFECT_DEFAULT_WORK_POOL_NAME
+            work_pool_name = settings.PREFECT_SCAN_WORK_POOL_NAME
             deployment_name = f"scheduled-scan-{scheduled_scan.id}"
             
             # Flow 参数
@@ -419,7 +419,7 @@ class ScheduledScanService:
             from prefect.client.schemas.filters import FlowRunFilter
             from prefect.client.schemas.objects import StateType
             
-            work_pool_name = settings.PREFECT_DEFAULT_WORK_POOL_NAME
+            work_pool_name = settings.PREFECT_SCAN_WORK_POOL_NAME
             deployment_name = f"scheduled-scan-{scheduled_scan.id}"
             
             parameters = {

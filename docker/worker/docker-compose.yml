@@ -5,13 +5,28 @@
 #   3. docker compose up -d --build
 
 services:
-  worker:
+  scan-worker:
     build:
       context: ../..
       dockerfile: docker/worker/Dockerfile
     restart: always
     env_file:
       - .env
+    environment:
+      - PREFECT_WORK_POOL_NAME=${PREFECT_SCAN_WORK_POOL_NAME:-scan-pool}
+    volumes:
+      - ../../backend/logs:/app/backend/logs
+      - ../../backend/results:/app/backend/results
+
+  maintenance-worker:
+    build:
+      context: ../..
+      dockerfile: docker/worker/Dockerfile
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - PREFECT_WORK_POOL_NAME=${PREFECT_MAINTENANCE_WORK_POOL_NAME:-maintenance-pool}
     volumes:
       - ../../backend/logs:/app/backend/logs
       - ../../backend/results:/app/backend/results

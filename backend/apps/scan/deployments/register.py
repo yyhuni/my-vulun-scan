@@ -34,8 +34,9 @@ def register_all_deployments():
     print("=" * 60)
     
     try:
-        # 获取工作池名称
-        work_pool_name = settings.PREFECT_DEFAULT_WORK_POOL_NAME
+        # 获取工作池名称（扫描池 & 维护池）
+        scan_pool_name = settings.PREFECT_SCAN_WORK_POOL_NAME
+        maintenance_pool_name = settings.PREFECT_MAINTENANCE_WORK_POOL_NAME
         
         # 1. 部署扫描初始化 Deployment
         print("\n1. 部署 initiate-scan-on-demand...")
@@ -60,13 +61,13 @@ def register_all_deployments():
         print("=" * 60)
         
         print(f"\n📋 部署信息:")
-        print(f"  - initiate-scan-on-demand (按需扫描)")
-        print(f"  - cleanup-old-scans-daily (定时清理，每天凌晨2:00)")
-        print(f"  - delete-scans-on-demand (按需删除)")
-        print(f"  目标工作池: {work_pool_name}")
+        print(f"  - initiate-scan-on-demand (按需扫描) -> 池: {scan_pool_name}")
+        print(f"  - cleanup-old-scans-daily (定时清理，每天凌晨2:00) -> 池: {maintenance_pool_name}")
+        print(f"  - delete-scans-on-demand (按需删除) -> 池: {maintenance_pool_name}")
         print(f"\n🎯 管理命令:")
         print(f"  查看 Deployments: prefect deployment ls")
-        print(f"  启动 Worker: prefect worker start --pool {work_pool_name}")
+        print(f"  启动扫描 Worker: prefect worker start --pool {scan_pool_name}")
+        print(f"  启动维护 Worker: prefect worker start --pool {maintenance_pool_name}")
         print(f"  访问 Prefect UI: http://localhost:4200")
         
         return True

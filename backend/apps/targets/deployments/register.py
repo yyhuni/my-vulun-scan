@@ -33,8 +33,8 @@ def register_all_deployments():
     print("=" * 60)
     
     try:
-        # 获取工作池名称
-        work_pool_name = settings.PREFECT_DEFAULT_WORK_POOL_NAME
+        # 获取维护工作池名称
+        maintenance_pool_name = settings.PREFECT_MAINTENANCE_WORK_POOL_NAME
         
         # 1. 部署 Target 删除 Deployment
         print("\n1. 部署 delete-targets-on-demand...")
@@ -53,13 +53,12 @@ def register_all_deployments():
         print("=" * 60)
         print("Success: All Targets Deployments registered")
         
-        print(f"\n📋 部署信息:")
-        print(f"  - delete-targets-on-demand (按需删除)")
-        print(f"  - delete-organizations-on-demand (按需删除)")
-        print(f"  目标工作池: {work_pool_name}")
+        print("\n📋 部署信息:")
+        print(f"  - delete-targets-on-demand (按需删除) -> 池: {maintenance_pool_name}")
+        print(f"  - delete-organizations-on-demand (按需删除) -> 池: {maintenance_pool_name}")
         print(f"\n🎯 管理命令:")
         print(f"  查看 Deployments: prefect deployment ls")
-        print(f"  启动 Worker: prefect worker start --pool {work_pool_name}")
+        print(f"  启动维护 Worker: prefect worker start --pool {maintenance_pool_name}")
         print(f"  访问 Prefect UI: http://localhost:4200")
         
         return True

@@ -28,10 +28,13 @@ echo "  [2.1/4] 执行数据库迁移..."
 python manage.py migrate --noinput
 echo "  ✓ 数据库迁移完成"
 
-# 2.5 创建 Work Pool
-echo "  [2.5/4] 创建 Prefect Work Pool..."
-prefect work-pool create "$PREFECT_DEFAULT_WORK_POOL_NAME" --type process --overwrite || true
-echo "  ✓ Work Pool 已就绪"
+# 2.5 创建 Work Pools
+echo "  [2.5/4] 创建 Prefect Work Pools..."
+SCAN_POOL_NAME=${PREFECT_SCAN_WORK_POOL_NAME:-scan-pool}
+MAINTENANCE_POOL_NAME=${PREFECT_MAINTENANCE_WORK_POOL_NAME:-maintenance-pool}
+prefect work-pool create "$SCAN_POOL_NAME" --type process --overwrite || true
+prefect work-pool create "$MAINTENANCE_POOL_NAME" --type process --overwrite || true
+echo "  ✓ Work Pools 已就绪"
 
 # 3. 注册 Prefect Deployments
 echo "  [3/4] 注册 Prefect Deployments..."

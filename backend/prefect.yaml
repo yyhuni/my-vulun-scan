@@ -7,17 +7,21 @@ name: scanner-backend
 
 # 工作池配置
 work_pools:
-  - name: default
+  - name: scan-pool
     type: process
-    concurrency_limit: null  # 无限制，支持无限扩展 VPS
-    description: 默认工作池，用于执行扫描任务
+    concurrency_limit: null  # 扫描任务池：不限总并发，实际由各 Worker 的 limit 控制
+    description: 扫描任务工作池
+  - name: maintenance-pool
+    type: process
+    concurrency_limit: 10    # 维护任务池：限制总并发，保证系统资源
+    description: 维护任务工作池（清理、删除等）
 
 # 部署配置
 deployments:
   - name: cleanup-old-scans-daily
     entrypoint: deployments/cleanup_deployment.py:cleanup_old_scans_flow
     work_pool:
-      name: default
+      name: maintenance-pool
     schedule:
       cron: "0 2 * * *"
       timezone: "Asia/Shanghai"

@@ -57,13 +57,31 @@ services:
       retries: 3
       start_period: 60s
 
-  worker:
+  scan-worker:
     build:
       context: ..
       dockerfile: docker/worker/Dockerfile
     restart: always
     env_file:
       - .env
+    environment:
+      - PREFECT_WORK_POOL_NAME=${PREFECT_SCAN_WORK_POOL_NAME:-scan-pool}
+    depends_on:
+      server:
+        condition: service_healthy
+    volumes:
+      - ../backend/logs:/app/backend/logs
+      - ../backend/results:/app/backend/results
+
+  maintenance-worker:
+    build:
+      context: ..
+      dockerfile: docker/worker/Dockerfile
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - PREFECT_WORK_POOL_NAME=${PREFECT_MAINTENANCE_WORK_POOL_NAME:-maintenance-pool}
     depends_on:
       server:
         condition: service_healthy

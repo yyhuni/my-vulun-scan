@@ -17,7 +17,8 @@ def create_scan_deployment():
     Returns:
         Deployment 对象（已配置但未部署）
     """
-    work_pool_name = settings.PREFECT_DEFAULT_WORK_POOL_NAME
+    # 扫描初始化任务使用扫描工作池
+    work_pool_name = settings.PREFECT_SCAN_WORK_POOL_NAME
     
     return initiate_scan_flow.from_source(
         source=".",
