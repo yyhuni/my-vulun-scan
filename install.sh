@@ -116,13 +116,11 @@ show_summary() {
     if [ -f "$DOCKER_DIR/.env" ]; then
         # 从 .env 读取配置用于显示
         DB_PASSWORD=$(grep "^DB_PASSWORD=" "$DOCKER_DIR/.env" | cut -d= -f2)
-        DJANGO_KEY=$(grep "^DJANGO_SECRET_KEY=" "$DOCKER_DIR/.env" | cut -d= -f2)
         
         echo -e "${YELLOW}🔑 当前配置信息：${RESET}"
         echo -e "------------------------------------------------------------"
         printf "  %-16s %s\n" "数据库用户:" "postgres"
         printf "  %-16s %s\n" "数据库密码:" "${DB_PASSWORD:-未知}"
-        printf "  %-16s %s\n" "Django 密钥:" "${DJANGO_KEY:0:16}... (已保存)"
         echo -e "------------------------------------------------------------"
         echo
     fi
