@@ -9,7 +9,7 @@ name: scanner-backend
 work_pools:
   - name: default
     type: process
-    concurrency_limit: 10
+    concurrency_limit: null  # 无限制，支持无限扩展 VPS
     description: 默认工作池，用于执行扫描任务
 
 # 部署配置

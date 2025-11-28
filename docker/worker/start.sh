@@ -25,4 +25,7 @@ echo "  ✓ Work Pool 就绪"
 
 # 3. 启动 Worker
 echo "  🚀 启动 Worker 进程..."
-exec prefect worker start --pool "${POOL_NAME}"
+# 设置并发限制：每个 Worker 最多同时处理的任务数
+WORKER_LIMIT=${WORKER_LIMIT:-5}
+echo "  Worker 并发限制: ${WORKER_LIMIT}"
+exec prefect worker start --pool "${POOL_NAME}" --limit "${WORKER_LIMIT}"
