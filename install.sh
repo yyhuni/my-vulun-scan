@@ -1,6 +1,17 @@
 #!/bin/bash
 set -e
 
+# 必须用 root 权限运行
+if [ "$EUID" -ne 0 ]; then
+    echo "❌ 请使用 sudo 运行此脚本"
+    echo "   正确用法: sudo ./install.sh"
+    exit 1
+fi
+
+# 获取真实用户（通过 sudo 运行时 $SUDO_USER 是真实用户）
+REAL_USER="${SUDO_USER:-$USER}"
+REAL_HOME=$(getent passwd "$REAL_USER" | cut -d: -f6)
+
 # 项目根目录
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT_DIR"
@@ -8,6 +19,7 @@ cd "$ROOT_DIR"
 echo "========================================"
 echo "  XingRin 一键安装脚本 (Ubuntu)"
 echo "========================================"
+echo "当前用户: $REAL_USER"
 echo
 
 # 生成随机字符串
@@ -58,8 +70,8 @@ done
 
 if [ ${#MISSING_CMDS[@]} -gt 0 ]; then
     echo "   正在安装: ${MISSING_CMDS[*]}..."
-    sudo apt update -qq
-    sudo apt install -y "${MISSING_CMDS[@]}"
+    apt update -qq
+    apt install -y "${MISSING_CMDS[@]}"
     echo "✅ 基础命令安装完成"
 fi
 echo
@@ -69,10 +81,9 @@ if command -v docker >/dev/null 2>&1; then
     echo "✅ 已安装: docker"
 else
     echo "   正在安装 Docker..."
-    curl -fsSL https://get.docker.com | sudo sh
-    sudo usermod -aG docker "$USER"
+    curl -fsSL https://get.docker.com | sh
+    usermod -aG docker "$REAL_USER"
     echo "✅ Docker 安装完成"
-    echo "⚠️ 已将当前用户加入 docker 组，安装完成后请执行: newgrp docker 或重新登录"
 fi
 
 # 检查 docker compose
@@ -80,7 +91,7 @@ if docker compose version >/dev/null 2>&1; then
     echo "✅ 已安装: docker compose"
 else
     echo "   正在安装 docker-compose-plugin..."
-    sudo apt install -y docker-compose-plugin
+    apt install -y docker-compose-plugin
     echo "✅ docker compose 安装完成"
 fi
 echo
@@ -128,5 +139,3 @@ echo
 echo "访问地址："
 echo "   Prefect UI:  http://localhost:4200"
 echo "   Django API:  http://localhost:8888"
-echo
-echo "如果 docker 命令报权限错误，请先执行: newgrp docker 或重新登录"
