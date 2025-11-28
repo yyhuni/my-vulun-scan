@@ -20,15 +20,21 @@ RUN apt-get update && apt-get install -y \
     nmap \
     masscan \
     libpcap-dev \
-    golang \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # 建立 python 软链接
 RUN ln -s /usr/bin/python3 /usr/bin/python
 
 # 2. 安装 Go 工具 (扫描器)
+ENV GO_VERSION=1.24.0
+RUN curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz" -o /tmp/go.tar.gz \
+    && rm -rf /usr/local/go \
+    && tar -C /usr/local -xzf /tmp/go.tar.gz \
+    && rm /tmp/go.tar.gz
+
 ENV GOPATH=/root/go
-ENV PATH=$PATH:$GOPATH/bin
+ENV PATH=/usr/local/go/bin:$PATH:$GOPATH/bin
 
 # 安装 ProjectDiscovery 工具集
 RUN go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest && \
