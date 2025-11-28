@@ -18,11 +18,20 @@ until curl -s http://localhost:4200/api/health > /dev/null 2>&1; do
 done
 echo "  ✓ Prefect Server 已就绪"
 
-# 2. 迁移数据库
-echo "  [2/4] 检查数据库迁移..."
+# 2. 生成和迁移数据库
+echo "  [2/4] 生成数据库迁移文件..."
 cd /app/backend
+python manage.py makemigrations
+echo "  ✓ 迁移文件生成完成"
+
+echo "  [2.1/4] 执行数据库迁移..."
 python manage.py migrate --noinput
 echo "  ✓ 数据库迁移完成"
+
+# 2.5 创建 Work Pool
+echo "  [2.5/4] 创建 Prefect Work Pool..."
+prefect work-pool create "$PREFECT_DEFAULT_WORK_POOL_NAME" --type process --overwrite || true
+echo "  ✓ Work Pool 已就绪"
 
 # 3. 注册 Prefect Deployments
 echo "  [3/4] 注册 Prefect Deployments..."
@@ -36,9 +45,6 @@ python -m apps.scan.deployments.cleanup_deployment
 # 删除任务
 echo "    - 注册 Targets 删除任务..."
 python -m apps.targets.deployments.register
-
-echo "    - 注册 Asset 删除任务..."
-python -m apps.asset.deployments.register
 
 echo "  ✓ Deployments 注册完成"
 
