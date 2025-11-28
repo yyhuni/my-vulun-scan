@@ -188,65 +188,75 @@ if [ ! -d "$DOCKER_DIR" ]; then
     exit 1
 fi
 
-if [ -f "$DOCKER_DIR/.env" ]; then
-    success "已存在: docker/.env（保留现有配置）"
-else
-    if [ -f "$DOCKER_DIR/.env.example" ]; then
-        cp "$DOCKER_DIR/.env.example" "$DOCKER_DIR/.env"
-        success "已复制: docker/.env.example -> docker/.env"
-        auto_fill_docker_env_secrets "$DOCKER_DIR/.env"
+if [ -f "$DOCKER_DIR/.env.example" ]; then
+    cp "$DOCKER_DIR/.env.example" "$DOCKER_DIR/.env"
+    success "已创建: docker/.env"
+    auto_fill_docker_env_secrets "$DOCKER_DIR/.env"
+    
+    # 询问数据库配置
+    echo ""
+    echo -n -e "${BOLD}${CYAN}❓ 是否使用远程 PostgreSQL 数据库？(y/N) ${RESET}"
+    read -n 1 -r use_remote_db
+    echo
+    
+    if [[ $use_remote_db =~ ^[Yy]$ ]]; then
+        echo -e "${CYAN}   请输入远程 PostgreSQL 配置：${RESET}"
         
-        # 询问数据库配置
-        echo ""
-        echo -n -e "${BOLD}${CYAN}❓ 是否使用远程 PostgreSQL 数据库？(y/N) ${RESET}"
-        read -n 1 -r use_remote_db
-        echo
-        
-        if [[ $use_remote_db =~ ^[Yy]$ ]]; then
-            echo -e "${CYAN}   请输入远程 PostgreSQL 配置：${RESET}"
-            
-            # 服务器地址（必填）
-            echo -n -e "   ${CYAN}服务器地址: ${RESET}"
-            read -r db_host
-            if [ -z "$db_host" ]; then
-                error "服务器地址不能为空"
-                exit 1
-            fi
-            
-            # 端口（可选）
-            echo -n -e "   ${CYAN}端口 [5432]: ${RESET}"
-            read -r db_port
-            db_port=${db_port:-5432}
-            
-            # 用户名（必填）
-            echo -n -e "   ${CYAN}用户名: ${RESET}"
-            read -r db_user
-            if [ -z "$db_user" ]; then
-                error "用户名不能为空"
-                exit 1
-            fi
-            
-            # 密码（必填）
-            echo -n -e "   ${CYAN}密码: ${RESET}"
-            read -rs db_password
-            echo
-            if [ -z "$db_password" ]; then
-                error "密码不能为空"
-                exit 1
-            fi
-            
-            sed -i "s/^DB_HOST=.*/DB_HOST=$db_host/" "$DOCKER_DIR/.env"
-            sed -i "s/^DB_PORT=.*/DB_PORT=$db_port/" "$DOCKER_DIR/.env"
-            sed -i "s/^DB_USER=.*/DB_USER=$db_user/" "$DOCKER_DIR/.env"
-            sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=$db_password/" "$DOCKER_DIR/.env"
-            success "已配置远程数据库: $db_user@$db_host:$db_port"
-        else
-            info "使用本地 PostgreSQL 容器"
+        # 服务器地址（必填）
+        echo -n -e "   ${CYAN}服务器地址: ${RESET}"
+        read -r db_host
+        if [ -z "$db_host" ]; then
+            error "服务器地址不能为空"
+            exit 1
         fi
+        
+        # 端口（可选）
+        echo -n -e "   ${CYAN}端口 [5432]: ${RESET}"
+        read -r db_port
+        db_port=${db_port:-5432}
+        
+        # 用户名（必填）
+        echo -n -e "   ${CYAN}用户名: ${RESET}"
+        read -r db_user
+        if [ -z "$db_user" ]; then
+            error "用户名不能为空"
+            exit 1
+        fi
+        
+        # 密码（必填）
+        echo -n -e "   ${CYAN}密码: ${RESET}"
+        read -r db_password
+        if [ -z "$db_password" ]; then
+            error "密码不能为空"
+            exit 1
+        fi
+        
+        # 验证远程 PostgreSQL 连接（使用官方 postgres 镜像中的 psql）
+        echo
+        info "正在验证远程 PostgreSQL 连接..."
+        # 使用 postgres 默认库验证连接（每个 PostgreSQL 都有这个库）
+        if ! docker run --rm \
+            -e PGPASSWORD="$db_password" \
+            postgres:15 \
+            psql "postgresql://$db_user@$db_host:$db_port/postgres" -c 'SELECT 1' >/dev/null 2>&1; then
+            echo
+            error "无法连接到远程 PostgreSQL，请检查 IP/端口/用户名/密码是否正确"
+            echo "       尝试连接: postgresql://$db_user@$db_host:$db_port/postgres"
+            exit 1
+        fi
+        success "远程 PostgreSQL 连接验证通过"
+        
+        sed -i "s/^DB_HOST=.*/DB_HOST=$db_host/" "$DOCKER_DIR/.env"
+        sed -i "s/^DB_PORT=.*/DB_PORT=$db_port/" "$DOCKER_DIR/.env"
+        sed -i "s/^DB_USER=.*/DB_USER=$db_user/" "$DOCKER_DIR/.env"
+        sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=$db_password/" "$DOCKER_DIR/.env"
+        success "已配置远程数据库: $db_user@$db_host:$db_port"
     else
-        error "未找到 docker/.env.example"
-        exit 1
+        info "使用本地 PostgreSQL 容器"
     fi
+else
+    error "未找到 docker/.env.example"
+    exit 1
 fi
 
 # ==============================================================================
