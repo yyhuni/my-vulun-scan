@@ -15,7 +15,7 @@ RUN go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest && \
     go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
 
 # 第二阶段：运行时镜像
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
 # 避免交互式提示
 ENV DEBIAN_FRONTEND=noninteractive
@@ -53,8 +53,10 @@ ENV GOPROXY=https://goproxy.cn,direct
 
 # 3. 安装 Python 依赖
 COPY backend/requirements.txt .
-# 必须使用 --break-system-packages 因为 Ubuntu 22.04+ 的策略
-RUN pip3 install --no-cache-dir -r requirements.txt --break-system-packages
+
+# 升级 pip 以支持 --break-system-packages，并安装依赖
+RUN pip3 install --upgrade pip --break-system-packages && \
+    pip3 install --no-cache-dir -r requirements.txt --break-system-packages
 
 # 4. 复制后端代码
 COPY backend /app/backend
