@@ -2,7 +2,11 @@
 FROM golang:1.24 AS go-builder
 
 ENV GOPROXY=https://goproxy.cn,direct
-ENV CGO_ENABLED=0
+# Naabu 需要 CGO 和 libpcap
+ENV CGO_ENABLED=1
+
+# 安装编译依赖
+RUN apt-get update && apt-get install -y libpcap-dev
 
 # 安装 ProjectDiscovery 工具
 RUN go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest && \
