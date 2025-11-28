@@ -1,3 +1,16 @@
+# 第一阶段：使用 Go 官方镜像编译工具
+FROM golang:1.24 AS go-builder
+
+ENV GOPROXY=https://goproxy.cn,direct
+ENV CGO_ENABLED=0
+
+# 安装 ProjectDiscovery 工具集
+RUN go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest && \
+    go install -v github.com/projectdiscovery/naabu/v2/cmd/naabu@latest && \
+    go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest && \
+    go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
+
+# 第二阶段：运行时镜像
 FROM ubuntu:22.04
 
 # 避免交互式提示
@@ -26,21 +39,13 @@ RUN apt-get update && apt-get install -y \
 # 建立 python 软链接
 RUN ln -s /usr/bin/python3 /usr/bin/python
 
-# 2. 安装 Go 工具 (扫描器)
-ENV GO_VERSION=1.24.0
-RUN curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz" -o /tmp/go.tar.gz \
-    && rm -rf /usr/local/go \
-    && tar -C /usr/local -xzf /tmp/go.tar.gz \
-    && rm /tmp/go.tar.gz
+# 2. 从 go-builder 阶段复制 Go 环境和编译好的工具
+COPY --from=go-builder /usr/local/go /usr/local/go
+COPY --from=go-builder /go/bin/* /usr/local/bin/
 
 ENV GOPATH=/root/go
 ENV PATH=/usr/local/go/bin:$PATH:$GOPATH/bin
-
-# 安装 ProjectDiscovery 工具集
-RUN go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest && \
-    go install -v github.com/projectdiscovery/naabu/v2/cmd/naabu@latest && \
-    go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest && \
-    go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
+ENV GOPROXY=https://goproxy.cn,direct
 
 # 3. 安装 Python 依赖
 COPY backend/requirements.txt .
