@@ -21,6 +21,8 @@ PRESET_DB_USER="{{DB_USER}}"
 PRESET_DB_PASSWORD="{{DB_PASSWORD}}"
 PRESET_DB_HOST="{{DB_HOST}}"
 PRESET_DB_PORT="{{DB_PORT}}"
+PRESET_REDIS_HOST="{{REDIS_HOST}}"
+PRESET_REDIS_PORT="{{REDIS_PORT}}"
 
 # 颜色定义
 GREEN='\033[0;32m'
@@ -33,6 +35,10 @@ log_info() {
 
 log_success() {
     echo -e "${GREEN}[XingRin]${NC} $1"
+}
+
+log_warn() {
+    echo -e "\033[0;33m[XingRin]${NC} $1"
 }
 
 # 检查安装
@@ -53,15 +59,35 @@ generate_env() {
     
     log_info "生成 .env 配置文件..."
     
-    cat > "${WORKER_DIR}/.env" << EOF
-# 自动生成的远程 Worker 配置
-PREFECT_API_URL=${PRESET_API_URL}
-DB_HOST=${PRESET_DB_HOST}
-DB_PORT=${PRESET_DB_PORT}
-DB_NAME=${PRESET_DB_NAME}
-DB_USER=${PRESET_DB_USER}
-DB_PASSWORD=${PRESET_DB_PASSWORD}
-EOF
+    # 复制模板
+    if [ -f "${WORKER_DIR}/.env.example" ]; then
+        cp "${WORKER_DIR}/.env.example" "${WORKER_DIR}/.env"
+    else
+        log_warn "未找到 .env.example，将创建基础配置"
+        touch "${WORKER_DIR}/.env"
+    fi
+    
+    # 辅助函数：更新或追加变量
+    update_env() {
+        local key=$1
+        local val=$2
+        if grep -q "^${key}=" "${WORKER_DIR}/.env"; then
+            # 使用 | 作为分隔符，避免 URL 中的 / 冲突
+            sed -i "s|^${key}=.*|${key}=${val}|" "${WORKER_DIR}/.env"
+        else
+            echo "${key}=${val}" >> "${WORKER_DIR}/.env"
+        fi
+    }
+    
+    # 更新配置
+    update_env "PREFECT_API_URL" "$PRESET_API_URL"
+    update_env "DB_HOST" "$PRESET_DB_HOST"
+    update_env "DB_PORT" "$PRESET_DB_PORT"
+    update_env "DB_NAME" "$PRESET_DB_NAME"
+    update_env "DB_USER" "$PRESET_DB_USER"
+    update_env "DB_PASSWORD" "$PRESET_DB_PASSWORD"
+    update_env "REDIS_HOST" "$PRESET_REDIS_HOST"
+    update_env "REDIS_PORT" "$PRESET_REDIS_PORT"
     
     log_success ".env 文件已生成"
 }

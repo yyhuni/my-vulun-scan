@@ -224,7 +224,8 @@ class WorkerDeployConsumer(AsyncWebsocketConsumer):
         # 获取外置脚本内容
         bootstrap_script = get_bootstrap_script()
         deploy_script = get_deploy_script()
-        start_script = get_start_worker_script(api_url)
+        # 传入 host，如果 DB_HOST 是本地地址，将自动替换为该 host
+        start_script = get_start_worker_script(api_url, host)
         watchdog_install_script = get_watchdog_install_script(api_url, self.worker_id)
         
         # 合并脚本
