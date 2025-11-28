@@ -210,10 +210,9 @@ echo
 
 if [[ $should_start =~ ^[Yy]$ ]]; then
     step "正在启动服务..."
-    chmod +x "$DOCKER_DIR/start.sh"
     
-    # 直接运行，保留 Docker 输出
-    "$DOCKER_DIR/start.sh"
+    # 调用根目录的启动脚本
+    "$ROOT_DIR/start.sh"
     
     # 运行完后，重新显示总结
     show_summary "success"
