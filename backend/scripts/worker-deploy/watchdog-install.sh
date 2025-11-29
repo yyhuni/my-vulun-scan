@@ -23,9 +23,35 @@ log_success() {
     echo -e "${GREEN}[XingRin]${NC} $1"
 }
 
+is_watchdog_healthy() {
+    # 基本文件存在检查
+    if [ ! -f "${MARKER_DIR}/bin/watchdog.sh" ]; then
+        return 1
+    fi
+    if [ ! -f "/etc/systemd/system/xingrin-watchdog.service" ]; then
+        return 1
+    fi
+
+    # systemd 状态检查
+    if ! sudo systemctl is-enabled xingrin-watchdog >/dev/null 2>&1; then
+        return 1
+    fi
+    if ! sudo systemctl is-active xingrin-watchdog >/dev/null 2>&1; then
+        return 1
+    fi
+
+    return 0
+}
+
 log_info "=========================================="
 log_info "  XingRin Watchdog 服务安装"
 log_info "=========================================="
+
+# 如果已安装且运行正常，则直接退出（幂等）
+if is_watchdog_healthy; then
+    log_info "检测到 Watchdog 已安装且运行正常，跳过安装"
+    exit 0
+fi
 
 # 1. 创建目录
 log_info "创建目录..."
@@ -64,13 +90,19 @@ sudo systemctl daemon-reload
 sudo systemctl enable xingrin-watchdog
 sudo systemctl restart xingrin-watchdog
 
-echo ""
-log_success "=========================================="
-log_success "  ✓ Watchdog 服务已安装并启动"
-log_success "=========================================="
-echo ""
-log_info "管理命令："
-echo "  - 查看状态: sudo systemctl status xingrin-watchdog"
-echo "  - 查看日志: sudo journalctl -u xingrin-watchdog -f"
-echo "  - 重启服务: sudo systemctl restart xingrin-watchdog"
-echo "  - 停止服务: sudo systemctl stop xingrin-watchdog"
+if is_watchdog_healthy; then
+    echo ""
+    log_success "=========================================="
+    log_success "  ✓ Watchdog 服务已安装并启动"
+    log_success "=========================================="
+    echo ""
+    log_info "管理命令："
+    echo "  - 查看状态: sudo systemctl status xingrin-watchdog"
+    echo "  - 查看日志: sudo journalctl -u xingrin-watchdog -f"
+    echo "  - 重启服务: sudo systemctl restart xingrin-watchdog"
+    echo "  - 停止服务: sudo systemctl stop xingrin-watchdog"
+else
+    echo ""
+    echo "[XingRin] Watchdog 安装后自检失败，请检查 systemctl 状态和日志" >&2
+    exit 1
+fi
