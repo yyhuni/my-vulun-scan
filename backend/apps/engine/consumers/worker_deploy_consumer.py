@@ -213,18 +213,32 @@ class WorkerDeployConsumer(AsyncWebsocketConsumer):
             get_start_worker_script
         )
         
-        # 从服务层获取公网 IP，拼接成 API URL
+        # 从服务层获取公网 IP，分别拼接 Django API 和 Prefect API 的 URL
         public_ip = await sync_to_async(self.config_service.get_public_ip)()
         if public_ip:
             # 使用配置的公网 IP
-            api_url = f"http://{public_ip}:8888/api"
-            host = f"{public_ip}:8888"
+            django_host = f"{public_ip}:8888"   # Django / 心跳上报使用
+            prefect_host = f"{public_ip}:4200"  # Prefect Server 使用
+
+            heartbeat_api_url = f"http://{django_host}/api"
+            prefect_api_url = f"http://{prefect_host}/api"
+
+            # host 仍然用于 DB/Redis HOST 智能替换（只会取出 IP 部分）
+            host = django_host
         else:
             # 回退到 WebSocket 的 host（可能是 localhost，不推荐）
             headers = dict(self.scope['headers'])
-            host = headers.get(b'host', b'').decode()
+            raw_host = headers.get(b'host', b'').decode()  # 例如 192.168.x.x:8888
             scheme = "https" if self.scope.get('scheme') == 'wss' else "http"
-            api_url = f"{scheme}://{host}/api"
+
+            django_host = raw_host
+            hostname = raw_host.split(":", 1)[0] if raw_host else "localhost"
+            prefect_host = f"{hostname}:4200"
+
+            heartbeat_api_url = f"{scheme}://{django_host}/api"
+            prefect_api_url = f"{scheme}://{prefect_host}/api"
+
+            host = django_host
         
         session_name = f'xingrin_deploy_{self.worker_id}'
         remote_script_path = '/tmp/xingrin_deploy.sh'
@@ -233,8 +247,11 @@ class WorkerDeployConsumer(AsyncWebsocketConsumer):
         bootstrap_script = get_bootstrap_script()
         deploy_script = get_deploy_script()
         # 传入 host，如果 DB_HOST 是本地地址，将自动替换为该 host
-        start_script = get_start_worker_script(api_url, host)
-        watchdog_install_script = get_watchdog_install_script(api_url, self.worker_id)
+        # 注意：
+        # - Worker 容器内部的 PREFECT_API_URL 应指向 Prefect Server (4200)
+        # - Watchdog 的 HEARTBEAT_API_URL 应指向 Django API (8888)
+        start_script = get_start_worker_script(prefect_api_url, host)
+        watchdog_install_script = get_watchdog_install_script(heartbeat_api_url, self.worker_id)
         
         # 合并脚本
         combined_script = f"""#!/bin/bash
