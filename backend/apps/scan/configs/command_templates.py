@@ -63,7 +63,7 @@ PORT_SCAN_COMMANDS = {
 SITE_SCAN_COMMANDS = {
     'httpx': {
         'base': (
-            '$HOME/go/bin/httpx -l {url_file} '
+            'httpx -l {url_file} '
             '-status-code -content-type -content-length '
             '-location -title -server -body-preview '
             '-tech-detect -cdn -vhost '

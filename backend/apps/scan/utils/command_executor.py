@@ -84,7 +84,7 @@ class CommandExecutor:
                 else:
                     f.write("（无输出）\n")
             
-            logger.info(f"📝 {tool_name} 日志: {log_file.name} (执行时间: {duration:.2f}秒)")
+            logger.info(f"📝 {tool_name} 日志: {log_file} (执行时间: {duration:.2f}秒)")
             
         except Exception as e:
             logger.warning(f"无法写入命令信息头: {e}")
