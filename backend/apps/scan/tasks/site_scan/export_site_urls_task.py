@@ -7,7 +7,7 @@ import logging
 from pathlib import Path
 from prefect import task
 
-from apps.asset.models.asset_models import HostPortMapping
+from apps.asset.services import HostPortMappingService
 
 logger = logging.getLogger(__name__)
 
@@ -51,9 +51,11 @@ def export_site_urls_task(
         output_path.parent.mkdir(parents=True, exist_ok=True)
         
         # 直接查询 HostPortMapping 表，按 host 排序
-        associations = HostPortMapping.objects.filter(
-            target_id=target_id
-        ).order_by('host', 'port').values('host', 'port')
+        service = HostPortMappingService()
+        associations = service.iter_host_port_by_target(
+            target_id=target_id,
+            batch_size=batch_size,
+        )
         
         total_urls = 0
         association_count = 0

@@ -10,6 +10,13 @@ from .serializers import OrganizationSerializer, TargetSerializer, TargetDetailS
 from .services.target_service import TargetService
 from .services.organization_service import OrganizationService
 from apps.common.pagination import BasePagination
+from apps.asset.services import (
+    SubdomainService,
+    WebSiteService,
+    DirectoryService,
+    HostPortMappingService,
+    EndpointService,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -220,6 +227,11 @@ class TargetViewSet(viewsets.ModelViewSet):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.target_service = TargetService()
+        self.subdomain_service = SubdomainService()
+        self.endpoint_service = EndpointService()
+        self.website_service = WebSiteService()
+        self.directory_service = DirectoryService()
+        self.host_port_mapping_service = HostPortMappingService()
     
     def get_queryset(self):
         """获取目标查询集
@@ -423,7 +435,6 @@ class TargetViewSet(viewsets.ModelViewSet):
         - total_pages: 总页数
         """
         from apps.asset.serializers import SubdomainListSerializer
-        from apps.asset.models.asset_models import Subdomain
         from django.core.exceptions import ObjectDoesNotExist
         from django.db import DatabaseError, OperationalError
         
@@ -433,7 +444,7 @@ class TargetViewSet(viewsets.ModelViewSet):
             
             # 获取该目标的所有子域名（按发现时间倒序）
             # 注意：ports 和 ip_addresses 关系已被重构为 HostPortMapping
-            queryset = Subdomain.objects.filter(target=target).order_by('-discovered_at')
+            queryset = self.subdomain_service.get_subdomains_by_target(target.id)
             
             # 使用分页器
             paginator = self.paginator
@@ -471,7 +482,6 @@ class TargetViewSet(viewsets.ModelViewSet):
         - total_pages: 总页数
         """
         from apps.asset.serializers import EndpointListSerializer
-        from apps.asset.models.asset_models import Endpoint
         from django.core.exceptions import ObjectDoesNotExist
         from django.db import DatabaseError, OperationalError
 
@@ -479,7 +489,7 @@ class TargetViewSet(viewsets.ModelViewSet):
             target = self.get_object()
 
             # 获取该目标的所有端点（按发现时间倒序）
-            queryset = Endpoint.objects.filter(target=target).order_by('-discovered_at')
+            queryset = self.endpoint_service.get_queryset_by_target(target.id)
 
             # 使用分页器
             paginator = self.paginator
@@ -517,43 +527,15 @@ class TargetViewSet(viewsets.ModelViewSet):
 
         URL: GET /api/targets/{id}/ip-addresses/?page=1&pageSize=10
         """
-        from apps.asset.models.asset_models import HostPortMapping
         from apps.asset.serializers import IPAddressAggregatedSerializer
         from django.core.exceptions import ObjectDoesNotExist
         from django.db import DatabaseError, OperationalError
-        from django.db.models import Min, F
-        from rest_framework.exceptions import ValidationError, NotFound, APIException
 
         try:
             target = self.get_object()
             
             # 按 IP 聚合，获取每个 IP 的 hosts、ports 和首次发现时间
-            ip_aggregated = (
-                HostPortMapping.objects
-                .filter(target=target)
-                .values('ip')
-                .annotate(
-                    discovered_at=Min('discovered_at')  # 该 IP 的首次发现时间
-                )
-                .order_by('-discovered_at')
-            )
-            
-            # 为每个 IP 获取其关联的 hosts 和 ports
-            results = []
-            for item in ip_aggregated:
-                ip = item['ip']
-                # 获取该 IP 的所有 host 和 port
-                mappings = HostPortMapping.objects.filter(target=target, ip=ip).values('host', 'port').distinct()
-                
-                hosts = sorted(set(m['host'] for m in mappings))
-                ports = sorted(set(m['port'] for m in mappings))
-                
-                results.append({
-                    'ip': ip,
-                    'hosts': hosts,
-                    'ports': ports,
-                    'discovered_at': item['discovered_at']
-                })
+            results = self.host_port_mapping_service.get_ip_aggregation_by_target(target.id)
 
             # 分页
             paginator = self.paginator
@@ -591,7 +573,6 @@ class TargetViewSet(viewsets.ModelViewSet):
         - total_pages: 总页数
         """
         from apps.asset.serializers import WebSiteSerializer
-        from apps.asset.models.asset_models import WebSite
         from django.core.exceptions import ObjectDoesNotExist
         from django.db import DatabaseError, OperationalError
 
@@ -601,7 +582,7 @@ class TargetViewSet(viewsets.ModelViewSet):
 
             # 获取该目标的所有站点（按发现时间倒序）
             # 注意：WebSite 模型当前不再关联 Subdomain，因此不使用 select_related('subdomain')
-            queryset = WebSite.objects.filter(target=target).order_by('-discovered_at')
+            queryset = self.website_service.get_websites_by_target(target.id)
 
             # 使用分页器
             paginator = self.paginator
@@ -640,7 +621,6 @@ class TargetViewSet(viewsets.ModelViewSet):
         - total_pages: 总页数
         """
         from apps.asset.serializers import DirectorySerializer
-        from apps.asset.models.asset_models import Directory
         from django.core.exceptions import ObjectDoesNotExist
         from django.db import DatabaseError, OperationalError
 
@@ -649,7 +629,7 @@ class TargetViewSet(viewsets.ModelViewSet):
             target = self.get_object()
 
             # 获取该目标的所有目录（按发现时间倒序）
-            queryset = Directory.objects.filter(target=target).select_related('website').order_by('-discovered_at')
+            queryset = self.directory_service.get_directories_by_target(target.id)
 
             # 使用分页器
             paginator = self.paginator

@@ -119,6 +119,9 @@ class DjangoSubdomainRepository:
         for subdomain in queryset:
             yield subdomain.name
     
+    def get_by_target(self, target_id: int):
+        return Subdomain.objects.filter(target_id=target_id).order_by('-discovered_at')
+    
     def count_by_target(self, target_id: int) -> int:
         """
         统计目标下的域名数量

@@ -113,10 +113,12 @@ class DjangoWebSiteRepository:
             
             for url in queryset:
                 yield url
-                
         except Exception as e:
             logger.error(f"流式导出站点 URL 失败 - Target ID: {target_id}, 错误: {e}")
             raise
+
+    def get_by_target(self, target_id: int):
+        return WebSite.objects.filter(target_id=target_id).order_by('-discovered_at')
 
     def count_by_target(self, target_id: int) -> int:
         """

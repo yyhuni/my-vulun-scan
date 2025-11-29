@@ -95,6 +95,9 @@ class DjangoEndpointRepository:
         
         return result
     
+    def get_queryset_by_target(self, target_id: int):
+        return Endpoint.objects.filter(target_id=target_id).order_by('-discovered_at')
+    
     def get_by_target(self, target_id: int) -> List[EndpointDTO]:
         """
         获取目标下的所有端点

@@ -64,3 +64,49 @@ class DjangoHostPortMappingRepository:
                 exc_info=True
             )
             raise
+
+    def get_for_export(self, target_id: int, batch_size: int = 1000):
+        queryset = (
+            HostPortMapping.objects
+            .filter(target_id=target_id)
+            .order_by("host", "port")
+            .values("host", "port")
+            .iterator(chunk_size=batch_size)
+        )
+        for item in queryset:
+            yield item
+
+    def get_ip_aggregation_by_target(self, target_id: int):
+        from django.db.models import Min
+
+        ip_aggregated = (
+            HostPortMapping.objects
+            .filter(target_id=target_id)
+            .values('ip')
+            .annotate(
+                discovered_at=Min('discovered_at')
+            )
+            .order_by('-discovered_at')
+        )
+
+        results = []
+        for item in ip_aggregated:
+            ip = item['ip']
+            mappings = (
+                HostPortMapping.objects
+                .filter(target_id=target_id, ip=ip)
+                .values('host', 'port')
+                .distinct()
+            )
+
+            hosts = sorted({m['host'] for m in mappings})
+            ports = sorted({m['port'] for m in mappings})
+
+            results.append({
+                'ip': ip,
+                'hosts': hosts,
+                'ports': ports,
+                'discovered_at': item['discovered_at'],
+            })
+
+        return results

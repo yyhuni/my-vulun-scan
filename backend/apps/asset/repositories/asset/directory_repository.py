@@ -154,6 +154,9 @@ class DjangoDirectoryRepository:
         """
         return Directory.objects.all()
     
+    def get_by_target(self, target_id: int):
+        return Directory.objects.filter(target_id=target_id).select_related('website').order_by('-discovered_at')
+    
     def soft_delete_by_ids(self, directory_ids: List[int]) -> int:
         """
         根据 ID 列表批量软删除Directory

@@ -154,6 +154,9 @@ class WebSiteService:
         logger.debug("获取所有网站")
         return self.repo.get_all()
     
+    def get_websites_by_target(self, target_id: int):
+        return self.repo.get_by_target(target_id)
+    
     def count_websites_by_scan(self, scan_id: int) -> int:
         """
         统计扫描下的网站数量

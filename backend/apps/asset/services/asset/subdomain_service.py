@@ -232,6 +232,9 @@ class SubdomainService:
         from apps.asset.models import Subdomain
         return list(Subdomain.objects.filter(target_id=target_id).values_list('name', flat=True))
     
+    def get_subdomains_by_target(self, target_id: int):
+        return self.repo.get_by_target(target_id)
+    
     def count_subdomains_by_target(self, target_id: int) -> int:
         """
         统计目标下的子域名数量

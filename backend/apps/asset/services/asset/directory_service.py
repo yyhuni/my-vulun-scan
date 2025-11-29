@@ -133,6 +133,10 @@ class DirectoryService:
         """
         logger.debug("获取所有目录")
         return self.repo.get_all()
+    
+    def get_directories_by_target(self, target_id: int):
+        logger.debug("获取目标下所有目录 - Target ID: %d", target_id)
+        return self.repo.get_by_target(target_id)
 
 
 __all__ = ['DirectoryService']

@@ -45,3 +45,9 @@ class HostPortMappingService:
                 exc_info=True
             )
             raise
+
+    def iter_host_port_by_target(self, target_id: int, batch_size: int = 1000):
+        return self.repo.get_for_export(target_id=target_id, batch_size=batch_size)
+
+    def get_ip_aggregation_by_target(self, target_id: int):
+        return self.repo.get_ip_aggregation_by_target(target_id)

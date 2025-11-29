@@ -128,6 +128,9 @@ class EndpointService:
         """
         return self.repo.count_by_target(target_id)
     
+    def get_queryset_by_target(self, target_id: int):
+        return self.repo.get_queryset_by_target(target_id)
+    
     def count_endpoints_by_website(self, website_id: int) -> int:
         """
         统计网站下的端点数量
