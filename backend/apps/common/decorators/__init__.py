@@ -7,9 +7,13 @@
 from .db_connection import (
     ensure_db_connection,
     auto_ensure_db_connection,
+    async_check_and_reconnect,
+    ensure_db_connection_async,
 )
 
 __all__ = [
     'ensure_db_connection',
     'auto_ensure_db_connection',
+    'async_check_and_reconnect',
+    'ensure_db_connection_async',
 ]

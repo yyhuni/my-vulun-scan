@@ -17,6 +17,7 @@ import logging
 import functools
 import time
 from django.db import connection
+from asgiref.sync import sync_to_async
 
 logger = logging.getLogger(__name__)
 
@@ -148,7 +149,21 @@ def _check_and_reconnect(max_retries=5):
                 raise last_error
 
 
+async def async_check_and_reconnect(max_retries=5):
+    await sync_to_async(_check_and_reconnect, thread_sensitive=True)(max_retries=max_retries)
+
+
+def ensure_db_connection_async(method):
+    @functools.wraps(method)
+    async def wrapper(*args, **kwargs):
+        await async_check_and_reconnect()
+        return await method(*args, **kwargs)
+    return wrapper
+
+
 __all__ = [
     'ensure_db_connection',
     'auto_ensure_db_connection',
+    'async_check_and_reconnect',
+    'ensure_db_connection_async',
 ]

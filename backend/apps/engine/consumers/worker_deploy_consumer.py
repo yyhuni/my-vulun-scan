@@ -214,7 +214,7 @@ class WorkerDeployConsumer(AsyncWebsocketConsumer):
         )
         
         # 从服务层获取公网 IP，拼接成 API URL
-        public_ip = self.config_service.get_public_ip()
+        public_ip = await sync_to_async(self.config_service.get_public_ip)()
         if public_ip:
             # 使用配置的公网 IP
             api_url = f"http://{public_ip}:8888/api"
