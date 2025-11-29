@@ -3,7 +3,7 @@
 # 
 # 功能：
 # - 检查并启动 Prefect Server
-# - 启动 Daphne ASGI 服务器（支持 HTTP + WebSocket）
+# - 启动 uvicorn ASGI 服务器（支持 HTTP + WebSocket）
 # - 启动 Prefect Deployments（扫描任务 + 清理任务）
 
 set -e
@@ -44,7 +44,7 @@ PIP="$PROJECT_ROOT/.venv/bin/pip"
 # 2. 检查依赖
 echo ""
 echo "检查依赖..."
-if ! $PYTHON -c "import django, channels, daphne" 2>/dev/null; then
+if ! $PYTHON -c "import django, channels, uvicorn" 2>/dev/null; then
     echo -e "${YELLOW}⚠ 缺少依赖，正在安装...${NC}"
     cd "$BACKEND_DIR"
     $PIP install -r requirements.txt
@@ -98,32 +98,31 @@ if ! $PYTHON manage.py migrate --check > /dev/null 2>&1; then
 fi
 echo -e "${GREEN}✓ 数据库连接正常${NC}"
 
-# 6. 启动 Daphne ASGI 服务器
+# 6. 启动 uvicorn ASGI 服务器
 echo ""
-echo "启动 Daphne ASGI 服务器（HTTP + WebSocket）..."
-if [ -f "$PID_DIR/daphne.pid" ]; then
-    OLD_PID=$(cat "$PID_DIR/daphne.pid")
+echo "启动 uvicorn ASGI 服务器（HTTP + WebSocket）..."
+if [ -f "$PID_DIR/uvicorn.pid" ]; then
+    OLD_PID=$(cat "$PID_DIR/uvicorn.pid")
     if ps -p $OLD_PID > /dev/null 2>&1; then
-        echo -e "${YELLOW}⚠ Daphne 已在运行 (PID: $OLD_PID)${NC}"
+        echo -e "${YELLOW}⚠ uvicorn 已在运行 (PID: $OLD_PID)${NC}"
     else
-        rm "$PID_DIR/daphne.pid"
+        rm "$PID_DIR/uvicorn.pid"
     fi
 fi
 
-if [ ! -f "$PID_DIR/daphne.pid" ]; then
+if [ ! -f "$PID_DIR/uvicorn.pid" ]; then
     cd "$BACKEND_DIR"
-    # 添加 WebSocket 超时配置：--websocket_timeout 3600（1小时）
-    nohup $PROJECT_ROOT/.venv/bin/daphne -b 0.0.0.0 -p 8888 --websocket_timeout 3600 config.asgi:application > "$LOG_DIR/daphne.log" 2>&1 &
-    echo $! > "$PID_DIR/daphne.pid"
+    nohup $PROJECT_ROOT/.venv/bin/uvicorn config.asgi:application --host 0.0.0.0 --port 8888 > "$LOG_DIR/uvicorn.log" 2>&1 &
+    echo $! > "$PID_DIR/uvicorn.pid"
     sleep 2
     
-    if ps -p $(cat "$PID_DIR/daphne.pid") > /dev/null 2>&1; then
-        echo -e "${GREEN}✓ Daphne ASGI 服务器已启动${NC}"
+    if ps -p $(cat "$PID_DIR/uvicorn.pid") > /dev/null 2>&1; then
+        echo -e "${GREEN}✓ uvicorn ASGI 服务器已启动${NC}"
         echo "  HTTP:      http://localhost:8888"
         echo "  WebSocket: ws://localhost:8888/ws/notifications/"
     else
-        echo -e "${RED}✗ Daphne 启动失败${NC}"
-        echo "  查看日志: tail -f $PID_DIR/daphne.log"
+        echo -e "${RED}✗ uvicorn 启动失败${NC}"
+        echo "  查看日志: tail -f $PID_DIR/uvicorn.log"
         exit 1
     fi
 fi
@@ -180,7 +179,7 @@ fi
 
 echo ""
 echo "日志文件:"
-echo "  - Daphne:           $LOG_DIR/daphne.log"
+echo "  - uvicorn:          $LOG_DIR/uvicorn.log"
 echo "  - Prefect Server:   $BACKEND_DIR/logs/prefect/server.log"
 WORKER_LOG_FILE="$BACKEND_DIR/logs/prefect/worker-dev-worker.log"
 if [ -f "$WORKER_LOG_FILE" ]; then

@@ -51,7 +51,7 @@ python -m apps.targets.deployments.register
 
 echo "  ✓ Deployments 注册完成"
 
-# 4. 启动 Django Daphne 服务 (ASGI)
-echo "  [4/4] 启动 Django Daphne (ASGI)..."
+# 4. 启动 Django uvicorn 服务 (ASGI)
+echo "  [4/4] 启动 Django uvicorn (ASGI)..."
 cd /app/backend
-daphne -b 0.0.0.0 -p 8888 config.asgi:application
+uvicorn config.asgi:application --host 0.0.0.0 --port 8888

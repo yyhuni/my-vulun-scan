@@ -65,10 +65,10 @@ stop_service() {
 echo "停止 Prefect Deployments..."
 "$SCRIPT_DIR/../prefect/deployments/stop-deployments.sh"
 
-# 2. 停止 Daphne ASGI 服务器
+# 2. 停止 uvicorn ASGI 服务器
 echo ""
-echo "停止 Daphne ASGI 服务器..."
-stop_service "Daphne" "daphne"
+echo "停止 uvicorn ASGI 服务器..."
+stop_service "uvicorn" "uvicorn"
 
 # 额外检查：确保端口 8888 被释放
 if lsof -ti:8888 > /dev/null 2>&1; then

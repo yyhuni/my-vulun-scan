@@ -18,7 +18,7 @@ COPY backend /app/backend
 ENV PYTHONPATH=/app/backend
 
 # 暴露端口
-# 8888: Django/Daphne
+# 8888: Django/uvicorn
 # 4200: Prefect Server
 EXPOSE 8888 4200
 

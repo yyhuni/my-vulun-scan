@@ -51,7 +51,7 @@ check_service() {
 
 # 本地服务状态
 echo -e "${BLUE}本地服务:${NC}"
-check_service "Daphne ASGI 服务器" "daphne" "http://localhost:8888/api/"
+check_service "uvicorn ASGI 服务器" "uvicorn" "http://localhost:8888/api/"
 echo ""
 
 # 分割线 + Prefect 组件状态（全部委托给 scripts/prefect 下的脚本）
