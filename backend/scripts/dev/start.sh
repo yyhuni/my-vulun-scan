@@ -98,6 +98,12 @@ if ! $PYTHON manage.py migrate --check > /dev/null 2>&1; then
 fi
 echo -e "${GREEN}✓ 数据库连接正常${NC}"
 
+# 5.1 初始化默认扫描引擎
+echo ""
+echo "初始化默认扫描引擎..."
+$PYTHON manage.py init_default_engine
+echo -e "${GREEN}✓ 默认扫描引擎已就绪${NC}"
+
 # 6. 启动 uvicorn ASGI 服务器
 echo ""
 echo "启动 uvicorn ASGI 服务器（HTTP + WebSocket）..."

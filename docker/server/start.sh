@@ -28,6 +28,10 @@ echo "  [2.1/4] 执行数据库迁移..."
 python manage.py migrate --noinput
 echo "  ✓ 数据库迁移完成"
 
+echo "  [2.2/4] 初始化默认扫描引擎..."
+python manage.py init_default_engine
+echo "  ✓ 默认扫描引擎已就绪"
+
 # 2.5 创建 Work Pools
 echo "  [2.5/4] 创建 Prefect Work Pools..."
 SCAN_POOL_NAME=${PREFECT_SCAN_WORK_POOL_NAME:-scan-pool}
