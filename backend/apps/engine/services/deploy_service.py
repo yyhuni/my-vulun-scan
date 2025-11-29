@@ -42,13 +42,16 @@ def get_watchdog_install_script(api_url: str, worker_id: int) -> str:
     变量替换：
     - {{HEARTBEAT_API_URL}}: 心跳上报地址
     - {{WORKER_ID}}: Worker ID
+    - {{WATCHDOG_SCRIPT_CONTENT}}: watchdog.sh 的完整内容
     """
-    # 读取 watchdog 安装脚本
+    # 读取 watchdog 安装脚本和 watchdog.sh 内容
     install_script = _read_script("watchdog-install.sh")
+    watchdog_script = _read_script("watchdog.sh")
     
     # 替换变量
     install_script = install_script.replace("{{HEARTBEAT_API_URL}}", api_url.rstrip('/'))
     install_script = install_script.replace("{{WORKER_ID}}", str(worker_id))
+    install_script = install_script.replace("{{WATCHDOG_SCRIPT_CONTENT}}", watchdog_script)
     
     return install_script
 

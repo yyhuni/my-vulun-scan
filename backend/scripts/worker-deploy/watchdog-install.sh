@@ -9,7 +9,6 @@ set -e
 
 # 配置
 MARKER_DIR="/opt/xingrin"
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # 颜色定义
 GREEN='\033[0;32m'
@@ -32,9 +31,11 @@ log_info "=========================================="
 log_info "创建目录..."
 sudo mkdir -p ${MARKER_DIR}/bin
 
-# 2. 复制 watchdog 脚本
-log_info "复制 watchdog 脚本..."
-sudo cp "${SCRIPT_DIR}/watchdog.sh" ${MARKER_DIR}/bin/watchdog.sh
+# 2. 写入 watchdog 脚本（内容由 deploy_service.py 嵌入）
+log_info "写入 watchdog 脚本..."
+sudo tee ${MARKER_DIR}/bin/watchdog.sh > /dev/null << 'WATCHDOG_EOF'
+{{WATCHDOG_SCRIPT_CONTENT}}
+WATCHDOG_EOF
 sudo chmod +x ${MARKER_DIR}/bin/watchdog.sh
 
 # 3. 创建 Systemd 服务
