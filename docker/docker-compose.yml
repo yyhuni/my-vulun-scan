@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # PostgreSQL（可选，使用远程数据库时不启动）
   # 本地模式: docker compose --profile local-db up -d

@@ -17,6 +17,12 @@ from dotenv import load_dotenv
 # 加载环境变量
 load_dotenv()
 
+
+def get_bool_env(key: str, default: bool = False) -> bool:
+    """获取布尔值环境变量，兼容多种写法（true/True/TRUE/1/yes）"""
+    value = os.getenv(key, str(default)).lower()
+    return value in ('true', '1', 'yes', 'on')
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -29,7 +35,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-default-key')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # 安全优先：默认为 False，开发环境需显式设置 DEBUG=True
-DEBUG = os.getenv('DEBUG', 'False') == 'True'
+DEBUG = get_bool_env('DEBUG', False)
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
@@ -254,7 +260,7 @@ from config.logging_config import get_logging_config
 LOGGING = get_logging_config(debug=DEBUG)
 
 # 命令执行日志开关（供 apps.scan.utils.command_executor 使用）
-ENABLE_COMMAND_LOGGING = os.getenv('ENABLE_COMMAND_LOGGING', 'false').lower() == 'true'
+ENABLE_COMMAND_LOGGING = get_bool_env('ENABLE_COMMAND_LOGGING', False)
 
 # Prefect 多工作池名称配置
 PREFECT_SCAN_WORK_POOL_NAME = os.getenv('PREFECT_SCAN_WORK_POOL_NAME', 'scan-pool')
