@@ -209,14 +209,21 @@ class WorkerDeployConsumer(AsyncWebsocketConsumer):
             get_watchdog_install_script,
             get_start_worker_script
         )
-        
-        # 自动获取当前 API 地址
-        headers = dict(self.scope['headers'])
-        host = headers.get(b'host', b'').decode()
-        # 如果是 WebSocket 连接，host 可能是 localhost:8888
-        # 假设 API 与 WS 在同一端口
-        scheme = "https" if self.scope.get('scheme') == 'wss' else "http"
-        api_url = f"{scheme}://{host}/api"
+        from apps.engine.services import SystemConfigService
+
+        # 从服务层获取公网 IP，拼接成 API URL
+        config_service = SystemConfigService()
+        public_ip = config_service.get_public_ip()
+        if public_ip:
+            # 使用配置的公网 IP
+            api_url = f"http://{public_ip}:8888/api"
+            host = f"{public_ip}:8888"
+        else:
+            # 回退到 WebSocket 的 host（可能是 localhost，不推荐）
+            headers = dict(self.scope['headers'])
+            host = headers.get(b'host', b'').decode()
+            scheme = "https" if self.scope.get('scheme') == 'wss' else "http"
+            api_url = f"{scheme}://{host}/api"
         
         session_name = f'xingrin_deploy_{self.worker_id}'
         remote_script_path = '/tmp/xingrin_deploy.sh'

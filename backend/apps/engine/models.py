@@ -54,3 +54,37 @@ class ScanEngine(models.Model):
         ]
     def __str__(self):
         return str(self.name or f'ScanEngine {self.id}')
+
+
+class SystemConfig(models.Model):
+    """系统配置模型 - Key-Value 存储"""
+    
+    key = models.CharField(max_length=100, unique=True, primary_key=True, help_text='配置键')
+    value = models.CharField(max_length=500, blank=True, default='', help_text='配置值')
+    description = models.CharField(max_length=200, blank=True, default='', help_text='配置说明')
+    updated_at = models.DateTimeField(auto_now=True, help_text='更新时间')
+
+    class Meta:
+        db_table = 'system_config'
+        verbose_name = '系统配置'
+        verbose_name_plural = '系统配置'
+
+    def __str__(self):
+        return f"{self.key}: {self.value}"
+    
+    @classmethod
+    def get_value(cls, key: str, default: str = '') -> str:
+        """获取配置值"""
+        try:
+            return cls.objects.get(key=key).value
+        except cls.DoesNotExist:
+            return default
+    
+    @classmethod
+    def set_value(cls, key: str, value: str, description: str = '') -> 'SystemConfig':
+        """设置配置值"""
+        config, _ = cls.objects.update_or_create(
+            key=key,
+            defaults={'value': value, 'description': description}
+        )
+        return config

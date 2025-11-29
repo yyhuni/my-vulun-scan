@@ -8,6 +8,7 @@ import {
   IconTerminal2,
   IconTrash,
   IconEdit,
+  IconSettings,
 } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -42,6 +43,7 @@ import type { WorkerNode, WorkerStatus } from "@/types/worker.types"
 import { WORKER_STATUS_CONFIG } from "@/types/worker.types"
 import { WorkerDialog } from "./worker-dialog"
 import { DeployTerminalDialog } from "./deploy-terminal-dialog"
+import { SystemConfigDialog } from "./system-config-dialog"
 
 function StatusBadge({ status }: { status: WorkerStatus }) {
   const config = WORKER_STATUS_CONFIG[status] || { label: status, variant: 'secondary' as const }
@@ -63,6 +65,7 @@ export function WorkerList() {
   const [selectedWorker, setSelectedWorker] = useState<WorkerNode | null>(null)
   const [workerToDeploy, setWorkerToDeploy] = useState<WorkerNode | null>(null)
   const [workerToDelete, setWorkerToDelete] = useState<WorkerNode | null>(null)
+  const [configDialogOpen, setConfigDialogOpen] = useState(false)
 
   const { data, isLoading, refetch } = useWorkers(page, pageSize)
   const deleteWorker = useDeleteWorker()
@@ -107,6 +110,9 @@ export function WorkerList() {
             <CardDescription>管理分布式扫描节点，支持远程部署和监控</CardDescription>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setConfigDialogOpen(true)} title="系统配置">
+              <IconSettings className="h-4 w-4" />
+            </Button>
             <Button variant="outline" size="sm" onClick={() => refetch()}>
               <IconRefresh className="mr-1 h-4 w-4" />刷新
             </Button>
@@ -181,6 +187,10 @@ export function WorkerList() {
         onOpenChange={setDeployDialogOpen}
         worker={workerToDeploy}
         onDeployComplete={() => refetch()}
+      />
+      <SystemConfigDialog
+        open={configDialogOpen}
+        onOpenChange={setConfigDialogOpen}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
