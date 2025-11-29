@@ -47,6 +47,7 @@ Requires=docker.service
 
 [Service]
 Type=simple
+Environment="HEARTBEAT_API_URL={{HEARTBEAT_API_URL}}" "WORKER_ID={{WORKER_ID}}"
 ExecStart=/bin/bash ${MARKER_DIR}/bin/watchdog.sh
 Restart=always
 RestartSec=10

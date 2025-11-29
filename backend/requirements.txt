@@ -23,6 +23,9 @@ channels==4.0.0
 channels-redis==4.2.0
 daphne==4.1.0
 
+# SSH & 远程部署
+paramiko>=3.0.0
+
 # 测试框架
 pytest==8.0.0
 pytest-django==4.7.0

@@ -166,30 +166,18 @@ prepare_env() {
 
 # 显示完成信息
 show_completion() {
-    WORKER_DIR="${SRC_DIR}/docker/worker"
-    
-    echo ""
-    log_info "=========================================="
-    log_success "  ✓ 安装完成"
-    log_info "=========================================="
-    echo ""
-    log_info "项目代码位置: ${SRC_DIR}"
-    echo ""
-    log_warn "下一步操作："
-    echo ""
-    echo "  1. 编辑配置文件，填写主机地址："
-    echo "     vi ${WORKER_DIR}/.env"
-    echo ""
-    echo "  2. 启动 Worker："
-    echo "     cd ${WORKER_DIR}"
-    echo "     docker compose up -d --build"
-    echo ""
-    echo "  3. 查看日志："
-    echo "     docker compose logs -f"
-    echo ""
-    
-    # 写入安装标记
-    echo "Install completed at $(date)" | tee "$INSTALL_MARKER" > /dev/null
+	WORKER_DIR="${SRC_DIR}/docker/worker"
+	
+	echo ""
+	log_info "=========================================="
+	log_success "  ✓ 安装完成"
+	log_info "=========================================="
+	echo ""
+	log_info "项目代码位置: ${SRC_DIR}"
+	echo ""
+	
+	# 写入安装标记
+	echo "Install completed at $(date)" | tee "$INSTALL_MARKER" > /dev/null
 }
 
 # 主流程

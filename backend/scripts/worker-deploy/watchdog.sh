@@ -40,7 +40,7 @@ API_URL="${HEARTBEAT_API_URL:-}"
 WORKER_ID="${WORKER_ID:-$(hostname)}"
 
 log "${GREEN}Watchdog 启动...${NC}"
-log "监控目标: xingrin-worker"
+log "监控目标: scan-worker / maintenance-worker"
 log "心跳间隔: ${INTERVAL}s"
 
 if [ -n "$API_URL" ]; then
@@ -51,9 +51,14 @@ else
 fi
 
 while true; do
-    # 1. 检查容器是否运行
-    if $DOCKER_CMD ps --filter "name=xingrin-worker" --filter "status=running" --format "{{.Names}}" | grep -q "xingrin-worker"; then
-        
+    # 1. 检查是否有运行中的 Worker 容器（scan-worker / maintenance-worker 任一即可）
+    RUNNING_CONTAINERS=$($DOCKER_CMD ps \
+        --filter "name=scan-worker" \
+        --filter "name=maintenance-worker" \
+        --filter "status=running" \
+        --format "{{.Names}}")
+
+    if [ -n "$RUNNING_CONTAINERS" ]; then
         # 2. 收集系统负载（如果需要上报）
         if [ -n "$API_URL" ]; then
             # CPU 使用率
@@ -77,34 +82,18 @@ while true; do
 EOF
 )
             
-            # 4. 发送心跳
+            # 4. 发送心跳（API_URL 已包含 /api 前缀，这里只拼接资源路径）
             RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
                 -H "Content-Type: application/json" \
                 -d "$JSON_DATA" \
-                "${API_URL}/api/workers/${WORKER_ID}/heartbeat/" 2>/dev/null || echo "000")
+                "${API_URL}/workers/${WORKER_ID}/heartbeat/" 2>/dev/null || echo "000")
                 
             if [ "$RESPONSE" != "200" ] && [ "$RESPONSE" != "201" ]; then
                 log "${YELLOW}心跳发送失败 (HTTP $RESPONSE)${NC}"
             fi
         fi
-
     else
-        log "${RED}警告: xingrin-worker 容器未运行!${NC}"
-        log "正在尝试自动重启..."
-        
-        if $DOCKER_CMD start xingrin-worker 2>/dev/null; then
-            log "${GREEN}容器重启成功${NC}"
-            
-            # 上报重启事件
-            if [ -n "$API_URL" ]; then
-                curl -s -X POST \
-                    -H "Content-Type: application/json" \
-                    -d "{\"worker_id\": \"$WORKER_ID\", \"event\": \"restart\"}" \
-                    "${API_URL}/api/workers/${WORKER_ID}/event/" 2>/dev/null || true
-            fi
-        else
-            log "${RED}容器重启失败${NC}"
-        fi
+        log "${YELLOW}没有运行中的 Worker 容器 (scan-worker / maintenance-worker)${NC}"
     fi
 
     # 休眠
