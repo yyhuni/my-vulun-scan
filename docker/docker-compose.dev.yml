@@ -1,0 +1,20 @@
+# 开发环境配置
+# 使用方法: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+# 或直接: docker compose -f docker-compose.dev.yml up -d
+#
+# 与生产环境的区别:
+# - 代码挂载到容器，修改后重启即可生效，无需重新构建镜像
+# - 适合本地开发调试
+
+services:
+  server:
+    volumes:
+      - ../backend:/app/backend  # 挂载整个 backend 代码目录
+
+  scan-worker:
+    volumes:
+      - ../backend:/app/backend
+
+  maintenance-worker:
+    volumes:
+      - ../backend:/app/backend
