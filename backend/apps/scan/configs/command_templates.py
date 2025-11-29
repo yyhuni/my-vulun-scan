@@ -105,7 +105,7 @@ URL_FETCH_COMMANDS = {
     
     'katana': {
         'base': (
-            '$HOME/go/bin/katana -list {sites_file} -o {output_file} '
+            'katana -list {sites_file} -o {output_file} '
             '-jc '                   # 开启 JavaScript 爬取 + 自动解析 .js 文件里的所有端点（最重要）
             '-xhr '                  # 额外从 JS 中提取 XHR/Fetch 请求的 API 路径（再多挖 10-20% 隐藏接口）
             '-kf all '               # 在每个目录下自动 fuzz 所有已知敏感文件（.env、.git、backup、config、ds_store 等 5000+ 条）
@@ -135,7 +135,7 @@ URL_FETCH_COMMANDS = {
     
     'httpx': {
         'base': (
-            '$HOME/go/bin/httpx -l {url_file} '
+            'httpx -l {url_file} '
             '-status-code -content-type -content-length '
             '-location -title -server -body-preview '
             '-tech-detect -cdn -vhost '
