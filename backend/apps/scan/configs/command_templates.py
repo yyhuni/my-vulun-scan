@@ -36,14 +36,6 @@ SUBDOMAIN_DISCOVERY_COMMANDS = {
             'threads': '-t {threads}'
         }
     },
-    
-    'oneforall': {
-        'base': (
-            'python3 {scan_tools_base}/OneForAll/oneforall.py --target {domain} run && '
-            "cut -d',' -f6 {scan_tools_base}/OneForAll/results/{domain}.csv | tail -n +2 > {output_file} && "
-            'rm -rf {scan_tools_base}/OneForAll/results/{domain}.csv'
-        )
-    },
 }
 
 

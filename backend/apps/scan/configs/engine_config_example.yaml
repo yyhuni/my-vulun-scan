@@ -34,10 +34,6 @@ subdomain_discovery:
       enabled: true
       timeout: 900      # 15 分钟（必需）
       # threads: 50     # 可选，线程数
-      
-    oneforall:
-      enabled: true
-      timeout: 1200     # 20 分钟（必需）
 
 # ==================== 端口扫描 ====================
 port_scan:
