@@ -3,6 +3,7 @@ Engine 服务层
 """
 
 from .engine_service import EngineService
+from .worker_service import WorkerService
 from .system_config_service import SystemConfigService
 from .deploy_service import (
     get_bootstrap_script,
@@ -13,6 +14,7 @@ from .deploy_service import (
 
 __all__ = [
     'EngineService',
+    'WorkerService',
     'SystemConfigService',
     'get_bootstrap_script',
     'get_deploy_script',

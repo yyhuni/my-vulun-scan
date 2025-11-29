@@ -16,6 +16,10 @@ logger = logging.getLogger(__name__)
 class DjangoEngineRepository:
     """基于 Django ORM 的 ScanEngine 数据访问层实现"""
     
+    def get_all(self):
+        """获取所有扫描引擎查询集"""
+        return ScanEngine.objects.all().order_by('-created_at')  # type: ignore
+    
     def get_by_id(self, engine_id: int) -> ScanEngine | None:
         """
         根据 ID 获取扫描引擎

@@ -30,6 +30,10 @@ class EngineService:
             ScanEngine 对象或 None
         """
         return self.repo.get_by_id(engine_id)
+    
+    def get_all_engines(self):
+        """获取所有扫描引擎查询集"""
+        return self.repo.get_all()
 
 
 __all__ = ['EngineService']

@@ -3,8 +3,8 @@
 """
 from rest_framework import viewsets
 
-from apps.engine.models import ScanEngine
 from apps.engine.serializers import ScanEngineSerializer
+from apps.engine.services import EngineService
 
 
 class ScanEngineViewSet(viewsets.ModelViewSet):
@@ -20,5 +20,12 @@ class ScanEngineViewSet(viewsets.ModelViewSet):
     - DELETE /api/engines/{id}/ - 删除引擎
     """
     
-    queryset = ScanEngine.objects.all()  # pylint: disable=no-member
     serializer_class = ScanEngineSerializer
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.engine_service = EngineService()
+
+    def get_queryset(self):
+        """通过服务层获取查询集"""
+        return self.engine_service.get_all_engines()

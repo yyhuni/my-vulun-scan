@@ -8,6 +8,8 @@ import asyncio
 from channels.generic.websocket import AsyncWebsocketConsumer
 from asgiref.sync import sync_to_async
 
+from apps.engine.services import WorkerService, SystemConfigService
+
 logger = logging.getLogger(__name__)
 
 
@@ -24,6 +26,8 @@ class WorkerDeployConsumer(AsyncWebsocketConsumer):
         self.shell = None
         self.worker = None
         self.read_task = None
+        self.worker_service = WorkerService()
+        self.config_service = SystemConfigService()
     
     async def connect(self):
         """连接时加入对应 Worker 的组并自动建立 SSH 连接"""
@@ -100,11 +104,10 @@ class WorkerDeployConsumer(AsyncWebsocketConsumer):
     
     async def _auto_ssh_connect(self):
         """自动从数据库读取密码并连接"""
-        from apps.engine.models import WorkerNode
-        
-        try:
-            self.worker = await sync_to_async(WorkerNode.objects.get)(id=self.worker_id)
-        except WorkerNode.DoesNotExist:
+        # 通过服务层获取 Worker 节点
+        self.worker = await sync_to_async(self.worker_service.get_worker)(self.worker_id)
+
+        if not self.worker:
             await self.send(text_data=json.dumps({
                 'type': 'error',
                 'message': 'Worker 不存在'
@@ -209,11 +212,9 @@ class WorkerDeployConsumer(AsyncWebsocketConsumer):
             get_watchdog_install_script,
             get_start_worker_script
         )
-        from apps.engine.services import SystemConfigService
-
+        
         # 从服务层获取公网 IP，拼接成 API URL
-        config_service = SystemConfigService()
-        public_ip = config_service.get_public_ip()
+        public_ip = self.config_service.get_public_ip()
         if public_ip:
             # 使用配置的公网 IP
             api_url = f"http://{public_ip}:8888/api"
