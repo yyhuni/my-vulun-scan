@@ -49,7 +49,7 @@ RUN ln -s /usr/bin/python3 /usr/bin/python
 # 2. 使用 pipx 安装 Python 扫描工具
 ENV PATH="/root/.local/bin:$PATH"
 RUN pipx install uro && \
-    pipx install git+https://github.com/xnl-h4ck3r/waymore.git
+    pipx install waymore
 
 # 3. 安装 Sublist3r
 RUN git clone https://github.com/aboul3la/Sublist3r.git /opt/github/Sublist3r && \
