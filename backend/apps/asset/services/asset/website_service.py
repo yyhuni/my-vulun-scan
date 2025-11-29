@@ -1,7 +1,6 @@
 import logging
 from typing import Tuple, List
 
-from apps.asset.models.asset_models import WebSite
 from apps.asset.repositories import DjangoWebSiteRepository
 from apps.asset.dtos import WebSiteDTO
 
@@ -168,8 +167,7 @@ class WebSiteService:
             int: 网站数量
         """
         logger.debug("统计扫描下网站数量 - Scan ID: %d", scan_id)
-        from apps.asset.models import WebSite
-        return WebSite.objects.filter(scan_id=scan_id).count()
+        return self.repo.count_by_scan(scan_id)
     
     def iter_website_urls_by_target(self, target_id: int, chunk_size: int = 1000):
         """流式获取目标下的所有站点 URL（内存优化，委托给 Repository 层）"""

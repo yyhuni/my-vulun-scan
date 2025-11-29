@@ -139,6 +139,18 @@ class DjangoWebSiteRepository:
             logger.error(f"统计站点数量失败 - Target ID: {target_id}, 错误: {e}")
             raise
 
+    def count_by_scan(self, scan_id: int) -> int:
+        """
+        统计扫描下的站点总数
+        """
+        try:
+            count = WebSite.objects.filter(scan_id=scan_id).count()
+            logger.debug(f"Scan {scan_id} 的站点总数: {count}")
+            return count
+        except Exception as e:
+            logger.error(f"统计站点数量失败 - Scan ID: {scan_id}, 错误: {e}")
+            raise
+
     def get_by_url(self, url: str, target_id: int) -> Optional[int]:
         """
         根据 URL 和 target_id 查找站点 ID

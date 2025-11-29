@@ -61,3 +61,6 @@ class HostPortMappingSnapshotsService:
                 exc_info=True
             )
             raise
+    
+    def get_ip_aggregation_by_scan(self, scan_id: int):
+        return self.snapshot_repo.get_ip_aggregation_by_scan(scan_id)

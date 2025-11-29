@@ -4,8 +4,25 @@ import logging
 import time
 from .models import Notification
 from .types import NotificationLevel
+from .repositories import DjangoNotificationRepository
 
 logger = logging.getLogger(__name__)
+
+
+class NotificationService:
+    """通知业务服务，封装常用查询与更新操作"""
+
+    def __init__(self, repository: DjangoNotificationRepository | None = None):
+        self.repo = repository or DjangoNotificationRepository()
+
+    def get_notifications(self, level: str | None = None, unread: bool | None = None):
+        return self.repo.get_filtered(level=level, unread=unread)
+
+    def get_unread_count(self) -> int:
+        return self.repo.get_unread_count()
+
+    def mark_all_as_read(self) -> int:
+        return self.repo.mark_all_as_read()
 
 
 def create_notification(
@@ -35,7 +52,9 @@ def create_notification(
     """
     from django.db import connection
     from psycopg2 import OperationalError, InterfaceError
-    
+
+    repo = DjangoNotificationRepository()
+
     max_retries = 3
     last_exception = None
     
@@ -51,11 +70,11 @@ def create_notification(
             # 测试连接是否真的可用
             connection.cursor().execute("SELECT 1")
             
-            # 1. 写入数据库
-            notification = Notification.objects.create(
-                level=level,
+            # 1. 写入数据库（通过仓储层统一访问 ORM）
+            notification = repo.create(
                 title=title,
-                message=message
+                message=message,
+                level=level,
             )
             
             # 2. WebSocket 实时推送（推送失败不影响通知创建）

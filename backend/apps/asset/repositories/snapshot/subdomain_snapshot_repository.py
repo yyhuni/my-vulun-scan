@@ -53,3 +53,6 @@ class DjangoSubdomainSnapshotRepository:
                 exc_info=True
             )
             raise
+    
+    def get_by_scan(self, scan_id: int):
+        return SubdomainSnapshot.objects.filter(scan_id=scan_id).order_by('-discovered_at')

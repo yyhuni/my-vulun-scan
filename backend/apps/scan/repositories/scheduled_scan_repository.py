@@ -11,6 +11,7 @@ from datetime import datetime
 from django.db import transaction
 from django.utils import timezone
 
+from apps.common.decorators import auto_ensure_db_connection
 from apps.scan.models import ScheduledScan
 
 
@@ -35,6 +36,7 @@ class ScheduledScanDTO:
     
 
 
+@auto_ensure_db_connection
 class DjangoScheduledScanRepository:
     """
     定时扫描任务 Repository

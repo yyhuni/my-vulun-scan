@@ -227,7 +227,7 @@ class DjangoScanRepository:
         queryset = Scan.objects.all()  # type: ignore  # pylint: disable=no-member
         if prefetch_relations:
             queryset = queryset.select_related('engine', 'target')
-        return queryset
+        return queryset.order_by('-created_at')
     
     
     def get_statistics(self) -> dict:

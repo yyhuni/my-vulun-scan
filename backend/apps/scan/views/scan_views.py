@@ -31,6 +31,13 @@ from apps.asset.serializers import (
     DirectorySnapshotSerializer,
     EndpointSnapshotSerializer,
 )
+from apps.asset.services import (
+    SubdomainSnapshotsService,
+    HostPortMappingSnapshotsService,
+    WebsiteSnapshotsService,
+    DirectorySnapshotsService,
+    EndpointSnapshotsService,
+)
 
 
 class ScanViewSet(viewsets.ModelViewSet):
@@ -53,9 +60,10 @@ class ScanViewSet(viewsets.ModelViewSet):
         - 避免大数据加载：不再预加载所有关联的资产数据
         """
         # 只保留必要的 select_related，移除所有 prefetch_related
-        queryset = Scan.objects.select_related('target', 'engine')
+        scan_service = ScanService()
+        queryset = scan_service.get_all_scans(prefetch_relations=True)
         
-        return queryset.order_by('-created_at')  # type: ignore  # pylint: disable=no-member
+        return queryset
     
     def get_serializer_class(self):
         """根据不同的 action 返回不同的序列化器
@@ -273,7 +281,8 @@ class ScanViewSet(viewsets.ModelViewSet):
                 )
 
             # 获取该扫描的所有端点快照（按发现时间倒序）
-            queryset = scan.endpoint_snapshots.all().order_by('-discovered_at')
+            snapshot_service = EndpointSnapshotsService()
+            queryset = snapshot_service.get_by_scan(scan.id)
 
             paginator = self.paginator
             page = paginator.paginate_queryset(queryset, request, view=self)
@@ -500,7 +509,8 @@ class ScanViewSet(viewsets.ModelViewSet):
                 )
             
             # 获取该扫描的所有子域名快照（按发现时间倒序）
-            queryset = scan.subdomain_snapshots.all().order_by('-discovered_at')
+            snapshot_service = SubdomainSnapshotsService()
+            queryset = snapshot_service.get_by_scan(scan.id)
             
             # 使用分页器
             paginator = self.paginator
@@ -539,11 +549,9 @@ class ScanViewSet(viewsets.ModelViewSet):
         
         URL: GET /api/scans/{id}/ip-addresses/?page=1&pageSize=10
         """
-        from apps.asset.models.snapshot_models import HostPortMappingSnapshot
         from apps.asset.serializers import IPAddressAggregatedSerializer
         from django.core.exceptions import ObjectDoesNotExist
         from django.db import DatabaseError, OperationalError
-        from django.db.models import Min
         from rest_framework.exceptions import ValidationError, NotFound, APIException
 
         try:
@@ -557,32 +565,8 @@ class ScanViewSet(viewsets.ModelViewSet):
                 )
 
             # 按 IP 聚合，获取每个 IP 的 hosts、ports 和首次发现时间
-            ip_aggregated = (
-                HostPortMappingSnapshot.objects
-                .filter(scan=scan)
-                .values('ip')
-                .annotate(
-                    discovered_at=Min('discovered_at')  # 该 IP 的首次发现时间
-                )
-                .order_by('-discovered_at')
-            )
-            
-            # 为每个 IP 获取其关联的 hosts 和 ports
-            results = []
-            for item in ip_aggregated:
-                ip = item['ip']
-                # 获取该 IP 的所有 host 和 port
-                mappings = HostPortMappingSnapshot.objects.filter(scan=scan, ip=ip).values('host', 'port').distinct()
-                
-                hosts = sorted(set(m['host'] for m in mappings))
-                ports = sorted(set(m['port'] for m in mappings))
-                
-                results.append({
-                    'ip': ip,
-                    'hosts': hosts,
-                    'ports': ports,
-                    'discovered_at': item['discovered_at']
-                })
+            snapshot_service = HostPortMappingSnapshotsService()
+            results = snapshot_service.get_ip_aggregation_by_scan(scan.id)
 
             # 分页
             paginator = self.paginator
@@ -640,7 +624,8 @@ class ScanViewSet(viewsets.ModelViewSet):
 
             # 获取该扫描的所有站点快照（按发现时间倒序）
             # 注意：WebsiteSnapshot 当前未直接关联 Subdomain，这里不使用 select_related('subdomain')
-            queryset = scan.website_snapshots.all().order_by('-discovered_at')
+            snapshot_service = WebsiteSnapshotsService()
+            queryset = snapshot_service.get_by_scan(scan.id)
 
             paginator = self.paginator
             page = paginator.paginate_queryset(queryset, request, view=self)
@@ -697,7 +682,8 @@ class ScanViewSet(viewsets.ModelViewSet):
 
             # 获取该扫描的所有目录快照（按发现时间倒序）
             # DirectorySnapshot 当前仅关联 Scan，本身不再关联 Website，因此不使用 select_related('website')
-            queryset = scan.directory_snapshots.all().order_by('-discovered_at')
+            snapshot_service = DirectorySnapshotsService()
+            queryset = snapshot_service.get_by_scan(scan.id)
 
             paginator = self.paginator
             page = paginator.paginate_queryset(queryset, request, view=self)

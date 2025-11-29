@@ -139,6 +139,9 @@ class ScanService:
         """
         return self.scan_repo.get_by_id(scan_id, prefetch_relations)
     
+    def get_all_scans(self, prefetch_relations: bool = True):
+        return self.scan_repo.get_all(prefetch_relations=prefetch_relations)
+    
     def prepare_initiate_scan(
         self,
         organization_id: int | None = None,

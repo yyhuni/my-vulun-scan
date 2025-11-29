@@ -229,8 +229,8 @@ class SubdomainService:
             List[str]: 子域名名称列表
         """
         logger.debug("获取目标下所有子域名 - Target ID: %d", target_id)
-        from apps.asset.models import Subdomain
-        return list(Subdomain.objects.filter(target_id=target_id).values_list('name', flat=True))
+        # 通过仓储层统一访问数据库，内部已使用 iterator() 做流式查询
+        return list(self.repo.get_domains_for_export(target_id=target_id))
     
     def get_subdomains_by_target(self, target_id: int):
         return self.repo.get_by_target(target_id)
@@ -246,8 +246,7 @@ class SubdomainService:
             int: 子域名数量
         """
         logger.debug("统计目标下子域名数量 - Target ID: %d", target_id)
-        from apps.asset.models import Subdomain
-        return Subdomain.objects.filter(target_id=target_id).count()
+        return self.repo.count_by_target(target_id)
     
     def iter_subdomain_names_by_target(self, target_id: int, chunk_size: int = 1000):
         """

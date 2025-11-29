@@ -15,6 +15,7 @@ from apps.common.pagination import BasePagination
 from .models import Notification
 from .serializers import NotificationSerializer
 from .types import NotificationLevel
+from .services import NotificationService
 
 logger = logging.getLogger(__name__)
 
@@ -134,23 +135,17 @@ class NotificationCollectionView(APIView):
         - page_size: 每页大小
         - total_pages: 总页数
         """
-        queryset = Notification.objects.all()
+        service = NotificationService()
 
         # 按级别过滤
         level_param = request.query_params.get('level')
-        if level_param in NotificationLevel.values:
-            queryset = queryset.filter(level=level_param)
+        level_filter = level_param if level_param in NotificationLevel.values else None
 
         # 按已读状态过滤
         # unread=true: 仅未读  unread=false: 仅已读  unread=None: 全部
         unread_param = _parse_bool(request.query_params.get('unread'))
-        if unread_param is True:
-            queryset = queryset.filter(is_read=False)
-        elif unread_param is False:
-            queryset = queryset.filter(is_read=True)
-        # 当 unread_param is None 时，不过滤，返回所有通知
 
-        queryset = queryset.order_by('-created_at')
+        queryset = service.get_notifications(level=level_filter, unread=unread_param)
         
         # 使用通用分页器
         paginator = self.pagination_class()
@@ -173,7 +168,8 @@ class NotificationUnreadCountView(APIView):
 
     def get(self, request: Request) -> Response:
         """获取未读通知数量"""
-        count = Notification.objects.filter(is_read=False).count()
+        service = NotificationService()
+        count = service.get_unread_count()
         return build_api_response({'count': count}, message='获取未读数量成功')
 
 
@@ -192,8 +188,6 @@ class NotificationMarkAllAsReadView(APIView):
 
     def post(self, request: Request) -> Response:
         """标记全部通知为已读"""
-        updated = Notification.objects.filter(is_read=False).update(
-            is_read=True,
-            read_at=timezone.now()
-        )
+        service = NotificationService()
+        updated = service.mark_all_as_read()
         return build_api_response({'updated': updated}, message='全部标记已读成功')

@@ -58,3 +58,38 @@ class DjangoHostPortMappingSnapshotRepository:
                 exc_info=True
             )
             raise
+    
+    def get_ip_aggregation_by_scan(self, scan_id: int):
+        from django.db.models import Min
+
+        ip_aggregated = (
+            HostPortMappingSnapshot.objects
+            .filter(scan_id=scan_id)
+            .values('ip')
+            .annotate(
+                discovered_at=Min('discovered_at')
+            )
+            .order_by('-discovered_at')
+        )
+
+        results = []
+        for item in ip_aggregated:
+            ip = item['ip']
+            mappings = (
+                HostPortMappingSnapshot.objects
+                .filter(scan_id=scan_id, ip=ip)
+                .values('host', 'port')
+                .distinct()
+            )
+
+            hosts = sorted({m['host'] for m in mappings})
+            ports = sorted({m['port'] for m in mappings})
+
+            results.append({
+                'ip': ip,
+                'hosts': hosts,
+                'ports': ports,
+                'discovered_at': item['discovered_at'],
+            })
+
+        return results

@@ -58,3 +58,6 @@ class SubdomainSnapshotsService:
                 exc_info=True
             )
             raise
+    
+    def get_by_scan(self, scan_id: int):
+        return self.subdomain_snapshot_repo.get_by_scan(scan_id)
