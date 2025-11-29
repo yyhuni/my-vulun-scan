@@ -5,7 +5,6 @@ import type * as React from "react"
 // 导入 Tabler Icons 图标库中的各种图标
 import {
   IconDashboard, // 仪表板图标
-  IconDatabase, // 数据库图标
   IconHelp, // 帮助图标
   IconInnerShadowTop, // 内阴影图标
   IconListDetails, // 列表详情图标
@@ -134,11 +133,6 @@ const data = {
   ],
   // 系统设置相关菜单项
   documents: [
-    {
-      name: "磁盘管理", // 硬盘使用情况
-      url: "/disk/",
-      icon: IconDatabase,
-    },
     {
       name: "Worker 管理", // 分布式扫描节点管理
       url: "/settings/workers/",
