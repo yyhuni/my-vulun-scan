@@ -14,7 +14,8 @@ RUN go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest && \
     go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest && \
     go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest && \
     go install -v github.com/projectdiscovery/katana/cmd/katana@latest && \
-    go install -v github.com/owasp-amass/amass/v4/...@master
+    go install -v github.com/owasp-amass/amass/v4/...@master && \
+    go install -v github.com/ffuf/ffuf/v2@latest
 
 # 第二阶段：运行时镜像
 FROM ubuntu:24.04
