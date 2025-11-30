@@ -8,9 +8,11 @@ Engine Repositories 模块
 from .django_engine_repository import DjangoEngineRepository
 from .django_worker_repository import DjangoWorkerRepository
 from .django_system_config_repository import DjangoSystemConfigRepository
+from .django_wordlist_repository import DjangoWordlistRepository
 
 __all__ = [
     'DjangoEngineRepository',
     'DjangoWorkerRepository',
     'DjangoSystemConfigRepository',
+    'DjangoWordlistRepository',
 ]

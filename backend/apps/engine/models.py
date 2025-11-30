@@ -88,3 +88,28 @@ class SystemConfig(models.Model):
             defaults={'value': value, 'description': description}
         )
         return config
+
+
+class Wordlist(models.Model):
+    """字典文件模型"""
+
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=200, unique=True, help_text='字典名称，唯一')
+    description = models.CharField(max_length=200, blank=True, default='', help_text='字典描述')
+    file_path = models.CharField(max_length=500, help_text='后端保存的字典文件绝对路径')
+    file_size = models.BigIntegerField(default=0, help_text='文件大小（字节）')
+    line_count = models.IntegerField(default=0, help_text='字典行数')
+    created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
+    updated_at = models.DateTimeField(auto_now=True, help_text='更新时间')
+
+    class Meta:
+        db_table = 'wordlist'
+        verbose_name = '字典文件'
+        verbose_name_plural = '字典文件'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['-created_at']),
+        ]
+
+    def __str__(self) -> str:
+        return self.name
