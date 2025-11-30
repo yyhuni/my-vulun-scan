@@ -97,6 +97,10 @@ class WorkerDeployConsumer(AsyncWebsocketConsumer):
                 # 查看部署进度（attach 到 tmux 会话）
                 await self._attach_deploy_session()
                 
+            elif msg_type == 'uninstall':
+                # 执行卸载脚本（后台运行）
+                await self._run_uninstall_script()
+                
         except json.JSONDecodeError:
             # 可能是普通文本输入
             if self.shell and text_data:
@@ -344,6 +348,65 @@ fi
             error_msg = f"\033[31m✗ 部署失败: {str(e)}\033[0m\r\n"
             await self.send(bytes_data=error_msg.encode())
             logger.error(f"部署脚本执行失败: {e}")
+    
+    async def _run_uninstall_script(self):
+        """在远程主机上执行 Worker 卸载脚本
+
+        逻辑：
+        1. 通过服务层读取本地 worker-uninstall.sh 内容
+        2. 上传到远程 /tmp/xingrin_uninstall.sh 并赋予执行权限
+        3. 使用 exec_command 以 bash 执行脚本
+        4. 将执行结果摘要写回前端终端
+        """
+        if not self.ssh_client:
+            return
+
+        from apps.engine.services.deploy_service import get_uninstall_script
+
+        uninstall_script = get_uninstall_script()
+        remote_script_path = '/tmp/xingrin_uninstall.sh'
+
+        start_msg = "\r\n\033[36m[XingRin] 正在执行 Worker 卸载...\033[0m\r\n"
+        await self.send(bytes_data=start_msg.encode())
+
+        try:
+            # 上传卸载脚本
+            sftp = await asyncio.to_thread(self.ssh_client.open_sftp)
+            with sftp.file(remote_script_path, 'w') as f:
+                f.write(uninstall_script)
+            sftp.chmod(remote_script_path, 0o755)
+            await asyncio.to_thread(sftp.close)
+
+            # 执行卸载脚本
+            cmd = f"bash {remote_script_path}"
+            stdin, stdout, stderr = await asyncio.to_thread(
+                self.ssh_client.exec_command, cmd
+            )
+            out = await asyncio.to_thread(stdout.read)
+            err = await asyncio.to_thread(stderr.read)
+
+            output_text = out.decode().strip() if out else ""
+            error_text = err.decode().strip() if err else ""
+
+            # 简单判断是否成功（退出码 + 关键字）
+            exit_status = stdout.channel.recv_exit_status()
+            if exit_status == 0:
+                msg = "\r\n\033[32m✓ Worker 卸载完成\033[0m\r\n"
+                if output_text:
+                    msg += f"\033[90m{output_text}\033[0m\r\n"
+            else:
+                msg = "\r\n\033[31m✗ Worker 卸载失败\033[0m\r\n"
+                if output_text:
+                    msg += f"\033[90m输出: {output_text}\033[0m\r\n"
+                if error_text:
+                    msg += f"\033[90m错误: {error_text}\033[0m\r\n"
+
+            await self.send(bytes_data=msg.encode())
+
+        except Exception as e:
+            error_msg = f"\033[31m✗ 卸载执行异常: {str(e)}\033[0m\r\n"
+            await self.send(bytes_data=error_msg.encode())
+            logger.error(f"卸载脚本执行失败: {e}")
     
     async def _attach_deploy_session(self):
         """Attach 到部署会话查看进度"""

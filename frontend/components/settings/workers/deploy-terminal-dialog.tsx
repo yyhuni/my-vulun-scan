@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { IconTerminal2, IconRocket, IconEye } from "@tabler/icons-react"
+import { IconTerminal2, IconRocket, IconEye, IconTrash } from "@tabler/icons-react"
 import type { WorkerNode } from "@/types/worker.types"
 
 interface DeployTerminalDialogProps {
@@ -219,6 +219,16 @@ export function DeployTerminalDialog({
     wsRef.current.send(JSON.stringify({ type: 'attach' }))
   }
 
+  // 卸载 Worker（后台执行卸载脚本）
+  const handleUninstall = () => {
+    if (!wsRef.current || !isConnected) return
+    if (typeof window !== 'undefined') {
+      const confirmed = window.confirm('确定要在远程主机上卸载 Worker 并删除相关容器/代码吗？')
+      if (!confirmed) return
+    }
+    wsRef.current.send(JSON.stringify({ type: 'uninstall' }))
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="w-[50vw] max-w-[50vw] h-[85vh] flex flex-col p-4">
@@ -248,6 +258,10 @@ export function DeployTerminalDialog({
               <Button onClick={handleDeploy} variant="default">
                 <IconRocket className="mr-1 h-4 w-4" />
                 执行部署
+              </Button>
+              <Button onClick={handleUninstall} variant="destructive">
+                <IconTrash className="mr-1 h-4 w-4" />
+                卸载 Worker
               </Button>
               <Button onClick={handleAttach} variant="secondary">
                 <IconEye className="mr-1 h-4 w-4" />

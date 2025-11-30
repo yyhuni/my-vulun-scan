@@ -36,6 +36,11 @@ def get_deploy_script() -> str:
     return _read_script("worker-install.sh")
 
 
+def get_uninstall_script() -> str:
+    """获取 Worker 卸载脚本（幂等）"""
+    return _read_script("worker-uninstall.sh")
+
+
 def get_watchdog_install_script(api_url: str, worker_id: int) -> str:
     """
     获取 Watchdog 安装脚本（包含 Systemd 配置）
