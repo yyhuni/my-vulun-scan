@@ -11,7 +11,7 @@ from asgiref.sync import sync_to_async
 
 from django.conf import settings
 
-from apps.engine.services import WorkerService, SystemConfigService
+from apps.engine.services import WorkerService
 
 logger = logging.getLogger(__name__)
 
