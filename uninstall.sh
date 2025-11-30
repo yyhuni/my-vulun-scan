@@ -87,9 +87,9 @@ fi
 LOGS_DIR="$ROOT_DIR/backend/logs"
 RESULTS_DIR="$ROOT_DIR/backend/results"
 
-step "[2/4] 是否删除扫描日志和结果目录 ($LOGS_DIR, $RESULTS_DIR)？(y/N)"
+step "[2/4] 是否删除扫描日志和结果目录 ($LOGS_DIR, $RESULTS_DIR)？(Y/n)"
 read -r ans_logs
-ans_logs=${ans_logs:-N}
+ans_logs=${ans_logs:-Y}
 
 if [[ $ans_logs =~ ^[Yy]$ ]]; then
     info "正在删除日志和结果目录..."
@@ -105,9 +105,9 @@ fi
 TOOLS_DIR="/opt/xingrin/tools"
 WORDLISTS_DIR="/opt/xingrin/wordlists"
 
-step "[3/4] 是否删除工具目录和字典目录 ($TOOLS_DIR, $WORDLISTS_DIR)？(y/N)"
+step "[3/4] 是否删除工具目录和字典目录 ($TOOLS_DIR, $WORDLISTS_DIR)？(Y/n)"
 read -r ans_tools
-ans_tools=${ans_tools:-N}
+ans_tools=${ans_tools:-Y}
 
 if [[ $ans_tools =~ ^[Yy]$ ]]; then
     info "正在删除工具和字典目录..."
@@ -120,9 +120,9 @@ fi
 # ==============================================================================
 # 4. 删除本地 Postgres 容器及数据卷（如果使用本地 DB）
 # ==============================================================================
-step "[4/4] 若使用本地 PostgreSQL 容器：是否删除数据库容器和 volume？(y/N)"
+step "[4/4] 若使用本地 PostgreSQL 容器：是否删除数据库容器和 volume？(Y/n)"
 read -r ans_db
-ans_db=${ans_db:-N}
+ans_db=${ans_db:-Y}
 
 if [[ $ans_db =~ ^[Yy]$ ]]; then
     info "尝试删除与 XingRin 相关的 Postgres 容器和数据卷..."
