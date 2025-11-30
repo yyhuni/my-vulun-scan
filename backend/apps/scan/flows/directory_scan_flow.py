@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 
 def calculate_directory_scan_timeout(
     tool_config: dict,
-    base_per_word: float = 0.02,
+    base_per_word: float = 1.0,
     min_timeout: int = 60,
     max_timeout: int = 7200
 ) -> int:
@@ -55,7 +55,7 @@ def calculate_directory_scan_timeout(
     
     Args:
         tool_config: 工具配置字典，包含 wordlist 路径
-        base_per_word: 每个单词的基础时间（秒），默认 0.02秒（20ms）
+        base_per_word: 每个单词的基础时间（秒），默认 1.0秒
         min_timeout: 最小超时时间（秒），默认 60秒
         max_timeout: 最大超时时间（秒），默认 7200秒（2小时）
     
@@ -63,9 +63,8 @@ def calculate_directory_scan_timeout(
         int: 计算出的超时时间（秒），范围：60 ~ 7200
     
     Example:
-        # 1000行字典 × 0.02秒 = 20秒 → 限制为60秒（最小值）
-        # 10000行字典 × 0.02秒 = 200秒
-        # 500000行字典 × 0.02秒 = 10000秒 → 限制为7200秒（最大值）
+        # 1000行字典 × 1.0秒 = 1000秒 → 限制为7200秒中的 1000秒
+        # 10000行字典 × 1.0秒 = 10000秒 → 限制为7200秒（最大值）
         timeout = calculate_directory_scan_timeout(
             tool_config={'wordlist': '/path/to/wordlist.txt'}
         )
