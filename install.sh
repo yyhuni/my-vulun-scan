@@ -276,7 +276,7 @@ if [ -f "$DOCKER_DIR/.env.example" ]; then
     read -r set_public_host
     echo
     if [[ $set_public_host =~ ^[Yy]$ ]]; then
-        echo -n -e "   ${CYAN}请输入本系统对外访问的 IP/域名（例如 192.168.1.10 或 scanner.example.com）: ${RESET}"
+        echo -n -e "   ${CYAN}请输入本系统对外访问的 IP/域名（例如 10.1.1.1 或 example.com）: ${RESET}"
         read -r public_host
         if [ -z "$public_host" ]; then
             warn "未输入对外地址，将保持 .env 中已有的 PUBLIC_HOST（通常为 localhost，仅适合本机调试）"
