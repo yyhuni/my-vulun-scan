@@ -56,9 +56,6 @@ RUN git clone https://github.com/aboul3la/Sublist3r.git /opt/github/Sublist3r &&
     pip3 install --no-cache-dir -r /opt/github/Sublist3r/requirements.txt --break-system-packages
 
 # 4. 从 go-builder 阶段复制 Go 环境和编译好的工具
-COPY --from=go-builder /usr/local/go /usr/local/go
-COPY --from=go-builder /go/bin/* /usr/local/bin/
-
 ENV GOPATH=/root/go
 ENV PATH=/usr/local/go/bin:$PATH:$GOPATH/bin
 ENV GOPROXY=https://goproxy.cn,direct
@@ -68,6 +65,9 @@ COPY backend/requirements.txt .
 
 # 直接安装依赖 (Ubuntu 24.04 自带 pip 24.0+，支持 --break-system-packages)
 RUN pip3 install --no-cache-dir -r requirements.txt --break-system-packages
+
+COPY --from=go-builder /usr/local/go /usr/local/go
+COPY --from=go-builder /go/bin/* /usr/local/bin/
 
 # 6. 复制后端代码
 COPY backend /app/backend
