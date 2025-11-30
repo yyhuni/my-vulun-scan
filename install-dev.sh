@@ -139,23 +139,17 @@ fi
 DEV_ENV_EXAMPLE="$DOCKER_DIR/.env.development.example"
 TARGET_ENV="$DOCKER_DIR/.env"
 
-NEW_ENV_CREATED=false
-if [ -f "$TARGET_ENV" ]; then
-    warn "已存在 docker/.env，将直接使用当前配置。"
-else
-    if [ ! -f "$DEV_ENV_EXAMPLE" ]; then
-        error "未找到 $DEV_ENV_EXAMPLE，无法初始化开发环境配置。"
-        exit 1
-    fi
-    cp "$DEV_ENV_EXAMPLE" "$TARGET_ENV"
-    success "已根据 .env.development.example 创建: docker/.env"
-    NEW_ENV_CREATED=true
+if [ ! -f "$DEV_ENV_EXAMPLE" ]; then
+    error "未找到 $DEV_ENV_EXAMPLE，无法初始化开发环境配置。"
+    exit 1
 fi
 
-# 对新创建的 dev .env 自动生成密钥和数据库密码
-if [ "$NEW_ENV_CREATED" = true ]; then
-    auto_fill_docker_env_secrets "$TARGET_ENV"
-fi
+info "每次运行 install-dev.sh 都会根据 .env.development.example 重新生成 docker/.env..."
+cp "$DEV_ENV_EXAMPLE" "$TARGET_ENV"
+success "已根据 .env.development.example 重新创建: docker/.env"
+
+# 为当前 dev .env 自动生成新的密钥和数据库密码
+auto_fill_docker_env_secrets "$TARGET_ENV"
 
 # 询问是否使用远程 PostgreSQL 数据库（与 install.sh 一致）
 echo ""
