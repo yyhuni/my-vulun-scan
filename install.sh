@@ -196,9 +196,9 @@ if [ -f "$DOCKER_DIR/.env.example" ]; then
     # 询问数据库配置
     echo ""
     echo -n -e "${BOLD}${CYAN}❓ 是否使用远程 PostgreSQL 数据库？(y/N) ${RESET}"
-    read -n 1 -r use_remote_db
+    read -r use_remote_db
     echo
-    
+
     if [[ $use_remote_db =~ ^[Yy]$ ]]; then
         echo -e "${CYAN}   请输入远程 PostgreSQL 配置：${RESET}"
         

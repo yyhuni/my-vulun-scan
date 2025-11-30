@@ -32,6 +32,10 @@ echo "  [2.2/4] 初始化默认扫描引擎..."
 python manage.py init_default_engine
 echo "  ✓ 默认扫描引擎已就绪"
 
+echo "  [2.3/4] 初始化默认目录字典..."
+python manage.py init_default_wordlist
+echo "  ✓ 默认目录字典已就绪"
+
 # 2.5 创建 Work Pools
 echo "  [2.5/4] 创建 Prefect Work Pools..."
 SCAN_POOL_NAME=${PREFECT_SCAN_WORK_POOL_NAME:-scan-pool}

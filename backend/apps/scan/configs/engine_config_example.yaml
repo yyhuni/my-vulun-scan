@@ -77,8 +77,8 @@ directory_scan:
                                                # 计算公式：字典行数 × 0.02秒/词
                                                # 超时范围：60秒 ~ 7200秒（2小时）
                                                # 也可以手动指定固定超时（如 300）
-      wordlist_name: 常用目录字典             # 字典名称（必需），对应「字典管理」中唯一的 Wordlist.name
-                                               # Flow 会根据名称在后端查找字典记录，并在 Worker 本地按需下载/保存
+      wordlist_name: default_dict.txt          # 字典名称（必需），对应「字典管理」中唯一的 Wordlist.name
+                                               # 安装时会自动初始化名为 default_dict.txt 的默认目录字典
                                                # ffuf 会逐行读取字典文件，将每行作为 FUZZ 关键字的替换值
       delay: 0.1-2.0                         # Seconds of delay between requests, or a range of random delay
                                                # For example "0.1" or "0.1-2.0"
