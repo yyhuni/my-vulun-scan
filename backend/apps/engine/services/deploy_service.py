@@ -10,6 +10,7 @@ Worker 部署脚本服务
 """
 
 from pathlib import Path
+import os
 from django.conf import settings
 
 # 脚本目录 (从 services 目录往上找)
@@ -84,6 +85,7 @@ def get_start_worker_script(api_url: str, host_address: str = None) -> str:
         redis_host = host_address.split(':')[0]
     
     # 替换变量
+    public_host_env = getattr(settings, 'PUBLIC_HOST', '')
     script = script.replace("{{PREFECT_API_URL}}", api_url.rstrip('/'))
     script = script.replace("{{DB_NAME}}", db_config.get('NAME', ''))
     script = script.replace("{{DB_USER}}", db_config.get('USER', ''))
@@ -92,5 +94,6 @@ def get_start_worker_script(api_url: str, host_address: str = None) -> str:
     script = script.replace("{{DB_PORT}}", str(db_config.get('PORT', '5432')))
     script = script.replace("{{REDIS_HOST}}", redis_host)
     script = script.replace("{{REDIS_PORT}}", "6379")  # 假设标准端口
+    script = script.replace("{{PUBLIC_HOST}}", public_host_env)
     
     return script

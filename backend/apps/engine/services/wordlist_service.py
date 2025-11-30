@@ -30,6 +30,10 @@ class WordlistService:
         """获取字典列表查询集"""
         return self.repo.get_queryset()
 
+    def get_wordlist(self, wordlist_id: int) -> Optional[Wordlist]:
+        """根据 ID 获取字典"""
+        return self.repo.get_by_id(wordlist_id)
+
     def create_wordlist(
         self,
         name: str,
@@ -49,11 +53,16 @@ class WordlistService:
         storage_dir = os.path.join(base_dir, "wordlists")
         os.makedirs(storage_dir, exist_ok=True)
 
+        # 按原始文件名保存（做最小清洗），同名上传时覆盖旧文件
         original_name = os.path.basename(uploaded_file.name or "wordlist.txt")
-        base, ext = os.path.splitext(original_name)
-        safe_base = base.replace(" ", "_").replace("/", "_").replace("\\", "_") or "wordlist"
-        filename = f"{safe_base}_{int(time.time())}{ext or '.txt'}"
-        full_path = os.path.join(storage_dir, filename)
+        # 仅清理路径分隔符，保留空格等字符，避免目录穿越
+        safe_name = original_name.replace("/", "_").replace("\\", "_") or "wordlist.txt"
+        # 如果没有扩展名，补一个 .txt，方便识别
+        base, ext = os.path.splitext(safe_name)
+        if not ext:
+            safe_name = f"{base}.txt"
+
+        full_path = os.path.join(storage_dir, safe_name)
 
         with open(full_path, "wb+") as dest:
             for chunk in uploaded_file.chunks():

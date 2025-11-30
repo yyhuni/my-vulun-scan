@@ -1,8 +1,12 @@
 """字典管理 API Views"""
 
-from rest_framework import status, viewsets
-from rest_framework.response import Response
+import os
+
 from django.core.exceptions import ValidationError
+from django.http import FileResponse
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.response import Response
 
 from apps.common.pagination import BasePagination
 from apps.engine.serializers.wordlist_serializer import WordlistSerializer
@@ -68,3 +72,23 @@ class WordlistViewSet(viewsets.ViewSet):
             return Response({"error": "字典不存在"}, status=status.HTTP_404_NOT_FOUND)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=["get"], url_path="download")
+    def download(self, request, pk=None):
+        """下载字典文件内容"""
+        try:
+            wordlist_id = int(pk)
+        except (TypeError, ValueError):
+            return Response({"error": "无效的 ID"}, status=status.HTTP_400_BAD_REQUEST)
+
+        wordlist = self.service.get_wordlist(wordlist_id)
+        if not wordlist:
+            return Response({"error": "字典不存在"}, status=status.HTTP_404_NOT_FOUND)
+
+        file_path = wordlist.file_path
+        if not file_path or not os.path.exists(file_path):
+            return Response({"error": "字典文件不存在"}, status=status.HTTP_404_NOT_FOUND)
+
+        filename = os.path.basename(file_path)
+        response = FileResponse(open(file_path, "rb"), as_attachment=True, filename=filename)
+        return response

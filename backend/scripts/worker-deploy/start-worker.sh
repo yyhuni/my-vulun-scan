@@ -23,6 +23,7 @@ PRESET_DB_HOST="{{DB_HOST}}"
 PRESET_DB_PORT="{{DB_PORT}}"
 PRESET_REDIS_HOST="{{REDIS_HOST}}"
 PRESET_REDIS_PORT="{{REDIS_PORT}}"
+PRESET_PUBLIC_HOST="{{PUBLIC_HOST}}"
 
 # 颜色定义
 GREEN='\033[0;32m'
@@ -88,6 +89,7 @@ generate_env() {
     update_env "DB_PASSWORD" "$PRESET_DB_PASSWORD"
     update_env "REDIS_HOST" "$PRESET_REDIS_HOST"
     update_env "REDIS_PORT" "$PRESET_REDIS_PORT"
+    update_env "PUBLIC_HOST" "$PRESET_PUBLIC_HOST"
     
     log_success ".env 文件已生成"
 }

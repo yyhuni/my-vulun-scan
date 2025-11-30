@@ -5,8 +5,11 @@ WebSocket Consumer - Worker 交互式终端 (使用 PTY)
 import json
 import logging
 import asyncio
+import os
 from channels.generic.websocket import AsyncWebsocketConsumer
 from asgiref.sync import sync_to_async
+
+from django.conf import settings
 
 from apps.engine.services import WorkerService, SystemConfigService
 
@@ -27,7 +30,6 @@ class WorkerDeployConsumer(AsyncWebsocketConsumer):
         self.worker = None
         self.read_task = None
         self.worker_service = WorkerService()
-        self.config_service = SystemConfigService()
     
     async def connect(self):
         """连接时加入对应 Worker 的组并自动建立 SSH 连接"""
@@ -213,32 +215,31 @@ class WorkerDeployConsumer(AsyncWebsocketConsumer):
             get_start_worker_script
         )
         
-        # 从服务层获取公网 IP，分别拼接 Django API 和 Prefect API 的 URL
-        public_ip = await sync_to_async(self.config_service.get_public_ip)()
-        if public_ip:
-            # 使用配置的公网 IP
-            django_host = f"{public_ip}:8888"   # Django / 心跳上报使用
-            prefect_host = f"{public_ip}:4200"  # Prefect Server 使用
+        # 优先使用 settings 中配置的对外访问主机（PUBLIC_HOST）拼接 Django / Prefect 的 URL
+        public_host = getattr(settings, 'PUBLIC_HOST', '').strip()
+        server_port = getattr(settings, 'SERVER_PORT', '8888')
+        prefect_port = getattr(settings, 'PREFECT_UI_PORT', '4200')
 
-            heartbeat_api_url = f"http://{django_host}/api"
-            prefect_api_url = f"http://{prefect_host}/api"
+        if not public_host:
+            error_msg = (
+                "未配置 PUBLIC_HOST，请在 docker/.env 中设置对外访问 IP/域名 "
+                "(PUBLIC_HOST) 并重启服务后再执行远程部署"
+            )
+            logger.error(error_msg)
+            await self.send(text_data=json.dumps({
+                'type': 'error',
+                'message': error_msg,
+            }))
+            return
 
-            # host 仍然用于 DB/Redis HOST 智能替换（只会取出 IP 部分）
-            host = django_host
-        else:
-            # 回退到 WebSocket 的 host（可能是 localhost，不推荐）
-            headers = dict(self.scope['headers'])
-            raw_host = headers.get(b'host', b'').decode()  # 例如 192.168.x.x:8888
-            scheme = "https" if self.scope.get('scheme') == 'wss' else "http"
+        django_host = f"{public_host}:{server_port}"   # Django / 心跳上报使用
+        prefect_host = f"{public_host}:{prefect_port}"  # Prefect Server 使用
 
-            django_host = raw_host
-            hostname = raw_host.split(":", 1)[0] if raw_host else "localhost"
-            prefect_host = f"{hostname}:4200"
+        heartbeat_api_url = f"http://{django_host}/api"
+        prefect_api_url = f"http://{prefect_host}/api"
 
-            heartbeat_api_url = f"{scheme}://{django_host}/api"
-            prefect_api_url = f"{scheme}://{prefect_host}/api"
-
-            host = django_host
+        # host 仍然用于 DB/Redis HOST 智能替换（只会取出 IP 部分）
+        host = django_host
         
         session_name = f'xingrin_deploy_{self.worker_id}'
         remote_script_path = '/tmp/xingrin_deploy.sh'
