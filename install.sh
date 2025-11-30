@@ -272,14 +272,14 @@ if [ -f "$DOCKER_DIR/.env.example" ]; then
 
     # 是否为远程 VPS 部署（需要从其它机器 / Worker 访问本系统）
     echo ""
-    echo -n -e "${BOLD}${CYAN}❓ 当前是否为远程 VPS 部署（需要从其它机器或 Worker 访问本系统）？(y/N) ${RESET}"
+    echo -n -e "${BOLD}${CYAN}❓ 当前是否为远程 VPS 部署 ？(y/N) ${RESET}"
     read -r set_public_host
     echo
     if [[ $set_public_host =~ ^[Yy]$ ]]; then
-        echo -n -e "   ${CYAN}请输入本系统对外访问的 IP/域名（例如 10.1.1.1 或 example.com）: ${RESET}"
+        echo -n -e "   ${CYAN}请输入当前远程 vps 的外网 IP 地址（例如 10.1.1.1）: ${RESET}"
         read -r public_host
         if [ -z "$public_host" ]; then
-            warn "未输入对外地址，将保持 .env 中已有的 PUBLIC_HOST（通常为 localhost，仅适合本机调试）"
+            warn "未输入外网ip地址，将保持 .env 中已有的 PUBLIC_HOST（通常为 localhost，仅适合本机调试）"
         else
             update_env_var "$DOCKER_DIR/.env" "PUBLIC_HOST" "$public_host"
             success "已配置对外访问地址: $public_host"
