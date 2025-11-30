@@ -11,27 +11,16 @@ export default function ToolsPage() {
   // 功能模块
   const modules = [
     {
-      title: "开源工具",
-      description: "管理和配置开源扫描工具，支持自动更新和版本管理",
-      href: "/tools/config/opensource",
+      title: "字典管理",
+      description: "管理目录扫描等使用的字典文件",
+      href: "/tools/wordlists/",
       icon: PackageOpen,
       status: "available",
       stats: {
-        total: "12",
-        active: "8"
-      }
+        total: "-",
+        active: "-",
+      },
     },
-    {
-      title: "自定义工具",
-      description: "管理自定义扫描脚本和工具，支持命令配置和参数管理",
-      href: "/tools/config/custom",
-      icon: Settings,
-      status: "available",
-      stats: {
-        total: "5",
-        active: "3"
-      }
-    }
   ]
 
   return (
@@ -41,7 +30,7 @@ export default function ToolsPage() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight">工具</h2>
           <p className="text-muted-foreground">
-            管理和配置扫描工具，包括开源工具和自定义工具
+            管理与扫描相关的辅助资源，如字典等
           </p>
         </div>
       </div>
@@ -110,16 +99,10 @@ export default function ToolsPage() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
-              <Link href="/tools/config/opensource">
+              <Link href="/tools/wordlists/">
                 <Button variant="outline" size="sm">
                   <PackageOpen className="h-4 w-4" />
-                  开源工具
-                </Button>
-              </Link>
-              <Link href="/tools/config/custom">
-                <Button variant="outline" size="sm">
-                  <Settings className="h-4 w-4" />
-                  自定义工具
+                  字典管理
                 </Button>
               </Link>
             </div>

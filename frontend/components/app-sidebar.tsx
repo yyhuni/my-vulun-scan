@@ -98,10 +98,6 @@ const data = {
       icon: IconTool,
       items: [
         {
-          title: "工具配置", // 工具配置
-          url: "/tools/config/",
-        },
-        {
           title: "字典管理", // 字典管理
           url: "/tools/wordlists/",
         },
