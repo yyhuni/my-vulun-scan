@@ -91,7 +91,13 @@ cleanup_files() {
         sudo rm -f "${MARKER_DIR}/.docker_installed"
     fi
 
-    log_success "Worker 卸载步骤已完成（基础依赖和 /opt/xingrin/logs /opt/xingrin/data 保留）"
+    # 最后删除整个 /opt/xingrin 目录（包括 .bootstrap_done_* 等所有标记和数据）
+    if [ -d "${MARKER_DIR}" ]; then
+        log_info "删除完整工作目录: ${MARKER_DIR}（包含所有标记文件，例如 .bootstrap_done_v1）"
+        sudo rm -rf "${MARKER_DIR}" 2>/dev/null || true
+    fi
+
+    log_success "Worker 卸载步骤已完成（/opt/xingrin 目录及相关标记已全部删除）"
 }
 
 main() {
