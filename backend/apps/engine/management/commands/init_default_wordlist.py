@@ -2,7 +2,7 @@
 
 - 名称固定为 default_dict.txt
 - 文件来源于镜像内的 /app/backend/wordlist/default_dict.txt
-- 保存到 SCAN_TOOLS_BASE_PATH/wordlists 目录
+- 保存到 WORDLISTS_BASE_PATH 目录（默认 /opt/xingrin/wordlists）
 
 可重复执行：如果已存在同名记录则跳过。
 """
@@ -53,8 +53,8 @@ class Command(BaseCommand):
             ))
             return
 
-        base_dir = getattr(settings, "SCAN_TOOLS_BASE_PATH", "/opt/github")
-        storage_dir = Path(base_dir) / "wordlists"
+        base_dir = getattr(settings, "WORDLISTS_BASE_PATH", "/opt/xingrin/wordlists")
+        storage_dir = Path(base_dir)
         storage_dir.mkdir(parents=True, exist_ok=True)
 
         dst_path = storage_dir / default_name

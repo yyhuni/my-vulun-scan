@@ -55,8 +55,8 @@ class WordlistService:
         if self._exists_by_name(name):
             raise ValidationError("已存在同名字典")
 
-        base_dir = getattr(settings, "SCAN_TOOLS_BASE_PATH", "/opt/github")
-        storage_dir = os.path.join(base_dir, "wordlists")
+        base_dir = getattr(settings, "WORDLISTS_BASE_PATH", "/opt/xingrin/wordlists")
+        storage_dir = base_dir
         os.makedirs(storage_dir, exist_ok=True)
 
         # 按原始文件名保存（做最小清洗），同名上传时覆盖旧文件

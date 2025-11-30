@@ -20,6 +20,7 @@ import os
 import subprocess
 from pathlib import Path
 from urllib import request as urllib_request
+from urllib import parse as urllib_parse
 
 from django.conf import settings
 
@@ -187,8 +188,8 @@ def _ensure_wordlist_local(tool_config: dict) -> None:
 
     约定：
     - engine YAML 中通过 wordlist_name 引用字典，对应 Wordlist.name（唯一）
-    - 后端上传时将字典文件保存到 SCAN_TOOLS_BASE_PATH/wordlists 目录
-    - 每个 Worker 也使用相同的 SCAN_TOOLS_BASE_PATH/wordlists 作为本地缓存目录
+    - 后端上传时将字典文件保存到 WORDLISTS_BASE_PATH 目录
+    - 每个 Worker 也使用相同的 WORDLISTS_BASE_PATH 作为本地缓存目录
     """
 
     wordlist_name = tool_config.get('wordlist_name')
@@ -200,10 +201,10 @@ def _ensure_wordlist_local(tool_config: dict) -> None:
     if not wordlist:
         raise ValueError(f"未找到名称为 '{wordlist_name}' 的字典，请在「字典管理」中先创建")
 
-    # 统一使用文件名，前缀为当前容器的 SCAN_TOOLS_BASE_PATH/wordlists
+    # 统一使用文件名，前缀为当前容器的 WORDLISTS_BASE_PATH
     backend_path = Path(wordlist.file_path)
-    base_dir = getattr(settings, 'SCAN_TOOLS_BASE_PATH', '/opt/github')
-    storage_dir = Path(base_dir) / 'wordlists'
+    base_dir = getattr(settings, 'WORDLISTS_BASE_PATH', '/opt/xingrin/wordlists')
+    storage_dir = Path(base_dir)
     storage_dir.mkdir(parents=True, exist_ok=True)
     local_path = storage_dir / backend_path.name
 
@@ -222,7 +223,8 @@ def _ensure_wordlist_local(tool_config: dict) -> None:
 
     server_port = getattr(settings, 'SERVER_PORT', '8888')
     api_base = f"http://{public_host}:{server_port}/api"
-    download_url = f"{api_base.rstrip('/')}/wordlists/{wordlist.id}/download/"
+    query = urllib_parse.urlencode({'wordlist': wordlist_name})
+    download_url = f"{api_base.rstrip('/')}/wordlists/download/?{query}"
 
     logger.info("本地未找到字典文件，将从后端下载: %s -> %s", download_url, local_path)
 

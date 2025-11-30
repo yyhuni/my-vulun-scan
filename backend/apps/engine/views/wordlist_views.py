@@ -73,15 +73,18 @@ class WordlistViewSet(viewsets.ViewSet):
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    @action(detail=True, methods=["get"], url_path="download")
-    def download(self, request, pk=None):
-        """下载字典文件内容"""
-        try:
-            wordlist_id = int(pk)
-        except (TypeError, ValueError):
-            return Response({"error": "无效的 ID"}, status=status.HTTP_400_BAD_REQUEST)
+    @action(detail=False, methods=["get"], url_path="download")
+    def download(self, request):
+        """通过字典名称下载文件内容
 
-        wordlist = self.service.get_wordlist(wordlist_id)
+        Query 参数：
+        - wordlist: 字典名称，对应 Wordlist.name（唯一）
+        """
+        name = (request.query_params.get("wordlist", "") or "").strip()
+        if not name:
+            return Response({"error": "缺少参数 wordlist"}, status=status.HTTP_400_BAD_REQUEST)
+
+        wordlist = self.service.get_wordlist_by_name(name)
         if not wordlist:
             return Response({"error": "字典不存在"}, status=status.HTTP_404_NOT_FOUND)
 

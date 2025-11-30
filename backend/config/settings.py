@@ -266,8 +266,11 @@ ENABLE_COMMAND_LOGGING = get_bool_env('ENABLE_COMMAND_LOGGING', False)
 PREFECT_SCAN_WORK_POOL_NAME = os.getenv('PREFECT_SCAN_WORK_POOL_NAME', 'scan-pool')
 PREFECT_MAINTENANCE_WORK_POOL_NAME = os.getenv('PREFECT_MAINTENANCE_WORK_POOL_NAME', 'maintenance-pool')
 
-# 扫描工具基础路径（后端和 Worker 统一使用该路径前缀存放字典等工具文件）
-SCAN_TOOLS_BASE_PATH = os.getenv('SCAN_TOOLS_PATH', '/opt/github')
+# 扫描工具基础路径（后端和 Worker 统一使用该路径前缀存放三方工具等文件）
+SCAN_TOOLS_BASE_PATH = os.getenv('SCAN_TOOLS_PATH', '/opt/xingrin/tools')
+
+# 字典文件基础路径（后端和 Worker 统一使用该路径前缀存放字典文件）
+WORDLISTS_BASE_PATH = os.getenv('WORDLISTS_PATH', '/opt/xingrin/wordlists')
 
 # 对外访问主机与端口（供 Worker / Prefect Flow 访问 Django / Prefect 使用）
 PUBLIC_HOST = os.getenv('PUBLIC_HOST', 'localhost').strip()

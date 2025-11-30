@@ -52,9 +52,9 @@ ENV PATH="/root/.local/bin:$PATH"
 RUN pipx install uro && \
     pipx install waymore
 
-# 3. 安装 Sublist3r
-RUN git clone https://github.com/aboul3la/Sublist3r.git /opt/github/Sublist3r && \
-    pip3 install --no-cache-dir -r /opt/github/Sublist3r/requirements.txt --break-system-packages
+# 3. 安装 Sublist3r（统一放在 /opt/xingrin/tools 下）
+RUN git clone https://github.com/aboul3la/Sublist3r.git /opt/xingrin/tools/Sublist3r && \
+    pip3 install --no-cache-dir -r /opt/xingrin/tools/Sublist3r/requirements.txt --break-system-packages
 
 # 4. 从 go-builder 阶段复制 Go 环境和编译好的工具
 ENV GOPATH=/root/go
