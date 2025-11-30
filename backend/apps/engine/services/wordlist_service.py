@@ -34,6 +34,12 @@ class WordlistService:
         """根据 ID 获取字典"""
         return self.repo.get_by_id(wordlist_id)
 
+    def get_wordlist_by_name(self, name: str) -> Optional[Wordlist]:
+        name = (name or "").strip()
+        if not name:
+            return None
+        return self.repo.get_by_name(name)
+
     def create_wordlist(
         self,
         name: str,

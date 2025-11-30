@@ -21,7 +21,7 @@ from urllib import request as urllib_request
 
 from django.conf import settings
 
-from apps.engine.models import Wordlist
+from apps.engine.services import WordlistService
 from apps.scan.tasks.directory_scan import (
     export_sites_task,
     run_and_stream_save_directories_task
@@ -189,17 +189,13 @@ def _ensure_wordlist_local(tool_config: dict) -> None:
     - 每个 Worker 也使用相同的 SCAN_TOOLS_BASE_PATH/wordlists 作为本地缓存目录
     """
 
-    # 如果已经配置了绝对路径，则不处理（保留向后兼容能力）
-    if tool_config.get('wordlist'):
-        return
-
     wordlist_name = tool_config.get('wordlist_name')
     if not wordlist_name:
         raise ValueError("目录扫描工具缺少必需参数 'wordlist_name'")
 
-    try:
-        wordlist = Wordlist.objects.get(name=wordlist_name)
-    except Wordlist.DoesNotExist:
+    service = WordlistService()
+    wordlist = service.get_wordlist_by_name(wordlist_name)
+    if not wordlist:
         raise ValueError(f"未找到名称为 '{wordlist_name}' 的字典，请在「字典管理」中先创建")
 
     # 统一使用文件名，前缀为当前容器的 SCAN_TOOLS_BASE_PATH/wordlists

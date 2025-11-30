@@ -28,6 +28,13 @@ class DjangoWordlistRepository:
             logger.warning("Wordlist 不存在 - ID: %s", wordlist_id)
             return None
 
+    def get_by_name(self, name: str) -> Wordlist | None:
+        try:
+            return Wordlist.objects.get(name=name)
+        except Wordlist.DoesNotExist:
+            logger.warning("Wordlist 不存在 - 名称: %s", name)
+            return None
+
     def create(self, **kwargs) -> Wordlist:
         """创建字典记录"""
         return Wordlist.objects.create(**kwargs)
