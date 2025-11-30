@@ -27,11 +27,18 @@ echo "  [2/2] 检查 Work Pool: ${POOL_NAME}..."
 # 尝试创建 Work Pool，如果已存在会忽略（或者报错但我们可以忽略报错，因为只要存在就行）
 # 使用 process 类型，因为我们在容器内直接运行任务
 prefect work-pool create "${POOL_NAME}" --type process --overwrite || true
-echo "  ✓ Work Pool 就绪"
+echo "  Work Pool 就绪"
 
 # 3. 启动 Worker
-echo "  🚀 启动 Worker 进程..."
+echo "  启动 Worker 进程..."
 # 设置并发限制：每个 Worker 最多同时处理的任务数
 WORKER_LIMIT=${WORKER_LIMIT:-5}
 echo "  Worker 并发限制: ${WORKER_LIMIT}"
-exec prefect worker start --pool "${POOL_NAME}" --limit "${WORKER_LIMIT}"
+ # WORKER_LOAD_AWARE=true 时，使用 Python 包装脚本按负载自动暂停/恢复拉取任务
+ # 否则直接启动普通 Prefect Worker（仅受 WORKER_LIMIT 限制）
+if [ "${WORKER_LOAD_AWARE}" = "true" ]; then
+    echo "  启用负载感知模式: 根据 CPU/内存自动暂停/恢复拉取任务"
+    exec python /app/backend/scripts/prefect/workers/load_aware_worker.py
+else
+    exec prefect worker start --pool "${POOL_NAME}" --limit "${WORKER_LIMIT}"
+fi

@@ -2,6 +2,7 @@
 
 services:
   scan-worker:
+    # 扫描任务 Worker：根据机器负载自动控制是否继续接任务
     build:
       context: ../..
       dockerfile: docker/worker/Dockerfile
@@ -9,12 +10,16 @@ services:
     env_file:
       - .env
     environment:
+      # 连接到哪个 Prefect Work Pool，默认是 scan-pool（扫描池）
       - PREFECT_WORK_POOL_NAME=${PREFECT_SCAN_WORK_POOL_NAME:-scan-pool}
+      # 开启负载感知模式：true 表示根据 CPU/内存自动暂停/恢复拉取任务
+      - WORKER_LOAD_AWARE=true
     volumes:
       - ../../backend/logs:/app/backend/logs
       - ../../backend/results:/app/backend/results
 
   maintenance-worker:
+    # 清理/维护任务 Worker：不做负载感知，保持简单固定并发
     build:
       context: ../..
       dockerfile: docker/worker/Dockerfile
@@ -22,7 +27,9 @@ services:
     env_file:
       - .env
     environment:
+      # 清理池对应的 Prefect Work Pool 名称，默认 maintenance-pool
       - PREFECT_WORK_POOL_NAME=${PREFECT_MAINTENANCE_WORK_POOL_NAME:-maintenance-pool}
+      - WORKER_LIMIT=2   # 清理任务固定并发 2
     volumes:
       - ../../backend/logs:/app/backend/logs
       - ../../backend/results:/app/backend/results
