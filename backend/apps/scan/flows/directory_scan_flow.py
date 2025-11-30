@@ -13,6 +13,8 @@
 # Django 环境初始化（导入即生效）
 from apps.common.prefect_django_setup import setup_django_for_prefect
 
+from prefect import flow
+
 import logging
 import os
 import subprocess
