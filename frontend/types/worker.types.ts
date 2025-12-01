@@ -2,8 +2,8 @@
  * Worker 节点相关类型定义
  */
 
-// Worker 状态枚举
-export type WorkerStatus = 'pending' | 'installing' | 'online' | 'offline' | 'error'
+// Worker 状态枚举 (与后端 serializer 对齐)
+export type WorkerStatus = 'online' | 'offline' | 'pending'
 
 // Worker 节点
 export interface WorkerNode {
@@ -42,11 +42,3 @@ export interface WorkersResponse {
   pageSize: number
 }
 
-// 状态显示配置
-export const WORKER_STATUS_CONFIG: Record<WorkerStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-  pending: { label: '等待部署', variant: 'secondary' },
-  installing: { label: '正在安装', variant: 'default' },
-  online: { label: '运行中', variant: 'default' },
-  offline: { label: '离线', variant: 'outline' },
-  error: { label: '错误', variant: 'destructive' },
-}

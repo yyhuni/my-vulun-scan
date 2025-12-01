@@ -10,7 +10,7 @@ import {
   IconEdit,
 } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Status, StatusIndicator, StatusLabel } from "@/components/ui/shadcn-io/status"
 import {
   Card,
   CardContent,
@@ -39,19 +39,21 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { useWorkers, useDeleteWorker } from "@/hooks/use-workers"
 import type { WorkerNode, WorkerStatus } from "@/types/worker.types"
-import { WORKER_STATUS_CONFIG } from "@/types/worker.types"
 import { WorkerDialog } from "./worker-dialog"
 import { DeployTerminalDialog } from "./deploy-terminal-dialog"
 
-function StatusBadge({ status }: { status: WorkerStatus }) {
-  const config = WORKER_STATUS_CONFIG[status] || { label: status, variant: 'secondary' as const }
-  return (
-    <Badge variant={config.variant} className="capitalize">
-      {status === 'installing' && <span className="mr-1 h-2 w-2 animate-pulse rounded-full bg-current" />}
-      {status === 'online' && <span className="mr-1 h-2 w-2 rounded-full bg-green-500" />}
-      {config.label}
-    </Badge>
-  )
+// 后端状态 -> shadcn 状态映射
+const STATUS_MAP: Record<WorkerStatus, 'online' | 'offline' | 'maintenance' | 'degraded'> = {
+  online: 'online',
+  offline: 'offline',
+  pending: 'maintenance',
+}
+
+// 状态中文标签
+const STATUS_LABEL: Record<WorkerStatus, string> = {
+  online: '运行中',
+  offline: '离线',
+  pending: '等待部署',
 }
 
 export function WorkerList() {
@@ -147,7 +149,12 @@ export function WorkerList() {
                   <TableCell className="font-mono text-sm">{worker.ipAddress}</TableCell>
                   <TableCell>{worker.sshPort}</TableCell>
                   <TableCell>{worker.username}</TableCell>
-                  <TableCell><StatusBadge status={worker.status} /></TableCell>
+                  <TableCell>
+                    <Status status={STATUS_MAP[worker.status]}>
+                      <StatusIndicator />
+                      <StatusLabel>{STATUS_LABEL[worker.status]}</StatusLabel>
+                    </Status>
+                  </TableCell>
                   <TableCell className="text-muted-foreground">
                     {new Date(worker.createdAt).toLocaleString('zh-CN')}
                   </TableCell>
