@@ -23,7 +23,7 @@ subdomain_discovery:
       
     amass_passive:
       enabled: true
-      timeout: 600      # 10 分钟（必需）
+      timeout: 1200      # 20 分钟（必需）
       
     amass_active:
       enabled: true
