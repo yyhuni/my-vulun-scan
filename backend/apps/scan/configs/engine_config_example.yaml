@@ -167,3 +167,19 @@ url_fetch:
       # 用途：判断 URL 存活，过滤无效 URL
       # 输入类型：url_file（URL 列表文件）
       # 输出：存活的 URL 及其响应信息（status, title, server, tech 等）
+
+# ==================== 漏洞扫描 ====================
+vuln_scan:
+  tools:
+    dalfox_xss:
+      enabled: true
+      timeout: 600           # 工具级别总执行超时（秒），用于控制 Dalfox 进程的最大运行时间
+      request-timeout: 10    # Dalfox 单个请求的超时时间，对应命令行 --timeout
+      only_poc: r            # 只输出 POC 结果（r: 反射型）
+      ignore_return: "302,404,403"  # 忽略这些返回码
+      blind_xss_server: blind_xss_server  # 盲打 XSS 回连服务地址
+      delay: 500             # Dalfox 扫描内部延迟参数
+      worker: 10             # Dalfox worker 数量
+      random_agent_flag: true
+      random_header_flag: true
+      random_xforwarded_for_flag: true

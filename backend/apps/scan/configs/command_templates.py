@@ -154,6 +154,30 @@ URL_FETCH_COMMANDS = {
     },
 }
 
+VULN_SCAN_COMMANDS = {
+    'dalfox_xss': {
+        'base': (
+            'dalfox --silence --no-color --no-spinner '
+            '--skip-bav '
+            'file {endpoints_file} '
+            '--waf-evasion '
+            '--format json'
+        ),
+        'optional': {
+            'only_poc': '--only-poc {only_poc}',
+            'ignore_return': '--ignore-return {ignore_return}',
+            'blind_xss_server': '-b {blind_xss_server}',
+            'delay': '--delay {delay}',
+            'request-timeout': '--timeout {request-timeout}',
+            'random_agent_flag': '--random-agent',
+            'random_header_flag': '--random-header',
+            'random_xforwarded_for_flag': '--random-xforwarded-for',
+            'worker': '--worker {worker}',
+        },
+        'input_type': 'endpoints_file',
+    },
+}
+
 
 # ==================== 工具映射 ====================
 
@@ -163,6 +187,7 @@ COMMAND_TEMPLATES = {
     'site_scan': SITE_SCAN_COMMANDS,
     'directory_scan': DIRECTORY_SCAN_COMMANDS,
     'url_fetch': URL_FETCH_COMMANDS,
+    'vuln_scan': VULN_SCAN_COMMANDS,
 }
 
 # ==================== 扫描类型配置 ====================
@@ -176,7 +201,11 @@ EXECUTION_STAGES = [
     {
         'mode': 'parallel',
         'flows': ['url_fetch', 'directory_scan']
-    }
+    },
+    {
+        'mode': 'sequential',
+        'flows': ['vuln_scan']
+    },
 ]
 
 

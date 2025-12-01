@@ -206,6 +206,10 @@ class FlowOrchestrator:
             from apps.scan.flows.url_fetch import url_fetch_flow
             return url_fetch_flow
         
+        elif scan_type == 'vuln_scan':
+            from apps.scan.flows.vuln_scan import vuln_scan_flow
+            return vuln_scan_flow
+        
         else:
             logger.warning(f"未实现的扫描类型: {scan_type}")
             return None
