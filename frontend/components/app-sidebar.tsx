@@ -103,25 +103,7 @@ const data = {
         },
       ],
     },
-    {
-      title: "测试中心", // 测试中心
-      url: "/test/",
-      icon: IconFlask,
-      items: [
-        {
-          title: "骨架屏测试", // 骨架屏测试
-          url: "/test/skeleton/",
-        },
-        {
-          title: "组件展示", // 组件展示
-          url: "/test/components-showcase/",
-        },
-        {
-          title: "通知系统测试", // 通知系统测试
-          url: "/test/notifications/",
-        },
-      ],
-    },
+    // 测试中心相关菜单已移除
   ],
   // 次要导航菜单项
   navSecondary: [

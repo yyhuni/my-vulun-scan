@@ -37,7 +37,7 @@ export function SiteHeader() {
           {/* GitHub 链接按钮,在小屏幕上隐藏 */}
           <Button variant="ghost" asChild size="sm" className="hidden sm:flex">
             <a
-              href="https://github.com/shadcn-ui/ui/tree/main/apps/v4/app/(examples)/dashboard"
+              href="https://github.com/yyhuni"
               rel="noopener noreferrer" // 安全属性,防止新窗口访问原窗口
               target="_blank" // 在新标签页打开
               className="dark:text-foreground" // 深色模式下的文字颜色
