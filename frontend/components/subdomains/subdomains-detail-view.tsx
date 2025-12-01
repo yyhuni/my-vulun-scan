@@ -100,8 +100,20 @@ export function SubdomainsDetailView({
 
   // 处理下载所有子域名
   const handleDownloadAll = () => {
-    console.log('下载所有子域名')
-    // 可以生成包含所有子域名的文件并下载
+    if (!subdomains || subdomains.length === 0) {
+      return
+    }
+
+    const content = subdomains.map((item) => item.name).join("\n")
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `subdomains-${scanId ?? targetId ?? "all"}-${Date.now()}.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   }
 
   // 处理下载选中的子域名
@@ -109,9 +121,16 @@ export function SubdomainsDetailView({
     if (selectedSubdomains.length === 0) {
       return
     }
-    // TODO: 实现下载选中的子域名功能
-    console.log('下载选中的子域名', selectedSubdomains)
-    // 生成包含选中子域名的文件并下载
+    const content = selectedSubdomains.map((item) => item.name).join("\n")
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `subdomains-selected-${scanId ?? targetId ?? "all"}-${Date.now()}.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   }
 
   // 处理下载有趣的子域名
@@ -197,7 +216,6 @@ export function SubdomainsDetailView({
         onDownloadAll={handleDownloadAll}
         onDownloadSelected={handleDownloadSelected}
         onDownloadInteresting={handleDownloadInteresting}
-        onDownloadImportant={handleDownloadImportant}
         pagination={pagination}
         setPagination={setPagination}
         paginationInfo={{
