@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import NotFound, APIException
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db.utils import DatabaseError, IntegrityError, OperationalError
+from django.http import StreamingHttpResponse
 import logging
 
 logger = logging.getLogger(__name__)
@@ -247,6 +248,45 @@ class ScanViewSet(viewsets.ModelViewSet):
         
         except (DatabaseError, IntegrityError, OperationalError):
             # 数据库错误
+            return Response(
+                {'error': '数据库错误，请稍后重试'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+
+    @action(detail=True, methods=['get'], url_path='subdomains/export')
+    def export_subdomains(self, request, pk=None):  # pylint: disable=unused-argument
+        try:
+            scan_service = ScanService()
+            scan = scan_service.get_scan(scan_id=pk, prefetch_relations=False)
+
+            if not scan:
+                return Response(
+                    {'error': f'扫描 ID {pk} 不存在'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            snapshot_service = SubdomainSnapshotsService()
+
+            def line_iterator():
+                for name in snapshot_service.iter_subdomain_names_by_scan(scan.id):
+                    yield f"{name}\n"
+
+            response = StreamingHttpResponse(
+                line_iterator(),
+                content_type='text/plain; charset=utf-8',
+            )
+            response['Content-Disposition'] = (
+                f'attachment; filename="scan-{scan.id}-subdomains.txt"'
+            )
+            return response
+
+        except ObjectDoesNotExist:
+            return Response(
+                {'error': f'扫描 ID {pk} 不存在'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        except (DatabaseError, OperationalError):
             return Response(
                 {'error': '数据库错误，请稍后重试'},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE

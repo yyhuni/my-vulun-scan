@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError, NotFound, APIException
 from django.db import transaction
 from django.db.models import Count
+from django.http import StreamingHttpResponse
 from .models import Organization, Target
 from .serializers import OrganizationSerializer, TargetSerializer, TargetDetailSerializer, BatchCreateTargetSerializer
 from .services.target_service import TargetService
@@ -460,6 +461,33 @@ class TargetViewSet(viewsets.ModelViewSet):
         except ObjectDoesNotExist:
             raise NotFound(f'目标 ID {pk} 不存在')
         
+        except (DatabaseError, OperationalError):
+            raise APIException('数据库错误，请稍后重试')
+
+    @action(detail=True, methods=['get'], url_path='subdomains/export')
+    def export_subdomains(self, request, pk=None):
+        from django.core.exceptions import ObjectDoesNotExist
+        from django.db import DatabaseError, OperationalError
+
+        try:
+            target = self.get_object()
+
+            def line_iterator():
+                for name in self.subdomain_service.iter_subdomain_names_by_target(target.id):
+                    yield f"{name}\n"
+
+            response = StreamingHttpResponse(
+                line_iterator(),
+                content_type='text/plain; charset=utf-8',
+            )
+            response['Content-Disposition'] = (
+                f'attachment; filename="target-{target.id}-subdomains.txt"'
+            )
+            return response
+
+        except ObjectDoesNotExist:
+            raise NotFound(f'目标 ID {pk} 不存在')
+
         except (DatabaseError, OperationalError):
             raise APIException('数据库错误，请稍后重试')
 

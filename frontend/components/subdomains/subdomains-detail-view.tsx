@@ -12,6 +12,7 @@ import { SubdomainsDataTable } from "./subdomains-data-table"
 import { createSubdomainColumns } from "./subdomains-columns"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { DataTableSkeleton } from "@/components/ui/data-table-skeleton"
+import { SubdomainService } from "@/services/subdomain.service"
 import type { Subdomain } from "@/types/subdomain.types"
 
 /**
@@ -99,21 +100,38 @@ export function SubdomainsDetailView({
   }
 
   // 处理下载所有子域名
-  const handleDownloadAll = () => {
-    if (!subdomains || subdomains.length === 0) {
-      return
-    }
+  const handleDownloadAll = async () => {
+    try {
+      let blob: Blob | null = null
 
-    const content = subdomains.map((item) => item.name).join("\n")
-    const blob = new Blob([content], { type: "text/plain;charset=utf-8" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `subdomains-${scanId ?? targetId ?? "all"}-${Date.now()}.txt`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+      if (scanId) {
+        const data = await SubdomainService.exportSubdomainsByScanId(scanId)
+        blob = data
+      } else if (targetId) {
+        const data = await SubdomainService.exportSubdomainsByTargetId(targetId)
+        blob = data
+      } else {
+        if (!subdomains || subdomains.length === 0) {
+          return
+        }
+        const content = subdomains.map((item) => item.name).join("\n")
+        blob = new Blob([content], { type: "text/plain;charset=utf-8" })
+      }
+
+      if (!blob) return
+
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      const prefix = scanId ? `scan-${scanId}` : targetId ? `target-${targetId}` : "subdomains"
+      a.href = url
+      a.download = `${prefix}-subdomains-${Date.now()}.txt`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error("下载子域名失败", error)
+    }
   }
 
   // 处理下载选中的子域名

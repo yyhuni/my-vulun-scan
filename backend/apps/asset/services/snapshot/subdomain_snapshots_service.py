@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, Iterator
 
 from apps.asset.dtos import SubdomainSnapshotDTO
 from apps.asset.repositories import DjangoSubdomainSnapshotRepository
@@ -61,3 +61,8 @@ class SubdomainSnapshotsService:
     
     def get_by_scan(self, scan_id: int):
         return self.subdomain_snapshot_repo.get_by_scan(scan_id)
+
+    def iter_subdomain_names_by_scan(self, scan_id: int, chunk_size: int = 1000) -> Iterator[str]:
+        queryset = self.subdomain_snapshot_repo.get_by_scan(scan_id)
+        for snapshot in queryset.iterator(chunk_size=chunk_size):
+            yield snapshot.name

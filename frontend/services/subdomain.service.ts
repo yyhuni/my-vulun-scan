@@ -222,4 +222,20 @@ export class SubdomainService {
     })
     return response.data as any
   }
+
+  /** 按目标导出所有子域名名称（文本文件，一行一个） */
+  static async exportSubdomainsByTargetId(targetId: number): Promise<Blob> {
+    const response = await api.get<Blob>(`/targets/${targetId}/subdomains/export/`, {
+      responseType: 'blob',
+    })
+    return response.data
+  }
+
+  /** 按扫描任务导出所有子域名名称（文本文件，一行一个） */
+  static async exportSubdomainsByScanId(scanId: number): Promise<Blob> {
+    const response = await api.get<Blob>(`/scans/${scanId}/subdomains/export/`, {
+      responseType: 'blob',
+    })
+    return response.data
+  }
 }
