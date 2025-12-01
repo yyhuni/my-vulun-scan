@@ -34,6 +34,11 @@ subdomain_discovery:
       enabled: true
       timeout: 900      # 15 分钟（必需）
       # threads: 50     # 可选，线程数
+    
+    assetfinder:
+      enabled: true
+      timeout: 600      # 10 分钟（必需）
+      # 运行命令示例：assetfinder --subs-only xinye.com > output.txt
 
 # ==================== 端口扫描 ====================
 port_scan:

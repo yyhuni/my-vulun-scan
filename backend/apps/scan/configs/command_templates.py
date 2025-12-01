@@ -36,6 +36,10 @@ SUBDOMAIN_DISCOVERY_COMMANDS = {
             'threads': '-t {threads}'
         }
     },
+    
+    'assetfinder': {
+        'base': 'assetfinder --subs-only {domain} > {output_file}',
+    },
 }
 
 
