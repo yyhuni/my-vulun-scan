@@ -97,9 +97,9 @@ info "项目路径: ${BOLD}$ROOT_DIR${RESET}"
 # ==============================================================================
 # 1. 检查基础命令
 # ==============================================================================
-step "[1/3] 检查基础命令 (git tmux curl jq docker)"
+step "[1/3] 检查基础命令 (git tmux curl jq)"
 MISSING_CMDS=()
-for cmd in git tmux curl jq docker; do
+for cmd in git tmux curl jq; do
     if ! command -v "$cmd" >/dev/null 2>&1; then
         MISSING_CMDS+=("$cmd")
         warn "未安装: $cmd"
@@ -116,9 +116,19 @@ if [ ${#MISSING_CMDS[@]} -gt 0 ]; then
 fi
 
 # ==============================================================================
-# 2. 检查 Docker Compose
+# 2. 检查 Docker 环境
 # ==============================================================================
-step "[2/3] 检查 Docker Compose 环境"
+step "[2/3] 检查 Docker 环境"
+if command -v docker >/dev/null 2>&1; then
+    success "已安装: docker"
+else
+    info "正在安装 Docker..."
+    curl -fsSL https://get.docker.com | sh
+    usermod -aG docker "$REAL_USER"
+    success "Docker 安装完成"
+fi
+
+# 检查 docker compose
 if docker compose version >/dev/null 2>&1; then
     success "已安装: docker compose"
 else
@@ -130,7 +140,7 @@ fi
 # ==============================================================================
 # 3. 准备 docker/.env（开发模板）并启动 dev 环境
 # ==============================================================================
-step "[3/3] 初始化 docker/.env 并启动开发环境"
+step "[3/3] 初始化开发环境配置"
 if [ ! -d "$DOCKER_DIR" ]; then
     error "未找到 docker 目录，请确认项目结构。"
     exit 1
