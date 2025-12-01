@@ -64,7 +64,7 @@ def _wait_for_system_load() -> None:
             # 负载在安全范围内，允许继续申请并发槽位
             return
 
-        logger.warning(
+        logger.info(
             "系统负载较高，暂缓启动新的扫描进程: cpu=%.1f%% (阈值 %.1f%%), mem=%.1f%% (阈值 %.1f%%)",
             cpu,
             SCAN_CPU_HIGH,
