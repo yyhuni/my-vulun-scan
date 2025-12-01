@@ -64,7 +64,7 @@ fi
 # ==============================================================================
 # 1. 停止并删除全部容器/网络
 # ==============================================================================
-step "[1/4] 是否停止并删除全部容器/网络？(Y/n)"
+step "[1/5] 是否停止并删除全部容器/网络？(Y/n)"
 read -r ans_stop
 ans_stop=${ans_stop:-Y}
 
@@ -87,7 +87,7 @@ fi
 LOGS_DIR="$ROOT_DIR/backend/logs"
 RESULTS_DIR="$ROOT_DIR/backend/results"
 
-step "[2/4] 是否删除扫描日志和结果目录 ($LOGS_DIR, $RESULTS_DIR)？(Y/n)"
+step "[2/5] 是否删除扫描日志和结果目录 ($LOGS_DIR, $RESULTS_DIR)？(Y/n)"
 read -r ans_logs
 ans_logs=${ans_logs:-Y}
 
@@ -105,7 +105,7 @@ fi
 TOOLS_DIR="/opt/xingrin/tools"
 WORDLISTS_DIR="/opt/xingrin/wordlists"
 
-step "[3/4] 是否删除工具目录和字典目录 ($TOOLS_DIR, $WORDLISTS_DIR)？(Y/n)"
+step "[3/5] 是否删除工具目录和字典目录 ($TOOLS_DIR, $WORDLISTS_DIR)？(Y/n)"
 read -r ans_tools
 ans_tools=${ans_tools:-Y}
 
@@ -118,9 +118,27 @@ else
 fi
 
 # ==============================================================================
-# 4. 删除本地 Postgres 容器及数据卷（如果使用本地 DB）
+# 4. 删除 docker/.env 配置文件
 # ==============================================================================
-step "[4/4] 若使用本地 PostgreSQL 容器：是否删除数据库容器和 volume？(Y/n)"
+ENV_FILE="$DOCKER_DIR/.env"
+
+step "[4/5] 是否删除配置文件 ($ENV_FILE)？(Y/n)"
+echo -e "   ${YELLOW}注意：删除后下次安装将生成新的随机密码。${RESET}"
+read -r ans_env
+ans_env=${ans_env:-Y}
+
+if [[ $ans_env =~ ^[Yy]$ ]]; then
+    info "正在删除配置文件..."
+    rm -f "$ENV_FILE"
+    success "已删除 $ENV_FILE。"
+else
+    warn "已保留 $ENV_FILE。"
+fi
+
+# ==============================================================================
+# 5. 删除本地 Postgres 容器及数据卷（如果使用本地 DB）
+# ==============================================================================
+step "[5/5] 若使用本地 PostgreSQL 容器：是否删除数据库容器和 volume？(Y/n)"
 read -r ans_db
 ans_db=${ans_db:-Y}
 
