@@ -13,9 +13,16 @@ import re
 import signal
 import subprocess
 import threading
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional, Generator
+
+try:
+    # 可选依赖：用于根据 CPU / 内存负载做动态并发控制
+    import psutil
+except ImportError:  # 运行环境缺少 psutil 时降级为无动态负载控制
+    psutil = None
 
 logger = logging.getLogger(__name__)
 
@@ -28,14 +35,43 @@ MAX_LOG_TAIL_LINES = 1000  # 日志文件读取的最大行数
 # ENABLE_COMMAND_LOGGING=false: 只输出错误到log_file_path
 ENABLE_COMMAND_LOGGING = getattr(settings, 'ENABLE_COMMAND_LOGGING', False)
 
-MAX_CONCURRENT_COMMANDS = getattr(settings, 'SCAN_MAX_CONCURRENT_COMMANDS', 1)
-if MAX_CONCURRENT_COMMANDS and MAX_CONCURRENT_COMMANDS > 0:
-    _COMMAND_SEMAPHORE = threading.Semaphore(MAX_CONCURRENT_COMMANDS)
-else:
-    _COMMAND_SEMAPHORE = None
+# 动态并发控制阈值（可在 Django settings 中覆盖）
+SCAN_CPU_HIGH = getattr(settings, 'SCAN_CPU_HIGH', 85.0)   # CPU 高水位（百分比）
+SCAN_MEM_HIGH = getattr(settings, 'SCAN_MEM_HIGH', 85.0)   # 内存高水位（百分比）
+SCAN_LOAD_CHECK_INTERVAL = getattr(settings, 'SCAN_LOAD_CHECK_INTERVAL', 5)  # 负载检查间隔（秒）
 
 _ACTIVE_COMMANDS = 0
 _ACTIVE_COMMANDS_LOCK = threading.Lock()
+
+
+def _wait_for_system_load() -> None:
+    """根据当前机器 CPU/内存负载，决定是否暂缓启动新的外部命令。
+
+    - 当 psutil 可用时，循环读取当前 CPU / 内存使用率；
+    - 只要任一指标超过阈值，就暂缓启动新的扫描子进程；
+    - 等待一小段时间后重试，直到负载恢复到安全范围。
+    """
+
+    if psutil is None:
+        # 没有 psutil 时不做负载感知控制
+        return
+
+    while True:
+        cpu = psutil.cpu_percent(interval=0.5)
+        mem = psutil.virtual_memory().percent
+
+        if cpu < SCAN_CPU_HIGH and mem < SCAN_MEM_HIGH:
+            # 负载在安全范围内，允许继续申请并发槽位
+            return
+
+        logger.warning(
+            "系统负载较高，暂缓启动新的扫描进程: cpu=%.1f%% (阈值 %.1f%%), mem=%.1f%% (阈值 %.1f%%)",
+            cpu,
+            SCAN_CPU_HIGH,
+            mem,
+            SCAN_MEM_HIGH,
+        )
+        time.sleep(SCAN_LOAD_CHECK_INTERVAL)
 
 
 class CommandExecutor:
@@ -150,6 +186,8 @@ class CommandExecutor:
             ValueError: 参数验证失败
             RuntimeError: 执行失败或超时
         """
+        global _ACTIVE_COMMANDS
+
         # 验证参数
         if not tool_name:
             raise ValueError("工具名称不能为空")
@@ -169,26 +207,24 @@ class CommandExecutor:
         
         process = None
         log_file_handle = None
-        acquired_slot = False
+        acquired_slot = False  # 标记是否已增加全局活动命令计数
         
         try:
-            if _COMMAND_SEMAPHORE is not None:
-                logger.debug("等待命令并发槽位: tool=%s, max=%d", tool_name, MAX_CONCURRENT_COMMANDS)
-                _COMMAND_SEMAPHORE.acquire()
-                acquired_slot = True
-                if _ACTIVE_COMMANDS_LOCK:
-                    global _ACTIVE_COMMANDS
-                    with _ACTIVE_COMMANDS_LOCK:
-                        _ACTIVE_COMMANDS += 1
-                        current_active = _ACTIVE_COMMANDS
-                else:
-                    current_active = 0
-                logger.info(
-                    "获得命令并发槽位: tool=%s, active=%d, max=%d",
-                    tool_name,
-                    current_active,
-                    MAX_CONCURRENT_COMMANDS,
-                )
+            # 在启动新的外部命令之前，先根据 CPU/内存负载判断是否需要等待
+            _wait_for_system_load()
+
+            acquired_slot = True
+            if _ACTIVE_COMMANDS_LOCK:
+                with _ACTIVE_COMMANDS_LOCK:
+                    _ACTIVE_COMMANDS += 1
+                    current_active = _ACTIVE_COMMANDS
+            else:
+                current_active = 0
+            logger.info(
+                "登记活动命令计数: tool=%s, active=%d",
+                tool_name,
+                current_active,
+            )
             
             logger.debug("执行命令: %s", command)
             if log_file_path:
@@ -295,21 +331,18 @@ class CommandExecutor:
                 except:
                     pass
             
-            if acquired_slot and _COMMAND_SEMAPHORE is not None:
+            if acquired_slot:
                 if _ACTIVE_COMMANDS_LOCK:
-                    global _ACTIVE_COMMANDS
                     with _ACTIVE_COMMANDS_LOCK:
                         if _ACTIVE_COMMANDS > 0:
                             _ACTIVE_COMMANDS -= 1
                         current_active = _ACTIVE_COMMANDS
                 else:
                     current_active = 0
-                _COMMAND_SEMAPHORE.release()
                 logger.info(
-                    "释放命令并发槽位: tool=%s, active=%d, max=%d",
+                    "释放活动命令计数: tool=%s, active=%d",
                     tool_name,
                     current_active,
-                    MAX_CONCURRENT_COMMANDS,
                 )
     
     def execute_stream(
@@ -345,6 +378,8 @@ class CommandExecutor:
             subprocess.TimeoutExpired: 命令执行超时
         """
         
+        global _ACTIVE_COMMANDS
+
         # 记录开始时间（用于命令日志）
         start_time = datetime.now()
         acquired_slot = False
@@ -372,22 +407,20 @@ class CommandExecutor:
             if ENABLE_COMMAND_LOGGING:
                 stderr_target = subprocess.STDOUT
             
-            if _COMMAND_SEMAPHORE is not None and not acquired_slot:
-                logger.debug("等待命令并发槽位: tool=%s, max=%d", tool_name, MAX_CONCURRENT_COMMANDS)
-                _COMMAND_SEMAPHORE.acquire()
+            if not acquired_slot:
+                # 日志模式下，在真正启动进程前做一次负载检查，并登记活动命令计数
+                _wait_for_system_load()
                 acquired_slot = True
                 if _ACTIVE_COMMANDS_LOCK:
-                    global _ACTIVE_COMMANDS
                     with _ACTIVE_COMMANDS_LOCK:
                         _ACTIVE_COMMANDS += 1
                         current_active = _ACTIVE_COMMANDS
                 else:
                     current_active = 0
                 logger.info(
-                    "获得命令并发槽位: tool=%s, active=%d, max=%d",
+                    "登记活动命令计数: tool=%s, active=%d",
                     tool_name,
                     current_active,
-                    MAX_CONCURRENT_COMMANDS,
                 )
             
             process = subprocess.Popen(
@@ -403,22 +436,20 @@ class CommandExecutor:
             )
         else:
             # 无日志文件：正常流式输出
-            if _COMMAND_SEMAPHORE is not None and not acquired_slot:
-                logger.debug("等待命令并发槽位: tool=%s, max=%d", tool_name, MAX_CONCURRENT_COMMANDS)
-                _COMMAND_SEMAPHORE.acquire()
+            if not acquired_slot:
+                # 非日志模式，同样在启动进程前做一次负载检查，并登记活动命令计数
+                _wait_for_system_load()
                 acquired_slot = True
                 if _ACTIVE_COMMANDS_LOCK:
-                    global _ACTIVE_COMMANDS
                     with _ACTIVE_COMMANDS_LOCK:
                         _ACTIVE_COMMANDS += 1
                         current_active = _ACTIVE_COMMANDS
                 else:
                     current_active = 0
                 logger.info(
-                    "获得命令并发槽位: tool=%s, active=%d, max=%d",
+                    "登记活动命令计数: tool=%s, active=%d",
                     tool_name,
                     current_active,
-                    MAX_CONCURRENT_COMMANDS,
                 )
             
             process = subprocess.Popen(
@@ -533,21 +564,18 @@ class CommandExecutor:
                 # 写入命令信息头部
                 self._write_command_info_header(log_file_path, tool_name, cmd, duration, exit_code or 0, success, timeout)
             
-            if acquired_slot and _COMMAND_SEMAPHORE is not None:
+            if acquired_slot:
                 if _ACTIVE_COMMANDS_LOCK:
-                    global _ACTIVE_COMMANDS
                     with _ACTIVE_COMMANDS_LOCK:
                         if _ACTIVE_COMMANDS > 0:
                             _ACTIVE_COMMANDS -= 1
                         current_active = _ACTIVE_COMMANDS
                 else:
                     current_active = 0
-                _COMMAND_SEMAPHORE.release()
                 logger.info(
-                    "释放命令并发槽位: tool=%s, active=%d, max=%d",
+                    "释放活动命令计数: tool=%s, active=%d",
                     tool_name,
                     current_active,
-                    MAX_CONCURRENT_COMMANDS,
                 )
     
     def _read_log_tail(self, log_file: Path, max_lines: int = MAX_LOG_TAIL_LINES) -> str:
