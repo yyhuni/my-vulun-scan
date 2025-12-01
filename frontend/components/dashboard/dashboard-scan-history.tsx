@@ -17,10 +17,13 @@ export function DashboardScanHistory() {
   const formatDate = React.useCallback((dateString: string) => new Date(dateString).toLocaleString("zh-CN", { hour12: false }), [])
   const navigate = React.useCallback((path: string) => router.push(path), [router])
   const handleDelete = React.useCallback(() => {}, [])
+  const handleStop = React.useCallback((scan: ScanRecord) => {
+    // 仪表盘列表暂时不提供停止逻辑，实现时可在此调用对应的停止扫描接口
+  }, [])
 
   const columns = React.useMemo(
-    () => createScanHistoryColumns({ formatDate, navigate, handleDelete }) as ColumnDef<ScanRecord>[],
-    [formatDate, navigate, handleDelete]
+    () => createScanHistoryColumns({ formatDate, navigate, handleDelete, handleStop }) as ColumnDef<ScanRecord>[],
+    [formatDate, navigate, handleDelete, handleStop]
   )
 
   if (isLoading) {
@@ -40,7 +43,7 @@ export function DashboardScanHistory() {
 
   return (
     <ScanHistoryDataTable
-      data={data?.scans ?? []}
+      data={data?.results ?? []}
       columns={columns}
       hideToolbar
       hidePagination

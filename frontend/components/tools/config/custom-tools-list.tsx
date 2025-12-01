@@ -37,7 +37,7 @@ export function CustomToolsList() {
   })
 
   // 过滤出自定义工具
-  const customTools = (data?.tools || []).filter(tool => tool.type === 'custom')
+  const customTools = (data?.tools || []).filter((tool: Tool) => tool.type === 'custom')
   
   // 删除工具 mutation
   const deleteTool = useDeleteTool()
@@ -55,7 +55,7 @@ export function CustomToolsList() {
   }
 
   const handleDeleteTool = (toolId: number) => {
-    const tool = customTools.find(t => t.id === toolId)
+    const tool = customTools.find((t: Tool) => t.id === toolId)
     if (!tool) return
     setToolToDelete(tool)
   }
@@ -92,7 +92,7 @@ export function CustomToolsList() {
     <div className="flex flex-col gap-4">
       {/* 工具列表 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {customTools.map((tool) => (
+        {customTools.map((tool: Tool) => (
           <Card key={tool.id} className="flex flex-col h-full hover:shadow-lg transition-shadow">
             <CardHeader>
               <CardTitle className="text-lg truncate" title={tool.name}>{tool.name}</CardTitle>

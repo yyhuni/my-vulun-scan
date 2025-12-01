@@ -93,8 +93,11 @@ export function useDeleteSubdomainFromOrganization() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (data: { organizationId: number; targetId: number }) => 
-      OrganizationService.unlinkTargetFromOrganization(data),
+    mutationFn: (data: { organizationId: number; targetId: number }) =>
+      OrganizationService.unlinkTargetsFromOrganization({
+        organizationId: data.organizationId,
+        targetIds: [data.targetId],
+      }),
     onMutate: ({ organizationId, targetId }) => {
       toast.loading('正在移除子域名...', { id: `delete-${organizationId}-${targetId}` })
     },

@@ -87,7 +87,7 @@ SITE_SCAN_COMMANDS = {
 
 DIRECTORY_SCAN_COMMANDS = {
     'ffuf': {
-        'base': 'ffuf -u {url}FUZZ -se -ac -sf -json -w {wordlist}',  # 去掉 /，FUZZ 替换为完整路径（含开头斜杠）
+        'base': 'ffuf -u {url}/FUZZ -se -ac -sf -json -w {wordlist}',  
         'optional': {
             'delay': '-p {delay}',
             'threads': '-t {threads}',

@@ -292,3 +292,5 @@ export function OrganizationTargetsDetailView({
     </>
   )
 }
+
+export { OrganizationTargetsDetailView as TargetsDetailView }

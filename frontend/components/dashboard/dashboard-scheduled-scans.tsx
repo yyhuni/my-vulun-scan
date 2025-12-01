@@ -41,7 +41,7 @@ export function DashboardScheduledScans() {
     )
   }
 
-  const list = data?.scheduled_scans ?? []
+  const list = data?.results ?? []
 
   return (
     <ScheduledScanDataTable

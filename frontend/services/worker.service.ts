@@ -66,6 +66,13 @@ export const workerService = {
   },
 
   /**
+   * 部署 Worker 节点（占位实现，当前仅用于消除前端类型错误）
+   */
+  async deployWorker(id: number): Promise<never> {
+    return Promise.reject(new Error(`Worker deploy is not implemented for id=${id}`))
+  },
+
+  /**
    * 重启 Worker
    */
   async restartWorker(id: number): Promise<{ message: string }> {

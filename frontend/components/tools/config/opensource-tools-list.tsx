@@ -35,7 +35,7 @@ export function OpensourceToolsList() {
   })
 
   // 过滤出开源工具
-  const tools = (data?.tools || []).filter(tool => tool.type === 'opensource')
+  const tools = (data?.tools || []).filter((tool: Tool) => tool.type === 'opensource')
   
   // 删除工具 mutation
   const deleteTool = useDeleteTool()
@@ -74,7 +74,7 @@ export function OpensourceToolsList() {
 
   // 处理删除工具
   const handleDeleteTool = (toolId: number) => {
-    const tool = tools.find(t => t.id === toolId)
+    const tool = tools.find((t: Tool) => t.id === toolId)
     if (!tool) return
     setToolToDelete(tool)
   }
@@ -112,7 +112,7 @@ export function OpensourceToolsList() {
     <div className="flex flex-col gap-4">
       {/* 工具列表 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {tools.map((tool) => (
+        {tools.map((tool: Tool) => (
           <ToolCard 
             key={tool.id} 
             tool={tool}

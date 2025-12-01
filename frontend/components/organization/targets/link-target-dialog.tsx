@@ -163,8 +163,23 @@ export function LinkTargetDialog({
           
           // 调用外部回调（如果提供）
           if (onAdd) {
-            // 传递批量创建的统计信息给回调函数
-            onAdd(batchCreateResult)
+            // 将批量创建结果适配为通用的 BatchCreateResponse 结构
+            const adaptedResult: BatchCreateResponse = {
+              message: batchCreateResult.message,
+              requestedCount:
+                batchCreateResult.createdCount +
+                batchCreateResult.reusedCount +
+                batchCreateResult.failedCount,
+              createdCount: batchCreateResult.createdCount,
+              existedCount: batchCreateResult.reusedCount,
+              skippedCount: 0,
+              skippedDomains: batchCreateResult.failedTargets.map((item) => ({
+                name: item.name,
+                reason: item.reason,
+              })),
+            }
+
+            onAdd(adaptedResult)
           }
         }
       }

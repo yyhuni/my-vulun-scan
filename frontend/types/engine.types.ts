@@ -21,6 +21,7 @@ export interface ScanEngine {
   tools: string[]          // 关联的工具名称列表
   tool_ids: number[]       // 关联的工具ID列表
   is_enabled: boolean
+  is_default?: boolean     // 是否为默认引擎
   created_at: string
   updated_at: string
   usage_count?: number     // 使用次数

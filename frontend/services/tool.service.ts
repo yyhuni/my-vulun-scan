@@ -1,5 +1,5 @@
 import { api } from "@/lib/api-client"
-import type { Tool, ToolsResponse, CreateToolRequest, UpdateToolRequest, GetToolsParams } from "@/types/tool.types"
+import type { Tool, GetToolsResponse, CreateToolRequest, UpdateToolRequest, GetToolsParams } from "@/types/tool.types"
 
 export class ToolService {
   /**
@@ -7,11 +7,11 @@ export class ToolService {
    * @param params - 查询参数对象
    * @param params.page - 当前页码，1-based
    * @param params.pageSize - 分页大小
-   * @returns Promise<ToolsResponse>
+   * @returns Promise<GetToolsResponse>
    * @description 后端固定按更新时间降序排列，不支持自定义排序
    */
-  static async getTools(params?: GetToolsParams): Promise<ToolsResponse> {
-    const response = await api.get<ToolsResponse>(
+  static async getTools(params?: GetToolsParams): Promise<GetToolsResponse> {
+    const response = await api.get<GetToolsResponse>(
       '/tools/',
       { params }
     )
