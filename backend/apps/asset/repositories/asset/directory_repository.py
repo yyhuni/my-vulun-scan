@@ -3,7 +3,7 @@ Django ORM 实现的 Directory Repository
 """
 
 import logging
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Iterator
 from django.db import transaction, IntegrityError, OperationalError, DatabaseError
 from django.utils import timezone
 
@@ -156,6 +156,22 @@ class DjangoDirectoryRepository:
     
     def get_by_target(self, target_id: int):
         return Directory.objects.filter(target_id=target_id).select_related('website').order_by('-discovered_at')
+
+    def get_urls_for_export(self, target_id: int, batch_size: int = 1000) -> Iterator[str]:
+        """流式导出目标下的所有目录 URL（只查 url 字段，避免加载多余数据）。"""
+        try:
+            queryset = (
+                Directory.objects
+                .filter(target_id=target_id)
+                .values_list('url', flat=True)
+                .order_by('url')
+                .iterator(chunk_size=batch_size)
+            )
+            for url in queryset:
+                yield url
+        except Exception as e:
+            logger.error("流式导出目录 URL 失败 - Target ID: %s, 错误: %s", target_id, e)
+            raise
     
     def soft_delete_by_ids(self, directory_ids: List[int]) -> int:
         """

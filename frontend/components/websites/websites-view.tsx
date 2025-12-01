@@ -7,6 +7,7 @@ import { createWebSiteColumns } from "./websites-columns"
 import { DataTableSkeleton } from "@/components/ui/data-table-skeleton"
 import { Button } from "@/components/ui/button"
 import { useTargetWebSites, useScanWebSites } from "@/hooks/use-websites"
+import { WebsiteService } from "@/services/website.service"
 import type { WebSite } from "@/types/website.types"
 import { toast } from "sonner"
 
@@ -89,10 +90,39 @@ export function WebSitesView({
   }, [])
 
   // 处理下载所有网站
-  const handleDownloadAll = () => {
-    // TODO: 实现下载所有网站功能
-    console.log('下载所有网站')
-    toast.info("下载功能开发中...")
+  const handleDownloadAll = async () => {
+    try {
+      let blob: Blob | null = null
+
+      if (scanId) {
+        const data = await WebsiteService.exportWebsitesByScanId(scanId)
+        blob = data
+      } else if (targetId) {
+        const data = await WebsiteService.exportWebsitesByTargetId(targetId)
+        blob = data
+      } else {
+        if (!websites || websites.length === 0) {
+          return
+        }
+        const content = websites.map((item) => item.url).join("\n")
+        blob = new Blob([content], { type: "text/plain;charset=utf-8" })
+      }
+
+      if (!blob) return
+
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      const prefix = scanId ? `scan-${scanId}` : targetId ? `target-${targetId}` : "websites"
+      a.href = url
+      a.download = `${prefix}-websites-${Date.now()}.txt`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error("下载网站列表失败", error)
+      toast.error("下载网站列表失败，请稍后重试")
+    }
   }
 
   // 处理下载选中的网站
@@ -100,8 +130,17 @@ export function WebSitesView({
     if (selectedWebSites.length === 0) {
       return
     }
-    console.log('下载选中的网站', selectedWebSites)
-    // TODO: 实现下载选中网站功能
+    const content = selectedWebSites.map((item) => item.url).join("\n")
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    const prefix = scanId ? `scan-${scanId}` : targetId ? `target-${targetId}` : "websites"
+    a.href = url
+    a.download = `${prefix}-websites-selected-${Date.now()}.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   }
 
   if (error) {

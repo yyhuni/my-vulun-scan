@@ -7,6 +7,7 @@ import { createDirectoryColumns } from "./directories-columns"
 import { DataTableSkeleton } from "@/components/ui/data-table-skeleton"
 import { Button } from "@/components/ui/button"
 import { useTargetDirectories, useScanDirectories } from "@/hooks/use-directories"
+import { DirectoryService } from "@/services/directory.service"
 import type { Directory } from "@/types/directory.types"
 import { toast } from "sonner"
 
@@ -89,10 +90,39 @@ export function DirectoriesView({
   }, [])
 
   // 处理下载所有目录
-  const handleDownloadAll = () => {
-    // TODO: 实现下载所有目录功能
-    console.log('下载所有目录')
-    toast.info("下载功能开发中...")
+  const handleDownloadAll = async () => {
+    try {
+      let blob: Blob | null = null
+
+      if (scanId) {
+        const data = await DirectoryService.exportDirectoriesByScanId(scanId)
+        blob = data
+      } else if (targetId) {
+        const data = await DirectoryService.exportDirectoriesByTargetId(targetId)
+        blob = data
+      } else {
+        if (!directories || directories.length === 0) {
+          return
+        }
+        const content = directories.map((item) => item.url).join("\n")
+        blob = new Blob([content], { type: "text/plain;charset=utf-8" })
+      }
+
+      if (!blob) return
+
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      const prefix = scanId ? `scan-${scanId}` : targetId ? `target-${targetId}` : "directories"
+      a.href = url
+      a.download = `${prefix}-directories-${Date.now()}.txt`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error("下载目录列表失败", error)
+      toast.error("下载目录列表失败，请稍后重试")
+    }
   }
 
   // 处理下载选中的目录
@@ -100,8 +130,17 @@ export function DirectoriesView({
     if (selectedDirectories.length === 0) {
       return
     }
-    console.log('下载选中的目录', selectedDirectories)
-    // TODO: 实现下载选中目录功能
+    const content = selectedDirectories.map((item) => item.url).join("\n")
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    const prefix = scanId ? `scan-${scanId}` : targetId ? `target-${targetId}` : "directories"
+    a.href = url
+    a.download = `${prefix}-directories-selected-${Date.now()}.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   }
 
   if (error) {

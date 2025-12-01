@@ -20,6 +20,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import type { Endpoint } from "@/types/endpoint.types"
+import { EndpointService } from "@/services/endpoint.service"
+import { toast } from "sonner"
 
 /**
  * 目标端点详情视图组件
@@ -34,6 +36,7 @@ export function EndpointsDetailView({
 }) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [endpointToDelete, setEndpointToDelete] = useState<Endpoint | null>(null)
+  const [selectedEndpoints, setSelectedEndpoints] = useState<Endpoint[]>([])
 
   // 分页状态管理
   const [pagination, setPagination] = useState({
@@ -102,6 +105,10 @@ export function EndpointsDetailView({
     setPagination(newPagination)
   }
 
+  const handleSelectionChange = React.useCallback((selectedRows: Endpoint[]) => {
+    setSelectedEndpoints(selectedRows)
+  }, [])
+
   // 创建列定义
   const endpointColumns = useMemo(
     () =>
@@ -112,6 +119,61 @@ export function EndpointsDetailView({
       }),
     [formatDate, navigate, handleDeleteEndpoint]
   )
+
+  // 下载所有端点 URL
+  const handleDownloadAll = async () => {
+    try {
+      let blob: Blob | null = null
+
+      if (scanId) {
+        const data = await EndpointService.exportEndpointsByScanId(scanId)
+        blob = data
+      } else if (targetId) {
+        const data = await EndpointService.exportEndpointsByTargetId(targetId)
+        blob = data
+      } else {
+        const endpoints: Endpoint[] = (data as any)?.endpoints || []
+        if (!endpoints || endpoints.length === 0) {
+          return
+        }
+        const content = endpoints.map((item) => item.url).join("\n")
+        blob = new Blob([content], { type: "text/plain;charset=utf-8" })
+      }
+
+      if (!blob) return
+
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      const prefix = scanId ? `scan-${scanId}` : targetId ? `target-${targetId}` : "endpoints"
+      a.href = url
+      a.download = `${prefix}-endpoints-${Date.now()}.txt`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error("下载端点列表失败", error)
+      toast.error("下载端点列表失败，请稍后重试")
+    }
+  }
+
+  // 下载选中的端点 URL
+  const handleDownloadSelected = () => {
+    if (selectedEndpoints.length === 0) {
+      return
+    }
+    const content = selectedEndpoints.map((item) => item.url).join("\n")
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    const prefix = scanId ? `scan-${scanId}` : targetId ? `target-${targetId}` : "endpoints"
+    a.href = url
+    a.download = `${prefix}-endpoints-selected-${Date.now()}.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
 
   // 错误状态
   if (error) {
@@ -155,6 +217,9 @@ export function EndpointsDetailView({
         onPaginationChange={handlePaginationChange}
         totalCount={data?.pagination?.total || 0}
         totalPages={data?.pagination?.totalPages || 1}
+        onSelectionChange={handleSelectionChange}
+        onDownloadAll={handleDownloadAll}
+        onDownloadSelected={handleDownloadSelected}
       />
 
       {/* 删除确认对话框 */}

@@ -253,6 +253,86 @@ class ScanViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
 
+    @action(detail=True, methods=['get'], url_path='directories/export')
+    def export_directories(self, request, pk=None):  # pylint: disable=unused-argument
+        """导出扫描任务关联的所有目录 URL（纯文本，一行一个）。"""
+        try:
+            scan_service = ScanService()
+            scan = scan_service.get_scan(scan_id=pk, prefetch_relations=False)
+
+            if not scan:
+                return Response(
+                    {'error': f'扫描 ID {pk} 不存在'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            snapshot_service = DirectorySnapshotsService()
+
+            def line_iterator():
+                for url in snapshot_service.iter_directory_urls_by_scan(scan.id):
+                    yield f"{url}\n"
+
+            response = StreamingHttpResponse(
+                line_iterator(),
+                content_type='text/plain; charset=utf-8',
+            )
+            response['Content-Disposition'] = (
+                f'attachment; filename="scan-{scan.id}-directories.txt"'
+            )
+            return response
+
+        except ObjectDoesNotExist:
+            return Response(
+                {'error': f'扫描 ID {pk} 不存在'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        except (DatabaseError, OperationalError):
+            return Response(
+                {'error': '数据库错误，请稍后重试'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+
+    @action(detail=True, methods=['get'], url_path='ip-addresses/export')
+    def export_ip_addresses(self, request, pk=None):  # pylint: disable=unused-argument
+        """导出扫描任务关联的所有唯一 IP 地址（纯文本，一行一个）。"""
+        try:
+            scan_service = ScanService()
+            scan = scan_service.get_scan(scan_id=pk, prefetch_relations=False)
+
+            if not scan:
+                return Response(
+                    {'error': f'扫描 ID {pk} 不存在'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            snapshot_service = HostPortMappingSnapshotsService()
+
+            def line_iterator():
+                for ip in snapshot_service.iter_ips_by_scan(scan.id):
+                    yield f"{ip}\n"
+
+            response = StreamingHttpResponse(
+                line_iterator(),
+                content_type='text/plain; charset=utf-8',
+            )
+            response['Content-Disposition'] = (
+                f'attachment; filename="scan-{scan.id}-ip-addresses.txt"'
+            )
+            return response
+
+        except ObjectDoesNotExist:
+            return Response(
+                {'error': f'扫描 ID {pk} 不存在'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        except (DatabaseError, OperationalError):
+            return Response(
+                {'error': '数据库错误，请稍后重试'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+
     @action(detail=True, methods=['get'], url_path='subdomains/export')
     def export_subdomains(self, request, pk=None):  # pylint: disable=unused-argument
         try:
@@ -277,6 +357,86 @@ class ScanViewSet(viewsets.ModelViewSet):
             )
             response['Content-Disposition'] = (
                 f'attachment; filename="scan-{scan.id}-subdomains.txt"'
+            )
+            return response
+
+        except ObjectDoesNotExist:
+            return Response(
+                {'error': f'扫描 ID {pk} 不存在'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        except (DatabaseError, OperationalError):
+            return Response(
+                {'error': '数据库错误，请稍后重试'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+
+    @action(detail=True, methods=['get'], url_path='endpoints/export')
+    def export_endpoints(self, request, pk=None):  # pylint: disable=unused-argument
+        """导出扫描任务关联的所有端点 URL（纯文本，一行一个）。"""
+        try:
+            scan_service = ScanService()
+            scan = scan_service.get_scan(scan_id=pk, prefetch_relations=False)
+
+            if not scan:
+                return Response(
+                    {'error': f'扫描 ID {pk} 不存在'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            snapshot_service = EndpointSnapshotsService()
+
+            def line_iterator():
+                for url in snapshot_service.iter_endpoint_urls_by_scan(scan.id):
+                    yield f"{url}\n"
+
+            response = StreamingHttpResponse(
+                line_iterator(),
+                content_type='text/plain; charset=utf-8',
+            )
+            response['Content-Disposition'] = (
+                f'attachment; filename="scan-{scan.id}-endpoints.txt"'
+            )
+            return response
+
+        except ObjectDoesNotExist:
+            return Response(
+                {'error': f'扫描 ID {pk} 不存在'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        except (DatabaseError, OperationalError):
+            return Response(
+                {'error': '数据库错误，请稍后重试'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+
+    @action(detail=True, methods=['get'], url_path='websites/export')
+    def export_websites(self, request, pk=None):  # pylint: disable=unused-argument
+        """导出扫描任务关联的所有站点 URL（纯文本，一行一个）。"""
+        try:
+            scan_service = ScanService()
+            scan = scan_service.get_scan(scan_id=pk, prefetch_relations=False)
+
+            if not scan:
+                return Response(
+                    {'error': f'扫描 ID {pk} 不存在'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            snapshot_service = WebsiteSnapshotsService()
+
+            def line_iterator():
+                for url in snapshot_service.iter_website_urls_by_scan(scan.id):
+                    yield f"{url}\n"
+
+            response = StreamingHttpResponse(
+                line_iterator(),
+                content_type='text/plain; charset=utf-8',
+            )
+            response['Content-Disposition'] = (
+                f'attachment; filename="scan-{scan.id}-websites.txt"'
             )
             return response
 

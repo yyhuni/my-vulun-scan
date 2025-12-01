@@ -136,45 +136,10 @@ function DataTableColumnHeader<TData, TValue>({
   )
 }
 
-/**
- * IP 地址行操作组件
- */
-function IPAddressRowActions({
-  ipAddress,
-  onDelete,
-}: {
-  ipAddress: IPAddress
-  onDelete: () => void
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          className="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
-        >
-          <MoreHorizontal />
-          <span className="sr-only">打开菜单</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-52">
-        <DropdownMenuItem
-          onClick={onDelete}
-          className="text-destructive focus:text-destructive"
-        >
-          <Trash2 />
-          Delete
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
-}
-
 export function createIPAddressColumns(params: {
   formatDate: (value: string) => string
-  onDelete?: (ipAddress: IPAddress) => void
 }) {
-  const { formatDate, onDelete } = params
+  const { formatDate } = params
 
   const columns: ColumnDef<IPAddress>[] = [
     // 选择列
@@ -338,18 +303,6 @@ export function createIPAddressColumns(params: {
           </div>
         )
       },
-    },
-    // 操作列
-    {
-      id: "actions",
-      cell: ({ row }) => (
-        <IPAddressRowActions
-          ipAddress={row.original}
-          onDelete={() => onDelete?.(row.original)}
-        />
-      ),
-      enableSorting: false,
-      enableHiding: false,
     },
   ]
 

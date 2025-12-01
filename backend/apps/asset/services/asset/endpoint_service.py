@@ -5,7 +5,7 @@ Endpoint 服务层
 """
 
 import logging
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Iterator
 
 from apps.asset.dtos.asset import EndpointDTO
 from apps.asset.repositories.asset import DjangoEndpointRepository
@@ -130,6 +130,12 @@ class EndpointService:
     
     def get_queryset_by_target(self, target_id: int):
         return self.repo.get_queryset_by_target(target_id)
+    
+    def iter_endpoint_urls_by_target(self, target_id: int, chunk_size: int = 1000) -> Iterator[str]:
+        """流式获取目标下的所有端点 URL，用于导出。"""
+        queryset = self.repo.get_queryset_by_target(target_id)
+        for url in queryset.values_list('url', flat=True).iterator(chunk_size=chunk_size):
+            yield url
     
     def count_endpoints_by_website(self, website_id: int) -> int:
         """

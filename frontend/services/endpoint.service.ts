@@ -96,4 +96,20 @@ export class EndpointService {
     return response.data
   }
 
+  /** 按目标导出所有端点 URL（文本文件，一行一个） */
+  static async exportEndpointsByTargetId(targetId: number): Promise<Blob> {
+    const response = await api.get<Blob>(`/targets/${targetId}/endpoints/export/`, {
+      responseType: 'blob',
+    })
+    return response.data
+  }
+
+  /** 按扫描任务导出所有端点 URL（文本文件，一行一个） */
+  static async exportEndpointsByScanId(scanId: number): Promise<Blob> {
+    const response = await api.get<Blob>(`/scans/${scanId}/endpoints/export/`, {
+      responseType: 'blob',
+    })
+    return response.data
+  }
+
 }

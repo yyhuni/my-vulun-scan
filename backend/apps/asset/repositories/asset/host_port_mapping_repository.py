@@ -1,7 +1,7 @@
 """HostPortMapping Repository - Django ORM 实现"""
 
 import logging
-from typing import List
+from typing import List, Iterator
 
 from apps.asset.models.asset_models import HostPortMapping
 from apps.asset.dtos.asset import HostPortMappingDTO
@@ -75,6 +75,19 @@ class DjangoHostPortMappingRepository:
         )
         for item in queryset:
             yield item
+
+    def get_ips_for_export(self, target_id: int, batch_size: int = 1000) -> Iterator[str]:
+        """流式导出目标下的所有唯一 IP 地址。"""
+        queryset = (
+            HostPortMapping.objects
+            .filter(target_id=target_id)
+            .values_list("ip", flat=True)
+            .distinct()
+            .order_by("ip")
+            .iterator(chunk_size=batch_size)
+        )
+        for ip in queryset:
+            yield ip
 
     def get_ip_aggregation_by_target(self, target_id: int):
         from django.db.models import Min

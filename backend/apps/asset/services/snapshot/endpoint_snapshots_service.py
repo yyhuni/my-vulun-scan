@@ -1,7 +1,7 @@
 """Endpoint Snapshots Service - 业务逻辑层"""
 
 import logging
-from typing import List
+from typing import List, Iterator
 
 from apps.asset.repositories.snapshot import DjangoEndpointSnapshotRepository
 from apps.asset.services.asset import EndpointService
@@ -61,3 +61,9 @@ class EndpointSnapshotsService:
     
     def get_by_scan(self, scan_id: int):
         return self.snapshot_repo.get_by_scan(scan_id)
+
+    def iter_endpoint_urls_by_scan(self, scan_id: int, chunk_size: int = 1000) -> Iterator[str]:
+        """流式获取某次扫描下的所有端点 URL。"""
+        queryset = self.snapshot_repo.get_by_scan(scan_id)
+        for snapshot in queryset.iterator(chunk_size=chunk_size):
+            yield snapshot.url

@@ -1,7 +1,7 @@
 """HostPortMapping Snapshots Service - 业务逻辑层"""
 
 import logging
-from typing import List
+from typing import List, Iterator
 
 from apps.asset.repositories.snapshot import DjangoHostPortMappingSnapshotRepository
 from apps.asset.services.asset import HostPortMappingService
@@ -64,3 +64,7 @@ class HostPortMappingSnapshotsService:
     
     def get_ip_aggregation_by_scan(self, scan_id: int):
         return self.snapshot_repo.get_ip_aggregation_by_scan(scan_id)
+
+    def iter_ips_by_scan(self, scan_id: int, batch_size: int = 1000) -> Iterator[str]:
+        """流式获取某次扫描下的所有唯一 IP 地址。"""
+        return self.snapshot_repo.get_ips_for_export(scan_id=scan_id, batch_size=batch_size)

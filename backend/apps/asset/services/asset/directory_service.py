@@ -1,5 +1,5 @@
 import logging
-from typing import Tuple
+from typing import Tuple, Iterator
 
 from apps.asset.models.asset_models import Directory
 from apps.asset.repositories import DjangoDirectoryRepository
@@ -137,6 +137,11 @@ class DirectoryService:
     def get_directories_by_target(self, target_id: int):
         logger.debug("获取目标下所有目录 - Target ID: %d", target_id)
         return self.repo.get_by_target(target_id)
+
+    def iter_directory_urls_by_target(self, target_id: int, chunk_size: int = 1000) -> Iterator[str]:
+        """流式获取目标下的所有目录 URL，用于导出大批量数据。"""
+        logger.debug("流式导出目标下目录 URL - Target ID: %d", target_id)
+        return self.repo.get_urls_for_export(target_id=target_id, batch_size=chunk_size)
 
 
 __all__ = ['DirectoryService']

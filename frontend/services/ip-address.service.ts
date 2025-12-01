@@ -28,45 +28,19 @@ export class IPAddressService {
     return response.data
   }
 
-  /** 批量删除 IP 地址（支持单个或多个） */
-  static async bulkDeleteIPAddresses(ids: number[]): Promise<{
-    message: string
-    deletedCount: number
-    requestedIds: number[]
-    cascadeDeleted: Record<string, number>
-  }> {
-    const response = await api.post<{
-      message: string
-      deletedCount: number
-      requestedIds: number[]
-      cascadeDeleted: Record<string, number>
-    }>('/ip-addresses/bulk-delete/', { ids })
+  /** 按目标导出所有 IP 地址（文本文件，一行一个） */
+  static async exportIPAddressesByTargetId(targetId: number): Promise<Blob> {
+    const response = await api.get<Blob>(`/targets/${targetId}/ip-addresses/export/`, {
+      responseType: 'blob',
+    })
     return response.data
   }
 
-  /** 删除单个 IP 地址（使用单独的 DELETE API） */
-  static async deleteIPAddress(ipId: number): Promise<{
-    message: string
-    ipAddressId: number
-    ipAddress: string
-    deletedCount: number
-    deletedIPAddresses: string[]
-    detail: {
-      phase1: string
-      phase2: string
-    }
-  }> {
-    const response = await api.delete<{
-      message: string
-      ipAddressId: number
-      ipAddress: string
-      deletedCount: number
-      deletedIPAddresses: string[]
-      detail: {
-        phase1: string
-        phase2: string
-      }
-    }>(`/ip-addresses/${ipId}/`)
+  /** 按扫描任务导出所有 IP 地址（文本文件，一行一个） */
+  static async exportIPAddressesByScanId(scanId: number): Promise<Blob> {
+    const response = await api.get<Blob>(`/scans/${scanId}/ip-addresses/export/`, {
+      responseType: 'blob',
+    })
     return response.data
   }
 }

@@ -6,20 +6,10 @@ import { IPAddressesDataTable } from "./ip-addresses-data-table"
 import { createIPAddressColumns } from "./ip-addresses-columns"
 import { DataTableSkeleton } from "@/components/ui/data-table-skeleton"
 import { Button } from "@/components/ui/button"
-import { useTargetIPAddresses, useScanIPAddresses, useDeleteIPAddress, useBulkDeleteIPAddresses } from "@/hooks/use-ip-addresses"
+import { useTargetIPAddresses, useScanIPAddresses } from "@/hooks/use-ip-addresses"
 import type { IPAddress } from "@/types/ip-address.types"
+import { IPAddressService } from "@/services/ip-address.service"
 import { toast } from "sonner"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { LoadingSpinner } from "@/components/loading-spinner"
 
 export function IPAddressesView({
   targetId,
@@ -33,12 +23,6 @@ export function IPAddressesView({
     pageSize: 10,
   })
   const [selectedIPAddresses, setSelectedIPAddresses] = useState<IPAddress[]>([])
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [ipToDelete, setIPToDelete] = useState<IPAddress | null>(null)
-  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
-
-  const deleteIPMutation = useDeleteIPAddress()
-  const bulkDeleteMutation = useBulkDeleteIPAddresses()
 
   const targetQuery = useTargetIPAddresses(
     targetId || 0,
@@ -73,37 +57,16 @@ export function IPAddressesView({
     })
   }, [])
 
-  const handleDeleteIP = (ipAddress: IPAddress) => {
-    setIPToDelete(ipAddress)
-    setDeleteDialogOpen(true)
-  }
-
-  const confirmDelete = async () => {
-    if (!ipToDelete) return
-
-    setDeleteDialogOpen(false)
-    setIPToDelete(null)
-
-    deleteIPMutation.mutate(ipToDelete.id)
-  }
-
   const columns = useMemo(
     () =>
       createIPAddressColumns({
         formatDate,
-        onDelete: handleDeleteIP,
       }),
     [formatDate]
   )
 
   const ipAddresses: IPAddress[] = useMemo(() => {
-    if (!data?.results) return []
-    return data.results.map((item) => ({
-      ...item,
-      subdomain: item.subdomain || "",
-      createdAt: item.createdAt || item.lastSeen,
-      reversePointer: item.reversePointer || "",
-    }))
+    return data?.results ?? []
   }, [data])
 
   const paginationInfo = data
@@ -114,42 +77,62 @@ export function IPAddressesView({
       totalPages: data.totalPages,
     }
     : undefined
-
-  const handleBulkDelete = () => {
-    if (selectedIPAddresses.length === 0) {
-      return
-    }
-    setBulkDeleteDialogOpen(true)
-  }
-
-  const confirmBulkDelete = async () => {
-    if (selectedIPAddresses.length === 0) return
-
-    const ipIds = selectedIPAddresses.map(ip => ip.id)
-
-    setBulkDeleteDialogOpen(false)
-    setSelectedIPAddresses([])
-
-    bulkDeleteMutation.mutate(ipIds)
-  }
-
   const handleSelectionChange = useCallback((selectedRows: IPAddress[]) => {
     setSelectedIPAddresses(selectedRows)
   }, [])
 
   // 处理下载所有 IP 地址
-  const handleDownloadAll = () => {
-    // TODO: 实现下载所有 IP 地址功能
-    console.log('下载所有 IP 地址')
+  const handleDownloadAll = async () => {
+    try {
+      let blob: Blob | null = null
+
+      if (scanId) {
+        const data = await IPAddressService.exportIPAddressesByScanId(scanId)
+        blob = data
+      } else if (targetId) {
+        const data = await IPAddressService.exportIPAddressesByTargetId(targetId)
+        blob = data
+      } else {
+        if (!ipAddresses || ipAddresses.length === 0) {
+          return
+        }
+        const content = ipAddresses.map((item) => item.ip).join("\n")
+        blob = new Blob([content], { type: "text/plain;charset=utf-8" })
+      }
+
+      if (!blob) return
+
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      const prefix = scanId ? `scan-${scanId}` : targetId ? `target-${targetId}` : "ip-addresses"
+      a.href = url
+      a.download = `${prefix}-ip-addresses-${Date.now()}.txt`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error("下载 IP 地址列表失败", error)
+      toast.error("下载 IP 地址列表失败，请稍后重试")
+    }
   }
 
   // 处理下载选中的 IP 地址
   const handleDownloadSelected = () => {
-    // TODO: 实现下载选中的 IP 地址功能
-    console.log('下载选中的 IP 地址:', selectedIPAddresses)
     if (selectedIPAddresses.length === 0) {
       return
     }
+    const content = selectedIPAddresses.map((item) => item.ip).join("\n")
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    const prefix = scanId ? `scan-${scanId}` : targetId ? `target-${targetId}` : "ip-addresses"
+    a.href = url
+    a.download = `${prefix}-ip-addresses-selected-${Date.now()}.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   }
 
   if (error) {
@@ -187,78 +170,10 @@ export function IPAddressesView({
         pagination={pagination}
         setPagination={setPagination}
         paginationInfo={paginationInfo}
-        onBulkDelete={handleBulkDelete}
         onSelectionChange={handleSelectionChange}
         onDownloadAll={handleDownloadAll}
         onDownloadSelected={handleDownloadSelected}
       />
-
-      {/* 删除确认对话框 */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认删除</AlertDialogTitle>
-            <AlertDialogDescription>
-              此操作无法撤销。这将永久删除 IP 地址 &quot;{ipToDelete?.ip}&quot; 及其相关数据。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={deleteIPMutation.isPending}
-            >
-              {deleteIPMutation.isPending ? (
-                <>
-                  <LoadingSpinner />
-                  删除中...
-                </>
-              ) : (
-                "删除"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* 批量删除确认对话框 */}
-      <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认批量删除</AlertDialogTitle>
-            <AlertDialogDescription>
-              此操作无法撤销。这将永久删除以下 {selectedIPAddresses.length} 个 IP 地址及其相关数据。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="mt-2 p-2 bg-muted rounded-md max-h-96 overflow-y-auto">
-            <ul className="text-sm space-y-1">
-              {selectedIPAddresses.map((ip) => (
-                <li key={ip.id} className="flex items-center">
-                  <span className="font-medium font-mono">{ip.ip}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmBulkDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={bulkDeleteMutation.isPending}
-            >
-              {bulkDeleteMutation.isPending ? (
-                <>
-                  <LoadingSpinner />
-                  删除中...
-                </>
-              ) : (
-                `删除 ${selectedIPAddresses.length} 个 IP 地址`
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   )
 }

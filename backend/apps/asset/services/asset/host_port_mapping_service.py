@@ -1,7 +1,7 @@
 """HostPortMapping Service - 业务逻辑层"""
 
 import logging
-from typing import List
+from typing import List, Iterator
 
 from apps.asset.repositories.asset import DjangoHostPortMappingRepository
 from apps.asset.dtos.asset import HostPortMappingDTO
@@ -51,3 +51,7 @@ class HostPortMappingService:
 
     def get_ip_aggregation_by_target(self, target_id: int):
         return self.repo.get_ip_aggregation_by_target(target_id)
+
+    def iter_ips_by_target(self, target_id: int, batch_size: int = 1000) -> Iterator[str]:
+        """流式获取目标下的所有唯一 IP 地址。"""
+        return self.repo.get_ips_for_export(target_id=target_id, batch_size=batch_size)

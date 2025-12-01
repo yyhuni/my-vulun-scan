@@ -23,12 +23,16 @@ import {
   IconChevronsRight,
   IconLayoutColumns,
   IconPlus,
+  IconDownload,
 } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
@@ -62,6 +66,8 @@ interface EndpointsDataTableProps<TData extends { id: number | string }, TValue>
   onPaginationChange?: (pagination: { pageIndex: number; pageSize: number }) => void
   totalCount?: number
   totalPages?: number
+  onDownloadAll?: () => void
+  onDownloadSelected?: () => void
 }
 
 export function EndpointsDataTable<TData extends { id: number | string }, TValue>({
@@ -76,6 +82,8 @@ export function EndpointsDataTable<TData extends { id: number | string }, TValue
   onAddNew,
   addButtonText = "Add",
   onSelectionChange,
+  onDownloadAll,
+  onDownloadSelected,
 }: EndpointsDataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({})
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
@@ -191,6 +199,37 @@ export function EndpointsDataTable<TData extends { id: number | string }, TValue
                 })}
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {(onDownloadAll || onDownloadSelected) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <IconDownload />
+                  Download
+                  <IconChevronDown />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuLabel>Download Options</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {onDownloadAll && (
+                  <DropdownMenuItem onClick={onDownloadAll}>
+                    <IconDownload className="h-4 w-4" />
+                    Download All Endpoints
+                  </DropdownMenuItem>
+                )}
+                {onDownloadSelected && (
+                  <DropdownMenuItem
+                    onClick={onDownloadSelected}
+                    disabled={table.getFilteredSelectedRowModel().rows.length === 0}
+                  >
+                    <IconDownload className="h-4 w-4" />
+                    Download Selected Endpoints
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
           {onAddNew && (
             <Button onClick={onAddNew} size="sm">

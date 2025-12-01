@@ -464,6 +464,34 @@ class TargetViewSet(viewsets.ModelViewSet):
         except (DatabaseError, OperationalError):
             raise APIException('数据库错误，请稍后重试')
 
+    @action(detail=True, methods=['get'], url_path='websites/export')
+    def export_websites(self, request, pk=None):
+        """导出目标下的所有网站 URL（纯文本，一行一个）。"""
+        from django.core.exceptions import ObjectDoesNotExist
+        from django.db import DatabaseError, OperationalError
+
+        try:
+            target = self.get_object()
+
+            def line_iterator():
+                for url in self.website_service.iter_website_urls_by_target(target.id):
+                    yield f"{url}\n"
+
+            response = StreamingHttpResponse(
+                line_iterator(),
+                content_type='text/plain; charset=utf-8',
+            )
+            response['Content-Disposition'] = (
+                f'attachment; filename="target-{target.id}-websites.txt"'
+            )
+            return response
+
+        except ObjectDoesNotExist:
+            raise NotFound(f'目标 ID {pk} 不存在')
+
+        except (DatabaseError, OperationalError):
+            raise APIException('数据库错误，请稍后重试')
+
     @action(detail=True, methods=['get'], url_path='subdomains/export')
     def export_subdomains(self, request, pk=None):
         from django.core.exceptions import ObjectDoesNotExist
@@ -669,6 +697,90 @@ class TargetViewSet(viewsets.ModelViewSet):
 
             # 如果没有分页参数，返回错误
             raise ValidationError('必须提供分页参数 page 和 pageSize')
+
+        except ObjectDoesNotExist:
+            raise NotFound(f'目标 ID {pk} 不存在')
+
+        except (DatabaseError, OperationalError):
+            raise APIException('数据库错误，请稍后重试')
+
+    @action(detail=True, methods=['get'], url_path='endpoints/export')
+    def export_endpoints(self, request, pk=None):
+        """导出目标下的所有端点 URL（纯文本，一行一个）。"""
+        from django.core.exceptions import ObjectDoesNotExist
+        from django.db import DatabaseError, OperationalError
+
+        try:
+            target = self.get_object()
+
+            def line_iterator():
+                for url in self.endpoint_service.iter_endpoint_urls_by_target(target.id):
+                    yield f"{url}\n"
+
+            response = StreamingHttpResponse(
+                line_iterator(),
+                content_type='text/plain; charset=utf-8',
+            )
+            response['Content-Disposition'] = (
+                f'attachment; filename="target-{target.id}-endpoints.txt"'
+            )
+            return response
+
+        except ObjectDoesNotExist:
+            raise NotFound(f'目标 ID {pk} 不存在')
+
+        except (DatabaseError, OperationalError):
+            raise APIException('数据库错误，请稍后重试')
+
+    @action(detail=True, methods=['get'], url_path='directories/export')
+    def export_directories(self, request, pk=None):
+        """导出目标下的所有目录 URL（纯文本，一行一个）。"""
+        from django.core.exceptions import ObjectDoesNotExist
+        from django.db import DatabaseError, OperationalError
+
+        try:
+            target = self.get_object()
+
+            def line_iterator():
+                for url in self.directory_service.iter_directory_urls_by_target(target.id):
+                    yield f"{url}\n"
+
+            response = StreamingHttpResponse(
+                line_iterator(),
+                content_type='text/plain; charset=utf-8',
+            )
+            response['Content-Disposition'] = (
+                f'attachment; filename="target-{target.id}-directories.txt"'
+            )
+            return response
+
+        except ObjectDoesNotExist:
+            raise NotFound(f'目标 ID {pk} 不存在')
+
+        except (DatabaseError, OperationalError):
+            raise APIException('数据库错误，请稍后重试')
+
+    @action(detail=True, methods=['get'], url_path='ip-addresses/export')
+    def export_ip_addresses(self, request, pk=None):
+        """导出目标下的所有唯一 IP 地址（纯文本，一行一个）。"""
+        from django.core.exceptions import ObjectDoesNotExist
+        from django.db import DatabaseError, OperationalError
+
+        try:
+            target = self.get_object()
+
+            def line_iterator():
+                for ip in self.host_port_mapping_service.iter_ips_by_target(target.id):
+                    yield f"{ip}\n"
+
+            response = StreamingHttpResponse(
+                line_iterator(),
+                content_type='text/plain; charset=utf-8',
+            )
+            response['Content-Disposition'] = (
+                f'attachment; filename="target-{target.id}-ip-addresses.txt"'
+            )
+            return response
 
         except ObjectDoesNotExist:
             raise NotFound(f'目标 ID {pk} 不存在')

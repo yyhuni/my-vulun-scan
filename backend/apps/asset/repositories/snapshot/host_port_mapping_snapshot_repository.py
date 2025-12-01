@@ -1,7 +1,7 @@
 """HostPortMappingSnapshot Repository - Django ORM 实现"""
 
 import logging
-from typing import List
+from typing import List, Iterator
 
 from apps.asset.models.snapshot_models import HostPortMappingSnapshot
 from apps.asset.dtos.snapshot import HostPortMappingSnapshotDTO
@@ -93,3 +93,16 @@ class DjangoHostPortMappingSnapshotRepository:
             })
 
         return results
+
+    def get_ips_for_export(self, scan_id: int, batch_size: int = 1000) -> Iterator[str]:
+        """流式导出扫描下的所有唯一 IP 地址。"""
+        queryset = (
+            HostPortMappingSnapshot.objects
+            .filter(scan_id=scan_id)
+            .values_list("ip", flat=True)
+            .distinct()
+            .order_by("ip")
+            .iterator(chunk_size=batch_size)
+        )
+        for ip in queryset:
+            yield ip
