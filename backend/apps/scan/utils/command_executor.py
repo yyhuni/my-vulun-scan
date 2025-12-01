@@ -28,6 +28,15 @@ MAX_LOG_TAIL_LINES = 1000  # 日志文件读取的最大行数
 # ENABLE_COMMAND_LOGGING=false: 只输出错误到log_file_path
 ENABLE_COMMAND_LOGGING = getattr(settings, 'ENABLE_COMMAND_LOGGING', False)
 
+MAX_CONCURRENT_COMMANDS = getattr(settings, 'SCAN_MAX_CONCURRENT_COMMANDS', 1)
+if MAX_CONCURRENT_COMMANDS and MAX_CONCURRENT_COMMANDS > 0:
+    _COMMAND_SEMAPHORE = threading.Semaphore(MAX_CONCURRENT_COMMANDS)
+else:
+    _COMMAND_SEMAPHORE = None
+
+_ACTIVE_COMMANDS = 0
+_ACTIVE_COMMANDS_LOCK = threading.Lock()
+
 
 class CommandExecutor:
     """
@@ -160,8 +169,27 @@ class CommandExecutor:
         
         process = None
         log_file_handle = None
+        acquired_slot = False
         
         try:
+            if _COMMAND_SEMAPHORE is not None:
+                logger.debug("等待命令并发槽位: tool=%s, max=%d", tool_name, MAX_CONCURRENT_COMMANDS)
+                _COMMAND_SEMAPHORE.acquire()
+                acquired_slot = True
+                if _ACTIVE_COMMANDS_LOCK:
+                    global _ACTIVE_COMMANDS
+                    with _ACTIVE_COMMANDS_LOCK:
+                        _ACTIVE_COMMANDS += 1
+                        current_active = _ACTIVE_COMMANDS
+                else:
+                    current_active = 0
+                logger.info(
+                    "获得命令并发槽位: tool=%s, active=%d, max=%d",
+                    tool_name,
+                    current_active,
+                    MAX_CONCURRENT_COMMANDS,
+                )
+            
             logger.debug("执行命令: %s", command)
             if log_file_path:
                 logger.debug("日志文件: %s", log_file_path)
@@ -266,6 +294,23 @@ class CommandExecutor:
                     log_file_handle.close()
                 except:
                     pass
+            
+            if acquired_slot and _COMMAND_SEMAPHORE is not None:
+                if _ACTIVE_COMMANDS_LOCK:
+                    global _ACTIVE_COMMANDS
+                    with _ACTIVE_COMMANDS_LOCK:
+                        if _ACTIVE_COMMANDS > 0:
+                            _ACTIVE_COMMANDS -= 1
+                        current_active = _ACTIVE_COMMANDS
+                else:
+                    current_active = 0
+                _COMMAND_SEMAPHORE.release()
+                logger.info(
+                    "释放命令并发槽位: tool=%s, active=%d, max=%d",
+                    tool_name,
+                    current_active,
+                    MAX_CONCURRENT_COMMANDS,
+                )
     
     def execute_stream(
         self,
@@ -302,6 +347,7 @@ class CommandExecutor:
         
         # 记录开始时间（用于命令日志）
         start_time = datetime.now()
+        acquired_slot = False
         
         # 准备日志文件路径
         log_file_path = Path(log_file) if log_file else None
@@ -326,6 +372,24 @@ class CommandExecutor:
             if ENABLE_COMMAND_LOGGING:
                 stderr_target = subprocess.STDOUT
             
+            if _COMMAND_SEMAPHORE is not None and not acquired_slot:
+                logger.debug("等待命令并发槽位: tool=%s, max=%d", tool_name, MAX_CONCURRENT_COMMANDS)
+                _COMMAND_SEMAPHORE.acquire()
+                acquired_slot = True
+                if _ACTIVE_COMMANDS_LOCK:
+                    global _ACTIVE_COMMANDS
+                    with _ACTIVE_COMMANDS_LOCK:
+                        _ACTIVE_COMMANDS += 1
+                        current_active = _ACTIVE_COMMANDS
+                else:
+                    current_active = 0
+                logger.info(
+                    "获得命令并发槽位: tool=%s, active=%d, max=%d",
+                    tool_name,
+                    current_active,
+                    MAX_CONCURRENT_COMMANDS,
+                )
+            
             process = subprocess.Popen(
                 command,
                 stdin=subprocess.DEVNULL,
@@ -339,6 +403,24 @@ class CommandExecutor:
             )
         else:
             # 无日志文件：正常流式输出
+            if _COMMAND_SEMAPHORE is not None and not acquired_slot:
+                logger.debug("等待命令并发槽位: tool=%s, max=%d", tool_name, MAX_CONCURRENT_COMMANDS)
+                _COMMAND_SEMAPHORE.acquire()
+                acquired_slot = True
+                if _ACTIVE_COMMANDS_LOCK:
+                    global _ACTIVE_COMMANDS
+                    with _ACTIVE_COMMANDS_LOCK:
+                        _ACTIVE_COMMANDS += 1
+                        current_active = _ACTIVE_COMMANDS
+                else:
+                    current_active = 0
+                logger.info(
+                    "获得命令并发槽位: tool=%s, active=%d, max=%d",
+                    tool_name,
+                    current_active,
+                    MAX_CONCURRENT_COMMANDS,
+                )
+            
             process = subprocess.Popen(
                 command,
                 stdin=subprocess.DEVNULL,
@@ -450,6 +532,23 @@ class CommandExecutor:
                 
                 # 写入命令信息头部
                 self._write_command_info_header(log_file_path, tool_name, cmd, duration, exit_code or 0, success, timeout)
+            
+            if acquired_slot and _COMMAND_SEMAPHORE is not None:
+                if _ACTIVE_COMMANDS_LOCK:
+                    global _ACTIVE_COMMANDS
+                    with _ACTIVE_COMMANDS_LOCK:
+                        if _ACTIVE_COMMANDS > 0:
+                            _ACTIVE_COMMANDS -= 1
+                        current_active = _ACTIVE_COMMANDS
+                else:
+                    current_active = 0
+                _COMMAND_SEMAPHORE.release()
+                logger.info(
+                    "释放命令并发槽位: tool=%s, active=%d, max=%d",
+                    tool_name,
+                    current_active,
+                    MAX_CONCURRENT_COMMANDS,
+                )
     
     def _read_log_tail(self, log_file: Path, max_lines: int = MAX_LOG_TAIL_LINES) -> str:
         """
