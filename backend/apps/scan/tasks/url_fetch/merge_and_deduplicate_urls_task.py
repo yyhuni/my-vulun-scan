@@ -69,11 +69,38 @@ def merge_and_deduplicate_urls_task(
         cmd = f"LC_ALL=C sort -u {' '.join(valid_files)} -o {merged_file}"
         logger.debug("执行命令: %s", cmd)
 
+        # 按输入文件总行数动态计算超时时间
+        total_lines = 0
+        for file_path in valid_files:
+            try:
+                line_count_proc = subprocess.run(
+                    ["wc", "-l", file_path],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
+                total_lines += int(line_count_proc.stdout.strip().split()[0])
+            except (subprocess.CalledProcessError, ValueError, IndexError):
+                continue
+
+        timeout = 3600
+        if total_lines > 0:
+            # 按行数线性计算：每 10 万行约 600 秒
+            base_per_line = 600.0 / 100000.0
+            est = int(total_lines * base_per_line)
+            timeout = max(600, est)
+
+        logger.info(
+            "URL 合并去重 timeout 自动计算: 输入总行数=%d, timeout=%d秒",
+            total_lines,
+            timeout,
+        )
+
         result = subprocess.run(
             cmd,
             shell=True,
             check=True,
-            timeout=3600  # 60分钟超时
+            timeout=timeout
         )
 
         logger.debug("✓ 合并去重完成")
