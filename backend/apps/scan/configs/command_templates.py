@@ -44,6 +44,42 @@ SUBDOMAIN_DISCOVERY_COMMANDS = {
     'assetfinder': {
         'base': 'assetfinder --subs-only {domain} > {output_file}',
     },
+    
+    # === 主动字典爆破 ===
+    'dnsx_bruteforce': {
+        # 使用字典对目标域名进行 DNS 爆破
+        # -d 目标域名，-w 字典文件，-o 输出文件
+        'base': 'dnsx -d {domain} -w {wordlist} -silent -o {output_file}',
+        'optional': {
+            'threads': '-t {threads}',           # 并发数（默认 100）
+            'rate-limit': '-rl {rate-limit}',    # 每秒请求数限制
+            'retry': '-retry {retry}',           # 重试次数
+        }
+    },
+    
+    # === DNS 存活验证 ===
+    'dnsx_resolve': {
+        # 验证子域名是否能解析（存活验证）
+        # -l 输入文件，-a 查询 A 记录，-resp-only 只输出能解析的域名
+        # -wd 自动过滤通配符子域名（必须传入目标域名）
+        'base': 'dnsx -l {input_file} -wd {domain} -a -resp-only -silent -o {output_file}',
+        'optional': {
+            'threads': '-t {threads}',                       # 并发数
+            'rate-limit': '-rl {rate-limit}',                # 限速
+            'retry': '-retry {retry}',                       # 重试
+        }
+    },
+    
+    # === 变异生成 + 存活验证（流式管道，避免 OOM）===
+    'dnsgen_resolve': {
+        # 流式管道：dnsgen 生成变异域名 | dnsx 验证存活
+        # 不落盘中间文件，避免内存爆炸
+        # -wd 自动过滤通配符子域名（必须传入目标域名）
+        'base': 'cat {input_file} | dnsgen - | dnsx -wd {domain} -a -resp-only -silent -o {output_file}',
+        'optional': {
+            'threads': '-t {threads}',                       # dnsx 并发数
+        }
+    },
 }
 
 
@@ -173,7 +209,8 @@ VULN_SCAN_COMMANDS = {
             'blind_xss_server': '-b {blind_xss_server}',
             'delay': '--delay {delay}',
             'request-timeout': '--timeout {request-timeout}',
-            'random_agent_flag': '--random-agent',
+            # 是否追加 UA 头，由 user_agent 是否存在决定
+            'user_agent': '--user-agent "{user_agent}"',
             'random_header_flag': '--random-header',
             'random_xforwarded_for_flag': '--random-xforwarded-for',
             'worker': '--worker {worker}',

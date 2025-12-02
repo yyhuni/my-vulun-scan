@@ -22,6 +22,62 @@ from typing import Dict, Any
 logger = logging.getLogger(__name__)
 
 
+def _parse_subdomain_discovery_config(scan_config: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    解析子域名发现配置（4阶段流程）
+    
+    配置格式：
+        {
+            'passive_tools': {'subfinder': {...}, ...},
+            'bruteforce': {'enabled': True, 'dnsx_bruteforce': {...}},
+            'permutation': {'enabled': True, 'dnsgen_resolve': {...}},
+            'resolve': {'enabled': True, 'dnsx_resolve': {...}}
+        }
+    
+    Args:
+        scan_config: subdomain_discovery 的配置字典
+    
+    Returns:
+        配置字典，供 Flow 使用
+    """
+    if 'passive_tools' not in scan_config:
+        logger.warning("子域名发现配置缺少 passive_tools")
+        return {}
+    
+    result = {}
+    
+    # Stage 1: 被动收集工具
+    passive_tools = scan_config.get('passive_tools', {})
+    enabled_passive = {}
+    for name, config in passive_tools.items():
+        if isinstance(config, dict) and config.get('enabled', False):
+            enabled_passive[name] = config
+    result['passive_tools'] = enabled_passive
+    
+    # Stage 2: 字典爆破（可选）
+    bruteforce = scan_config.get('bruteforce', {})
+    if bruteforce.get('enabled', False):
+        result['bruteforce'] = bruteforce
+    
+    # Stage 3: 变异生成（可选）
+    permutation = scan_config.get('permutation', {})
+    if permutation.get('enabled', False):
+        result['permutation'] = permutation
+    
+    # Stage 4: 存活验证（可选）
+    resolve = scan_config.get('resolve', {})
+    if resolve.get('enabled', False):
+        result['resolve'] = resolve
+    
+    logger.info(
+        f"子域名发现: passive={len(enabled_passive)}, "
+        f"bruteforce={'bruteforce' in result}, "
+        f"permutation={'permutation' in result}, "
+        f"resolve={'resolve' in result}"
+    )
+    return result
+
+
 def parse_enabled_tools_from_dict(
     scan_type: str,
     parsed_config: Dict[str, Any]
@@ -35,6 +91,7 @@ def parse_enabled_tools_from_dict(
     
     Returns:
         启用的工具配置字典 {tool_name: tool_config}
+        对于 subdomain_discovery，返回完整的配置结构（支持4阶段增强流程）
     
     Raises:
         ValueError: 配置格式错误或必需参数缺失/无效时抛出
@@ -48,6 +105,11 @@ def parse_enabled_tools_from_dict(
         return {}
     
     scan_config = parsed_config[scan_type]
+    
+    # 子域名发现支持增强配置格式（4阶段）
+    if scan_type == 'subdomain_discovery':
+        return _parse_subdomain_discovery_config(scan_config)
+    
     if 'tools' not in scan_config:
         logger.warning(f"扫描类型 {scan_type} 未配置任何工具")
         return {}

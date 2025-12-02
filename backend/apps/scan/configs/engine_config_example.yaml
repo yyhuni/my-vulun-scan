@@ -14,30 +14,66 @@
 # - 取消注释可选参数即可启用
 
 # ==================== 子域名发现 ====================
+# 
+# 流程说明：
+#   Stage 1: 被动收集（并行） - 必选，至少启用一个工具
+#   Stage 2: 字典爆破（可选） - 使用字典暴力枚举子域名
+#   Stage 3: 变异生成 + 验证（可选） - 基于已发现域名生成变异，流式验证存活
+#   Stage 4: DNS 存活验证（可选） - 验证所有候选域名是否能解析
+#
+# 灵活组合：可以关闭 2/3/4 中的任意阶段，最终结果会根据实际执行的阶段动态决定
+#
 subdomain_discovery:
-  tools:
+  # === Stage 1: 被动收集工具（并行执行）===
+  passive_tools:
     subfinder:
       enabled: true
-      timeout: 7200      # 2小时（必需）
-      # threads: 10     # 可选，并发 goroutine 数（对应 subfinder -t）
+      timeout: 7200      # 2小时
+      # threads: 10     # 可选，并发 goroutine 数
       
     amass_passive:
       enabled: true
-      timeout: 7200      # 2小时（必需）
+      timeout: 7200      # 2小时
       
     amass_active:
-      enabled: true
-      timeout: 7200     # 2小时（必需）
-      
+      enabled: true      # 主动枚举 + 爆破
+      timeout: 7200
       
     sublist3r:
       enabled: true
-      timeout: 7200      # 2小时（必需）
+      timeout: 7200
       # threads: 50     # 可选，线程数
     
     assetfinder:
       enabled: true
-      timeout: 7200      # 2小时（必需）
+      timeout: 7200
+
+  # === Stage 2: 主动字典爆破（可选）===
+  bruteforce:
+    enabled: false                       # 是否启用字典爆破
+    dnsx_bruteforce:
+      timeout: 3600                      # 1小时
+      wordlist_name: dns_wordlist.txt    # 字典名称，对应「字典管理」中的 Wordlist.name
+      threads: 500                       # 高并发
+      # rate-limit: 1000                 # 可选，每秒最多请求数
+      retry: 2                           # 重试次数
+
+  # === Stage 3: 变异生成 + 存活验证（可选，流式管道避免 OOM）===
+  permutation:
+    enabled: true                        # 是否启用变异生成
+    dnsgen_resolve:
+      timeout: 7200                      # 2小时（变异量大时需要更长时间）
+      threads: 200                       # dnsx 并发数
+
+  # === Stage 4: DNS 存活验证（可选）===
+  # 注意：如果启用了 Stage 3，则 Stage 4 会被跳过（Stage 3 已包含验证）
+  resolve:
+    enabled: true                        # 是否启用存活验证
+    dnsx_resolve:
+      timeout: 7200                      # 2小时
+      threads: 200                       # 并发数
+      # rate-limit: 500                  # 可选，限速
+      retry: 3                           # 重试次数
       
 
 # ==================== 端口扫描 ====================
@@ -180,6 +216,6 @@ vuln_scan:
       blind_xss_server: blind_xss_server  # 盲打 XSS 回连服务地址
       delay: 500             # Dalfox 扫描内部延迟参数
       worker: 10             # Dalfox worker 数量
-      random_agent_flag: true
+      user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"  # 默认 UA，可根据需要修改
       random_header_flag: true
       random_xforwarded_for_flag: true

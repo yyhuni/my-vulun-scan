@@ -1,5 +1,5 @@
 """
-子域名发现扫描 Flow
+子域名发现扫描 Flow（增强版）
 
 负责编排子域名发现扫描的完整流程
 
@@ -8,6 +8,14 @@
 - 支持并行执行扫描工具
 - 每个 Task 可独立重试
 - 配置由 YAML 解析
+
+增强流程（4 阶段）：
+    Stage 1: 被动收集（并行） - 必选
+    Stage 2: 字典爆破（可选） - dnsx bruteforce
+    Stage 3: 变异生成 + 验证（可选） - dnsgen | dnsx 流式管道
+    Stage 4: DNS 存活验证（可选） - dnsx resolve
+    
+各阶段可灵活开关，最终结果根据实际执行的阶段动态决定
 """
 
 # Django 环境初始化（导入即生效）
@@ -24,7 +32,8 @@ from apps.scan.handlers.scan_flow_handlers import (
     on_scan_flow_cancelled,
     on_scan_flow_crashed
 )
-from apps.scan.utils import config_parser, build_scan_command
+from apps.scan.utils import build_scan_command
+from apps.engine.services.wordlist_service import WordlistService
 from apps.common.normalizer import normalize_domain
 from apps.common.validators import validate_domain
 from datetime import datetime
@@ -214,6 +223,93 @@ def _run_scans_parallel(
     return result_files, failed_tools, successful_tool_names
 
 
+def _run_single_tool(
+    tool_name: str,
+    tool_config: dict,
+    command_params: dict,
+    result_dir: Path,
+    scan_type: str = 'subdomain_discovery'
+) -> str:
+    """
+    运行单个扫描工具
+    
+    Args:
+        tool_name: 工具名称
+        tool_config: 工具配置
+        command_params: 命令参数
+        result_dir: 结果目录
+        scan_type: 扫描类型
+        
+    Returns:
+        str: 输出文件路径，失败返回空字符串
+    """
+    from apps.scan.tasks.subdomain_discovery import run_subdomain_discovery_task
+    
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    short_uuid = uuid.uuid4().hex[:4]
+    output_file = str(result_dir / f"{tool_name}_{timestamp}_{short_uuid}.txt")
+    
+    # 添加 output_file 到参数
+    command_params['output_file'] = output_file
+    
+    try:
+        command = build_scan_command(
+            tool_name=tool_name,
+            scan_type=scan_type,
+            command_params=command_params,
+            tool_config=tool_config
+        )
+    except Exception as e:
+        logger.error(f"构建 {tool_name} 命令失败: {e}")
+        return ""
+    
+    timeout = tool_config.get('timeout', 3600)
+    if timeout == 'auto':
+        timeout = 3600
+    
+    logger.info(f"执行 {tool_name}: timeout={timeout}s")
+    
+    try:
+        result = run_subdomain_discovery_task(
+            tool=tool_name,
+            command=command,
+            timeout=timeout,
+            output_file=output_file
+        )
+        return result if result else ""
+    except Exception as e:
+        logger.warning(f"{tool_name} 执行失败: {e}")
+        return ""
+
+
+def _merge_files(file_list: list, output_file: str) -> str:
+    """
+    合并多个文件并去重
+    
+    Args:
+        file_list: 文件路径列表
+        output_file: 输出文件路径
+        
+    Returns:
+        str: 输出文件路径
+    """
+    domains = set()
+    for f in file_list:
+        if f and Path(f).exists():
+            with open(f, 'r', encoding='utf-8', errors='ignore') as fp:
+                for line in fp:
+                    line = line.strip()
+                    if line:
+                        domains.add(line)
+    
+    with open(output_file, 'w', encoding='utf-8') as fp:
+        for domain in sorted(domains):
+            fp.write(domain + '\n')
+    
+    logger.info(f"合并完成: {len(domains)} 个域名 -> {output_file}")
+    return output_file
+
+
 @flow(
     name="subdomain_discovery", 
     log_prints=True,
@@ -231,38 +327,30 @@ def subdomain_discovery_flow(
     enabled_tools: dict
 ) -> dict:
     """
-    子域名发现扫描流程
+    子域名发现扫描流程（增强版）
     
-    工作流程：
-        Step 0: 准备工作（目录创建、域名验证）
-        Step 1: 解析配置，获取启用的工具
-        Step 2: 并行运行扫描工具
-        Step 3: 合并并去重域名
-        Step 4: 保存到数据库
+    工作流程（4 阶段）：
+        Stage 1: 被动收集（并行） - 必选
+        Stage 2: 字典爆破（可选） - dnsx bruteforce
+        Stage 3: 变异生成 + 验证（可选） - dnsgen | dnsx 流式管道
+        Stage 4: DNS 存活验证（可选） - dnsx resolve
+        Final: 保存到数据库
     
     Args:
         scan_id: 扫描任务 ID
         target_name: 目标名称（域名）
         target_id: 目标 ID
         scan_workspace_dir: Scan 工作空间目录（由 Service 层创建）
-        enabled_tools: 启用的工具配置字典
+        enabled_tools: 扫描配置字典:
+            {
+                'passive_tools': {...},
+                'bruteforce': {...},
+                'permutation': {...},
+                'resolve': {...}
+            }
     
     Returns:
-        dict: {
-            'success': bool,
-            'scan_id': int,
-            'target': str,
-            'scan_workspace_dir': str,
-            'total': int,
-            'executed_tasks': list,
-            'tool_stats': {
-                'total': int,                    # 总工具数
-                'successful': int,               # 成功工具数
-                'failed': int,                   # 失败工具数
-                'successful_tools': list[str],   # 成功工具列表 ['subfinder', 'amass']
-                'failed_tools': list[dict]       # 失败工具列表 [{'tool': 'oneforall', 'reason': '超时'}]
-            }
-        }
+        dict: 扫描结果
     
     Raises:
         ValueError: 配置错误
@@ -279,24 +367,12 @@ def subdomain_discovery_flow(
         if enabled_tools is None:
             raise ValueError("enabled_tools 不能为空")
         
+        scan_config = enabled_tools
+        
         # 如果未提供目标域名，跳过扫描
         if not target_name:
             logger.warning("未提供目标域名，跳过子域名发现扫描")
-            return {
-                'success': True,
-                'scan_id': scan_id,
-                'target': '',
-                'scan_workspace_dir': scan_workspace_dir,
-                'total': 0,
-                'executed_tasks': [],
-                'tool_stats': {
-                    'total': 0,
-                    'successful': 0,
-                    'failed': 0,
-                    'successful_tools': [],
-                    'failed_tools': []
-                }
-            }
+            return _empty_result(scan_id, '', scan_workspace_dir)
         
         # 导入任务函数
         from apps.scan.tasks.subdomain_discovery import (
@@ -313,71 +389,186 @@ def subdomain_discovery_flow(
             domain_name = _validate_and_normalize_target(target_name)
         except ValueError as e:
             logger.warning("目标域名无效，跳过子域名发现扫描: %s", e)
-            return {
-                'success': True,
-                'scan_id': scan_id,
-                'target': target_name,
-                'scan_workspace_dir': scan_workspace_dir,
-                'total': 0,
-                'executed_tasks': [],
-                'tool_stats': {
-                    'total': 0,
-                    'successful': 0,
-                    'failed': 0,
-                    'successful_tools': [],
-                    'failed_tools': []
-                }
-            }
+            return _empty_result(scan_id, target_name, scan_workspace_dir)
         
-        # 验证成功后打印日志（使用规范化后的域名）
+        # 验证成功后打印日志
         logger.info(
             "="*60 + "\n" +
-            "开始子域名发现扫描\n" +
+            "开始子域名发现扫描（增强版）\n" +
             f"  Scan ID: {scan_id}\n" +
             f"  Domain: {domain_name}\n" +
             f"  Workspace: {scan_workspace_dir}\n" +
             "="*60
         )
         
-        # Step 1: 工具配置信息
-        logger.info("Step 1: 工具配置信息")
-        logger.info(
-            "✓ 启用工具: %s",
-            ', '.join(enabled_tools.keys())
-        )
+        # 解析配置
+        passive_tools = scan_config.get('passive_tools', {})
+        bruteforce_config = scan_config.get('bruteforce', {})
+        permutation_config = scan_config.get('permutation', {})
+        resolve_config = scan_config.get('resolve', {})
         
-        # Step 2: 并行运行扫描工具
-        logger.info("Step 2: 并行运行扫描工具")
-        result_files, failed_tools, successful_tool_names = _run_scans_parallel(
-            enabled_tools=enabled_tools,
-            domain_name=domain_name,
-            result_dir=result_dir
-        )
+        # 过滤出启用的被动工具
+        enabled_passive_tools = {
+            k: v for k, v in passive_tools.items() 
+            if v.get('enabled', True)
+        }
         
-        # Step 3: 合并并去重域名
-        logger.info("Step 3: 合并并去重域名")
+        executed_tasks = []
+        all_result_files = []
+        failed_tools = []
+        successful_tool_names = []
         
-        merged_file = merge_and_validate_task(
-            result_files=result_files,
+        # ==================== Stage 1: 被动收集（并行）====================
+        logger.info("=" * 40)
+        logger.info("Stage 1: 被动收集（并行）")
+        logger.info("=" * 40)
+        
+        if enabled_passive_tools:
+            logger.info("启用工具: %s", ', '.join(enabled_passive_tools.keys()))
+            result_files, stage1_failed, stage1_success = _run_scans_parallel(
+                enabled_tools=enabled_passive_tools,
+                domain_name=domain_name,
+                result_dir=result_dir
+            )
+            all_result_files.extend(result_files)
+            failed_tools.extend(stage1_failed)
+            successful_tool_names.extend(stage1_success)
+            executed_tasks.extend([f'passive ({tool})' for tool in stage1_success])
+        else:
+            logger.warning("未启用任何被动收集工具")
+        
+        # 合并 Stage 1 结果
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        current_result = str(result_dir / f"subs_passive_{timestamp}.txt")
+        if all_result_files:
+            current_result = _merge_files(all_result_files, current_result)
+            executed_tasks.append('merge_passive')
+        else:
+            # 创建空文件
+            Path(current_result).touch()
+            logger.warning("Stage 1 无结果，创建空文件")
+        
+        # ==================== Stage 2: 字典爆破（可选）====================
+        bruteforce_enabled = bruteforce_config.get('enabled', False)
+        if bruteforce_enabled:
+            logger.info("=" * 40)
+            logger.info("Stage 2: 字典爆破")
+            logger.info("=" * 40)
+            
+            dnsx_config = bruteforce_config.get('dnsx_bruteforce', {})
+            wordlist_name = dnsx_config.get('wordlist_name', 'dns_wordlist.txt')
+            
+            # 获取字典路径
+            wordlist_service = WordlistService()
+            wordlist = wordlist_service.get_wordlist_by_name(wordlist_name)
+            
+            if wordlist and wordlist.file_path:
+                brute_output = str(result_dir / f"subs_brute_{timestamp}.txt")
+                brute_result = _run_single_tool(
+                    tool_name='dnsx_bruteforce',
+                    tool_config=dnsx_config,
+                    command_params={
+                        'domain': domain_name,
+                        'wordlist': wordlist.file_path,
+                        'output_file': brute_output
+                    },
+                    result_dir=result_dir
+                )
+                
+                if brute_result:
+                    # 合并 Stage 1 + Stage 2
+                    current_result = _merge_files(
+                        [current_result, brute_result],
+                        str(result_dir / f"subs_merged_{timestamp}.txt")
+                    )
+                    successful_tool_names.append('dnsx_bruteforce')
+                    executed_tasks.append('bruteforce')
+                else:
+                    failed_tools.append({'tool': 'dnsx_bruteforce', 'reason': '执行失败'})
+            else:
+                logger.warning(f"字典 {wordlist_name} 不存在，跳过字典爆破")
+        
+        # ==================== Stage 3: 变异生成 + 验证（可选）====================
+        permutation_enabled = permutation_config.get('enabled', False)
+        if permutation_enabled:
+            logger.info("=" * 40)
+            logger.info("Stage 3: 变异生成 + 存活验证（流式管道）")
+            logger.info("=" * 40)
+            
+            dnsgen_config = permutation_config.get('dnsgen_resolve', {})
+            permuted_output = str(result_dir / f"subs_permuted_{timestamp}.txt")
+            
+            permuted_result = _run_single_tool(
+                tool_name='dnsgen_resolve',
+                tool_config=dnsgen_config,
+                command_params={
+                    'input_file': current_result,
+                    'output_file': permuted_output,
+                    'domain': domain_name  # 用于 -wd 通配符过滤
+                },
+                result_dir=result_dir
+            )
+            
+            if permuted_result:
+                # 合并原结果 + 变异验证结果
+                current_result = _merge_files(
+                    [current_result, permuted_result],
+                    str(result_dir / f"subs_with_permuted_{timestamp}.txt")
+                )
+                successful_tool_names.append('dnsgen_resolve')
+                executed_tasks.append('permutation')
+            else:
+                failed_tools.append({'tool': 'dnsgen_resolve', 'reason': '执行失败'})
+        
+        # ==================== Stage 4: DNS 存活验证（可选）====================
+        # 如果启用了 Stage 3，则跳过 Stage 4（Stage 3 已包含验证）
+        resolve_enabled = resolve_config.get('enabled', False) and not permutation_enabled
+        if resolve_enabled:
+            logger.info("=" * 40)
+            logger.info("Stage 4: DNS 存活验证")
+            logger.info("=" * 40)
+            
+            dnsx_resolve_config = resolve_config.get('dnsx_resolve', {})
+            alive_output = str(result_dir / f"subs_alive_{timestamp}.txt")
+            
+            alive_result = _run_single_tool(
+                tool_name='dnsx_resolve',
+                tool_config=dnsx_resolve_config,
+                command_params={
+                    'input_file': current_result,
+                    'output_file': alive_output,
+                    'domain': domain_name  # 用于 -wd 通配符过滤
+                },
+                result_dir=result_dir
+            )
+            
+            if alive_result:
+                current_result = alive_result
+                successful_tool_names.append('dnsx_resolve')
+                executed_tasks.append('resolve')
+            else:
+                failed_tools.append({'tool': 'dnsx_resolve', 'reason': '执行失败'})
+        
+        # ==================== Final: 保存到数据库 ====================
+        logger.info("=" * 40)
+        logger.info("Final: 保存到数据库")
+        logger.info("=" * 40)
+        
+        # 最终验证和保存
+        final_file = merge_and_validate_task(
+            result_files=[current_result],
             result_dir=str(result_dir)
         )
         
-        # Step 4: 保存到数据库
-        logger.info("Step 4: 保存到数据库")
-        
         save_result = save_domains_task(
-            domains_file=merged_file,
+            domains_file=final_file,
             scan_id=scan_id,
             target_id=target_id
         )
         processed_domains = save_result.get('processed_records', 0)
+        executed_tasks.append('save_domains')
         
         logger.info("="*60 + "\n✓ 子域名发现扫描完成\n" + "="*60)
-        
-        # 动态生成已执行的任务列表
-        executed_tasks = ['parse_config']
-        executed_tasks.extend([f'run_scanner ({tool})' for tool in successful_tool_names])
-        executed_tasks.extend(['merge_and_validate', 'save_domains'])
         
         return {
             'success': True,
@@ -387,11 +578,12 @@ def subdomain_discovery_flow(
             'total': processed_domains,
             'executed_tasks': executed_tasks,
             'tool_stats': {
-                'total': len(enabled_tools),
+                'total': len(enabled_passive_tools) + (1 if bruteforce_enabled else 0) + 
+                         (1 if permutation_enabled else 0) + (1 if resolve_enabled else 0),
                 'successful': len(successful_tool_names),
                 'failed': len(failed_tools),
                 'successful_tools': successful_tool_names,
-                'failed_tools': failed_tools  # [{'tool': 'subfinder', 'reason': '超时'}]
+                'failed_tools': failed_tools
             }
         }
         
@@ -404,3 +596,22 @@ def subdomain_discovery_flow(
     except Exception as e:
         logger.exception("子域名发现扫描失败: %s", e)
         raise
+
+
+def _empty_result(scan_id: int, target: str, scan_workspace_dir: str) -> dict:
+    """返回空结果"""
+    return {
+        'success': True,
+        'scan_id': scan_id,
+        'target': target,
+        'scan_workspace_dir': scan_workspace_dir,
+        'total': 0,
+        'executed_tasks': [],
+        'tool_stats': {
+            'total': 0,
+            'successful': 0,
+            'failed': 0,
+            'successful_tools': [],
+            'failed_tools': []
+        }
+    }

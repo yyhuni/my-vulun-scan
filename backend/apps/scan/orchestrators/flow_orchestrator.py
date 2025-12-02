@@ -138,9 +138,17 @@ class FlowOrchestrator:
             return False
             
         scan_config = self.config.get(scan_type, {})
-        tools = scan_config.get('tools', {})
         
-        # 检查是否有任何工具被启用
+        # 子域名发现使用 passive_tools 结构
+        if scan_type == 'subdomain_discovery':
+            passive_tools = scan_config.get('passive_tools', {})
+            for tool_config in passive_tools.values():
+                if isinstance(tool_config, dict) and tool_config.get('enabled', False):
+                    return True
+            return False
+        
+        # 其他扫描类型：检查 tools
+        tools = scan_config.get('tools', {})
         for tool_config in tools.values():
             if tool_config.get('enabled', False):
                 return True

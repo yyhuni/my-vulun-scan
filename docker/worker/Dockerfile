@@ -14,11 +14,15 @@ RUN go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest && \
     go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest && \
     go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest && \
     go install -v github.com/projectdiscovery/katana/cmd/katana@latest && \
+    go install -v github.com/projectdiscovery/dnsx/cmd/dnsx@latest && \
     go install -v github.com/tomnomnom/assetfinder@latest && \
     go install -v github.com/ffuf/ffuf/v2@latest
 
 # 安装 Amass v5（禁用 CGO 以跳过 libpostal 依赖）
 RUN CGO_ENABLED=0 go install -v github.com/owasp-amass/amass/v5/cmd/amass@main
+
+# 安装漏洞扫描器
+RUN go install github.com/hahwul/dalfox/v2@latest
 
 # 第二阶段：运行时镜像
 FROM ubuntu:24.04
@@ -53,7 +57,8 @@ RUN ln -s /usr/bin/python3 /usr/bin/python
 # 2. 使用 pipx 安装 Python 扫描工具
 ENV PATH="/root/.local/bin:$PATH"
 RUN pipx install uro && \
-    pipx install waymore
+    pipx install waymore && \
+    pipx install dnsgen
 
 # 3. 安装 Sublist3r（统一放在 /opt/xingrin/tools 下）
 RUN git clone https://github.com/aboul3la/Sublist3r.git /opt/xingrin/tools/Sublist3r && \
