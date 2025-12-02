@@ -463,6 +463,32 @@ def subdomain_discovery_flow(
             wordlist = wordlist_service.get_wordlist_by_name(wordlist_name)
             
             if wordlist and wordlist.file_path:
+                timeout_value = dnsx_config.get('timeout', 3600)
+                if timeout_value == 'auto':
+                    line_count = getattr(wordlist, 'line_count', None)
+                    if line_count is None:
+                        try:
+                            with open(wordlist.file_path, 'rb') as f:
+                                line_count = sum(1 for _ in f)
+                        except OSError:
+                            line_count = 0
+
+                    try:
+                        line_count_int = int(line_count)
+                    except (TypeError, ValueError):
+                        line_count_int = 0
+
+                    timeout_value = line_count_int * 3 if line_count_int > 0 else 3600
+                    dnsx_config = {
+                        **dnsx_config,
+                        'timeout': timeout_value,
+                    }
+                    logger.info(
+                        "dnsx_bruteforce 使用自动 timeout: %s 秒 (字典行数=%s, 3秒/行)",
+                        timeout_value,
+                        line_count_int,
+                    )
+
                 brute_output = str(result_dir / f"subs_brute_{timestamp}.txt")
                 brute_result = _run_single_tool(
                     tool_name='dnsx_bruteforce',
@@ -504,7 +530,6 @@ def subdomain_discovery_flow(
                 command_params={
                     'input_file': current_result,
                     'output_file': permuted_output,
-                    'domain': domain_name  # 用于 -wd 通配符过滤
                 },
                 result_dir=result_dir
             )
@@ -521,14 +546,41 @@ def subdomain_discovery_flow(
                 failed_tools.append({'tool': 'dnsgen_resolve', 'reason': '执行失败'})
         
         # ==================== Stage 4: DNS 存活验证（可选）====================
-        # 如果启用了 Stage 3，则跳过 Stage 4（Stage 3 已包含验证）
-        resolve_enabled = resolve_config.get('enabled', False) and not permutation_enabled
+        # 无论是否启用 Stage 3，只要 resolve.enabled 为 true 就会执行，对当前所有候选子域做统一 DNS 验证
+        resolve_enabled = resolve_config.get('enabled', False)
         if resolve_enabled:
             logger.info("=" * 40)
             logger.info("Stage 4: DNS 存活验证")
             logger.info("=" * 40)
             
             dnsx_resolve_config = resolve_config.get('dnsx_resolve', {})
+
+            # 根据当前候选子域数量动态计算 timeout（支持 timeout: auto）
+            timeout_value = dnsx_resolve_config.get('timeout', 3600)
+            if timeout_value == 'auto':
+                line_count = 0
+                try:
+                    with open(current_result, 'rb') as f:
+                        line_count = sum(1 for _ in f)
+                except OSError:
+                    line_count = 0
+
+                try:
+                    line_count_int = int(line_count)
+                except (TypeError, ValueError):
+                    line_count_int = 0
+
+                timeout_value = line_count_int * 3 if line_count_int > 0 else 3600
+                dnsx_resolve_config = {
+                    **dnsx_resolve_config,
+                    'timeout': timeout_value,
+                }
+                logger.info(
+                    "dnsx_resolve 使用自动 timeout: %s 秒 (候选子域数=%s, 3秒/域名)",
+                    timeout_value,
+                    line_count_int,
+                )
+
             alive_output = str(result_dir / f"subs_alive_{timestamp}.txt")
             
             alive_result = _run_single_tool(
@@ -537,7 +589,6 @@ def subdomain_discovery_flow(
                 command_params={
                     'input_file': current_result,
                     'output_file': alive_output,
-                    'domain': domain_name  # 用于 -wd 通配符过滤
                 },
                 result_dir=result_dir
             )

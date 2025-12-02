@@ -52,7 +52,7 @@ subdomain_discovery:
   bruteforce:
     enabled: false                       # 是否启用字典爆破
     dnsx_bruteforce:
-      timeout: 7200                      # 2小时
+      timeout: auto                      # 自动根据字典行数计算（后续代码中按行数 * 3 秒实现）
       wordlist_name: dns_wordlist.txt    # 字典名称，对应「字典管理」中的 Wordlist.name
       threads: 500                       # 高并发
       # rate-limit: 1000                 # 可选，每秒最多请求数
@@ -66,11 +66,10 @@ subdomain_discovery:
       threads: 200                       # dnsx 并发数
 
   # === Stage 4: DNS 存活验证（可选）===
-  # 注意：如果启用了 Stage 3，则 Stage 4 会被跳过（Stage 3 已包含验证）
   resolve:
     enabled: true                        # 是否启用存活验证
     dnsx_resolve:
-      timeout: 7200                      # 2小时
+      timeout: auto                      # 自动根据候选子域数量计算（在 Flow 中按行数 * 3 秒实现）
       threads: 200                       # 并发数
       # rate-limit: 500                  # 可选，限速
       retry: 3                           # 重试次数

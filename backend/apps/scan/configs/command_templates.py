@@ -60,9 +60,9 @@ SUBDOMAIN_DISCOVERY_COMMANDS = {
     # === DNS 存活验证 ===
     'dnsx_resolve': {
         # 验证子域名是否能解析（存活验证）
-        # -l 输入文件，-a 查询 A 记录，-resp-only 只输出能解析的域名
-        # -wd 自动过滤通配符子域名（必须传入目标域名）
-        'base': 'dnsx -l {input_file} -wd {domain} -a -resp-only -silent -o {output_file}',
+        # -l 输入文件（子域名列表）
+        # -silent 安静模式，只输出最终域名列表到文件
+        'base': 'dnsx -l {input_file} -silent -o {output_file}',
         'optional': {
             'threads': '-t {threads}',                       # 并发数
             'rate-limit': '-rl {rate-limit}',                # 限速
@@ -73,9 +73,8 @@ SUBDOMAIN_DISCOVERY_COMMANDS = {
     # === 变异生成 + 存活验证（流式管道，避免 OOM）===
     'dnsgen_resolve': {
         # 流式管道：dnsgen 生成变异域名 | dnsx 验证存活
-        # 不落盘中间文件，避免内存爆炸
-        # -wd 自动过滤通配符子域名（必须传入目标域名）
-        'base': 'cat {input_file} | dnsgen - | dnsx -wd {domain} -a -resp-only -silent -o {output_file}',
+        # 不落盘中间文件，避免内存爆炸；不做通配符过滤
+        'base': 'cat {input_file} | dnsgen - | dnsx -silent -o {output_file}',
         'optional': {
             'threads': '-t {threads}',                       # dnsx 并发数
         }
