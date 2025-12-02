@@ -1,10 +1,10 @@
 """
 URL Fetch 主 Flow
 
-负责编排被动收集和爬虫子 Flow，以及统一的后处理（uro 去重、httpx 验证）
+负责编排不同输入类型的 URL 获取子 Flow（domains_file / sites_file），以及统一的后处理（uro 去重、httpx 验证）
 
 架构：
-- 调用 passive_flow（被动收集）和 crawl_flow（爬虫）
+- 调用 domains_url_fetch_flow（domains_file 输入）和 sites_url_fetch_flow（sites_file 输入）
 - 合并两个子 Flow 的结果
 - 统一进行 uro 去重（如果启用）
 - 统一进行 httpx 验证（如果启用）
@@ -28,18 +28,18 @@ from apps.scan.handlers.scan_flow_handlers import (
     on_scan_flow_crashed
 )
 
-from .passive_flow import url_passive_flow
-from .crawl_flow import url_crawl_flow
+from .domains_url_fetch_flow import domains_url_fetch_flow
+from .sites_url_fetch_flow import sites_url_fetch_flow
 from .utils import calculate_timeout_by_line_count
 
 logger = logging.getLogger(__name__)
 
 
 # ==================== 工具分类配置 ====================
-# 被动收集工具：使用 domains_file 作为输入
-PASSIVE_TOOLS = {'waymore', 'gau', 'waybackurls'}
-# 爬虫工具：使用 sites_file 作为输入
-CRAWL_TOOLS = {'katana', 'gospider', 'hakrawler'}
+# 使用 domains_file 作为输入的 URL 获取工具
+DOMAINS_FILE_TOOLS = {'waymore', 'gau', 'waybackurls'}
+# 使用 sites_file 作为输入的 URL 获取工具
+SITES_FILE_TOOLS = {'katana', 'gospider', 'hakrawler'}
 # 后处理工具：不参与获取，用于清理和验证
 POST_PROCESS_TOOLS = {'uro', 'httpx'}
 
@@ -70,9 +70,9 @@ def _classify_tools(enabled_tools: dict) -> tuple[dict, dict, dict, dict]:
     httpx_config = None
     
     for tool_name, tool_config in enabled_tools.items():
-        if tool_name in PASSIVE_TOOLS:
+        if tool_name in DOMAINS_FILE_TOOLS:
             passive_tools[tool_name] = tool_config
-        elif tool_name in CRAWL_TOOLS:
+        elif tool_name in SITES_FILE_TOOLS:
             crawl_tools[tool_name] = tool_config
         elif tool_name == 'uro':
             uro_config = tool_config
@@ -338,7 +338,7 @@ def url_fetch_flow(
         # 3a: 被动收集
         if passive_tools:
             logger.info("Step 3a: 执行被动收集子 Flow")
-            passive_result = url_passive_flow(
+            passive_result = domains_url_fetch_flow(
                 scan_id=scan_id,
                 target_id=target_id,
                 target_name=target_name,
@@ -352,7 +352,7 @@ def url_fetch_flow(
         # 3b: 爬虫
         if crawl_tools:
             logger.info("Step 3b: 执行爬虫子 Flow")
-            crawl_result = url_crawl_flow(
+            crawl_result = sites_url_fetch_flow(
                 scan_id=scan_id,
                 target_id=target_id,
                 target_name=target_name,
@@ -417,9 +417,9 @@ def url_fetch_flow(
         # 构建已执行的任务列表
         executed_tasks = ['setup_directory', 'classify_tools']
         if passive_tools:
-            executed_tasks.append('passive_flow')
+            executed_tasks.append('domains_url_fetch_flow')
         if crawl_tools:
-            executed_tasks.append('crawl_flow')
+            executed_tasks.append('sites_url_fetch_flow')
         executed_tasks.append('merge_and_deduplicate')
         if uro_config and uro_config.get('enabled', False):
             executed_tasks.append('uro_clean')

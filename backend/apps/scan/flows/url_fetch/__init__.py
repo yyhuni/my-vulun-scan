@@ -8,11 +8,11 @@ URL Fetch Flow 模块
 """
 
 from .main_flow import url_fetch_flow
-from .passive_flow import url_passive_flow
-from .crawl_flow import url_crawl_flow
+from .domains_url_fetch_flow import domains_url_fetch_flow
+from .sites_url_fetch_flow import sites_url_fetch_flow
 
 __all__ = [
     'url_fetch_flow',
-    'url_passive_flow',
-    'url_crawl_flow',
+    'domains_url_fetch_flow',
+    'sites_url_fetch_flow',
 ]

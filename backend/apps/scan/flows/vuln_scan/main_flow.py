@@ -13,7 +13,7 @@ from apps.scan.handlers.scan_flow_handlers import (
     on_scan_flow_crashed,
 )
 from apps.scan.configs.command_templates import get_command_template
-from .endpoint_scan_flow import endpoint_scan_flow
+from .endpoints_vuln_scan_flow import endpoints_vuln_scan_flow
 
 
 logger = logging.getLogger(__name__)
@@ -93,7 +93,7 @@ def vuln_scan_flow(
             raise ValueError("漏洞扫描需要至少启用一个以 endpoints_file 为输入的工具（如 dalfox_xss）。")
 
         # Step 2: 执行 Endpoint 漏洞扫描子 Flow（串行）
-        endpoint_result = endpoint_scan_flow(
+        endpoint_result = endpoints_vuln_scan_flow(
             scan_id=scan_id,
             target_name=target_name,
             target_id=target_id,

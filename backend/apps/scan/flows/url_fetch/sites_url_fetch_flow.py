@@ -50,8 +50,8 @@ def _export_sites_file(target_id: int, scan_id: int, output_dir: Path) -> tuple[
     return output_file, count
 
 
-@flow(name="url_crawl", log_prints=True)
-def url_crawl_flow(
+@flow(name="sites_url_fetch_flow", log_prints=True)
+def sites_url_fetch_flow(
     scan_id: int,
     target_id: int,
     target_name: str,
@@ -133,7 +133,7 @@ def url_crawl_flow(
         return {
             'success': False,
             'result_files': [],
-            'failed_tools': [{'tool': 'crawl_flow', 'reason': str(e)}],
+            'failed_tools': [{'tool': 'sites_url_fetch_flow', 'reason': str(e)}],
             'successful_tools': [],
             'sites_count': 0
         }

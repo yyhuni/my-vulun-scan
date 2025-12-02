@@ -50,8 +50,8 @@ def _export_domains_file(target_id: int, scan_id: int, output_dir: Path) -> tupl
     return output_file, count
 
 
-@flow(name="url_passive_collect", log_prints=True)
-def url_passive_flow(
+@flow(name="domains_url_fetch_flow", log_prints=True)
+def domains_url_fetch_flow(
     scan_id: int,
     target_id: int,
     target_name: str,
@@ -133,7 +133,7 @@ def url_passive_flow(
         return {
             'success': False,
             'result_files': [],
-            'failed_tools': [{'tool': 'passive_flow', 'reason': str(e)}],
+            'failed_tools': [{'tool': 'domains_url_fetch_flow', 'reason': str(e)}],
             'successful_tools': [],
             'domains_count': 0
         }

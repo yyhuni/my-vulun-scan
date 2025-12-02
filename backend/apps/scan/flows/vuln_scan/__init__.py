@@ -6,9 +6,9 @@
 """
 
 from .main_flow import vuln_scan_flow
-from .endpoint_scan_flow import endpoint_scan_flow
+from .endpoints_vuln_scan_flow import endpoints_vuln_scan_flow
 
 __all__ = [
     "vuln_scan_flow",
-    "endpoint_scan_flow",
+    "endpoints_vuln_scan_flow",
 ]
