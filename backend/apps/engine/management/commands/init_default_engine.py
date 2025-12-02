@@ -79,7 +79,10 @@ class Command(BaseCommand):
             # 只处理受支持且结构为 {tools: {...}} 的扫描类型
             if scan_type not in supported_scan_types:
                 continue
-            if not isinstance(scan_cfg, dict) or 'tools' not in scan_cfg:
+            if not isinstance(scan_cfg, dict):
+                continue
+            # subdomain_discovery 使用 4 阶段新结构（无 tools 字段），其他扫描类型仍要求有 tools
+            if scan_type != 'subdomain_discovery' and 'tools' not in scan_cfg:
                 continue
 
             # 构造只包含当前扫描类型配置的 YAML

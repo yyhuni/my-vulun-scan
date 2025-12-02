@@ -52,7 +52,7 @@ subdomain_discovery:
   bruteforce:
     enabled: false                       # 是否启用字典爆破
     dnsx_bruteforce:
-      timeout: 3600                      # 1小时
+      timeout: 7200                      # 2小时
       wordlist_name: dns_wordlist.txt    # 字典名称，对应「字典管理」中的 Wordlist.name
       threads: 500                       # 高并发
       # rate-limit: 1000                 # 可选，每秒最多请求数
