@@ -14,8 +14,8 @@ from apps.scan.handlers.scan_flow_handlers import (
     on_scan_flow_cancelled,
     on_scan_flow_crashed,
 )
-from apps.scan.utils import build_scan_command, execute_and_wait
-from apps.scan.tasks.vuln_scan import export_endpoints_task
+from apps.scan.utils import build_scan_command
+from apps.scan.tasks.vuln_scan import export_endpoints_task, run_vuln_tool_task
 
 
 logger = logging.getLogger(__name__)
@@ -102,12 +102,13 @@ def endpoint_scan_flow(
             log_file = vuln_scan_dir / f"{tool_name}_{timestamp}.log"
 
             logger.info("开始执行漏洞扫描工具 %s", tool_name)
-            result = execute_and_wait(
+            future = run_vuln_tool_task.submit(
                 tool_name=tool_name,
                 command=command,
                 timeout=timeout,
                 log_file=str(log_file),
             )
+            result = future.result()
 
             tool_results[tool_name] = {
                 "command": command,
