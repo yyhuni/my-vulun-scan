@@ -16,6 +16,7 @@ from apps.scan.handlers.scan_flow_handlers import (
 )
 from apps.scan.utils import build_scan_command
 from apps.scan.tasks.vuln_scan import export_endpoints_task, run_vuln_tool_task
+from .utils import calculate_timeout_by_line_count
 
 
 logger = logging.getLogger(__name__)
@@ -93,10 +94,24 @@ def endpoint_scan_flow(
             )
 
             raw_timeout = tool_config.get("timeout", 600)
-            try:
-                timeout = int(raw_timeout)
-            except (TypeError, ValueError):
-                timeout = 600
+            timeout = 600
+
+            if isinstance(raw_timeout, str) and raw_timeout == "auto":
+                timeout = calculate_timeout_by_line_count(
+                    tool_config=tool_config,
+                    file_path=str(endpoints_file),
+                    base_per_time=1,
+                )
+            else:
+                try:
+                    timeout = int(raw_timeout)
+                except (TypeError, ValueError):
+                    logger.warning(
+                        "工具 %s 的 timeout 配置无效(%s)，将使用默认 600 秒",
+                        tool_name,
+                        raw_timeout,
+                    )
+                    timeout = 600
 
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             log_file = vuln_scan_dir / f"{tool_name}_{timestamp}.log"
