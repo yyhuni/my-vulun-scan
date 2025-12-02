@@ -107,67 +107,81 @@ def save_urls_task(
         # 创建快照服务（统一负责快照 + 资产双写）
         snapshots_service = EndpointSnapshotsService()
         
-        # 读取并解析 URL
-        parsed_urls = []
+        # 按批次流式读取并解析 URL，避免一次性加载全部到内存
         total_urls = 0
         invalid_urls = 0
-        
+        valid_urls = 0
+        saved_count = 0
+        skipped_count = 0
+        batch_index = 0
+        current_batch: list[EndpointSnapshotDTO] = []
+
         with open(urls_file, 'r') as f:
             for line in f:
                 url = line.strip()
                 if not url:
                     continue
-                
+
                 total_urls += 1
-                
+
                 # 解析 URL
                 parsed = _parse_url(url)
-                if parsed:
-                    parsed_urls.append(parsed)
-                else:
+                if not parsed:
                     invalid_urls += 1
-        
-        if not parsed_urls:
+                    continue
+
+                valid_urls += 1
+                current_batch.append(
+                    EndpointSnapshotDTO(
+                        scan_id=scan_id,
+                        url=parsed.url,
+                        host=parsed.domain,  # 设置 host 字段
+                        target_id=target_id,  # 用于同步到资产表
+                    )
+                )
+
+                # 达到批次大小时写入数据库
+                if len(current_batch) >= batch_size:
+                    batch_index += 1
+                    try:
+                        snapshots_service.save_and_sync(current_batch)
+                        created_count = len(current_batch)
+                        saved_count += created_count
+                        logger.debug(f"批次 {batch_index}: 保存 {created_count} 个 URL")
+                    except Exception as e:
+                        logger.error(f"批量保存失败（批次 {batch_index}）: {e}")
+                        skipped_count += len(current_batch)
+                    finally:
+                        current_batch = []
+
+        # 处理最后不足一个批次的 URL
+        if current_batch:
+            batch_index += 1
+            try:
+                snapshots_service.save_and_sync(current_batch)
+                created_count = len(current_batch)
+                saved_count += created_count
+                logger.debug(f"批次 {batch_index}: 保存 {created_count} 个 URL")
+            except Exception as e:
+                logger.error(f"批量保存失败（批次 {batch_index}）: {e}")
+                skipped_count += len(current_batch)
+
+        if valid_urls == 0:
             logger.warning("没有有效的 URL 需要保存")
             return {
                 'saved_urls': 0,
                 'total_urls': total_urls,
-                'skipped_urls': invalid_urls
+                'skipped_urls': invalid_urls,
             }
-        
-        logger.info(f"准备保存 {len(parsed_urls)} 个有效 URL（总计: {total_urls}，无效: {invalid_urls}）")
-        
-        # 批量创建 Endpoint 快照记录（通过快照服务同步到资产表）
-        saved_count = 0
-        skipped_count = 0
-        
-        for i in range(0, len(parsed_urls), batch_size):
-            batch = parsed_urls[i:i+batch_size]
-            
-            # 准备 EndpointSnapshotDTO 对象
-            snapshot_items = []
-            for parsed in batch:
-                snapshot_items.append(EndpointSnapshotDTO(
-                    scan_id=scan_id,
-                    url=parsed.url,
-                    host=parsed.domain,  # 设置 host 字段
-                    target_id=target_id,  # 用于同步到资产表
-                ))
-            
-            if snapshot_items:
-                # 批量保存快照并同步到资产表（内部通过唯一约束 + ignore_conflicts 去重）
-                try:
-                    snapshots_service.save_and_sync(snapshot_items)
-                    created_count = len(snapshot_items)
-                    saved_count += created_count
-                    
-                    logger.debug(f"批次 {i//batch_size + 1}: 保存 {created_count} 个 URL")
-                    
-                except Exception as e:
-                    logger.error(f"批量保存失败: {e}")
-                    skipped_count += len(snapshot_items)
-        
-        # 计算最终跳过的数量
+
+        logger.info(
+            "准备保存 %d 个有效 URL（总计: %d，无效: %d）",
+            valid_urls,
+            total_urls,
+            invalid_urls,
+        )
+
+        # 计算最终跳过的数量（包括无效 URL 和保存失败的 URL）
         final_skipped = total_urls - saved_count
         
         logger.info(
