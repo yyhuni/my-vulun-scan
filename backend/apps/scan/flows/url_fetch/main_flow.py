@@ -1,11 +1,11 @@
 """
 URL Fetch 主 Flow
 
-负责编排不同输入类型的 URL 获取子 Flow（domains_file / sites_file），以及统一的后处理（uro 去重、httpx 验证）
+负责编排不同输入类型的 URL 获取子 Flow（domain_name / domains_file / sites_file），以及统一的后处理（uro 去重、httpx 验证）
 
 架构：
-- 调用 domains_url_fetch_flow（domains_file 输入）和 sites_url_fetch_flow（sites_file 输入）
-- 合并两个子 Flow 的结果
+- 调用 domain_name_url_fetch_flow（domain_name 输入）、domains_url_fetch_flow（domains_file 输入）和 sites_url_fetch_flow（sites_file 输入）
+- 合并多个子 Flow 的结果
 - 统一进行 uro 去重（如果启用）
 - 统一进行 httpx 验证（如果启用）
 """
@@ -28,6 +28,7 @@ from apps.scan.handlers.scan_flow_handlers import (
     on_scan_flow_crashed
 )
 
+from .domain_name_url_fetch_flow import domain_name_url_fetch_flow
 from .domains_url_fetch_flow import domains_url_fetch_flow
 from .sites_url_fetch_flow import sites_url_fetch_flow
 from .utils import calculate_timeout_by_line_count
@@ -36,8 +37,10 @@ logger = logging.getLogger(__name__)
 
 
 # ==================== 工具分类配置 ====================
+# 使用 target_name (domain_name) 作为输入的 URL 获取工具
+DOMAIN_NAME_TOOLS = {'waymore'}
 # 使用 domains_file 作为输入的 URL 获取工具
-DOMAINS_FILE_TOOLS = {'waymore', 'gau', 'waybackurls'}
+DOMAINS_FILE_TOOLS = {'gau', 'waybackurls'}
 # 使用 sites_file 作为输入的 URL 获取工具
 SITES_FILE_TOOLS = {'katana', 'gospider', 'hakrawler'}
 # 后处理工具：不参与获取，用于清理和验证
@@ -57,32 +60,35 @@ def _setup_url_fetch_directory(scan_workspace_dir: str) -> Path:
     return url_fetch_dir
 
 
-def _classify_tools(enabled_tools: dict) -> tuple[dict, dict, dict, dict]:
+def _classify_tools(enabled_tools: dict) -> tuple[dict, dict, dict, dict, dict]:
     """
-    将启用的工具分类
+    将启用的工具按输入类型分类
     
     Returns:
-        tuple: (passive_tools, crawl_tools, uro_config, httpx_config)
+        tuple: (domain_name_tools, domains_file_tools, sites_file_tools, uro_config, httpx_config)
     """
-    passive_tools = {}
-    crawl_tools = {}
+    domain_name_tools: dict = {}
+    domains_file_tools: dict = {}
+    sites_file_tools: dict = {}
     uro_config = None
     httpx_config = None
-    
+
     for tool_name, tool_config in enabled_tools.items():
-        if tool_name in DOMAINS_FILE_TOOLS:
-            passive_tools[tool_name] = tool_config
+        if tool_name in DOMAIN_NAME_TOOLS:
+            domain_name_tools[tool_name] = tool_config
+        elif tool_name in DOMAINS_FILE_TOOLS:
+            domains_file_tools[tool_name] = tool_config
         elif tool_name in SITES_FILE_TOOLS:
-            crawl_tools[tool_name] = tool_config
+            sites_file_tools[tool_name] = tool_config
         elif tool_name == 'uro':
             uro_config = tool_config
         elif tool_name == 'httpx':
             httpx_config = tool_config
         else:
-            logger.warning("未知工具类型: %s，将尝试作为被动收集工具", tool_name)
-            passive_tools[tool_name] = tool_config
-    
-    return passive_tools, crawl_tools, uro_config, httpx_config
+            logger.warning("未知工具类型: %s，将尝试作为 domains_file 输入的被动收集工具", tool_name)
+            domains_file_tools[tool_name] = tool_config
+
+    return domain_name_tools, domains_file_tools, sites_file_tools, uro_config, httpx_config
 
 
 def _merge_and_deduplicate_urls(result_files: list, url_fetch_dir: Path) -> tuple[str, int]:
@@ -279,11 +285,12 @@ def url_fetch_flow(
     
     执行流程：
     1. 准备工作目录
-    2. 分类工具（被动收集 / 爬虫 / 后处理）
+    2. 按输入类型分类工具（domain_name / domains_file / sites_file / 后处理）
     3. 并行执行子 Flow
-       - passive_flow: 被动收集（waymore 等）
-       - crawl_flow: 爬虫（katana 等）
-    4. 合并两个子 Flow 的结果
+       - domain_name_url_fetch_flow: 基于 domain_name（来自 target_name）执行 URL 获取（如 waymore）
+       - domains_url_fetch_flow: 基于 domains_file 执行 URL 获取（如 gau、waybackurls）
+       - sites_url_fetch_flow: 基于 sites_file 执行爬虫（如 katana 等）
+    4. 合并所有子 Flow 的结果并去重
     5. uro 去重（如果启用）
     6. httpx 验证（如果启用）
     
@@ -311,20 +318,21 @@ def url_fetch_flow(
         logger.info("Step 1: 准备工作目录")
         url_fetch_dir = _setup_url_fetch_directory(scan_workspace_dir)
         
-        # Step 2: 分类工具
+        # Step 2: 分类工具（按输入类型）
         logger.info("Step 2: 分类工具")
-        passive_tools, crawl_tools, uro_config, httpx_config = _classify_tools(enabled_tools)
-        
+        domain_name_tools, domains_file_tools, sites_file_tools, uro_config, httpx_config = _classify_tools(enabled_tools)
+
         logger.info(
-            "工具分类 - 被动收集: %s, 爬虫: %s, uro: %s, httpx: %s",
-            list(passive_tools.keys()) or '无',
-            list(crawl_tools.keys()) or '无',
+            "工具分类 - domain_name: %s, domains_file: %s, sites_file: %s, uro: %s, httpx: %s",
+            list(domain_name_tools.keys()) or '无',
+            list(domains_file_tools.keys()) or '无',
+            list(sites_file_tools.keys()) or '无',
             '启用' if uro_config else '未启用',
             '启用' if httpx_config else '未启用'
         )
-        
+
         # 检查是否有获取工具
-        if not passive_tools and not crawl_tools:
+        if not domain_name_tools and not domains_file_tools and not sites_file_tools:
             raise ValueError(
                 "URL Fetch 流程需要至少启用一个 URL 获取工具（如 waymore, katana）。"
                 "httpx 和 uro 仅用于后处理，不能单独使用。"
@@ -335,29 +343,43 @@ def url_fetch_flow(
         all_failed_tools = []
         all_successful_tools = []
         
-        # 3a: 被动收集
-        if passive_tools:
-            logger.info("Step 3a: 执行被动收集子 Flow")
+        # 3a: 基于 domain_name（target_name） 的 URL 被动收集（如 waymore）
+        if domain_name_tools:
+            logger.info("Step 3a: 执行基于 domain_name 的 URL 被动收集子 Flow")
+            tn_result = domain_name_url_fetch_flow(
+                scan_id=scan_id,
+                target_id=target_id,
+                target_name=target_name,
+                output_dir=str(url_fetch_dir),
+                domain_name_tools=domain_name_tools,
+            )
+            all_result_files.extend(tn_result.get('result_files', []))
+            all_failed_tools.extend(tn_result.get('failed_tools', []))
+            all_successful_tools.extend(tn_result.get('successful_tools', []))
+
+        # 3b: 基于 domains_file 的 URL 被动收集
+        if domains_file_tools:
+            logger.info("Step 3b: 执行基于 domains_file 的 URL 被动收集子 Flow")
             passive_result = domains_url_fetch_flow(
                 scan_id=scan_id,
                 target_id=target_id,
                 target_name=target_name,
                 output_dir=str(url_fetch_dir),
-                enabled_tools=passive_tools
+                enabled_tools=domains_file_tools,
             )
             all_result_files.extend(passive_result.get('result_files', []))
             all_failed_tools.extend(passive_result.get('failed_tools', []))
             all_successful_tools.extend(passive_result.get('successful_tools', []))
         
-        # 3b: 爬虫
-        if crawl_tools:
-            logger.info("Step 3b: 执行爬虫子 Flow")
+        # 3c: 爬虫（以 sites_file 为输入）
+        if sites_file_tools:
+            logger.info("Step 3c: 执行爬虫子 Flow")
             crawl_result = sites_url_fetch_flow(
                 scan_id=scan_id,
                 target_id=target_id,
                 target_name=target_name,
                 output_dir=str(url_fetch_dir),
-                enabled_tools=crawl_tools
+                enabled_tools=sites_file_tools
             )
             all_result_files.extend(crawl_result.get('result_files', []))
             all_failed_tools.extend(crawl_result.get('failed_tools', []))
@@ -416,9 +438,11 @@ def url_fetch_flow(
         
         # 构建已执行的任务列表
         executed_tasks = ['setup_directory', 'classify_tools']
-        if passive_tools:
+        if domain_name_tools:
+            executed_tasks.append('domain_name_url_fetch_flow')
+        if domains_file_tools:
             executed_tasks.append('domains_url_fetch_flow')
-        if crawl_tools:
+        if sites_file_tools:
             executed_tasks.append('sites_url_fetch_flow')
         executed_tasks.append('merge_and_deduplicate')
         if uro_config and uro_config.get('enabled', False):
@@ -436,7 +460,7 @@ def url_fetch_flow(
             'total': saved_count,
             'executed_tasks': executed_tasks,
             'tool_stats': {
-                'total': len(passive_tools) + len(crawl_tools),
+                'total': len(domain_name_tools) + len(domains_file_tools) + len(sites_file_tools),
                 'successful': len(all_successful_tools),
                 'failed': len(all_failed_tools),
                 'successful_tools': all_successful_tools,

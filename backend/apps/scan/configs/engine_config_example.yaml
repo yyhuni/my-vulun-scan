@@ -96,9 +96,9 @@ url_fetch:
   tools:
     waymore:
       enabled: true
-      timeout: auto      # 工具级别总超时：自动计算（根据站点数量）
-                        # waymore 从历史归档中获取 URL，通常需要较长时间
-                        # 输入类型：domain（域名级别，自动去重同域名站点）
+      timeout: 3600     # 工具级别总超时：固定 3600 秒（按域名 target_name 输入）
+                        # 如果目标较大或希望更快/更慢，可根据需要手动调整秒数
+                        # 输入类型：domain_name（域名级别，自动去重同域名站点）
     
     katana:
       enabled: true

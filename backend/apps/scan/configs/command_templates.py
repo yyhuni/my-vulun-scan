@@ -103,8 +103,8 @@ DIRECTORY_SCAN_COMMANDS = {
 
 URL_FETCH_COMMANDS = {
     'waymore': {
-        'base': 'waymore -i {domains_file} -mode U -oU {output_file}',
-        'input_type': 'domains_file'
+        'base': 'waymore {domain_name} -mode U -oU {output_file}',
+        'input_type': 'domain_name'
     },
     
     'katana': {
