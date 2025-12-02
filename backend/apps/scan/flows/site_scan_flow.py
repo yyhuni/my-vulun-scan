@@ -293,20 +293,18 @@ def _run_scans_sequentially(
     return tool_stats, processed_records, successful_tool_names, failed_tools
 
 
-def calculate_timeout(url_count: int, base: int = 600, per_url: int = 1, max_timeout: int = 86400) -> int:
+def calculate_timeout(url_count: int, base: int = 600, per_url: int = 1) -> int:
     """
-    根据 URL 数量动态计算扫描超时时间（带上限保护）
+    根据 URL 数量动态计算扫描超时时间
 
     规则：
     - 基础时间：默认 600 秒（10 分钟）
     - 每个 URL 额外增加：默认 1 秒
-    - 强制上限：默认 86400 秒（24 小时），防止资源耗尽
 
     Args:
         url_count: URL 数量，必须为正整数
         base: 基础超时时间（秒），默认 600
         per_url: 每个 URL 增加的时间（秒），默认 1
-        max_timeout: 最大超时时间（秒），默认 86400（24 小时）
 
     Returns:
         int: 计算得到的超时时间（秒），不超过 max_timeout
@@ -321,8 +319,8 @@ def calculate_timeout(url_count: int, base: int = 600, per_url: int = 1, max_tim
 
     timeout = base + int(url_count * per_url)
     
-    # 强制上限，防止资源耗尽
-    return min(timeout, max_timeout)
+    # 不设置上限，由调用方根据需要控制
+    return timeout
 
 
 @flow(

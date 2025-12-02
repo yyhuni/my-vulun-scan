@@ -97,8 +97,8 @@ def calculate_directory_scan_timeout(
         # 计算超时时间
         timeout = int(line_count * base_per_word)
         
-        # 设置合理的上下限
-        timeout = max(min_timeout, min(timeout, max_timeout))
+        # 设置合理的下限（不再设置上限）
+        timeout = max(min_timeout, timeout)
         
         logger.info(
             "目录扫描超时计算 - 字典: %s, 行数: %d, 基础时间: %.3f秒/词, 计算超时: %d秒",

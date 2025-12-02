@@ -118,8 +118,8 @@ def merge_and_validate_task(
 
         timeout = 3600
         if total_lines > 0:
-            # 按行数线性计算：每 10 万行约 600 秒
-            base_per_line = 600.0 / 100000.0
+            # 按行数线性计算：每行约 0.1 秒
+            base_per_line = 0.1
             est = int(total_lines * base_per_line)
             timeout = max(600, est)
 

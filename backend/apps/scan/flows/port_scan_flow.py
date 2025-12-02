@@ -80,10 +80,9 @@ def calculate_port_scan_timeout(
         total_work = target_count * port_count
         timeout = int(total_work * base_per_pair)
         
-        # 4. 设置合理的上下限
+        # 4. 设置合理的下限（不再设置上限）
         min_timeout = 60       # 最小 60 秒
-        max_timeout = 172800   # 最大 2 天（2 × 24 × 3600）
-        timeout = max(min_timeout, min(timeout, max_timeout))
+        timeout = max(min_timeout, timeout)
         
         logger.info(
             f"计算端口扫描 timeout - "
