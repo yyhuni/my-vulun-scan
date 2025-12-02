@@ -4,6 +4,9 @@
 用法：
   python manage.py init_default_engine          # 只创建不存在的引擎（不覆盖已有）
   python manage.py init_default_engine --force  # 强制覆盖所有引擎配置
+  
+  cd /root/my-vulun-scan/docker
+  docker compose exec server python backend/manage.py init_default_engine --force
 
 功能：
 - 读取 engine_config_example.yaml 作为默认配置
