@@ -19,7 +19,7 @@ subdomain_discovery:
     subfinder:
       enabled: true
       timeout: 7200      # 2小时（必需）
-      # threads: 10     # 可选，线程数
+      # threads: 10     # 可选，并发 goroutine 数（对应 subfinder -t）
       
     amass_passive:
       enabled: true
@@ -28,7 +28,7 @@ subdomain_discovery:
     amass_active:
       enabled: true
       timeout: 7200     # 2小时（必需）
-      # wordlist: /usr/src/wordlist/deepmagic.com-prefixes-top50000.txt  # 可选，字典文件
+      
       
     sublist3r:
       enabled: true

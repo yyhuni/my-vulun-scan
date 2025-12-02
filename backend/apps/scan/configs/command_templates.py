@@ -13,21 +13,23 @@ SCAN_TOOLS_BASE_PATH = getattr(settings, 'SCAN_TOOLS_BASE_PATH', '/opt/xingrin/t
 
 SUBDOMAIN_DISCOVERY_COMMANDS = {
     'subfinder': {
-        'base': 'subfinder -d {domain} -o {output_file} -silent',
+        # 默认使用所有数据源（更全面，略慢），并始终开启递归
+        # -all       使用所有数据源
+        # -recursive 对支持递归的源启用递归枚举（默认开启）
+        'base': 'subfinder -d {domain} -all -recursive -o {output_file} -silent',
         'optional': {
-            'threads': '-t {threads}'
+            'threads': '-t {threads}',              # 控制并发 goroutine 数
         }
     },
     
     'amass_passive': {
-        'base': 'amass enum -passive -d {domain} -o {output_file}'
+        # 先执行被动枚举，将结果写入 amass 内部数据库，然后从数据库中导出纯域名（names）到 output_file
+        'base': 'amass enum -passive -d {domain} && amass db -d {domain} -names > {output_file}'
     },
     
     'amass_active': {
-        'base': 'amass enum -active -d {domain} -o {output_file} -brute',
-        'optional': {
-            'wordlist': '-w {wordlist}'
-        }
+        # 先执行主动枚举 + 爆破，将结果写入 amass 内部数据库，然后从数据库中导出纯域名（names）到 output_file
+        'base': 'amass enum -active -d {domain} -brute && amass db -d {domain} -names > {output_file}'
     },
     
     'sublist3r': {
