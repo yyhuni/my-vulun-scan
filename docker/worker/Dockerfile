@@ -8,15 +8,17 @@ ENV CGO_ENABLED=1
 # 安装编译依赖
 RUN apt-get update && apt-get install -y libpcap-dev
 
-# 安装 ProjectDiscovery 工具
+# 安装 ProjectDiscovery 工具（需要 CGO 的工具如 naabu）
 RUN go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest && \
     go install -v github.com/projectdiscovery/naabu/v2/cmd/naabu@latest && \
     go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest && \
     go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest && \
     go install -v github.com/projectdiscovery/katana/cmd/katana@latest && \
-    go install -v github.com/owasp-amass/amass/v4/...@master && \
     go install -v github.com/tomnomnom/assetfinder@latest && \
     go install -v github.com/ffuf/ffuf/v2@latest
+
+# 安装 Amass v5（禁用 CGO 以跳过 libpostal 依赖）
+RUN CGO_ENABLED=0 go install -v github.com/owasp-amass/amass/v5/cmd/amass@main
 
 # 第二阶段：运行时镜像
 FROM ubuntu:24.04
