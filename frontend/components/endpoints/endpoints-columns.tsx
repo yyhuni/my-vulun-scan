@@ -18,6 +18,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { MoreHorizontal, Eye, Trash2, ChevronsUpDown, ChevronUp, ChevronDown, Copy, Check } from "lucide-react"
 import type { Endpoint } from "@/types/endpoint.types"
 import { toast } from "sonner"
@@ -240,8 +245,74 @@ export function createEndpointColumns({
         <DataTableColumnHeader column={column} title="URL" />
       ),
       cell: ({ row }) => {
-        const url = row.getValue("url") as string
-        return <CopyableCell value={url} maxWidth="300px" truncateLength={40} successMessage="已复制 URL" />
+        const url = row.getValue("url") as string | undefined
+
+        if (!url) {
+          return <span className="text-muted-foreground text-sm">-</span>
+        }
+
+        const truncateLength = 40
+        const isLong = url.length > truncateLength
+        const displayUrl = isLong ? url.substring(0, truncateLength) : url
+
+        if (!isLong) {
+          return (
+            <TooltipProvider delayDuration={500} skipDelayDuration={0}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="text-sm truncate font-mono max-w-[300px] cursor-default">
+                    {displayUrl}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="top"
+                  align="start"
+                  sideOffset={5}
+                  className="text-xs font-mono whitespace-nowrap"
+                >
+                  {url}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )
+        }
+
+        return (
+          <div className="flex items-center gap-1 max-w-[300px]">
+            <TooltipProvider delayDuration={500} skipDelayDuration={0}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="text-sm truncate font-mono cursor-default">
+                    {displayUrl}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="top"
+                  align="start"
+                  sideOffset={5}
+                  className="text-xs font-mono max-w-[500px] break-all"
+                >
+                  {url}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted flex-shrink-0">
+                  ...
+                </Badge>
+              </PopoverTrigger>
+              <PopoverContent className="w-96 p-3">
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm">完整 URL</h4>
+                  <div className="text-xs break-all bg-muted p-2 rounded max-h-48 overflow-y-auto font-mono">
+                    {url}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        )
       },
     },
     {
@@ -264,9 +335,21 @@ export function createEndpointColumns({
         return (
           <div className="flex items-center gap-1">
             <span className="text-sm">{displayText}</span>
-            <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted flex-shrink-0">
-              ...
-            </Badge>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted flex-shrink-0">
+                  ...
+                </Badge>
+              </PopoverTrigger>
+              <PopoverContent className="w-96 p-3">
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm">完整标题</h4>
+                  <div className="text-sm break-all bg-muted p-2 rounded max-h-32 overflow-y-auto">
+                    {title}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         )
       },
@@ -314,9 +397,21 @@ export function createEndpointColumns({
         return (
           <div className="flex items-center gap-1">
             <span className="text-sm">{displayText}</span>
-            <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted flex-shrink-0">
-              ...
-            </Badge>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted flex-shrink-0">
+                  ...
+                </Badge>
+              </PopoverTrigger>
+              <PopoverContent className="w-96 p-3">
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm">完整 Location</h4>
+                  <div className="text-sm break-all bg-muted p-2 rounded max-h-32 overflow-y-auto">
+                    {location}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         )
       },
@@ -341,9 +436,21 @@ export function createEndpointColumns({
         return (
           <div className="flex items-center gap-1">
             <span className="text-sm">{displayText}</span>
-            <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted flex-shrink-0">
-              ...
-            </Badge>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted flex-shrink-0">
+                  ...
+                </Badge>
+              </PopoverTrigger>
+              <PopoverContent className="w-96 p-3">
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm">完整 Web Server</h4>
+                  <div className="text-sm break-all bg-muted p-2 rounded max-h-32 overflow-y-auto">
+                    {webserver}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         )
       },
@@ -378,9 +485,29 @@ export function createEndpointColumns({
               </Badge>
             ))}
             {hasMore && (
-              <Badge variant="secondary" className="text-xs cursor-pointer hover:bg-muted">
-                +{tech.length - 2}
-              </Badge>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Badge variant="secondary" className="text-xs cursor-pointer hover:bg-muted">
+                    +{tech.length - 2}
+                  </Badge>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-3">
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm">所有技术栈 ({tech.length})</h4>
+                    <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto">
+                      {tech.map((technology, index) => (
+                        <Badge
+                          key={index}
+                          variant="outline"
+                          className="text-xs"
+                        >
+                          {technology}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
             )}
           </div>
         )
@@ -406,9 +533,21 @@ export function createEndpointColumns({
         return (
           <div className="flex items-center gap-1">
             <span className="text-sm">{displayText}</span>
-            <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted flex-shrink-0">
-              ...
-            </Badge>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted flex-shrink-0">
+                  ...
+                </Badge>
+              </PopoverTrigger>
+              <PopoverContent className="w-96 p-3">
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm">完整响应体预览</h4>
+                  <div className="text-sm break-all bg-muted p-2 rounded max-h-32 overflow-y-auto">
+                    {bodyPreview}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         )
       },
