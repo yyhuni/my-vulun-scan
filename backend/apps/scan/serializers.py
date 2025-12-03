@@ -1,4 +1,6 @@
 from rest_framework import serializers
+from django.db.models import Count
+
 from .models import Scan, ScheduledScan
 
 
@@ -57,35 +59,50 @@ class ScanHistorySerializer(serializers.ModelSerializer):
         ]
     
     def get_summary(self, obj):
-        """获取扫描汇总数据（使用缓存字段）
-        
-        性能优化：只使用缓存字段，不实时计算
-        - 缓存字段由扫描完成时自动更新（通过 ScanService.update_cached_stats）
-        - 扫描进行中或未更新时显示 0
-        
-        返回字段：
-        - subdomains: 子域名数量
-        - websites: 网站数量
-        - endpoints: 端点数量（暂无快照表，返回0）
-        - ips: IP地址数量
-        - directories: 目录数量
-        - vulnerabilities: 漏洞统计（暂时返回 0，待后续实现）
+        """获取扫描汇总数据。
+
+        设计原则：
+        - 子域名/网站/端点/IP/目录仍然使用缓存字段（避免实时 COUNT）
+        - 漏洞统计目前按扫描实时统计 VulnerabilitySnapshot，数量通常较少，性能可接受
         """
-        # 只使用缓存字段（无数据库查询）
-        return {
+        from apps.asset.models import VulnerabilitySnapshot
+
+        # 1. 使用缓存字段构建基础统计（子域名、网站、端点、IP、目录）
+        summary = {
             'subdomains': obj.cached_subdomains_count or 0,
             'websites': obj.cached_websites_count or 0,
             'endpoints': obj.cached_endpoints_count or 0,
             'ips': obj.cached_ips_count or 0,
             'directories': obj.cached_directories_count or 0,
-            'vulnerabilities': {
-                'total': 0,
-                'critical': 0,
-                'high': 0,
-                'medium': 0,
-                'low': 0
-            }
         }
+
+        # 2. 实时统计当前扫描的漏洞快照（按严重性聚合）
+        #    注意：这里只统计 VulnerabilitySnapshot（按 scan 维度），
+        #    与资产表 Vulnerability 的 target 维度统计相互独立。
+        vuln_qs = VulnerabilitySnapshot.objects.filter(scan_id=obj.id)
+
+        total = vuln_qs.count()
+
+        severity_stats = {
+            'critical': 0,
+            'high': 0,
+            'medium': 0,
+            'low': 0,
+        }
+
+        for row in vuln_qs.values('severity').annotate(count=Count('id')):
+            sev = row['severity'] or ''
+            count = row['count'] or 0
+            # 只统计四个主要等级，info/unknown 等暂不计入
+            if sev in severity_stats:
+                severity_stats[sev] = count
+
+        summary['vulnerabilities'] = {
+            'total': total,
+            **severity_stats,
+        }
+
+        return summary
 
 
 class QuickScanSerializer(serializers.Serializer):

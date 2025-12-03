@@ -31,6 +31,7 @@ from apps.asset.serializers import (
     WebsiteSnapshotSerializer,
     DirectorySnapshotSerializer,
     EndpointSnapshotSerializer,
+    VulnerabilitySnapshotSerializer,
 )
 from apps.asset.services import (
     SubdomainSnapshotsService,
@@ -38,6 +39,7 @@ from apps.asset.services import (
     WebsiteSnapshotsService,
     DirectorySnapshotsService,
     EndpointSnapshotsService,
+    VulnerabilitySnapshotsService,
 )
 
 
@@ -182,6 +184,61 @@ class ScanViewSet(viewsets.ModelViewSet):
             return Response(
                 {'error': '服务器内部错误，请稍后重试'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=['get'])
+    def vulnerabilities(self, request, pk=None):  # pylint: disable=unused-argument
+        """获取扫描关联的所有漏洞（支持分页）
+
+        URL: GET /api/scans/{id}/vulnerabilities/?page=1&pageSize=10
+
+        功能:
+        - 返回指定扫描任务发现的所有漏洞快照
+        - 包含 URL、类型、严重性、来源、描述等
+        - 支持分页查询
+
+        返回:
+        - results: 漏洞列表
+        - total: 总记录数
+        - page: 当前页码
+        - page_size: 每页大小
+        - total_pages: 总页数
+        """
+        try:
+            scan_service = ScanService()
+            scan = scan_service.get_scan(scan_id=pk, prefetch_relations=False)
+
+            if not scan:
+                return Response(
+                    {'error': f'扫描 ID {pk} 不存在'},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            snapshot_service = VulnerabilitySnapshotsService()
+            queryset = snapshot_service.get_by_scan(scan.id)
+
+            paginator = self.paginator
+            page = paginator.paginate_queryset(queryset, request, view=self)
+
+            if page is not None:
+                serializer = VulnerabilitySnapshotSerializer(page, many=True)
+                return paginator.get_paginated_response(serializer.data)
+
+            return Response(
+                {'error': '必须提供分页参数 page 和 pageSize'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        except ObjectDoesNotExist:
+            return Response(
+                {'error': f'扫描 ID {pk} 不存在'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        except (DatabaseError, OperationalError):
+            return Response(
+                {'error': '数据库错误，请稍后重试'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
     @action(detail=False, methods=['post'])

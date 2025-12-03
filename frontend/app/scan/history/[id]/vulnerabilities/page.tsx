@@ -9,7 +9,7 @@ export default function ScanHistoryVulnerabilitiesPage() {
 
   return (
     <div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
-      <VulnerabilitiesDetailView targetId={parseInt(id)} />
+      <VulnerabilitiesDetailView scanId={Number(id)} />
     </div>
   )
 }

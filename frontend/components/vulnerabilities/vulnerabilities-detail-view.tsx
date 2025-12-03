@@ -16,12 +16,19 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import type { Vulnerability } from "@/types/vulnerability.types"
+import { useScanVulnerabilities, useTargetVulnerabilities } from "@/hooks/use-vulnerabilities"
+
+interface VulnerabilitiesDetailViewProps {
+  /** 扫描历史页面使用：按 scan 维度查看漏洞 */
+  scanId?: number
+  /** 目标详情页面使用：按 target 维度查看漏洞（暂未接真实数据，兼容旧用法） */
+  targetId?: number
+}
 
 export function VulnerabilitiesDetailView({
-  targetId
-}: {
-  targetId: number
-}) {
+  scanId,
+  targetId,
+}: VulnerabilitiesDetailViewProps) {
   const [selectedVulnerabilities, setSelectedVulnerabilities] = useState<Vulnerability[]>([])
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [vulnerabilityToDelete, setVulnerabilityToDelete] = useState<Vulnerability | null>(null)
@@ -35,26 +42,36 @@ export function VulnerabilitiesDetailView({
     pageSize: 10,
   })
 
-  // TODO: 替换为真实的 API 调用
-  const data = useMemo(() => {
-    return [] as Vulnerability[]
-  }, [targetId])
+  const paginationParams = {
+    page: pagination.pageIndex + 1,
+    pageSize: pagination.pageSize,
+  }
 
-  const paginationInfo = useMemo(() => {
-    const total = data.length
-    const totalPages = Math.ceil(total / pagination.pageSize)
-    const start = pagination.pageIndex * pagination.pageSize
-    const end = start + pagination.pageSize
-    const paginatedData = data.slice(start, end)
+  // 按 scan 维度加载（扫描历史页面）
+  const scanQuery = useScanVulnerabilities(
+    scanId ?? 0,
+    paginationParams,
+    { enabled: !!scanId },
+  )
 
-    return {
-      data: paginatedData,
-      total,
-      page: pagination.pageIndex + 1,
-      pageSize: pagination.pageSize,
-      totalPages,
-    }
-  }, [data, pagination])
+  // 按 target 维度加载（目标详情页面）
+  const targetQuery = useTargetVulnerabilities(
+    targetId ?? 0,
+    paginationParams,
+    { enabled: !!targetId && !scanId },
+  )
+
+  // 优先使用 scanId 的数据，否则使用 targetId 的数据
+  const activeQuery = scanId ? scanQuery : targetQuery
+  const isQueryLoading = activeQuery.isLoading
+
+  const vulnerabilities = activeQuery.data?.vulnerabilities ?? []
+  const paginationInfo = activeQuery.data?.pagination ?? {
+    total: vulnerabilities.length,
+    page: pagination.pageIndex + 1,
+    pageSize: pagination.pageSize,
+    totalPages: 1,
+  }
 
   const formatDate = (dateString: string): string => {
     return new Date(dateString).toLocaleString("zh-CN", {
@@ -147,7 +164,7 @@ export function VulnerabilitiesDetailView({
     [handleViewDetail]
   )
 
-  if (isLoading) {
+  if (isLoading || isQueryLoading) {
     return (
       <DataTableSkeleton
         toolbarButtonCount={3}
@@ -166,7 +183,7 @@ export function VulnerabilitiesDetailView({
       />
 
       <VulnerabilitiesDataTable
-        data={paginationInfo.data}
+        data={vulnerabilities}
         columns={vulnerabilityColumns}
         searchPlaceholder="搜索漏洞..."
         searchColumn="title"

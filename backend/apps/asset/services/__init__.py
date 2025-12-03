@@ -7,6 +7,7 @@ from .asset import (
     DirectoryService,
     HostPortMappingService,
     EndpointService,
+    VulnerabilityService,
 )
 
 # 快照模块 Services
@@ -16,6 +17,7 @@ from .snapshot import (
     WebsiteSnapshotsService,
     DirectorySnapshotsService,
     EndpointSnapshotsService,
+    VulnerabilitySnapshotsService,
 )
 
 __all__ = [
@@ -25,10 +27,12 @@ __all__ = [
     'DirectoryService',
     'HostPortMappingService',
     'EndpointService',
+    'VulnerabilityService',
     # 快照模块
     'SubdomainSnapshotsService',
     'HostPortMappingSnapshotsService',
     'WebsiteSnapshotsService',
     'DirectorySnapshotsService',
     'EndpointSnapshotsService',
+    'VulnerabilitySnapshotsService',
 ]

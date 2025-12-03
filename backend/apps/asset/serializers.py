@@ -1,6 +1,12 @@
 from rest_framework import serializers
-from .models import Subdomain, WebSite, Directory, HostPortMapping, Endpoint
-from .models.snapshot_models import SubdomainSnapshot, WebsiteSnapshot, DirectorySnapshot, EndpointSnapshot
+from .models import Subdomain, WebSite, Directory, HostPortMapping, Endpoint, Vulnerability
+from .models.snapshot_models import (
+    SubdomainSnapshot,
+    WebsiteSnapshot,
+    DirectorySnapshot,
+    EndpointSnapshot,
+    VulnerabilitySnapshot,
+)
 
 
 # 注意：IPAddress 和 Port 模型已被重构为 HostPortMapping
@@ -80,6 +86,44 @@ class WebSiteSerializer(serializers.ModelSerializer):
             'tech',
             'vhost',
             'subdomain',
+            'discovered_at',
+        ]
+        read_only_fields = fields
+
+
+class VulnerabilitySerializer(serializers.ModelSerializer):
+    """漏洞资产序列化器（按目标查看漏洞资产）。"""
+
+    class Meta:
+        model = Vulnerability
+        fields = [
+            'id',
+            'target',
+            'url',
+            'vuln_type',
+            'severity',
+            'source',
+            'cvss_score',
+            'description',
+            'discovered_at',
+        ]
+        read_only_fields = fields
+
+
+class VulnerabilitySnapshotSerializer(serializers.ModelSerializer):
+    """漏洞快照序列化器（用于扫描历史漏洞列表）。"""
+
+    class Meta:
+        model = VulnerabilitySnapshot
+        fields = [
+            'id',
+            'url',
+            'vuln_type',
+            'severity',
+            'source',
+            'cvss_score',
+            'description',
+            'raw_output',
             'discovered_at',
         ]
         read_only_fields = fields

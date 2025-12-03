@@ -17,6 +17,7 @@ from apps.asset.services import (
     DirectoryService,
     HostPortMappingService,
     EndpointService,
+    VulnerabilityService,
 )
 
 logger = logging.getLogger(__name__)
@@ -233,6 +234,7 @@ class TargetViewSet(viewsets.ModelViewSet):
         self.website_service = WebSiteService()
         self.directory_service = DirectoryService()
         self.host_port_mapping_service = HostPortMappingService()
+        self.vulnerability_service = VulnerabilityService()
     
     def get_queryset(self):
         """获取目标查询集
@@ -461,6 +463,48 @@ class TargetViewSet(viewsets.ModelViewSet):
         except ObjectDoesNotExist:
             raise NotFound(f'目标 ID {pk} 不存在')
         
+        except (DatabaseError, OperationalError):
+            raise APIException('数据库错误，请稍后重试')
+
+    @action(detail=True, methods=['get'])
+    def vulnerabilities(self, request, pk=None):
+        """获取目标关联的所有漏洞（支持分页）
+
+        URL: GET /api/targets/{id}/vulnerabilities/?page=1&pageSize=10
+
+        功能:
+        - 返回指定目标下的所有漏洞资产
+        - 包含 URL、类型、严重性、来源、描述等
+        - 支持分页查询
+
+        返回:
+        - results: 漏洞列表
+        - total: 总记录数
+        - page: 当前页码
+        - page_size: 每页大小
+        - total_pages: 总页数
+        """
+        from apps.asset.serializers import VulnerabilitySerializer
+        from django.core.exceptions import ObjectDoesNotExist
+        from django.db import DatabaseError, OperationalError
+
+        try:
+            target = self.get_object()
+
+            queryset = self.vulnerability_service.get_queryset_by_target(target.id)
+
+            paginator = self.paginator
+            page = paginator.paginate_queryset(queryset, request, view=self)
+
+            if page is not None:
+                serializer = VulnerabilitySerializer(page, many=True)
+                return paginator.get_paginated_response(serializer.data)
+
+            raise ValidationError('必须提供分页参数 page 和 pageSize')
+
+        except ObjectDoesNotExist:
+            raise NotFound(f'目标 ID {pk} 不存在')
+
         except (DatabaseError, OperationalError):
             raise APIException('数据库错误，请稍后重试')
 
