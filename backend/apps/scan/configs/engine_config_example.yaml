@@ -216,5 +216,3 @@ vuln_scan:
       delay: 500             # Dalfox 扫描内部延迟参数
       worker: 10             # Dalfox worker 数量
       user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"  # 默认 UA，可根据需要修改
-      random_header_flag: true
-      random_xforwarded_for_flag: true

@@ -279,3 +279,55 @@ class EndpointSnapshot(models.Model):
 
     def __str__(self):
         return f'{self.url} (Scan #{self.scan_id})'
+
+
+class VulnerabilitySnapshot(models.Model):
+    """
+    漏洞快照
+    
+    记录：某次扫描中发现的漏洞
+    """
+    
+    # 延迟导入避免循环引用
+    from apps.common.definitions import VulnSeverity
+
+    id = models.AutoField(primary_key=True)
+    scan = models.ForeignKey(
+        'scan.Scan',
+        on_delete=models.CASCADE,
+        related_name='vulnerability_snapshots',
+        help_text='所属的扫描任务'
+    )
+    
+    # ==================== 核心字段 ====================
+    url = models.TextField(help_text='漏洞所在的URL')
+    vuln_type = models.CharField(max_length=100, help_text='漏洞类型（如 xss, sqli）')
+    severity = models.CharField(
+        max_length=20,
+        choices=VulnSeverity.choices,
+        default=VulnSeverity.UNKNOWN,
+        help_text='严重性（未知/信息/低/中/高/危急）'
+    )
+    source = models.CharField(max_length=50, blank=True, default='', help_text='来源工具（如 dalfox, nuclei, crlfuzz）')
+    cvss_score = models.DecimalField(max_digits=3, decimal_places=1, null=True, blank=True, help_text='CVSS 评分（0.0-10.0）')
+    description = models.TextField(blank=True, default='', help_text='漏洞描述')
+    raw_output = models.TextField(blank=True, default='', help_text='工具原始输出')
+    
+    # ==================== 时间字段 ====================
+    discovered_at = models.DateTimeField(auto_now_add=True, help_text='发现时间')
+
+    class Meta:
+        db_table = 'vulnerability_snapshot'
+        verbose_name = '漏洞快照'
+        verbose_name_plural = '漏洞快照'
+        ordering = ['-discovered_at']
+        indexes = [
+            models.Index(fields=['scan']),
+            models.Index(fields=['vuln_type']),
+            models.Index(fields=['severity']),
+            models.Index(fields=['source']),
+            models.Index(fields=['-discovered_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.vuln_type} - {self.url[:50]} (Scan #{self.scan_id})'

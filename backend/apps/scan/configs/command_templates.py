@@ -142,7 +142,7 @@ DIRECTORY_SCAN_COMMANDS = {
 
 URL_FETCH_COMMANDS = {
     'waymore': {
-        'base': 'waymore {domain_name} -mode U -oU {output_file}',
+        'base': 'waymore -i {domain_name} -mode U -oU {output_file}',
         'input_type': 'domain_name'
     },
     
@@ -210,8 +210,6 @@ VULN_SCAN_COMMANDS = {
             'request-timeout': '--timeout {request-timeout}',
             # 是否追加 UA 头，由 user_agent 是否存在决定
             'user_agent': '--user-agent "{user_agent}"',
-            'random_header_flag': '--random-header',
-            'random_xforwarded_for_flag': '--random-xforwarded-for',
             'worker': '--worker {worker}',
         },
         'input_type': 'endpoints_file',

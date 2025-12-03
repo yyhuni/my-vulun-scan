@@ -31,11 +31,6 @@ def _setup_vuln_scan_directory(scan_workspace_dir: str) -> Path:
 @flow(
     name="endpoints_vuln_scan_flow",
     log_prints=True,
-    on_running=[on_scan_flow_running],
-    on_completion=[on_scan_flow_completed],
-    on_failure=[on_scan_flow_failed],
-    on_cancellation=[on_scan_flow_cancelled],
-    on_crashed=[on_scan_flow_crashed],
 )
 def endpoints_vuln_scan_flow(
     scan_id: int,

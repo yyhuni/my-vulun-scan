@@ -448,3 +448,63 @@ class HostPortMapping(models.Model):
 
     def __str__(self):
         return f'{self.host} ({self.ip}:{self.port})'
+
+
+class Vulnerability(models.Model):
+    """
+    漏洞模型（资产表）
+    
+    存储发现的漏洞资产，与 Target 关联。
+    扫描历史记录存储在 VulnerabilitySnapshot 快照表中。
+    """
+    
+    # 延迟导入避免循环引用
+    from apps.common.definitions import VulnSeverity
+
+    id = models.AutoField(primary_key=True)
+    target = models.ForeignKey(
+        'targets.Target',
+        on_delete=models.CASCADE,
+        related_name='vulnerabilities',
+        help_text='所属的扫描目标'
+    )
+    
+    # ==================== 核心字段 ====================
+    url = models.TextField(help_text='漏洞所在的URL')
+    vuln_type = models.CharField(max_length=100, help_text='漏洞类型（如 xss, sqli）')
+    severity = models.CharField(
+        max_length=20,
+        choices=VulnSeverity.choices,
+        default=VulnSeverity.UNKNOWN,
+        help_text='严重性（未知/信息/低/中/高/危急）'
+    )
+    source = models.CharField(max_length=50, blank=True, default='', help_text='来源工具（如 dalfox, nuclei, crlfuzz）')
+    cvss_score = models.DecimalField(max_digits=3, decimal_places=1, null=True, blank=True, help_text='CVSS 评分（0.0-10.0）')
+    description = models.TextField(blank=True, default='', help_text='漏洞描述')
+    
+    # ==================== 时间字段 ====================
+    discovered_at = models.DateTimeField(auto_now_add=True, help_text='首次发现时间')
+    
+    # ==================== 软删除字段 ====================
+    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True, help_text='删除时间（NULL表示未删除）')
+    
+    # ==================== 管理器 ====================
+    objects = SoftDeleteManager()
+    all_objects = models.Manager()
+
+    class Meta:
+        db_table = 'vulnerability'
+        verbose_name = '漏洞'
+        verbose_name_plural = '漏洞'
+        ordering = ['-discovered_at']
+        indexes = [
+            models.Index(fields=['target']),
+            models.Index(fields=['vuln_type']),
+            models.Index(fields=['severity']),
+            models.Index(fields=['source']),
+            models.Index(fields=['-discovered_at']),
+            models.Index(fields=['deleted_at', '-discovered_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.vuln_type} - {self.url[:50]}'

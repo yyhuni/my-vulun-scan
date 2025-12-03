@@ -7,6 +7,7 @@ from .asset_models import (
     Endpoint,
     Directory,
     HostPortMapping,
+    Vulnerability,
 )
 
 # 快照模型
@@ -15,6 +16,8 @@ from .snapshot_models import (
     WebsiteSnapshot,
     DirectorySnapshot,
     HostPortMappingSnapshot,
+    EndpointSnapshot,
+    VulnerabilitySnapshot,
 )
 
 # 导出所有模型供外部导入
@@ -25,9 +28,12 @@ __all__ = [
     'Endpoint',
     'Directory',
     'HostPortMapping',
+    'Vulnerability',
     # 快照模型
     'SubdomainSnapshot',
     'WebsiteSnapshot', 
     'DirectorySnapshot',
     'HostPortMappingSnapshot',
+    'EndpointSnapshot',
+    'VulnerabilitySnapshot',
 ]
