@@ -38,7 +38,7 @@ ENABLE_COMMAND_LOGGING = getattr(settings, 'ENABLE_COMMAND_LOGGING', False)
 # 动态并发控制阈值（可在 Django settings 中覆盖）
 SCAN_CPU_HIGH = getattr(settings, 'SCAN_CPU_HIGH', 85.0)   # CPU 高水位（百分比）
 SCAN_MEM_HIGH = getattr(settings, 'SCAN_MEM_HIGH', 85.0)   # 内存高水位（百分比）
-SCAN_LOAD_CHECK_INTERVAL = getattr(settings, 'SCAN_LOAD_CHECK_INTERVAL', 5)  # 负载检查间隔（秒）
+SCAN_LOAD_CHECK_INTERVAL = getattr(settings, 'SCAN_LOAD_CHECK_INTERVAL', 30)  # 负载检查间隔（秒）
 
 _ACTIVE_COMMANDS = 0
 _ACTIVE_COMMANDS_LOCK = threading.Lock()
