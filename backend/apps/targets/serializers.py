@@ -1,8 +1,10 @@
 from rest_framework import serializers
 from django.db import IntegrityError
+from django.db.models import Count
 from .models import Organization, Target
 from apps.common.normalizer import normalize_target
 from apps.common.validators import detect_target_type
+from apps.asset.models import Vulnerability
 
 
 class SimpleOrganizationSerializer(serializers.ModelSerializer):
@@ -126,18 +128,40 @@ class TargetDetailSerializer(serializers.ModelSerializer):
         - 对于详情页单条记录，直接 .count() 查询性能可接受
         - ips 统计使用 distinct() 去重，因为 HostPortMapping 中同一 IP 可能有多个端口
         """
+        # 基础资产统计（直接使用关联关系 count）
+        subdomains_count = obj.subdomains.count()
+        websites_count = obj.websites.count()
+        endpoints_count = obj.endpoints.count()
+        ips_count = obj.host_port_mappings.values('ip').distinct().count()
+        directories_count = obj.directories.count()
+
+        # 漏洞统计：按目标维度实时统计 Vulnerability 资产表
+        vuln_qs = obj.vulnerabilities.all()
+
+        total = vuln_qs.count()
+
+        severity_stats = {
+            'critical': 0,
+            'high': 0,
+            'medium': 0,
+            'low': 0,
+        }
+
+        for row in vuln_qs.values('severity').annotate(count=Count('id')):
+            sev = row['severity'] or ''
+            count = row['count'] or 0
+            if sev in severity_stats:
+                severity_stats[sev] = count
+
         return {
-            'subdomains': obj.subdomains.count(),
-            'websites': obj.websites.count(),
-            'endpoints': obj.endpoints.count(),
-            'ips': obj.host_port_mappings.values('ip').distinct().count(),
-            'directories': obj.directories.count(),
+            'subdomains': subdomains_count,
+            'websites': websites_count,
+            'endpoints': endpoints_count,
+            'ips': ips_count,
+            'directories': directories_count,
             'vulnerabilities': {
-                'total': 0,
-                'critical': 0,
-                'high': 0,
-                'medium': 0,
-                'low': 0
+                'total': total,
+                **severity_stats,
             }
         }
 
