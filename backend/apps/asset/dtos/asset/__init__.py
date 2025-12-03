@@ -7,6 +7,7 @@ from .website_dto import WebSiteDTO
 from .directory_dto import DirectoryDTO
 from .host_port_mapping_dto import HostPortMappingDTO
 from .endpoint_dto import EndpointDTO
+from .vulnerability_dto import VulnerabilityDTO
 
 __all__ = [
     'SubdomainDTO',
@@ -16,4 +17,5 @@ __all__ = [
     'DirectoryDTO',
     'HostPortMappingDTO',
     'EndpointDTO',
+    'VulnerabilityDTO',
 ]

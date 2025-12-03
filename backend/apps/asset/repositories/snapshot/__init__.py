@@ -5,6 +5,7 @@ from .host_port_mapping_snapshot_repository import DjangoHostPortMappingSnapshot
 from .website_snapshot_repository import DjangoWebsiteSnapshotRepository
 from .directory_snapshot_repository import DjangoDirectorySnapshotRepository
 from .endpoint_snapshot_repository import DjangoEndpointSnapshotRepository
+from .vulnerability_snapshot_repository import DjangoVulnerabilitySnapshotRepository
 
 __all__ = [
     'DjangoSubdomainSnapshotRepository',
@@ -12,4 +13,5 @@ __all__ = [
     'DjangoWebsiteSnapshotRepository',
     'DjangoDirectorySnapshotRepository',
     'DjangoEndpointSnapshotRepository',
+    'DjangoVulnerabilitySnapshotRepository',
 ]

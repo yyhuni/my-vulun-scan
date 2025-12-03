@@ -5,6 +5,7 @@ from .website_service import WebSiteService
 from .directory_service import DirectoryService
 from .host_port_mapping_service import HostPortMappingService
 from .endpoint_service import EndpointService
+from .vulnerability_service import VulnerabilityService
 
 __all__ = [
     'SubdomainService',
@@ -12,4 +13,5 @@ __all__ = [
     'DirectoryService',
     'HostPortMappingService',
     'EndpointService',
+    'VulnerabilityService',
 ]

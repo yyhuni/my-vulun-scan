@@ -15,7 +15,11 @@ from apps.scan.handlers.scan_flow_handlers import (
     on_scan_flow_crashed,
 )
 from apps.scan.utils import build_scan_command
-from apps.scan.tasks.vuln_scan import export_endpoints_task, run_vuln_tool_task
+from apps.scan.tasks.vuln_scan import (
+    export_endpoints_task,
+    run_vuln_tool_task,
+    run_and_stream_save_dalfox_vulns_task,
+)
 from .utils import calculate_timeout_by_line_count
 
 
@@ -92,41 +96,66 @@ def endpoints_vuln_scan_flow(
             timeout = 600
 
             if isinstance(raw_timeout, str) and raw_timeout == "auto":
+                # Dalfox: timeout=auto 时，根据 endpoints_file 行数自动计算超时时间
+                # 这里按「每行 100 秒」来预估整体扫描时间
                 timeout = calculate_timeout_by_line_count(
                     tool_config=tool_config,
                     file_path=str(endpoints_file),
-                    base_per_time=1,
+                    base_per_time=100,
                 )
             else:
                 try:
                     timeout = int(raw_timeout)
-                except (TypeError, ValueError):
-                    logger.warning(
-                        "工具 %s 的 timeout 配置无效(%s)，将使用默认 600 秒",
-                        tool_name,
-                        raw_timeout,
-                    )
-                    timeout = 600
+                except (TypeError, ValueError) as e:
+                    # 配置错误应当直接暴露，避免默默使用默认值导致排查困难
+                    raise ValueError(
+                        f"工具 {tool_name} 的 timeout 配置无效: {raw_timeout!r}"
+                    ) from e
 
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             log_file = vuln_scan_dir / f"{tool_name}_{timestamp}.log"
 
-            logger.info("开始执行漏洞扫描工具 %s", tool_name)
-            future = run_vuln_tool_task.submit(
-                tool_name=tool_name,
-                command=command,
-                timeout=timeout,
-                log_file=str(log_file),
-            )
-            result = future.result()
+            # Dalfox XSS 使用流式任务，一边解析一边保存漏洞结果
+            if tool_name == "dalfox_xss":
+                logger.info("开始执行漏洞扫描工具 %s（流式保存漏洞结果）", tool_name)
+                future = run_and_stream_save_dalfox_vulns_task.submit(
+                    cmd=command,
+                    tool_name=tool_name,
+                    scan_id=scan_id,
+                    target_id=target_id,
+                    cwd=str(vuln_scan_dir),
+                    shell=True,
+                    batch_size=1,
+                    timeout=timeout,
+                    log_file=str(log_file),
+                )
+                result = future.result()
 
-            tool_results[tool_name] = {
-                "command": command,
-                "timeout": timeout,
-                "duration": result.get("duration"),
-                "returncode": result.get("returncode"),
-                "command_log_file": result.get("command_log_file"),
-            }
+                tool_results[tool_name] = {
+                    "command": command,
+                    "timeout": timeout,
+                    "processed_records": result.get("processed_records"),
+                    "created_vulns": result.get("created_vulns"),
+                    "command_log_file": str(log_file),
+                }
+            else:
+                # 其他工具仍使用非流式执行逻辑
+                logger.info("开始执行漏洞扫描工具 %s", tool_name)
+                future = run_vuln_tool_task.submit(
+                    tool_name=tool_name,
+                    command=command,
+                    timeout=timeout,
+                    log_file=str(log_file),
+                )
+                result = future.result()
+
+                tool_results[tool_name] = {
+                    "command": command,
+                    "timeout": timeout,
+                    "duration": result.get("duration"),
+                    "returncode": result.get("returncode"),
+                    "command_log_file": result.get("command_log_file"),
+                }
 
         return {
             "success": True,
