@@ -7,6 +7,7 @@
 """
 
 import logging
+import shutil
 from pathlib import Path
 
 from django.conf import settings
@@ -38,6 +39,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         project_base = Path(settings.BASE_DIR).parent  # /app/backend -> /app
         base_wordlist_dir = project_base / "backend" / "wordlist"
+        runtime_base_dir = Path(getattr(settings, "WORDLISTS_BASE_PATH", "/opt/xingrin/wordlists"))
+        runtime_base_dir.mkdir(parents=True, exist_ok=True)
 
         initialized = 0
         skipped = 0
@@ -64,6 +67,7 @@ class Command(BaseCommand):
                     ))
 
             src_path = base_wordlist_dir / filename
+            dest_path = runtime_base_dir / filename
 
             if not src_path.exists():
                 self.stdout.write(self.style.WARNING(
@@ -72,15 +76,24 @@ class Command(BaseCommand):
                 failed += 1
                 continue
 
+            try:
+                shutil.copy2(src_path, dest_path)
+            except OSError as exc:
+                self.stdout.write(self.style.WARNING(
+                    f"[{name}] 复制内置字典到运行目录失败: {exc}"
+                ))
+                failed += 1
+                continue
+
             # 统计文件大小和行数
             try:
-                file_size = src_path.stat().st_size
+                file_size = dest_path.stat().st_size
             except OSError:
                 file_size = 0
 
             line_count = 0
             try:
-                with src_path.open("rb") as f:
+                with dest_path.open("rb") as f:
                     for _ in f:
                         line_count += 1
             except OSError:
@@ -88,7 +101,7 @@ class Command(BaseCommand):
 
             # 如果之前已有记录则更新，否则创建新记录
             if existing:
-                existing.file_path = str(src_path)
+                existing.file_path = str(dest_path)
                 existing.file_size = file_size
                 existing.line_count = line_count
                 existing.description = existing.description or description
@@ -105,7 +118,7 @@ class Command(BaseCommand):
                 wordlist = Wordlist.objects.create(
                     name=name,
                     description=description,
-                    file_path=str(src_path),
+                    file_path=str(dest_path),
                     file_size=file_size,
                     line_count=line_count,
                 )
