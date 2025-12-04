@@ -267,13 +267,14 @@ if [[ $set_public_host =~ ^[Yy]$ ]]; then
     echo -n -e "   ${CYAN}请输入当前远程 vps 的外网 IP 地址（例如 10.1.1.1）: ${RESET}"
     read -r public_host
     if [ -z "$public_host" ]; then
-        warn "未输入外网ip地址，将保持 .env 中已有的 PUBLIC_HOST（通常为 localhost，仅适合本机调试）"
+        warn "未输入外网ip地址，将保持 .env 中已有的 PUBLIC_HOST（请确保 Worker 能访问该地址）"
     else
         update_env_var "$TARGET_ENV" "PUBLIC_HOST" "$public_host"
         success "已配置对外访问地址: $public_host"
     fi
 else
-    info "检测为本机部署，将保持 .env 中的 PUBLIC_HOST（默认 localhost，仅适合本机访问）"
+    info "检测为本机 docker 开发环境，将 PUBLIC_HOST 设置为 server（容器内部访问后端服务名）"
+    update_env_var "$TARGET_ENV" "PUBLIC_HOST" "server"
 fi
 
 info "使用以下命令启动开发环境（代码挂载）:"
