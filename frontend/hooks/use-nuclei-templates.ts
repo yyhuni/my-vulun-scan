@@ -2,8 +2,8 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
-import { getNucleiTemplateTree, getNucleiTemplateContent, refreshNucleiTemplates, uploadNucleiTemplate } from "@/services/nuclei.service"
-import type { NucleiTemplateTreeNode, NucleiTemplateContent, UploadNucleiTemplatePayload } from "@/types/nuclei.types"
+import { getNucleiTemplateTree, getNucleiTemplateContent, refreshNucleiTemplates, saveNucleiTemplate, uploadNucleiTemplate } from "@/services/nuclei.service"
+import type { NucleiTemplateTreeNode, NucleiTemplateContent, UploadNucleiTemplatePayload, SaveNucleiTemplatePayload } from "@/types/nuclei.types"
 
 export function useNucleiTemplateTree() {
   return useQuery<NucleiTemplateTreeNode[]>({
@@ -30,7 +30,7 @@ export function useRefreshNucleiTemplates() {
     },
     onSuccess: () => {
       toast.dismiss("refresh-nuclei-templates")
-      toast.success("模板更新完成（模拟数据）")
+      toast.success("模板更新完成")
       queryClient.invalidateQueries({ queryKey: ["nuclei", "templates", "tree"] })
     },
     onError: () => {
@@ -41,6 +41,8 @@ export function useRefreshNucleiTemplates() {
 }
 
 export function useUploadNucleiTemplate() {
+  const queryClient = useQueryClient()
+
   return useMutation<void, Error, UploadNucleiTemplatePayload>({
     mutationFn: (payload) => uploadNucleiTemplate(payload),
     onMutate: () => {
@@ -48,11 +50,32 @@ export function useUploadNucleiTemplate() {
     },
     onSuccess: () => {
       toast.dismiss("upload-nuclei-template")
-      toast.success("模板上传成功（模拟数据）")
+      toast.success("模板上传成功")
+      queryClient.invalidateQueries({ queryKey: ["nuclei", "templates", "tree"] })
     },
     onError: (error) => {
       toast.dismiss("upload-nuclei-template")
       toast.error(error.message || "模板上传失败")
+    },
+  })
+}
+
+export function useSaveNucleiTemplate() {
+  const queryClient = useQueryClient()
+
+  return useMutation<void, Error, SaveNucleiTemplatePayload>({
+    mutationFn: (payload) => saveNucleiTemplate(payload),
+    onMutate: () => {
+      toast.loading("正在保存模板...", { id: "save-nuclei-template" })
+    },
+    onSuccess: (_data, variables) => {
+      toast.dismiss("save-nuclei-template")
+      toast.success("模板保存成功")
+      queryClient.invalidateQueries({ queryKey: ["nuclei", "templates", "content", variables.path] })
+    },
+    onError: (error) => {
+      toast.dismiss("save-nuclei-template")
+      toast.error(error.message || "模板保存失败")
     },
   })
 }

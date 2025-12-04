@@ -29,3 +29,8 @@ export interface UploadNucleiTemplatePayload {
   scope: NucleiTemplateScope
   file: File
 }
+
+export interface SaveNucleiTemplatePayload {
+  path: string
+  content: string
+}

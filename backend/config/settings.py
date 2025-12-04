@@ -272,6 +272,13 @@ SCAN_TOOLS_BASE_PATH = os.getenv('SCAN_TOOLS_PATH', '/opt/xingrin/tools')
 # 字典文件基础路径（后端和 Worker 统一使用该路径前缀存放字典文件）
 WORDLISTS_BASE_PATH = os.getenv('WORDLISTS_PATH', '/opt/xingrin/wordlists')
 
+# Nuclei 模板基础路径（custom / public 两类模板目录）
+NUCLEI_CUSTOM_TEMPLATES_DIR = os.getenv('NUCLEI_CUSTOM_TEMPLATES_DIR', '/opt/xingrin/nuclei-templates/custom')
+NUCLEI_PUBLIC_TEMPLATES_DIR = os.getenv('NUCLEI_PUBLIC_TEMPLATES_DIR', '/opt/xingrin/nuclei-templates/public')
+
+# Nuclei 官方模板仓库地址
+NUCLEI_TEMPLATES_REPO_URL = os.getenv('NUCLEI_TEMPLATES_REPO_URL', 'https://github.com/projectdiscovery/nuclei-templates.git')
+
 # 对外访问主机与端口（供 Worker / Prefect Flow 访问 Django / Prefect 使用）
 PUBLIC_HOST = os.getenv('PUBLIC_HOST', 'localhost').strip()
 SERVER_PORT = os.getenv('SERVER_PORT', '8888')

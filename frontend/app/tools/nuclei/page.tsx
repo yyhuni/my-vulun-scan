@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, type ChangeEvent, type FormEvent } from "react"
+import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react"
 import Editor from "@monaco-editor/react"
 import { ChevronDown, ChevronRight, FileText, Folder } from "lucide-react"
 import { useTheme } from "next-themes"
@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Input } from "@/components/ui/input"
-import { useNucleiTemplateTree, useNucleiTemplateContent, useRefreshNucleiTemplates, useUploadNucleiTemplate } from "@/hooks/use-nuclei-templates"
+import { useNucleiTemplateTree, useNucleiTemplateContent, useRefreshNucleiTemplates, useSaveNucleiTemplate, useUploadNucleiTemplate } from "@/hooks/use-nuclei-templates"
 import type { NucleiTemplateTreeNode, NucleiTemplateScope } from "@/types/nuclei.types"
 
 interface FlattenedNode extends NucleiTemplateTreeNode {
@@ -24,6 +24,8 @@ export default function NucleiTemplatesPage() {
   const [uploadScope, setUploadScope] = useState<NucleiTemplateScope>("custom")
   const [uploadFile, setUploadFile] = useState<File | null>(null)
   const [expandedPaths, setExpandedPaths] = useState<string[]>(["custom", "public"])
+  const [editorValue, setEditorValue] = useState<string>("")
+  const [isDirty, setIsDirty] = useState(false)
 
   const { theme } = useTheme()
 
@@ -31,6 +33,7 @@ export default function NucleiTemplatesPage() {
   const { data: templateContent, isLoading: isLoadingContent } = useNucleiTemplateContent(selectedPath)
 
   const refreshMutation = useRefreshNucleiTemplates()
+  const saveMutation = useSaveNucleiTemplate()
   const uploadMutation = useUploadNucleiTemplate()
 
   const nodes: FlattenedNode[] = useMemo(() => {
@@ -60,6 +63,16 @@ export default function NucleiTemplatesPage() {
     visit(tree, 0)
     return result
   }, [tree, expandedPaths])
+
+  useEffect(() => {
+    if (templateContent) {
+      setEditorValue(templateContent.content)
+      setIsDirty(false)
+    } else {
+      setEditorValue("")
+      setIsDirty(false)
+    }
+  }, [templateContent?.path])
 
   const toggleFolder = (path: string) => {
     setExpandedPaths((prev) =>
@@ -111,6 +124,27 @@ export default function NucleiTemplatesPage() {
             {refreshMutation.isPending ? "更新中..." : "更新模板"}
           </Button>
           <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (!selectedPath) return
+              saveMutation.mutate(
+                {
+                  path: selectedPath,
+                  content: editorValue,
+                },
+                {
+                  onSuccess: () => {
+                    setIsDirty(false)
+                  },
+                }
+              )
+            }}
+            disabled={!selectedPath || !isDirty || saveMutation.isPending}
+          >
+            {saveMutation.isPending ? "保存中..." : "保存模板"}
+          </Button>
+          <Button
             size="sm"
             onClick={() => setUploadDialogOpen(true)}
             disabled={uploadMutation.isPending}
@@ -147,6 +181,12 @@ export default function NucleiTemplatesPage() {
                           if (isFolder) {
                             toggleFolder(node.path)
                           } else if (isFile) {
+                            if (isDirty && node.path !== selectedPath) {
+                              const confirmSwitch = window.confirm("当前模板有未保存的更改，确定要切换吗？")
+                              if (!confirmSwitch) {
+                                return
+                              }
+                            }
                             setSelectedPath(node.path)
                           }
                         }}
@@ -197,9 +237,12 @@ export default function NucleiTemplatesPage() {
                   <Editor
                     height="100%"
                     defaultLanguage="yaml"
-                    value={templateContent.content}
+                    value={editorValue}
+                    onChange={(value) => {
+                      setEditorValue(value || "")
+                      setIsDirty(true)
+                    }}
                     options={{
-                      readOnly: true,
                       minimap: { enabled: false },
                       fontSize: 13,
                       lineNumbers: "on",

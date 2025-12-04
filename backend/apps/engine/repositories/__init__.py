@@ -7,9 +7,11 @@
 from .django_engine_repository import DjangoEngineRepository
 from .django_worker_repository import DjangoWorkerRepository
 from .django_wordlist_repository import DjangoWordlistRepository
+from .fs_nuclei_template_repository import FileSystemNucleiTemplateRepository
 
 __all__ = [
     'DjangoEngineRepository',
     'DjangoWorkerRepository',
     'DjangoWordlistRepository',
+    'FileSystemNucleiTemplateRepository',
 ]
