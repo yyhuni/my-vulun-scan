@@ -115,6 +115,33 @@ export function createVulnerabilityColumns({
       },
     },
     {
+      accessorKey: "url",
+      header: "URL",
+      cell: ({ row }) => {
+        const url = row.original.url
+        if (!url) return <span className="text-muted-foreground">-</span>
+        
+        // 截断过长的 URL
+        const maxLength = 50
+        const displayUrl = url.length > maxLength 
+          ? url.substring(0, maxLength) + "..." 
+          : url
+        
+        return (
+          <a 
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-blue-600 hover:underline break-all"
+            title={url}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {displayUrl}
+          </a>
+        )
+      },
+    },
+    {
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => {

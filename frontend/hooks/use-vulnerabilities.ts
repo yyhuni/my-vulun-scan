@@ -58,6 +58,7 @@ export function useScanVulnerabilities(
         return {
           id: item.id,
           title: item.vulnType || item.url || `Vulnerability #${item.id}`,
+          url: item.url || "",
           description: item.description || item.rawOutput || "",
           severity: severity as VulnerabilitySeverity,
           status: "open",
