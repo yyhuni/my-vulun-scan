@@ -21,6 +21,17 @@ export default function ToolsPage() {
         active: "-",
       },
     },
+    {
+      title: "Nuclei 模板",
+      description: "浏览本地 Nuclei 模板结构及内容",
+      href: "/tools/nuclei/",
+      icon: Settings,
+      status: "available",
+      stats: {
+        total: "-",
+        active: "-",
+      },
+    },
   ]
 
   return (

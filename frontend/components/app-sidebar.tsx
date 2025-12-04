@@ -101,6 +101,10 @@ const data = {
           title: "字典管理", // 字典管理
           url: "/tools/wordlists/",
         },
+        {
+          title: "Nuclei 模板", // Nuclei 模板
+          url: "/tools/nuclei/",
+        },
       ],
     },
     // 测试中心相关菜单已移除
