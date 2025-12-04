@@ -64,7 +64,7 @@ fi
 # ==============================================================================
 # 1. 停止并删除全部容器/网络
 # ==============================================================================
-step "[1/5] 是否停止并删除全部容器/网络？(Y/n)"
+step "[1/6] 是否停止并删除全部容器/网络？(Y/n)"
 read -r ans_stop
 ans_stop=${ans_stop:-Y}
 
@@ -87,7 +87,7 @@ fi
 LOGS_DIR="$ROOT_DIR/backend/logs"
 RESULTS_DIR="$ROOT_DIR/backend/results"
 
-step "[2/5] 是否删除扫描日志和结果目录 ($LOGS_DIR, $RESULTS_DIR)？(Y/n)"
+step "[2/6] 是否删除扫描日志和结果目录 ($LOGS_DIR, $RESULTS_DIR)？(Y/n)"
 read -r ans_logs
 ans_logs=${ans_logs:-Y}
 
@@ -105,7 +105,7 @@ fi
 TOOLS_DIR="/opt/xingrin/tools"
 WORDLISTS_DIR="/opt/xingrin/wordlists"
 
-step "[3/5] 是否删除工具目录和字典目录 ($TOOLS_DIR, $WORDLISTS_DIR)？(Y/n)"
+step "[3/6] 是否删除工具目录和字典目录 ($TOOLS_DIR, $WORDLISTS_DIR)？(Y/n)"
 read -r ans_tools
 ans_tools=${ans_tools:-Y}
 
@@ -122,7 +122,7 @@ fi
 # ==============================================================================
 ENV_FILE="$DOCKER_DIR/.env"
 
-step "[4/5] 是否删除配置文件 ($ENV_FILE)？(Y/n)"
+step "[4/6] 是否删除配置文件 ($ENV_FILE)？(Y/n)"
 echo -e "   ${YELLOW}注意：删除后下次安装将生成新的随机密码。${RESET}"
 read -r ans_env
 ans_env=${ans_env:-Y}
@@ -138,7 +138,7 @@ fi
 # ==============================================================================
 # 5. 删除本地 Postgres 容器及数据卷（如果使用本地 DB）
 # ==============================================================================
-step "[5/5] 若使用本地 PostgreSQL 容器：是否删除数据库容器和 volume？(Y/n)"
+step "[5/6] 若使用本地 PostgreSQL 容器：是否删除数据库容器和 volume？(Y/n)"
 read -r ans_db
 ans_db=${ans_db:-Y}
 
@@ -152,6 +152,23 @@ if [[ $ans_db =~ ^[Yy]$ ]]; then
     success "本地 Postgres 容器及数据卷已尝试删除（不存在会自动忽略）。"
 else
     warn "已保留本地 Postgres 容器和 volume。"
+fi
+
+step "[6/6] 是否删除与 XingRin 相关的 Docker 镜像？(y/N)"
+read -r ans_images
+ans_images=${ans_images:-N}
+
+if [[ $ans_images =~ ^[Yy]$ ]]; then
+    info "正在删除 Docker 镜像..."
+    cd "$DOCKER_DIR"
+    if command -v docker compose >/dev/null 2>&1; then
+        docker compose -f docker-compose.yml -f docker-compose.dev.yml down --rmi local || true
+    else
+        docker-compose -f docker-compose.yml -f docker-compose.dev.yml down --rmi local || true
+    fi
+    success "Docker 镜像已删除（如存在）。"
+else
+    warn "已保留 Docker 镜像。"
 fi
 
 success "卸载流程已完成。"
