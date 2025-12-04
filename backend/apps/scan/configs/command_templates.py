@@ -57,7 +57,7 @@ SUBDOMAIN_DISCOVERY_COMMANDS = {
     'subdomain_resolve': {
         # 验证子域名是否能解析（存活验证）
         # 输入文件为候选子域列表，输出为存活子域列表
-        'base': 'puredns resolve {input_file} -r /app/backend/resources/resolvers.txt --write {output_file} --quiet',
+        'base': 'puredns resolve {input_file} -r /app/backend/resources/resolvers.txt --write {output_file} --wildcard-tests 50 --wildcard-batch 1000000 --quiet',
         'optional': {},
     },
     
@@ -65,7 +65,7 @@ SUBDOMAIN_DISCOVERY_COMMANDS = {
     'subdomain_permutation_resolve': {
         # 流式管道：dnsgen 生成变异域名 | puredns resolve 验证存活
         # 不落盘中间文件，避免内存爆炸；不做通配符过滤
-        'base': 'cat {input_file} | dnsgen - | puredns resolve -r /app/backend/resources/resolvers.txt --write {output_file} --quiet',
+        'base': 'cat {input_file} | dnsgen - | puredns resolve -r /app/backend/resources/resolvers.txt --write {output_file} --wildcard-tests 50 --wildcard-batch 1000000 --quiet',
         'optional': {},
     },
 }
