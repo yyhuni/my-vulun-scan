@@ -83,7 +83,11 @@ def endpoints_vuln_scan_flow(
 
         tool_results: Dict[str, dict] = {}
 
-        # Step 2: 串行执行每个漏洞扫描工具（目前主要是 Dalfox）
+        # Step 2: 并行执行每个漏洞扫描工具（目前主要是 Dalfox）
+        # 1）先为每个工具 submit Prefect Task，让 Worker 并行调度
+        # 2）再统一收集各自的结果，组装成 tool_results
+        tool_futures: Dict[str, dict] = {}
+
         for tool_name, tool_config in enabled_tools.items():
             command = build_scan_command(
                 tool_name=tool_name,
@@ -117,7 +121,7 @@ def endpoints_vuln_scan_flow(
 
             # Dalfox XSS 使用流式任务，一边解析一边保存漏洞结果
             if tool_name == "dalfox_xss":
-                logger.info("开始执行漏洞扫描工具 %s（流式保存漏洞结果）", tool_name)
+                logger.info("开始执行漏洞扫描工具 %s（流式保存漏洞结果，已提交任务）", tool_name)
                 future = run_and_stream_save_dalfox_vulns_task.submit(
                     cmd=command,
                     tool_name=tool_name,
@@ -129,29 +133,49 @@ def endpoints_vuln_scan_flow(
                     timeout=timeout,
                     log_file=str(log_file),
                 )
-                result = future.result()
 
-                tool_results[tool_name] = {
+                tool_futures[tool_name] = {
+                    "future": future,
                     "command": command,
                     "timeout": timeout,
-                    "processed_records": result.get("processed_records"),
-                    "created_vulns": result.get("created_vulns"),
-                    "command_log_file": str(log_file),
+                    "log_file": str(log_file),
+                    "mode": "streaming",
                 }
             else:
                 # 其他工具仍使用非流式执行逻辑
-                logger.info("开始执行漏洞扫描工具 %s", tool_name)
+                logger.info("开始执行漏洞扫描工具 %s（已提交任务）", tool_name)
                 future = run_vuln_tool_task.submit(
                     tool_name=tool_name,
                     command=command,
                     timeout=timeout,
                     log_file=str(log_file),
                 )
-                result = future.result()
 
-                tool_results[tool_name] = {
+                tool_futures[tool_name] = {
+                    "future": future,
                     "command": command,
                     "timeout": timeout,
+                    "log_file": str(log_file),
+                    "mode": "normal",
+                }
+
+        # 统一收集所有工具的执行结果
+        for tool_name, meta in tool_futures.items():
+            future = meta["future"]
+            result = future.result()
+
+            if meta["mode"] == "streaming":
+                tool_results[tool_name] = {
+                    "command": meta["command"],
+                    "timeout": meta["timeout"],
+                    "processed_records": result.get("processed_records"),
+                    "created_vulns": result.get("created_vulns"),
+                    "command_log_file": meta["log_file"],
+                }
+            else:
+                tool_results[tool_name] = {
+                    "command": meta["command"],
+                    "timeout": meta["timeout"],
                     "duration": result.get("duration"),
                     "returncode": result.get("returncode"),
                     "command_log_file": result.get("command_log_file"),
