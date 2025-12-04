@@ -53,6 +53,7 @@ def seed_initial_data(target_name: str = "seed-example.com") -> None:
         Endpoint,
         Directory,
         HostPortMapping,
+        Vulnerability,
     )
     from apps.asset.models.snapshot_models import (
         SubdomainSnapshot,
@@ -327,6 +328,7 @@ def seed_initial_data(target_name: str = "seed-example.com") -> None:
     ]
 
     for vuln in vulnerabilities_data:
+        # 按扫描维度写入漏洞快照（用于扫描历史页）
         VulnerabilitySnapshot.objects.create(
             scan=scan,
             url=vuln["url"],
@@ -335,6 +337,16 @@ def seed_initial_data(target_name: str = "seed-example.com") -> None:
             source=vuln["source"],
             description=vuln["description"],
             raw_output=vuln["raw_output"],
+        )
+
+        # 按目标维度写入漏洞资产（用于 Target 详情页 /targets/{id}/vulnerabilities/）
+        Vulnerability.objects.create(
+            target=target,
+            url=vuln["url"],
+            vuln_type=vuln["vuln_type"],
+            severity=vuln["severity"],
+            source=vuln["source"],
+            description=vuln["description"],
         )
 
     # 更新 Scan 上的缓存漏洞统计字段（种子环境简单按当前插入数据设置）
