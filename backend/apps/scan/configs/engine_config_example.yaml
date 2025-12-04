@@ -51,12 +51,9 @@ subdomain_discovery:
   # === Stage 2: 主动字典爆破（可选）===
   bruteforce:
     enabled: false                       # 是否启用字典爆破
-    dnsx_bruteforce:
+    subdomain_bruteforce:
       timeout: auto                      # 自动根据字典行数计算（后续代码中按行数 * 3 秒实现）
-      wordlist_name: dns_wordlist.txt    # 字典名称，对应「字典管理」中的 Wordlist.name
-      threads: 500                       # 高并发
-      # rate-limit: 1000                 # 可选，每秒最多请求数
-      retry: 2                           # 重试次数
+      wordlist_name: subdomains-top1million-110000.txt    # 字典名称，对应「字典管理」中的 Wordlist.name
 
   # === Stage 3: 变异生成 + 存活验证（可选，流式管道避免 OOM）===
   permutation:
@@ -116,8 +113,8 @@ directory_scan:
                                                # 计算公式：字典行数 × 0.02秒/词
                                                # 超时范围：60秒 ~ 7200秒（2小时）
                                                # 也可以手动指定固定超时（如 300）
-      wordlist_name: default_dict.txt          # 字典名称（必需），对应「字典管理」中唯一的 Wordlist.name
-                                               # 安装时会自动初始化名为 default_dict.txt 的默认目录字典
+      wordlist_name: dir_default.txt          # 字典名称（必需），对应「字典管理」中唯一的 Wordlist.name
+                                               # 安装时会自动初始化名为 dir_default.txt 的默认目录字典
                                                # ffuf 会逐行读取字典文件，将每行作为 FUZZ 关键字的替换值
       delay: 0.1-2.0                         # Seconds of delay between requests, or a range of random delay
                                                # For example "0.1" or "0.1-2.0"

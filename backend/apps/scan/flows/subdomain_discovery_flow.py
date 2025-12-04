@@ -455,15 +455,15 @@ def subdomain_discovery_flow(
             logger.info("Stage 2: 字典爆破")
             logger.info("=" * 40)
             
-            dnsx_config = bruteforce_config.get('dnsx_bruteforce', {})
-            wordlist_name = dnsx_config.get('wordlist_name', 'dns_wordlist.txt')
+            bruteforce_tool_config = bruteforce_config.get('subdomain_bruteforce', {})
+            wordlist_name = bruteforce_tool_config.get('wordlist_name', 'dns_wordlist.txt')
             
             # 获取字典路径
             wordlist_service = WordlistService()
             wordlist = wordlist_service.get_wordlist_by_name(wordlist_name)
             
             if wordlist and wordlist.file_path:
-                timeout_value = dnsx_config.get('timeout', 3600)
+                timeout_value = bruteforce_tool_config.get('timeout', 3600)
                 if timeout_value == 'auto':
                     line_count = getattr(wordlist, 'line_count', None)
                     if line_count is None:
@@ -479,20 +479,20 @@ def subdomain_discovery_flow(
                         line_count_int = 0
 
                     timeout_value = line_count_int * 3 if line_count_int > 0 else 3600
-                    dnsx_config = {
-                        **dnsx_config,
+                    bruteforce_tool_config = {
+                        **bruteforce_tool_config,
                         'timeout': timeout_value,
                     }
                     logger.info(
-                        "dnsx_bruteforce 使用自动 timeout: %s 秒 (字典行数=%s, 3秒/行)",
+                        "subdomain_bruteforce 使用自动 timeout: %s 秒 (字典行数=%s, 3秒/行)",
                         timeout_value,
                         line_count_int,
                     )
 
                 brute_output = str(result_dir / f"subs_brute_{timestamp}.txt")
                 brute_result = _run_single_tool(
-                    tool_name='dnsx_bruteforce',
-                    tool_config=dnsx_config,
+                    tool_name='subdomain_bruteforce',
+                    tool_config=bruteforce_tool_config,
                     command_params={
                         'domain': domain_name,
                         'wordlist': wordlist.file_path,
@@ -507,10 +507,10 @@ def subdomain_discovery_flow(
                         [current_result, brute_result],
                         str(result_dir / f"subs_merged_{timestamp}.txt")
                     )
-                    successful_tool_names.append('dnsx_bruteforce')
+                    successful_tool_names.append('subdomain_bruteforce')
                     executed_tasks.append('bruteforce')
                 else:
-                    failed_tools.append({'tool': 'dnsx_bruteforce', 'reason': '执行失败'})
+                    failed_tools.append({'tool': 'subdomain_bruteforce', 'reason': '执行失败'})
             else:
                 logger.warning(f"字典 {wordlist_name} 不存在，跳过字典爆破")
         

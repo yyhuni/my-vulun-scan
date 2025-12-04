@@ -46,15 +46,11 @@ SUBDOMAIN_DISCOVERY_COMMANDS = {
     },
     
     # === 主动字典爆破 ===
-    'dnsx_bruteforce': {
+    'subdomain_bruteforce': {
         # 使用字典对目标域名进行 DNS 爆破
         # -d 目标域名，-w 字典文件，-o 输出文件
-        'base': 'dnsx -d {domain} -w {wordlist} -silent -o {output_file}',
-        'optional': {
-            'threads': '-t {threads}',           # 并发数（默认 100）
-            'rate-limit': '-rl {rate-limit}',    # 每秒请求数限制
-            'retry': '-retry {retry}',           # 重试次数
-        }
+        'base': 'puredns bruteforce {wordlist} {domain} -r /app/backend/resources/resolvers.txt --write {output_file} --quiet',
+        'optional': {},
     },
     
     # === DNS 存活验证 ===
