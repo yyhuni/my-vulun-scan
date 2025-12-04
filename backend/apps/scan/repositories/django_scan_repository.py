@@ -11,7 +11,7 @@ from typing import List, Tuple, Dict
 from datetime import datetime
 
 from django.db import transaction, DatabaseError
-from django.db.models import QuerySet, F, Value, Func
+from django.db.models import QuerySet, F, Value, Func, Count
 from django.utils import timezone
 
 from apps.scan.models import Scan
@@ -395,6 +395,8 @@ class DjangoScanRepository:
             是否更新成功
         """
         try:
+            from apps.asset.models import VulnerabilitySnapshot
+
             scan = self.get_by_id(scan_id, prefetch_relations=False)
             if not scan:
                 logger.error("Scan 不存在，无法更新缓存统计数据 - Scan ID: %s", scan_id)
@@ -403,6 +405,23 @@ class DjangoScanRepository:
             # 统计快照数据（用于扫描历史）
             # IP 数量需要按 IP 去重统计
             ips_count = scan.host_port_mapping_snapshots.values('ip').distinct().count()
+
+            # 漏洞统计：按扫描维度基于 VulnerabilitySnapshot 聚合
+            vuln_qs = VulnerabilitySnapshot.objects.filter(scan_id=scan_id)
+            total_vulns = vuln_qs.count()
+
+            severity_stats = {
+                'critical': 0,
+                'high': 0,
+                'medium': 0,
+                'low': 0,
+            }
+
+            for row in vuln_qs.values('severity').annotate(count=Count('id')):
+                sev = (row.get('severity') or '').lower()
+                count = row.get('count') or 0
+                if sev in severity_stats:
+                    severity_stats[sev] = count
             
             stats = {
                 'cached_subdomains_count': scan.subdomain_snapshots.count(),
@@ -410,6 +429,11 @@ class DjangoScanRepository:
                 'cached_endpoints_count': scan.endpoint_snapshots.count(),
                 'cached_ips_count': ips_count,
                 'cached_directories_count': scan.directory_snapshots.count(),
+                'cached_vulns_total': total_vulns,
+                'cached_vulns_critical': severity_stats['critical'],
+                'cached_vulns_high': severity_stats['high'],
+                'cached_vulns_medium': severity_stats['medium'],
+                'cached_vulns_low': severity_stats['low'],
                 'stats_updated_at': timezone.now()
             }
             

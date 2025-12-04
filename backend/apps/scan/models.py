@@ -74,6 +74,11 @@ class Scan(models.Model):
     cached_endpoints_count = models.IntegerField(default=0, help_text='缓存的端点数量')
     cached_ips_count = models.IntegerField(default=0, help_text='缓存的IP地址数量')
     cached_directories_count = models.IntegerField(default=0, help_text='缓存的目录数量')
+    cached_vulns_total = models.IntegerField(default=0, help_text='缓存的漏洞总数')
+    cached_vulns_critical = models.IntegerField(default=0, help_text='缓存的严重漏洞数量')
+    cached_vulns_high = models.IntegerField(default=0, help_text='缓存的高危漏洞数量')
+    cached_vulns_medium = models.IntegerField(default=0, help_text='缓存的中危漏洞数量')
+    cached_vulns_low = models.IntegerField(default=0, help_text='缓存的低危漏洞数量')
     stats_updated_at = models.DateTimeField(null=True, blank=True, help_text='统计数据最后更新时间')
 
     class Meta:

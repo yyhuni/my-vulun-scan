@@ -62,11 +62,9 @@ class ScanHistorySerializer(serializers.ModelSerializer):
         """获取扫描汇总数据。
 
         设计原则：
-        - 子域名/网站/端点/IP/目录仍然使用缓存字段（避免实时 COUNT）
-        - 漏洞统计目前按扫描实时统计 VulnerabilitySnapshot，数量通常较少，性能可接受
+        - 子域名/网站/端点/IP/目录使用缓存字段（避免实时 COUNT）
+        - 漏洞统计使用 Scan 上的缓存字段，在扫描结束时统一聚合
         """
-        from apps.asset.models import VulnerabilitySnapshot
-
         # 1. 使用缓存字段构建基础统计（子域名、网站、端点、IP、目录）
         summary = {
             'subdomains': obj.cached_subdomains_count or 0,
@@ -76,30 +74,13 @@ class ScanHistorySerializer(serializers.ModelSerializer):
             'directories': obj.cached_directories_count or 0,
         }
 
-        # 2. 实时统计当前扫描的漏洞快照（按严重性聚合）
-        #    注意：这里只统计 VulnerabilitySnapshot（按 scan 维度），
-        #    与资产表 Vulnerability 的 target 维度统计相互独立。
-        vuln_qs = VulnerabilitySnapshot.objects.filter(scan_id=obj.id)
-
-        total = vuln_qs.count()
-
-        severity_stats = {
-            'critical': 0,
-            'high': 0,
-            'medium': 0,
-            'low': 0,
-        }
-
-        for row in vuln_qs.values('severity').annotate(count=Count('id')):
-            sev = row['severity'] or ''
-            count = row['count'] or 0
-            # 只统计四个主要等级，info/unknown 等暂不计入
-            if sev in severity_stats:
-                severity_stats[sev] = count
-
+        # 2. 使用 Scan 模型上的缓存漏洞统计（按严重性聚合）
         summary['vulnerabilities'] = {
-            'total': total,
-            **severity_stats,
+            'total': obj.cached_vulns_total or 0,
+            'critical': obj.cached_vulns_critical or 0,
+            'high': obj.cached_vulns_high or 0,
+            'medium': obj.cached_vulns_medium or 0,
+            'low': obj.cached_vulns_low or 0,
         }
 
         return summary

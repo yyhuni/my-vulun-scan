@@ -336,6 +336,21 @@ def seed_initial_data(target_name: str = "seed-example.com") -> None:
             description=vuln["description"],
             raw_output=vuln["raw_output"],
         )
+
+    # 更新 Scan 上的缓存漏洞统计字段（种子环境简单按当前插入数据设置）
+    scan.cached_vulns_total = len(vulnerabilities_data)
+    scan.cached_vulns_critical = 0
+    scan.cached_vulns_high = 0
+    scan.cached_vulns_medium = len(vulnerabilities_data)
+    scan.cached_vulns_low = 0
+    scan.save(update_fields=[
+        "cached_vulns_total",
+        "cached_vulns_critical",
+        "cached_vulns_high",
+        "cached_vulns_medium",
+        "cached_vulns_low",
+    ])
+
     print(f"[seed] VulnerabilitySnapshot 数量: {len(vulnerabilities_data)}")
 
     print(f"[seed] Snapshot 生成完成。Subdomain/Website/Endpoint/Directory/HostPortMapping/Vulnerability 均已写入。")
