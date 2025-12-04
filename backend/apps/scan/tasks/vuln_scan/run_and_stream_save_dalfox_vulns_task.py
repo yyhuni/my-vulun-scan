@@ -130,27 +130,35 @@ def _parse_and_validate_line(line: str) -> Optional[dict]:
 
         # 组合描述信息（参考你提供的 parse_dalfox_result 风格）
         evidence = data.get("evidence") or ""
-        message = data.get("message") or ""
-        payload = data.get("message_str") or ""
+        message = data.get("message_str") or ""
+        payload = data.get("payload") or ""
         param = data.get("param") or ""
         inject_type = data.get("inject_type") or ""
         cwe = data.get("cwe") or ""
+        vuln_type_code = data.get("type") or ""  # R=Reflected, S=Stored
+        method = data.get("method") or ""
 
         description_parts = []
-        if evidence:
-            description_parts.append(f"Evidence: {evidence} <br>")
         if message:
-            description_parts.append(f"Message: {message} <br>")
-        if payload:
-            description_parts.append(f"Payload: {payload} <br>")
+            description_parts.append(f"Message: {message}")
+        if vuln_type_code:
+            type_map = {"R": "Reflected", "S": "Stored", "V": "Verified"}
+            type_name = type_map.get(vuln_type_code, vuln_type_code)
+            description_parts.append(f"Type: {type_name}")
+        if method:
+            description_parts.append(f"Method: {method}")
         if param:
-            description_parts.append(f"Vulnerable Parameter: {param} <br>")
+            description_parts.append(f"Vulnerable Parameter: {param}")
         if inject_type:
-            description_parts.append(f"Inject Type: {inject_type} <br>")
+            description_parts.append(f"Inject Type: {inject_type}")
+        if payload:
+            description_parts.append(f"Payload: {payload}")
+        if evidence:
+            description_parts.append(f"Evidence: {evidence}")
         if cwe:
             description_parts.append(f"CWE: {cwe}")
 
-        description = " ".join(description_parts)
+        description = "\n".join(description_parts)
 
         return {
             "url": url,

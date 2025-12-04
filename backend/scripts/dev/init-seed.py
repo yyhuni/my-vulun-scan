@@ -60,6 +60,7 @@ def seed_initial_data(target_name: str = "seed-example.com") -> None:
         DirectorySnapshot,
         HostPortMappingSnapshot,
         EndpointSnapshot,
+        VulnerabilitySnapshot,
     )
     from apps.common.definitions import ScanStatus
     from apps.engine.models import ScanEngine
@@ -287,7 +288,57 @@ def seed_initial_data(target_name: str = "seed-example.com") -> None:
             matched_gf_patterns=e.matched_gf_patterns,
         )
 
-    print(f"[seed] Snapshot 生成完成。Subdomain/Website/Endpoint/Directory/HostPortMapping 均已写入。")
+    # 10. 漏洞快照
+    vulnerabilities_data = [
+        {
+            "url": "http://vulun.yyhuni.rest/xss/reflected?name=123%27%3E%3Cobject+data%3Djavascript%3Aalert%281%29%3E%3C%2Fobject%3E",
+            "vuln_type": "xss",
+            "severity": "medium",
+            "source": "dalfox",
+            "description": "\n".join([
+                "Message: Reflected Payload in HTML: name='>\u003cobject data=javascript:alert(1)>\u003c/object>",
+                "Type: Reflected",
+                "Method: GET",
+                "Vulnerable Parameter: name",
+                "Inject Type: inHTML-URL",
+                "Payload: '>\u003cobject data=javascript:alert(1)>\u003c/object>",
+                "Evidence: 32 line:  你好，\u003cstrong>123'>\u003cobject data=javascript:alert(1)>\u003c/object>\u003c/strong>！欢",
+                "CWE: CWE-79",
+            ]),
+            "raw_output": '{"type":"R","inject_type":"inHTML-URL","poc_type":"plain","method":"GET","data":"http://vulun.yyhuni.rest/xss/reflected?name=123%27%3E%3Cobject+data%3Djavascript%3Aalert%281%29%3E%3C%2Fobject%3E","param":"name","payload":"\'>\u003cobject data=javascript:alert(1)>\u003c/object>","evidence":"32 line:  你好，\u003cstrong>123\'>\u003cobject data=javascript:alert(1)>\u003c/object>\u003c/strong>！欢","cwe":"CWE-79","severity":"Medium","message_id":274,"message_str":"Reflected Payload in HTML: name=\'>\u003cobject data=javascript:alert(1)>\u003c/object>"}',
+        },
+        {
+            "url": "http://vulun.yyhuni.rest/xss/reflected?name=123%3E%3Csvg%3E%3Canimate+onbegin%3Dalert%281%29+attributeName%3Dx+dur%3D1s%3E",
+            "vuln_type": "xss",
+            "severity": "medium",
+            "source": "dalfox",
+            "description": "\n".join([
+                "Message: Reflected Payload in HTML: name=>\u003csvg>\u003canimate onbegin=alert(1) attributeName=x dur=1s>",
+                "Type: Reflected",
+                "Method: GET",
+                "Vulnerable Parameter: name",
+                "Inject Type: inHTML-URL",
+                "Payload: >\u003csvg>\u003canimate onbegin=alert(1) attributeName=x dur=1s>",
+                "Evidence: 32 line:  你好，\u003cstrong>123>\u003csvg>\u003canimate onbegin=alert(1) attributeName=x dur=1s>\u003c/str",
+                "CWE: CWE-79",
+            ]),
+            "raw_output": '{"type":"R","inject_type":"inHTML-URL","poc_type":"plain","method":"GET","data":"http://vulun.yyhuni.rest/xss/reflected?name=123%3E%3Csvg%3E%3Canimate+onbegin%3Dalert%281%29+attributeName%3Dx+dur%3D1s%3E","param":"name","payload":">\u003csvg>\u003canimate onbegin=alert(1) attributeName=x dur=1s>","evidence":"32 line:  你好，\u003cstrong>123>\u003csvg>\u003canimate onbegin=alert(1) attributeName=x dur=1s>\u003c/str","cwe":"CWE-79","severity":"Medium","message_id":390,"message_str":"Reflected Payload in HTML: name=>\u003csvg>\u003canimate onbegin=alert(1) attributeName=x dur=1s>"}',
+        },
+    ]
+
+    for vuln in vulnerabilities_data:
+        VulnerabilitySnapshot.objects.create(
+            scan=scan,
+            url=vuln["url"],
+            vuln_type=vuln["vuln_type"],
+            severity=vuln["severity"],
+            source=vuln["source"],
+            description=vuln["description"],
+            raw_output=vuln["raw_output"],
+        )
+    print(f"[seed] VulnerabilitySnapshot 数量: {len(vulnerabilities_data)}")
+
+    print(f"[seed] Snapshot 生成完成。Subdomain/Website/Endpoint/Directory/HostPortMapping/Vulnerability 均已写入。")
     print(f"[seed] 完成。Target id={target.id}, Scan id={scan.id}。")
 
 
