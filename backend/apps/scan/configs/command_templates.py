@@ -53,27 +53,20 @@ SUBDOMAIN_DISCOVERY_COMMANDS = {
         'optional': {},
     },
     
-    # === DNS 存活验证 ===
-    'dnsx_resolve': {
+    # === DNS 存活验证（最终统一验证）===
+    'subdomain_resolve': {
         # 验证子域名是否能解析（存活验证）
-        # -l 输入文件（子域名列表）
-        # -silent 安静模式，只输出最终域名列表到文件
-        'base': 'dnsx -l {input_file} -silent -o {output_file}',
-        'optional': {
-            'threads': '-t {threads}',                       # 并发数
-            'rate-limit': '-rl {rate-limit}',                # 限速
-            'retry': '-retry {retry}',                       # 重试
-        }
+        # 输入文件为候选子域列表，输出为存活子域列表
+        'base': 'puredns resolve {input_file} -r /app/backend/resources/resolvers.txt --write {output_file} --quiet',
+        'optional': {},
     },
     
     # === 变异生成 + 存活验证（流式管道，避免 OOM）===
-    'dnsgen_resolve': {
-        # 流式管道：dnsgen 生成变异域名 | dnsx 验证存活
+    'subdomain_permutation_resolve': {
+        # 流式管道：dnsgen 生成变异域名 | puredns resolve 验证存活
         # 不落盘中间文件，避免内存爆炸；不做通配符过滤
-        'base': 'cat {input_file} | dnsgen - | dnsx -silent -o {output_file}',
-        'optional': {
-            'threads': '-t {threads}',                       # dnsx 并发数
-        }
+        'base': 'cat {input_file} | dnsgen - | puredns resolve -r /app/backend/resources/resolvers.txt --write {output_file} --quiet',
+        'optional': {},
     },
 }
 

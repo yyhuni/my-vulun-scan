@@ -24,7 +24,6 @@ RUN go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest && \
     go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest && \
     go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest && \
     go install -v github.com/projectdiscovery/katana/cmd/katana@latest && \
-    go install -v github.com/projectdiscovery/dnsx/cmd/dnsx@latest && \
     go install -v github.com/tomnomnom/assetfinder@latest && \
     go install -v github.com/ffuf/ffuf/v2@latest && \
     go install -v github.com/d3mondev/puredns/v2@latest

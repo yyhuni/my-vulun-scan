@@ -58,18 +58,14 @@ subdomain_discovery:
   # === Stage 3: 变异生成 + 存活验证（可选，流式管道避免 OOM）===
   permutation:
     enabled: true                        # 是否启用变异生成
-    dnsgen_resolve:
+    subdomain_permutation_resolve:
       timeout: 7200                      # 2小时（变异量大时需要更长时间）
-      threads: 200                       # dnsx 并发数
 
   # === Stage 4: DNS 存活验证（可选）===
   resolve:
     enabled: true                        # 是否启用存活验证
-    dnsx_resolve:
+    subdomain_resolve:
       timeout: auto                      # 自动根据候选子域数量计算（在 Flow 中按行数 * 3 秒实现）
-      threads: 200                       # 并发数
-      # rate-limit: 500                  # 可选，限速
-      retry: 3                           # 重试次数
       
 
 # ==================== 端口扫描 ====================

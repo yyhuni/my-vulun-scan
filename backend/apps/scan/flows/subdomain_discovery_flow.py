@@ -11,9 +11,9 @@
 
 增强流程（4 阶段）：
     Stage 1: 被动收集（并行） - 必选
-    Stage 2: 字典爆破（可选） - dnsx bruteforce
-    Stage 3: 变异生成 + 验证（可选） - dnsgen | dnsx 流式管道
-    Stage 4: DNS 存活验证（可选） - dnsx resolve
+    Stage 2: 字典爆破（可选） - 子域名字典爆破
+    Stage 3: 变异生成 + 验证（可选） - dnsgen + 通用存活验证
+    Stage 4: DNS 存活验证（可选） - 通用存活验证
     
 各阶段可灵活开关，最终结果根据实际执行的阶段动态决定
 """
@@ -326,14 +326,13 @@ def subdomain_discovery_flow(
     scan_workspace_dir: str,
     enabled_tools: dict
 ) -> dict:
-    """
-    子域名发现扫描流程（增强版）
+    """子域名发现扫描流程（增强版）
     
     工作流程（4 阶段）：
         Stage 1: 被动收集（并行） - 必选
-        Stage 2: 字典爆破（可选） - dnsx bruteforce
-        Stage 3: 变异生成 + 验证（可选） - dnsgen | dnsx 流式管道
-        Stage 4: DNS 存活验证（可选） - dnsx resolve
+        Stage 2: 字典爆破（可选） - 子域名字典爆破
+        Stage 3: 变异生成 + 验证（可选） - dnsgen + 通用存活验证
+        Stage 4: DNS 存活验证（可选） - 通用存活验证
         Final: 保存到数据库
     
     Args:
@@ -521,12 +520,12 @@ def subdomain_discovery_flow(
             logger.info("Stage 3: 变异生成 + 存活验证（流式管道）")
             logger.info("=" * 40)
             
-            dnsgen_config = permutation_config.get('dnsgen_resolve', {})
+            permutation_tool_config = permutation_config.get('subdomain_permutation_resolve', {})
             permuted_output = str(result_dir / f"subs_permuted_{timestamp}.txt")
             
             permuted_result = _run_single_tool(
-                tool_name='dnsgen_resolve',
-                tool_config=dnsgen_config,
+                tool_name='subdomain_permutation_resolve',
+                tool_config=permutation_tool_config,
                 command_params={
                     'input_file': current_result,
                     'output_file': permuted_output,
@@ -540,10 +539,10 @@ def subdomain_discovery_flow(
                     [current_result, permuted_result],
                     str(result_dir / f"subs_with_permuted_{timestamp}.txt")
                 )
-                successful_tool_names.append('dnsgen_resolve')
+                successful_tool_names.append('subdomain_permutation_resolve')
                 executed_tasks.append('permutation')
             else:
-                failed_tools.append({'tool': 'dnsgen_resolve', 'reason': '执行失败'})
+                failed_tools.append({'tool': 'subdomain_permutation_resolve', 'reason': '执行失败'})
         
         # ==================== Stage 4: DNS 存活验证（可选）====================
         # 无论是否启用 Stage 3，只要 resolve.enabled 为 true 就会执行，对当前所有候选子域做统一 DNS 验证
@@ -553,10 +552,10 @@ def subdomain_discovery_flow(
             logger.info("Stage 4: DNS 存活验证")
             logger.info("=" * 40)
             
-            dnsx_resolve_config = resolve_config.get('dnsx_resolve', {})
+            resolve_tool_config = resolve_config.get('subdomain_resolve', {})
 
             # 根据当前候选子域数量动态计算 timeout（支持 timeout: auto）
-            timeout_value = dnsx_resolve_config.get('timeout', 3600)
+            timeout_value = resolve_tool_config.get('timeout', 3600)
             if timeout_value == 'auto':
                 line_count = 0
                 try:
@@ -571,12 +570,12 @@ def subdomain_discovery_flow(
                     line_count_int = 0
 
                 timeout_value = line_count_int * 3 if line_count_int > 0 else 3600
-                dnsx_resolve_config = {
-                    **dnsx_resolve_config,
+                resolve_tool_config = {
+                    **resolve_tool_config,
                     'timeout': timeout_value,
                 }
                 logger.info(
-                    "dnsx_resolve 使用自动 timeout: %s 秒 (候选子域数=%s, 3秒/域名)",
+                    "subdomain_resolve 使用自动 timeout: %s 秒 (候选子域数=%s, 3秒/域名)",
                     timeout_value,
                     line_count_int,
                 )
@@ -584,8 +583,8 @@ def subdomain_discovery_flow(
             alive_output = str(result_dir / f"subs_alive_{timestamp}.txt")
             
             alive_result = _run_single_tool(
-                tool_name='dnsx_resolve',
-                tool_config=dnsx_resolve_config,
+                tool_name='subdomain_resolve',
+                tool_config=resolve_tool_config,
                 command_params={
                     'input_file': current_result,
                     'output_file': alive_output,
@@ -595,10 +594,10 @@ def subdomain_discovery_flow(
             
             if alive_result:
                 current_result = alive_result
-                successful_tool_names.append('dnsx_resolve')
+                successful_tool_names.append('subdomain_resolve')
                 executed_tasks.append('resolve')
             else:
-                failed_tools.append({'tool': 'dnsx_resolve', 'reason': '执行失败'})
+                failed_tools.append({'tool': 'subdomain_resolve', 'reason': '执行失败'})
         
         # ==================== Final: 保存到数据库 ====================
         logger.info("=" * 40)

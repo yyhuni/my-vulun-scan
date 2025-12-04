@@ -29,9 +29,9 @@ def _parse_subdomain_discovery_config(scan_config: Dict[str, Any]) -> Dict[str, 
     配置格式：
         {
             'passive_tools': {'subfinder': {...}, ...},
-            'bruteforce': {'enabled': True, 'dnsx_bruteforce': {...}},
-            'permutation': {'enabled': True, 'dnsgen_resolve': {...}},
-            'resolve': {'enabled': True, 'dnsx_resolve': {...}}
+            'bruteforce': {'enabled': True, 'subdomain_bruteforce': {...}},
+            'permutation': {'enabled': True, 'subdomain_permutation_resolve': {...}},
+            'resolve': {'enabled': True, 'subdomain_resolve': {...}}
         }
     
     Args:
