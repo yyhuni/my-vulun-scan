@@ -20,6 +20,7 @@ import logging
 import json
 import subprocess
 import time
+from asyncio import CancelledError
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Generator, Optional, TYPE_CHECKING
@@ -28,9 +29,10 @@ from prefect import task
 from django.db import IntegrityError, OperationalError, DatabaseError
 from psycopg2 import InterfaceError
 
-from apps.common.definitions import VulnSeverity
+from apps.common.definitions import VulnSeverity, ScanStatus
 from apps.asset.dtos.snapshot import VulnerabilitySnapshotDTO
 from apps.scan.utils import execute_stream
+from apps.scan.models import Scan
 
 if TYPE_CHECKING:
     from apps.asset.services.snapshot import VulnerabilitySnapshotsService
@@ -345,10 +347,14 @@ def _process_records_in_batches(
     batch_num = 0
     failed_batches = []
     batch = []
+    cancel_check_interval = 50  # 每处理50条检查一次取消信号
 
     total_stats = {"created_vulns": 0}
 
     for record in data_generator:
+        if cancel_check_interval > 0 and (total_records % cancel_check_interval == 0):
+            _raise_if_cancelled(scan_id)
+
         batch.append(record)
         total_records += 1
 
@@ -363,6 +369,8 @@ def _process_records_in_batches(
     if batch:
         batch_num += 1
         _process_batch(batch, scan_id, target_id, batch_num, total_stats, failed_batches, services)
+
+    _raise_if_cancelled(scan_id)
 
     if failed_batches:
         error_msg = (
@@ -460,6 +468,14 @@ def run_and_stream_save_dalfox_vulns_task(
 
         return _build_final_result(stats)
 
+    except CancelledError:
+        logger.warning(
+            "⚠️ Dalfox 漏洞扫描任务检测到取消信号，正在终止 - scan_id=%s, target_id=%s",
+            scan_id,
+            target_id,
+        )
+        raise
+
     except subprocess.TimeoutExpired:
         logger.warning(
             "⚠️ Dalfox 漏洞扫描任务超时 - target_id=%s, 超时=%s秒。超时前已解析的数据已保存到数据库。",
@@ -475,3 +491,11 @@ def run_and_stream_save_dalfox_vulns_task(
 
     finally:
         _cleanup_resources(data_generator)
+
+
+def _raise_if_cancelled(scan_id: int) -> None:
+    """检测扫描是否已请求取消，若是则抛出 CancelledError 以触发 Prefect 取消流程。"""
+    status = Scan.objects.filter(id=scan_id).values_list("status", flat=True).first()
+    if status in (ScanStatus.CANCELLING, ScanStatus.CANCELLED):
+        logger.warning("检测到取消信号，终止 Dalfox 漏洞扫描 - scan_id=%s", scan_id)
+        raise CancelledError()

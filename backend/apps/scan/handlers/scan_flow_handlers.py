@@ -92,6 +92,12 @@ def on_scan_flow_completed(flow: Flow, flow_run: FlowRun, state: State) -> None:
                 detail = result.get('detail')
             service.complete_stage(scan_id, stage, detail)
             logger.info(f"✓ 阶段进度已更新为 completed - Scan ID: {scan_id}, Stage: {stage}")
+            # 每个阶段完成后刷新缓存统计，便于前端实时看到增量
+            try:
+                service.update_cached_stats(scan_id)
+                logger.info("✓ 阶段完成后已刷新缓存统计 - Scan ID: %s", scan_id)
+            except Exception as e:
+                logger.error("阶段完成后刷新缓存统计失败 - Scan ID: %s, 错误: %s", scan_id, e)
         except Exception as e:
             logger.error(f"更新阶段进度失败 - Scan ID: {scan_id}, Stage: {stage}: {e}")
 

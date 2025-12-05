@@ -24,6 +24,7 @@ import logging
 import json
 import subprocess
 import time
+from asyncio import CancelledError
 from pathlib import Path
 from prefect import task
 from typing import Generator, List, Optional, TYPE_CHECKING
@@ -34,6 +35,8 @@ from dataclasses import dataclass
 from .types import PortScanRecord
 from apps.scan.utils import execute_stream
 from apps.common.validators import validate_port
+from apps.common.definitions import ScanStatus
+from apps.scan.models import Scan
 
 # 类型检查时导入，运行时不导入（避免循环依赖）
 if TYPE_CHECKING:
@@ -457,6 +460,7 @@ def _process_records_in_batches(
     batch_num = 0
     failed_batches = []
     batch = []
+    cancel_check_interval = 50  # 每处理50条检查一次取消信号
     
     # 统计信息
     total_stats = {
@@ -470,6 +474,10 @@ def _process_records_in_batches(
     # 注意：如果超时，subprocess.TimeoutExpired 会从 data_generator 中抛出
     # 此时已处理的数据已经保存到数据库
     for record in data_generator:
+        # 周期性检查取消信号，协作式终止
+        if cancel_check_interval > 0 and (total_records % cancel_check_interval == 0):
+            _raise_if_cancelled(scan_id)
+
         batch.append(record)
         total_records += 1
         
@@ -487,6 +495,9 @@ def _process_records_in_batches(
     if batch:
         batch_num += 1
         _process_batch(batch, scan_id, target_id, batch_num, total_stats, failed_batches, services)
+
+    # 最后再检查一次取消信号，避免在尾部卡住
+    _raise_if_cancelled(scan_id)
     
     # 检查失败批次
     if failed_batches:
@@ -649,7 +660,15 @@ def run_and_stream_save_ports_task(
         
         # 4. 构建最终结果
         return _build_final_result(stats)
-        
+    
+    except CancelledError:
+        # Prefect 取消信号：终止任务并标记为取消（让上层 handler 触发状态更新）
+        logger.warning(
+            "⚠️ 端口扫描任务检测到取消信号，正在终止 - scan_id=%s, target_id=%s",
+            scan_id, target_id
+        )
+        raise
+
     except subprocess.TimeoutExpired:
         # 超时异常：部分数据已保存，但扫描未完成
         # 这是预期行为：流式处理会实时保存已解析的数据
@@ -669,3 +688,11 @@ def run_and_stream_save_ports_task(
     finally:
         # 5. 清理资源
         _cleanup_resources(data_generator)
+
+
+def _raise_if_cancelled(scan_id: int) -> None:
+    """检测扫描是否已请求取消，若已取消则抛出 CancelledError 以触发 Prefect 取消流程。"""
+    status = Scan.objects.filter(id=scan_id).values_list("status", flat=True).first()
+    if status in (ScanStatus.CANCELLING, ScanStatus.CANCELLED):
+        logger.warning("检测到取消信号，终止端口扫描 - scan_id=%s", scan_id)
+        raise CancelledError()
