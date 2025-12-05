@@ -12,9 +12,7 @@ export interface NucleiRepo {
   id: number
   name: string
   repoUrl: string
-  authType: "none" | "token"
   localPath: string
-  branch: string
   lastSyncedAt: string | null
   createdAt: string
   updatedAt: string
@@ -57,9 +55,6 @@ export function useUpdateNucleiRepo() {
     mutationFn: (data: {
       id: number
       repoUrl?: string
-      authType?: "none" | "token"
-      authToken?: string
-      branch?: string
     }) => nucleiRepoApi.updateRepo(data.id, data),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["nuclei-repos"] })

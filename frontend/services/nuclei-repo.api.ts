@@ -10,9 +10,7 @@ export interface NucleiRepoResponse {
   id: number
   name: string
   repoUrl: string
-  authType: "none" | "token"
   localPath: string
-  branch: string
   lastSyncedAt: string | null
   createdAt: string
   updatedAt: string
@@ -21,16 +19,10 @@ export interface NucleiRepoResponse {
 export interface CreateRepoPayload {
   name: string
   repoUrl: string
-  authType?: "none" | "token"
-  authToken?: string
-  branch?: string
 }
 
 export interface UpdateRepoPayload {
   repoUrl?: string
-  authType?: "none" | "token"
-  authToken?: string
-  branch?: string
 }
 
 export interface TemplateTreeResponse {

@@ -86,10 +86,7 @@ class NucleiTemplateRepo(models.Model):
 
     name = models.CharField(max_length=200, help_text="仓库名称，用于前端展示")
     repo_url = models.CharField(max_length=500, help_text="Git 仓库地址")
-    auth_type = models.CharField(max_length=20, default="none", help_text="认证方式：none / token")
-    auth_token = models.TextField(blank=True, default="", help_text="访问凭据（Token 或私钥内容）")
     local_path = models.CharField(max_length=500, help_text="本地工作目录绝对路径")
-    branch = models.CharField(max_length=100, blank=True, default="", help_text="Git 分支名，可选")
     last_synced_at = models.DateTimeField(null=True, blank=True, help_text="最后一次成功同步时间")
     created_at = models.DateTimeField(auto_now_add=True, help_text="创建时间")
     updated_at = models.DateTimeField(auto_now=True, help_text="更新时间")

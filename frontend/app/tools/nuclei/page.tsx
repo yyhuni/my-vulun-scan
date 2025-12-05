@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   useNucleiRepos,
@@ -41,14 +40,10 @@ export default function NucleiReposPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [newName, setNewName] = useState("")
   const [newRepoUrl, setNewRepoUrl] = useState("")
-  const [newAuthType, setNewAuthType] = useState<"none" | "token">("none")
-  const [newAuthToken, setNewAuthToken] = useState("")
 
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editingRepo, setEditingRepo] = useState<NucleiRepo | null>(null)
   const [editRepoUrl, setEditRepoUrl] = useState("")
-  const [editAuthType, setEditAuthType] = useState<"none" | "token">("none")
-  const [editAuthToken, setEditAuthToken] = useState("")
 
   // API Hooks
   const { data: repos, isLoading, isError } = useNucleiRepos()
@@ -60,15 +55,11 @@ export default function NucleiReposPage() {
   const resetCreateForm = () => {
     setNewName("")
     setNewRepoUrl("")
-    setNewAuthType("none")
-    setNewAuthToken("")
   }
 
   const resetEditForm = () => {
     setEditingRepo(null)
     setEditRepoUrl("")
-    setEditAuthType("none")
-    setEditAuthToken("")
   }
 
   const handleCreateSubmit = (event: FormEvent) => {
@@ -81,8 +72,6 @@ export default function NucleiReposPage() {
       {
         name,
         repoUrl,
-        authType: newAuthType,
-        authToken: newAuthToken,
       },
       {
         onSuccess: () => {
@@ -105,8 +94,6 @@ export default function NucleiReposPage() {
   const openEditDialog = (repo: NucleiRepo) => {
     setEditingRepo(repo)
     setEditRepoUrl(repo.repoUrl || "")
-    setEditAuthType(repo.authType || "none")
-    setEditAuthToken("")
     setEditDialogOpen(true)
   }
 
@@ -120,8 +107,6 @@ export default function NucleiReposPage() {
       {
         id: editingRepo.id,
         repoUrl,
-        authType: editAuthType,
-        authToken: editAuthToken || undefined,
       },
       {
         onSuccess: () => {
@@ -189,10 +174,6 @@ export default function NucleiReposPage() {
                           {repo.localPath}
                         </span>
                       )}
-                      <span>
-                        <span className="font-medium">认证方式：</span>
-                        {repo.authType === "none" ? "无需认证" : "Token / 私钥"}
-                      </span>
                       {repo.lastSyncedAt && (
                         <span>
                           <span className="font-medium">最后同步：</span>
@@ -271,36 +252,7 @@ export default function NucleiReposPage() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label>认证方式</Label>
-              <RadioGroup
-                value={newAuthType}
-                onValueChange={(value) => setNewAuthType(value as "none" | "token")}
-                className="flex gap-4"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="none" id="new-git-auth-none" />
-                  <Label htmlFor="new-git-auth-none">无需认证（公开仓库）</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="token" id="new-git-auth-token" />
-                  <Label htmlFor="new-git-auth-token">Token / 私钥</Label>
-                </div>
-              </RadioGroup>
-            </div>
-
-            {newAuthType === "token" && (
-              <div className="space-y-2">
-                <Label htmlFor="nuclei-repo-auth-token">访问凭据</Label>
-                <Input
-                  id="nuclei-repo-auth-token"
-                  type="password"
-                  placeholder="GitHub Token 或私钥内容（前端仅展示，后端落库时请妥善加密存储）"
-                  value={newAuthToken}
-                  onChange={(event) => setNewAuthToken(event.target.value)}
-                />
-              </div>
-            )}
+            {/* 目前只支持公开仓库，这里不再提供认证方式和凭据配置 */}
 
             <DialogFooter>
               <Button
@@ -352,36 +304,7 @@ export default function NucleiReposPage() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label>认证方式</Label>
-              <RadioGroup
-                value={editAuthType}
-                onValueChange={(value) => setEditAuthType(value as "none" | "token")}
-                className="flex gap-4"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="none" id="edit-git-auth-none" />
-                  <Label htmlFor="edit-git-auth-none">无需认证（公开仓库）</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="token" id="edit-git-auth-token" />
-                  <Label htmlFor="edit-git-auth-token">Token / 私钥</Label>
-                </div>
-              </RadioGroup>
-            </div>
-
-            {editAuthType === "token" && (
-              <div className="space-y-2">
-                <Label htmlFor="edit-nuclei-repo-auth-token">访问凭据</Label>
-                <Input
-                  id="edit-nuclei-repo-auth-token"
-                  type="password"
-                  placeholder="GitHub Token 或私钥内容（前端仅展示，后端落库时请妥善加密存储）"
-                  value={editAuthToken}
-                  onChange={(event) => setEditAuthToken(event.target.value)}
-                />
-              </div>
-            )}
+            {/* 编辑时也不再支持配置认证方式/凭据，仅允许修改 Git 地址 */}
 
             <DialogFooter>
               <Button
