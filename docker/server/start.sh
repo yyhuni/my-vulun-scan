@@ -44,16 +44,14 @@ prefect work-pool create "$SCAN_POOL_NAME" --type process --overwrite || true
 prefect work-pool create "$MAINTENANCE_POOL_NAME" --type process --overwrite || true
 echo "  ✓ Work Pools 已就绪"
 
-# 3. 注册 Prefect Deployments
+# 3. 注册 Prefect Deployments（需在 /app/backend 目录下执行）
 echo "  [3/4] 注册 Prefect Deployments..."
+cd /app/backend
 
-# 扫描任务
-echo "    - 注册扫描任务..."
-python -m apps.scan.deployments.initiate_scan_deployment
-# 清理任务
-echo "    - 注册清理任务..."
-python -m apps.scan.deployments.cleanup_deployment
-# 删除任务
+# Scan 相关部署（扫描、清理、删除）
+echo "    - 注册 Scan Deployments..."
+python -m apps.scan.deployments.register
+# Targets 删除任务
 echo "    - 注册 Targets 删除任务..."
 python -m apps.targets.deployments.register
 

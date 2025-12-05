@@ -222,9 +222,17 @@ init_nuclei_templates() {
     log_info "Nuclei 模板仓库初始化完成"
 }
 
+# 注册 Prefect Deployments
+register_deployments() {
+    log_step "9. 注册 Prefect Deployments..."
+    docker compose exec -T -w /app/backend server python -m apps.scan.deployments.register
+    docker compose exec -T -w /app/backend server python -m apps.targets.deployments.register
+    log_info "Prefect Deployments 注册完成"
+}
+
 # 重启服务
 restart_services() {
-    log_step "9. 重启服务..."
+    log_step "10. 重启服务..."
     docker compose restart
     log_info "服务重启完成"
 }
@@ -279,6 +287,7 @@ main() {
     update_engine_config
     init_wordlists
     init_nuclei_templates
+    register_deployments
     restart_services
 
     echo ""
