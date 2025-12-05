@@ -40,6 +40,7 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarRail,
 } from "@/components/ui/sidebar"
 // 导入折叠组件
 import {
@@ -144,8 +145,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const current = normalize(pathname)
 
   return (
-    // collapsible="offcanvas" 表示侧边栏可以折叠为画布外模式
-    <Sidebar collapsible="offcanvas" {...props}>
+    // collapsible="icon" 表示侧边栏可以折叠为仅图标模式
+    <Sidebar collapsible="icon" {...props}>
       {/* 侧边栏头部 */}
       <SidebarHeader>
         <SidebarMenu>
@@ -245,6 +246,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {/* 用户信息组件 */}
         <NavUser user={data.user} />
       </SidebarFooter>
+      <SidebarRail />
     </Sidebar>
   )
 }

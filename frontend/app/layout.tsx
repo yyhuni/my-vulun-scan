@@ -89,11 +89,11 @@ export default function RootLayout({
                 } as React.CSSProperties
               }
             >
-              {/* 应用侧边栏,使用 inset 变体样式 */}
-              <AppSidebar variant="inset" />
+              {/* 应用侧边栏 */}
+              <AppSidebar />
 
-              {/* 侧边栏内嵌区域,包含主要内容（固定视口高度，内部滚动） */}
-              <SidebarInset className="flex min-h-0 flex-col h-svh md:h-[calc(100svh-1rem)]">
+              {/* 侧边栏内容区域,包含主要内容（固定视口高度，内部滚动） */}
+              <SidebarInset className="flex min-h-0 flex-col h-svh">
                 {/* 网站头部 */}
                 <SiteHeader />
 
