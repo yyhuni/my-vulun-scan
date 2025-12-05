@@ -38,6 +38,7 @@ from apps.common.normalizer import normalize_domain
 from apps.common.validators import validate_domain
 from datetime import datetime
 import uuid
+import subprocess
 
 logger = logging.getLogger(__name__)
 
@@ -280,6 +281,24 @@ def _run_single_tool(
     except Exception as e:
         logger.warning(f"{tool_name} 执行失败: {e}")
         return ""
+
+
+def _count_lines(file_path: str) -> int:
+    """
+    统计文件非空行数
+    
+    Args:
+        file_path: 文件路径
+        
+    Returns:
+        int: 非空行数量
+    """
+    try:
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            return sum(1 for line in f if line.strip())
+    except Exception as e:
+        logger.warning(f"统计文件行数失败: {file_path} - {e}")
+        return 0
 
 
 def _merge_files(file_list: list, output_file: str) -> str:
@@ -525,28 +544,90 @@ def subdomain_discovery_flow(
             logger.info("=" * 40)
             
             permutation_tool_config = permutation_config.get('subdomain_permutation_resolve', {})
-            permuted_output = str(result_dir / f"subs_permuted_{timestamp}.txt")
             
-            permuted_result = _run_single_tool(
-                tool_name='subdomain_permutation_resolve',
-                tool_config=permutation_tool_config,
-                command_params={
-                    'input_file': current_result,
-                    'output_file': permuted_output,
-                },
-                result_dir=result_dir
+            # === Step 3.1: 泛解析采样检测 ===
+            # 生成原文件 100 倍的变异样本，检查解析结果是否超过 50 倍
+            before_count = _count_lines(current_result)
+            
+            # 配置参数
+            SAMPLE_MULTIPLIER = 100  # 采样数量 = 原文件 × 100
+            EXPANSION_THRESHOLD = 50  # 膨胀阈值 = 原文件 × 50
+            SAMPLE_TIMEOUT = 7200  # 采样超时 2 小时
+            
+            sample_size = before_count * SAMPLE_MULTIPLIER
+            max_allowed = before_count * EXPANSION_THRESHOLD
+            
+            sample_output = str(result_dir / f"subs_permuted_sample_{timestamp}.txt")
+            sample_cmd = (
+                f"cat {current_result} | dnsgen - | head -n {sample_size} | "
+                f"puredns resolve -r /app/backend/resources/resolvers.txt "
+                f"--write {sample_output} --wildcard-tests 50 --wildcard-batch 1000000 --quiet"
             )
             
-            if permuted_result:
-                # 合并原结果 + 变异验证结果
-                current_result = _merge_files(
-                    [current_result, permuted_result],
-                    str(result_dir / f"subs_with_permuted_{timestamp}.txt")
+            logger.info(
+                f"泛解析采样检测: 原文件 {before_count} 个, "
+                f"采样 {sample_size} 个, 阈值 {max_allowed} 个"
+            )
+            
+            try:
+                subprocess.run(
+                    sample_cmd, 
+                    shell=True, 
+                    timeout=SAMPLE_TIMEOUT, 
+                    check=False,
+                    capture_output=True
                 )
-                successful_tool_names.append('subdomain_permutation_resolve')
-                executed_tasks.append('permutation')
-            else:
-                failed_tools.append({'tool': 'subdomain_permutation_resolve', 'reason': '执行失败'})
+                sample_result_count = _count_lines(sample_output) if Path(sample_output).exists() else 0
+                
+                logger.info(
+                    f"采样结果: {sample_result_count} 个域名存活 "
+                    f"(原文件: {before_count}, 阈值: {max_allowed})"
+                )
+                
+                if sample_result_count > max_allowed:
+                    # 采样结果超过阈值，说明存在泛解析，跳过完整变异
+                    ratio = sample_result_count / before_count if before_count > 0 else sample_result_count
+                    logger.warning(
+                        f"跳过变异: 采样检测到泛解析 "
+                        f"({sample_result_count} > {max_allowed}, 膨胀率 {ratio:.1f}x)"
+                    )
+                    failed_tools.append({
+                        'tool': 'subdomain_permutation_resolve',
+                        'reason': f"采样检测到泛解析 (膨胀率 {ratio:.1f}x)"
+                    })
+                else:
+                    # === Step 3.2: 采样通过，执行完整变异 ===
+                    logger.info("采样检测通过，执行完整变异...")
+                    
+                    permuted_output = str(result_dir / f"subs_permuted_{timestamp}.txt")
+                    
+                    permuted_result = _run_single_tool(
+                        tool_name='subdomain_permutation_resolve',
+                        tool_config=permutation_tool_config,
+                        command_params={
+                            'input_file': current_result,
+                            'output_file': permuted_output,
+                        },
+                        result_dir=result_dir
+                    )
+                    
+                    if permuted_result:
+                        # 合并原结果 + 变异验证结果
+                        current_result = _merge_files(
+                            [current_result, permuted_result],
+                            str(result_dir / f"subs_with_permuted_{timestamp}.txt")
+                        )
+                        successful_tool_names.append('subdomain_permutation_resolve')
+                        executed_tasks.append('permutation')
+                    else:
+                        failed_tools.append({'tool': 'subdomain_permutation_resolve', 'reason': '执行失败'})
+                        
+            except subprocess.TimeoutExpired:
+                logger.warning(f"采样检测超时 ({SAMPLE_TIMEOUT}秒)，跳过变异")
+                failed_tools.append({'tool': 'subdomain_permutation_resolve', 'reason': '采样检测超时'})
+            except Exception as e:
+                logger.warning(f"采样检测失败: {e}，跳过变异")
+                failed_tools.append({'tool': 'subdomain_permutation_resolve', 'reason': f'采样检测失败: {e}'})
         
         # ==================== Stage 4: DNS 存活验证（可选）====================
         # 无论是否启用 Stage 3，只要 resolve.enabled 为 true 就会执行，对当前所有候选子域做统一 DNS 验证
