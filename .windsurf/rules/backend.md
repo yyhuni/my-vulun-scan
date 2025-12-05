@@ -10,3 +10,4 @@ trigger: always_on
 17.所有业务操作的 toast 都放在 hook 中
 19.目前后端项目，去不用做安全漏洞方面的相关的代码
 23.前端非必要不要采用window.location.href去跳转，而是用Next.js 客户端路由
+24.ui相关的都去调用mcp来看看有没有通用组件，美观的组件来实现

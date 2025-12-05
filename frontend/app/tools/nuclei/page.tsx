@@ -1,14 +1,15 @@
 "use client"
 
 import Link from "next/link"
-import { useState, type FormEvent } from "react"
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
+import { useState, useMemo, type FormEvent } from "react"
+import { GitBranch, Search, RefreshCw, Settings, Trash2, FolderOpen } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Separator } from "@/components/ui/separator"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Skeleton } from "@/components/ui/skeleton"
 import {
   useNucleiRepos,
   useCreateNucleiRepo,
@@ -17,18 +18,11 @@ import {
   useUpdateNucleiRepo,
   type NucleiRepo,
 } from "@/hooks/use-nuclei-repos"
-
-/** 根据 last_synced_at 渲染同步状态 Badge */
-function renderStatusBadge(lastSyncedAt: string | null) {
-  if (lastSyncedAt) {
-    return <Badge className="bg-green-100 text-green-700 hover:bg-green-100">已同步</Badge>
-  }
-  return <Badge variant="outline">未同步</Badge>
-}
+import { cn } from "@/lib/utils"
 
 /** 格式化时间显示 */
 function formatDateTime(isoString: string | null) {
-  if (!isoString) return null
+  if (!isoString) return "-"
   try {
     return new Date(isoString).toLocaleString("zh-CN")
   } catch {
@@ -37,6 +31,8 @@ function formatDateTime(isoString: string | null) {
 }
 
 export default function NucleiReposPage() {
+  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [newName, setNewName] = useState("")
   const [newRepoUrl, setNewRepoUrl] = useState("")
@@ -51,6 +47,24 @@ export default function NucleiReposPage() {
   const deleteMutation = useDeleteNucleiRepo()
   const refreshMutation = useRefreshNucleiRepo()
   const updateMutation = useUpdateNucleiRepo()
+
+  // 过滤仓库列表
+  const filteredRepos = useMemo(() => {
+    if (!repos) return []
+    if (!searchQuery.trim()) return repos
+    const query = searchQuery.toLowerCase()
+    return repos.filter(
+      (r) =>
+        r.name.toLowerCase().includes(query) ||
+        r.repoUrl?.toLowerCase().includes(query)
+    )
+  }, [repos, searchQuery])
+
+  // 选中的仓库
+  const selectedRepo = useMemo(() => {
+    if (!selectedId || !repos) return null
+    return repos.find((r) => r.id === selectedId) || null
+  }, [selectedId, repos])
 
   const resetCreateForm = () => {
     setNewName("")
@@ -69,10 +83,7 @@ export default function NucleiReposPage() {
     if (!name || !repoUrl) return
 
     createMutation.mutate(
-      {
-        name,
-        repoUrl,
-      },
+      { name, repoUrl },
       {
         onSuccess: () => {
           resetCreateForm()
@@ -86,9 +97,15 @@ export default function NucleiReposPage() {
     refreshMutation.mutate(repoId)
   }
 
-  const handleDelete = (repoId: number, repoName: string) => {
-    if (!window.confirm(`确定要删除仓库「${repoName}」吗？`)) return
-    deleteMutation.mutate(repoId)
+  const handleDelete = (repo: NucleiRepo) => {
+    if (!window.confirm(`确定要删除仓库「${repo.name}」吗？`)) return
+    deleteMutation.mutate(repo.id, {
+      onSuccess: () => {
+        if (selectedId === repo.id) {
+          setSelectedId(null)
+        }
+      },
+    })
   }
 
   const openEditDialog = (repo: NucleiRepo) => {
@@ -104,10 +121,7 @@ export default function NucleiReposPage() {
     if (!repoUrl) return
 
     updateMutation.mutate(
-      {
-        id: editingRepo.id,
-        repoUrl,
-      },
+      { id: editingRepo.id, repoUrl },
       {
         onSuccess: () => {
           resetEditForm()
@@ -118,112 +132,211 @@ export default function NucleiReposPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6 px-4 lg:px-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Nuclei 模板仓库</h1>
-          <p className="text-muted-foreground mt-1">
-            管理多个 Nuclei 模板 Git 仓库，每个仓库在独立路径下保存模板文件
-          </p>
+    <div className="flex flex-col h-full">
+      {/* 顶部：标题 + 搜索 + 新增按钮 */}
+      <div className="flex items-center justify-between gap-4 px-4 py-4 lg:px-6">
+        <h1 className="text-2xl font-bold shrink-0">Nuclei 模板仓库</h1>
+        <div className="flex items-center gap-2 flex-1 max-w-md">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="搜索仓库..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8"
+            />
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
-            新增模板仓库
-          </Button>
-        </div>
+        <Button onClick={() => setCreateDialogOpen(true)}>
+          新增模板仓库
+        </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>模板仓库列表</CardTitle>
-          <CardDescription>
-            每个仓库对应一个 Git 远程地址和本地工作目录，点击「管理模板」进入该仓库的模板浏览页面
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-3">
-              {[1, 2].map((i) => (
-                <Skeleton key={i} className="h-24 w-full" />
-              ))}
-            </div>
-          ) : isError ? (
-            <div className="text-sm text-red-500">加载仓库列表失败，请稍后重试。</div>
-          ) : !repos || repos.length === 0 ? (
-            <div className="text-sm text-muted-foreground">暂无仓库，可在这里新增模板仓库。</div>
-          ) : (
-            <div className="space-y-3">
-              {repos.map((repo) => (
-                <div
-                  key={repo.id}
-                  className="flex flex-col gap-2 rounded-md border px-3 py-2 text-sm md:flex-row md:items-center md:justify-between"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{repo.name}</span>
-                      {renderStatusBadge(repo.lastSyncedAt)}
-                    </div>
-                    <div className="text-xs text-muted-foreground break-all">
-                      <span className="font-medium">Git 地址：</span>
-                      <span>{repo.repoUrl}</span>
-                    </div>
-                    <div className="text-xs text-muted-foreground flex flex-wrap gap-3">
-                      {repo.localPath && (
-                        <span>
-                          <span className="font-medium">本地路径：</span>
-                          {repo.localPath}
-                        </span>
-                      )}
-                      {repo.lastSyncedAt && (
-                        <span>
-                          <span className="font-medium">最后同步：</span>
-                          {formatDateTime(repo.lastSyncedAt)}
-                        </span>
-                      )}
-                    </div>
-                    {repo.commitHash && (
-                      <div className="text-xs text-muted-foreground mt-1 font-mono">
-                        <span className="font-medium font-sans">Commit：</span>
-                        {repo.commitHash}
-                      </div>
-                    )}
-                  </div>
+      <Separator />
 
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleRefresh(repo.id)}
-                      disabled={refreshMutation.isPending}
-                    >
-                      {refreshMutation.isPending ? "同步中..." : "同步"}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openEditDialog(repo)}
-                      disabled={updateMutation.isPending}
-                    >
-                      编辑配置
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(repo.id, repo.name)}
-                      disabled={deleteMutation.isPending}
-                    >
-                      删除
-                    </Button>
-                    <Link href={`/tools/nuclei/${repo.id}/`}>
-                      <Button size="sm">管理模板</Button>
-                    </Link>
+      {/* 主体：左侧列表 + 右侧详情 */}
+      <div className="flex flex-1 min-h-0">
+        {/* 左侧：仓库列表 */}
+        <div className="w-72 lg:w-80 border-r flex flex-col">
+          <div className="px-4 py-3 border-b">
+            <h2 className="text-sm font-medium text-muted-foreground">
+              仓库列表 ({filteredRepos.length})
+            </h2>
+          </div>
+          <ScrollArea className="flex-1">
+            {isLoading ? (
+              <div className="p-4 text-sm text-muted-foreground">加载中...</div>
+            ) : isError ? (
+              <div className="p-4 text-sm text-red-500">加载失败</div>
+            ) : filteredRepos.length === 0 ? (
+              <div className="p-4 text-sm text-muted-foreground">
+                {searchQuery ? "未找到匹配的仓库" : "暂无仓库，请先新增"}
+              </div>
+            ) : (
+              <div className="p-2">
+                {filteredRepos.map((repo) => (
+                  <button
+                    key={repo.id}
+                    onClick={() => setSelectedId(repo.id)}
+                    className={cn(
+                      "w-full text-left rounded-lg px-3 py-2.5 transition-colors",
+                      selectedId === repo.id
+                        ? "bg-primary/10 text-primary"
+                        : "hover:bg-muted"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm truncate flex-1">
+                        {repo.name}
+                      </span>
+                      {repo.lastSyncedAt ? (
+                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs shrink-0">
+                          已同步
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-xs shrink-0">
+                          未同步
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                      {repo.lastSyncedAt
+                        ? `同步于 ${formatDateTime(repo.lastSyncedAt)}`
+                        : "尚未同步"}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </div>
+
+        {/* 右侧：仓库详情 */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {selectedRepo ? (
+            <>
+              {/* 详情头部 */}
+              <div className="px-6 py-4 border-b">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+                    <GitBranch className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-lg font-semibold truncate">
+                        {selectedRepo.name}
+                      </h2>
+                      {selectedRepo.lastSyncedAt ? (
+                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                          已同步
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline">未同步</Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
-              ))}
+              </div>
+
+              {/* 详情内容 */}
+              <ScrollArea className="flex-1">
+                <div className="p-6 space-y-6">
+                  {/* 统计信息 */}
+                  <div className="rounded-lg border">
+                    <div className="grid grid-cols-2 divide-x">
+                      <div className="p-4">
+                        <div className="text-xs text-muted-foreground">状态</div>
+                        <div className="text-lg font-semibold mt-1">
+                          {selectedRepo.lastSyncedAt ? "已同步" : "未同步"}
+                        </div>
+                      </div>
+                      <div className="p-4">
+                        <div className="text-xs text-muted-foreground">最后同步</div>
+                        <div className="text-lg font-semibold mt-1">
+                          {selectedRepo.lastSyncedAt
+                            ? new Date(selectedRepo.lastSyncedAt).toLocaleDateString("zh-CN")
+                            : "-"}
+                        </div>
+                      </div>
+                    </div>
+                    <Separator />
+                    <div className="p-4 space-y-3">
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Git 地址</span>
+                        <div className="font-mono text-xs mt-1 break-all bg-muted p-2 rounded">
+                          {selectedRepo.repoUrl}
+                        </div>
+                      </div>
+                      {selectedRepo.localPath && (
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">本地路径</span>
+                          <div className="font-mono text-xs mt-1 break-all bg-muted p-2 rounded">
+                            {selectedRepo.localPath}
+                          </div>
+                        </div>
+                      )}
+                      {selectedRepo.commitHash && (
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">Commit</span>
+                          <div className="font-mono text-xs mt-1 break-all bg-muted p-2 rounded">
+                            {selectedRepo.commitHash}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </ScrollArea>
+
+              {/* 操作按钮 */}
+              <div className="px-6 py-4 border-t flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleRefresh(selectedRepo.id)}
+                  disabled={refreshMutation.isPending}
+                >
+                  <RefreshCw className={cn("h-4 w-4 mr-1.5", refreshMutation.isPending && "animate-spin")} />
+                  {refreshMutation.isPending ? "同步中..." : "同步仓库"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openEditDialog(selectedRepo)}
+                >
+                  <Settings className="h-4 w-4 mr-1.5" />
+                  编辑配置
+                </Button>
+                <Link href={`/tools/nuclei/${selectedRepo.id}/`}>
+                  <Button size="sm">
+                    <FolderOpen className="h-4 w-4 mr-1.5" />
+                    管理模板
+                  </Button>
+                </Link>
+                <div className="flex-1" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => handleDelete(selectedRepo)}
+                  disabled={deleteMutation.isPending}
+                >
+                  <Trash2 className="h-4 w-4 mr-1.5" />
+                  删除
+                </Button>
+              </div>
+            </>
+          ) : (
+            // 未选中状态
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center text-muted-foreground">
+                <GitBranch className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p className="text-sm">选择左侧仓库查看详情</p>
+              </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <Dialog open={createDialogOpen} onOpenChange={(open) => {
         setCreateDialogOpen(open)
@@ -231,7 +344,7 @@ export default function NucleiReposPage() {
           resetCreateForm()
         }
       }}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>新增 Nuclei 模板仓库</DialogTitle>
           </DialogHeader>
@@ -289,7 +402,7 @@ export default function NucleiReposPage() {
           }
         }}
       >
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>编辑 Nuclei 仓库配置</DialogTitle>
           </DialogHeader>
