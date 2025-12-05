@@ -37,6 +37,13 @@ class HostPortMappingSnapshotsService:
             logger.debug("快照数据为空，跳过保存")
             return
         
+        # 检查 Scan 是否仍存在（防止删除后竞态写入）
+        scan_id = items[0].scan_id
+        from apps.scan.repositories import DjangoScanRepository
+        if not DjangoScanRepository().exists(scan_id):
+            logger.warning("Scan 已删除，跳过主机端口快照保存 - scan_id=%s, 数量=%d", scan_id, len(items))
+            return
+        
         try:
             # 步骤 1: 保存到快照表
             logger.debug("步骤 1: 保存到快照表")

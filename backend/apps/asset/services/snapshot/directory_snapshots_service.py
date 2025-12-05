@@ -32,6 +32,16 @@ class DirectorySnapshotsService:
             ValueError: 如果 items 中的 website_id 为 None
             Exception: 数据库操作失败
         """
+        if not items:
+            return
+        
+        # 检查 Scan 是否仍存在（防止删除后竞态写入）
+        scan_id = items[0].scan_id
+        from apps.scan.repositories import DjangoScanRepository
+        if not DjangoScanRepository().exists(scan_id):
+            logger.warning("Scan 已删除，跳过目录快照保存 - scan_id=%s, 数量=%d", scan_id, len(items))
+            return
+        
         try:
             logger.debug("保存目录快照并同步到资产表 - 数量: %d", len(items))
             

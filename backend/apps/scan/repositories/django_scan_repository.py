@@ -88,6 +88,19 @@ class DjangoScanRepository:
             return None
     
     
+    def exists(self, scan_id: int) -> bool:
+        """
+        检查扫描任务是否存在
+        
+        Args:
+            scan_id: 扫描任务 ID
+        
+        Returns:
+            是否存在
+        """
+        return Scan.objects.filter(id=scan_id).exists()
+    
+    
     def create(self,
         target: Target,
         engine: ScanEngine,
