@@ -438,7 +438,7 @@ def on_initiate_scan_flow_crashed(flow: Flow, flow_run: FlowRun, state: State) -
         # Crashed 状态是终态，不需要检查当前状态
         updated = service.update_status(
             scan_id=scan_id,
-            new_status=ScanStatus.CRASHED,
+            status=ScanStatus.CRASHED,
             stopped_at=timezone.now()
         )
         
