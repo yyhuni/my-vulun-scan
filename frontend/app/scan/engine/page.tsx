@@ -3,6 +3,8 @@
 import React, { useState, useMemo } from "react"
 import { Settings, Search, Pencil, Trash2, Check, X } from "lucide-react"
 import * as yaml from "js-yaml"
+import Editor from "@monaco-editor/react"
+import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -70,6 +72,8 @@ export default function ScanEnginePage() {
   const [editingEngine, setEditingEngine] = useState<ScanEngine | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+
+  const { theme } = useTheme()
 
   // API Hooks
   const { data: engines = [], isLoading } = useEngines()
@@ -250,10 +254,24 @@ export default function ScanEnginePage() {
                 {selectedEngine.configuration && (
                   <div className="flex-1 flex flex-col min-h-0">
                     <h3 className="text-sm font-medium mb-3 shrink-0">配置预览</h3>
-                    <div className="flex-1 rounded-lg border bg-muted/30 overflow-auto min-h-0">
-                      <pre className="text-xs font-mono whitespace-pre p-4">
-                        {selectedEngine.configuration}
-                      </pre>
+                    <div className="flex-1 rounded-lg border overflow-hidden min-h-0">
+                      <Editor
+                        height="100%"
+                        defaultLanguage="yaml"
+                        value={selectedEngine.configuration}
+                        options={{
+                          readOnly: true,
+                          minimap: { enabled: false },
+                          fontSize: 12,
+                          lineNumbers: "off",
+                          scrollBeyondLastLine: false,
+                          automaticLayout: true,
+                          folding: true,
+                          wordWrap: "on",
+                          padding: { top: 12, bottom: 12 },
+                        }}
+                        theme={theme === "dark" ? "vs-dark" : "light"}
+                      />
                     </div>
                   </div>
                 )}
