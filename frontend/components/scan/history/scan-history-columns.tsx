@@ -606,14 +606,59 @@ export const createScanHistoryColumns = ({
   // 操作列
   {
     id: "actions",
-    cell: ({ row }) => (
-      <ScanRowActions
-        scan={row.original}
-        onView={() => navigate(`/scan/history/${row.original.id}/`)}
-        onDelete={() => handleDelete(row.original)}
-        onStop={() => handleStop(row.original)}
-      />
-    ),
+    cell: ({ row }) => {
+      const scan = row.original
+      const canStop = scan.status === 'running' || scan.status === 'initiated'
+      
+      return (
+        <div className="flex items-center gap-1">
+          {/* View Results 按钮 - 直接显示 */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 px-2 text-xs"
+            onClick={() => navigate(`/scan/history/${scan.id}/`)}
+          >
+            <Eye className="h-3.5 w-3.5 mr-1" />
+            查看
+          </Button>
+          
+          {/* 更多操作菜单 */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+                <span className="sr-only">打开菜单</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {canStop && (
+                <>
+                  <DropdownMenuItem
+                    onClick={() => handleStop(scan)}
+                    className="text-chart-2 focus:text-chart-2"
+                  >
+                    <StopCircle />
+                    停止扫描
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
+              <DropdownMenuItem
+                onClick={() => handleDelete(scan)}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 />
+                删除
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )
+    },
     enableSorting: false,
     enableHiding: false,
   },
