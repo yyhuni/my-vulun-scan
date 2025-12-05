@@ -6,15 +6,24 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useWordlists, useUploadWordlist, useDeleteWordlist } from "@/hooks/use-wordlists"
+import { WordlistEditDialog } from "@/components/tools/wordlist-edit-dialog"
+import type { Wordlist } from "@/types/wordlist.types"
 
 export default function WordlistsPage() {
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [file, setFile] = useState<File | null>(null)
+  const [editingWordlist, setEditingWordlist] = useState<Wordlist | null>(null)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
   const { data, isLoading } = useWordlists({ page: 1, pageSize: 20 })
   const uploadMutation = useUploadWordlist()
   const deleteMutation = useDeleteWordlist()
+
+  const handleEdit = (wordlist: Wordlist) => {
+    setEditingWordlist(wordlist)
+    setIsEditDialogOpen(true)
+  }
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0] ?? null
@@ -135,6 +144,13 @@ export default function WordlistsPage() {
                     <Button
                       variant="outline"
                       size="sm"
+                      onClick={() => handleEdit(wordlist)}
+                    >
+                      编辑
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       disabled={deleteMutation.isPending}
                       onClick={() => deleteMutation.mutate(wordlist.id)}
                     >
@@ -147,6 +163,13 @@ export default function WordlistsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* 编辑弹窗 */}
+      <WordlistEditDialog
+        wordlist={editingWordlist}
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+      />
     </div>
   )
 }

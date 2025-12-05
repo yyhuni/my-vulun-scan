@@ -95,3 +95,33 @@ class WordlistViewSet(viewsets.ViewSet):
         filename = os.path.basename(file_path)
         response = FileResponse(open(file_path, "rb"), as_attachment=True, filename=filename)
         return response
+
+    @action(detail=True, methods=["get", "put"], url_path="content")
+    def content(self, request, pk=None):
+        """获取或更新字典文件内容
+
+        GET: 返回字典文件的文本内容
+        PUT: 更新字典文件内容，重新计算 hash
+        """
+        try:
+            wordlist_id = int(pk)
+        except (TypeError, ValueError):
+            return Response({"error": "无效的 ID"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if request.method == "GET":
+            content = self.service.get_wordlist_content(wordlist_id)
+            if content is None:
+                return Response({"error": "字典不存在或文件无法读取"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"content": content})
+
+        elif request.method == "PUT":
+            content = request.data.get("content")
+            if content is None:
+                return Response({"error": "缺少 content 参数"}, status=status.HTTP_400_BAD_REQUEST)
+
+            wordlist = self.service.update_wordlist_content(wordlist_id, content)
+            if not wordlist:
+                return Response({"error": "字典不存在或更新失败"}, status=status.HTTP_404_NOT_FOUND)
+
+            serializer = WordlistSerializer(wordlist)
+            return Response(serializer.data)

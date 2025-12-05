@@ -40,3 +40,15 @@ export async function uploadWordlist(payload: {
 export async function deleteWordlist(id: number): Promise<void> {
   await apiClient.delete(`/wordlists/${id}/`)
 }
+
+// 获取字典内容
+export async function getWordlistContent(id: number): Promise<string> {
+  const response = await apiClient.get<{ content: string }>(`/wordlists/${id}/content/`)
+  return response.data.content
+}
+
+// 更新字典内容
+export async function updateWordlistContent(id: number, content: string): Promise<Wordlist> {
+  const response = await apiClient.put<Wordlist>(`/wordlists/${id}/content/`, { content })
+  return response.data
+}

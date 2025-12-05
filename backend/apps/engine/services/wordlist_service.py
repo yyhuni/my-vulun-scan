@@ -132,5 +132,53 @@ class WordlistService:
         """判断是否存在同名的字典"""
         return self.repo.get_queryset().filter(name=name).exists()
 
+    def get_wordlist_content(self, wordlist_id: int) -> Optional[str]:
+        """获取字典文件内容"""
+        wordlist = self.repo.get_by_id(wordlist_id)
+        if not wordlist or not wordlist.file_path:
+            return None
+
+        try:
+            with open(wordlist.file_path, "r", encoding="utf-8", errors="replace") as f:
+                return f.read()
+        except OSError as exc:
+            logger.warning("读取字典文件失败: %s - %s", wordlist.file_path, exc)
+            return None
+
+    def update_wordlist_content(self, wordlist_id: int, content: str) -> Optional[Wordlist]:
+        """更新字典文件内容并重新计算 hash"""
+        wordlist = self.repo.get_by_id(wordlist_id)
+        if not wordlist or not wordlist.file_path:
+            return None
+
+        try:
+            # 写入新内容
+            with open(wordlist.file_path, "w", encoding="utf-8") as f:
+                f.write(content)
+
+            # 重新计算统计信息
+            file_size = os.path.getsize(wordlist.file_path)
+            line_count = content.count("\n") + (1 if content and not content.endswith("\n") else 0)
+            file_hash = safe_calc_file_sha256(wordlist.file_path) or ""
+
+            # 更新记录
+            wordlist.file_size = file_size
+            wordlist.line_count = line_count
+            wordlist.file_hash = file_hash
+            wordlist.save(update_fields=["file_size", "line_count", "file_hash", "updated_at"])
+
+            logger.info(
+                "更新字典内容: id=%s, name=%s, size=%s, lines=%s, hash=%s",
+                wordlist.id,
+                wordlist.name,
+                wordlist.file_size,
+                wordlist.line_count,
+                wordlist.file_hash[:16] + "..." if wordlist.file_hash else "N/A",
+            )
+            return wordlist
+        except OSError as exc:
+            logger.error("写入字典文件失败: %s - %s", wordlist.file_path, exc)
+            return None
+
 
 __all__ = ["WordlistService"]
