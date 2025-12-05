@@ -1,105 +1,132 @@
 "use client"
 
-import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react"
-import Editor from "@monaco-editor/react"
-import { ChevronDown, ChevronRight, FileText, Folder } from "lucide-react"
-import { useTheme } from "next-themes"
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import Link from "next/link"
+import { useState, type FormEvent } from "react"
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Input } from "@/components/ui/input"
-import { useNucleiTemplateTree, useNucleiTemplateContent, useRefreshNucleiTemplates, useSaveNucleiTemplate, useUploadNucleiTemplate } from "@/hooks/use-nuclei-templates"
-import type { NucleiTemplateTreeNode, NucleiTemplateScope } from "@/types/nuclei.types"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Skeleton } from "@/components/ui/skeleton"
+import {
+  useNucleiRepos,
+  useCreateNucleiRepo,
+  useDeleteNucleiRepo,
+  useRefreshNucleiRepo,
+  useUpdateNucleiRepo,
+  type NucleiRepo,
+} from "@/hooks/use-nuclei-repos"
 
-interface FlattenedNode extends NucleiTemplateTreeNode {
-  level: number
+/** 根据 last_synced_at 渲染同步状态 Badge */
+function renderStatusBadge(lastSyncedAt: string | null) {
+  if (lastSyncedAt) {
+    return <Badge className="bg-green-100 text-green-700 hover:bg-green-100">已同步</Badge>
+  }
+  return <Badge variant="outline">未同步</Badge>
 }
 
-export default function NucleiTemplatesPage() {
-  const [selectedPath, setSelectedPath] = useState<string | null>(null)
-  const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
-  const [uploadScope, setUploadScope] = useState<NucleiTemplateScope>("custom")
-  const [uploadFile, setUploadFile] = useState<File | null>(null)
-  const [expandedPaths, setExpandedPaths] = useState<string[]>(["custom", "public"])
-  const [editorValue, setEditorValue] = useState<string>("")
-  const [isDirty, setIsDirty] = useState(false)
+/** 格式化时间显示 */
+function formatDateTime(isoString: string | null) {
+  if (!isoString) return null
+  try {
+    return new Date(isoString).toLocaleString("zh-CN")
+  } catch {
+    return isoString
+  }
+}
 
-  const { theme } = useTheme()
+export default function NucleiReposPage() {
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [newName, setNewName] = useState("")
+  const [newRepoUrl, setNewRepoUrl] = useState("")
+  const [newAuthType, setNewAuthType] = useState<"none" | "token">("none")
+  const [newAuthToken, setNewAuthToken] = useState("")
 
-  const { data: tree, isLoading, isError } = useNucleiTemplateTree()
-  const { data: templateContent, isLoading: isLoadingContent } = useNucleiTemplateContent(selectedPath)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [editingRepo, setEditingRepo] = useState<NucleiRepo | null>(null)
+  const [editRepoUrl, setEditRepoUrl] = useState("")
+  const [editAuthType, setEditAuthType] = useState<"none" | "token">("none")
+  const [editAuthToken, setEditAuthToken] = useState("")
 
-  const refreshMutation = useRefreshNucleiTemplates()
-  const saveMutation = useSaveNucleiTemplate()
-  const uploadMutation = useUploadNucleiTemplate()
+  // API Hooks
+  const { data: repos, isLoading, isError } = useNucleiRepos()
+  const createMutation = useCreateNucleiRepo()
+  const deleteMutation = useDeleteNucleiRepo()
+  const refreshMutation = useRefreshNucleiRepo()
+  const updateMutation = useUpdateNucleiRepo()
 
-  const nodes: FlattenedNode[] = useMemo(() => {
-    const result: FlattenedNode[] = []
-    const expandedSet = new Set(expandedPaths)
-
-    const visit = (items: NucleiTemplateTreeNode[] | undefined, level: number) => {
-      if (!items) return
-      for (const item of items) {
-        const isFolder = item.type === "folder"
-        const isFile = item.type === "file"
-        const isTemplateFile =
-          isFile && (item.name.endsWith(".yaml") || item.name.endsWith(".yml"))
-
-        if (!isFolder && !isTemplateFile) {
-          continue
-        }
-
-        result.push({ ...item, level })
-
-        if (isFolder && item.children && item.children.length > 0 && expandedSet.has(item.path)) {
-          visit(item.children, level + 1)
-        }
-      }
-    }
-
-    visit(tree, 0)
-    return result
-  }, [tree, expandedPaths])
-
-  useEffect(() => {
-    if (templateContent) {
-      setEditorValue(templateContent.content)
-      setIsDirty(false)
-    } else {
-      setEditorValue("")
-      setIsDirty(false)
-    }
-  }, [templateContent?.path])
-
-  const toggleFolder = (path: string) => {
-    setExpandedPaths((prev) =>
-      prev.includes(path) ? prev.filter((p) => p !== path) : [...prev, path]
-    )
+  const resetCreateForm = () => {
+    setNewName("")
+    setNewRepoUrl("")
+    setNewAuthType("none")
+    setNewAuthToken("")
   }
 
-  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0] ?? null
-    setUploadFile(file)
+  const resetEditForm = () => {
+    setEditingRepo(null)
+    setEditRepoUrl("")
+    setEditAuthType("none")
+    setEditAuthToken("")
   }
 
-  const handleUploadSubmit = (event: FormEvent) => {
+  const handleCreateSubmit = (event: FormEvent) => {
     event.preventDefault()
-    if (!uploadFile) {
-      return
-    }
+    const name = newName.trim()
+    const repoUrl = newRepoUrl.trim()
+    if (!name || !repoUrl) return
 
-    uploadMutation.mutate(
+    createMutation.mutate(
       {
-        scope: uploadScope,
-        file: uploadFile,
+        name,
+        repoUrl,
+        authType: newAuthType,
+        authToken: newAuthToken,
       },
       {
         onSuccess: () => {
-          setUploadDialogOpen(false)
-          setUploadFile(null)
+          resetCreateForm()
+          setCreateDialogOpen(false)
+        },
+      }
+    )
+  }
+
+  const handleRefresh = (repoId: number) => {
+    refreshMutation.mutate(repoId)
+  }
+
+  const handleDelete = (repoId: number, repoName: string) => {
+    if (!window.confirm(`确定要删除仓库「${repoName}」吗？`)) return
+    deleteMutation.mutate(repoId)
+  }
+
+  const openEditDialog = (repo: NucleiRepo) => {
+    setEditingRepo(repo)
+    setEditRepoUrl(repo.repoUrl || "")
+    setEditAuthType(repo.authType || "none")
+    setEditAuthToken("")
+    setEditDialogOpen(true)
+  }
+
+  const handleEditSubmit = (event: FormEvent) => {
+    event.preventDefault()
+    if (!editingRepo) return
+    const repoUrl = editRepoUrl.trim()
+    if (!repoUrl) return
+
+    updateMutation.mutate(
+      {
+        id: editingRepo.id,
+        repoUrl,
+        authType: editAuthType,
+        authToken: editAuthToken || undefined,
+      },
+      {
+        onSuccess: () => {
+          resetEditForm()
+          setEditDialogOpen(false)
         },
       }
     )
@@ -109,202 +136,267 @@ export default function NucleiTemplatesPage() {
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6 px-4 lg:px-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Nuclei 模板</h1>
+          <h1 className="text-3xl font-bold">Nuclei 模板仓库</h1>
           <p className="text-muted-foreground mt-1">
-            浏览本地 Nuclei 模板目录结构，并查看单个模板的 YAML 内容
+            管理多个 Nuclei 模板 Git 仓库，每个仓库在独立路径下保存模板文件
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => refreshMutation.mutate()}
-            disabled={refreshMutation.isPending}
-          >
-            {refreshMutation.isPending ? "更新中..." : "更新模板"}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              if (!selectedPath) return
-              saveMutation.mutate(
-                {
-                  path: selectedPath,
-                  content: editorValue,
-                },
-                {
-                  onSuccess: () => {
-                    setIsDirty(false)
-                  },
-                }
-              )
-            }}
-            disabled={!selectedPath || !isDirty || saveMutation.isPending}
-          >
-            {saveMutation.isPending ? "保存中..." : "保存模板"}
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => setUploadDialogOpen(true)}
-            disabled={uploadMutation.isPending}
-          >
-            上传模板
+          <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
+            新增模板仓库
           </Button>
         </div>
       </div>
 
-      <div className="flex gap-4 md:gap-6">
-        <Card className="w-64 md:w-80 flex-shrink-0">
-          <CardHeader>
-            <CardTitle className="text-base">模板目录</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <ScrollArea className="h-[480px]">
-              <div className="px-3 py-2 space-y-1 text-sm">
-                {isLoading ? (
-                  <div className="text-muted-foreground text-xs px-2 py-1">正在加载目录...</div>
-                ) : isError || nodes.length === 0 ? (
-                  <div className="text-muted-foreground text-xs px-2 py-1">暂无模板或加载失败。</div>
-                ) : (
-                  nodes.map((node) => {
-                    const isFolder = node.type === "folder"
-                    const isFile = node.type === "file"
-                    const isActive = isFile && node.path === selectedPath
-                    const isExpanded = isFolder && expandedPaths.includes(node.path)
+      <Card>
+        <CardHeader>
+          <CardTitle>模板仓库列表</CardTitle>
+          <CardDescription>
+            每个仓库对应一个 Git 远程地址和本地工作目录，点击「管理模板」进入该仓库的模板浏览页面
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-3">
+              {[1, 2].map((i) => (
+                <Skeleton key={i} className="h-24 w-full" />
+              ))}
+            </div>
+          ) : isError ? (
+            <div className="text-sm text-red-500">加载仓库列表失败，请稍后重试。</div>
+          ) : !repos || repos.length === 0 ? (
+            <div className="text-sm text-muted-foreground">暂无仓库，可在这里新增模板仓库。</div>
+          ) : (
+            <div className="space-y-3">
+              {repos.map((repo) => (
+                <div
+                  key={repo.id}
+                  className="flex flex-col gap-2 rounded-md border px-3 py-2 text-sm md:flex-row md:items-center md:justify-between"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{repo.name}</span>
+                      {renderStatusBadge(repo.lastSyncedAt)}
+                    </div>
+                    <div className="text-xs text-muted-foreground break-all">
+                      <span className="font-medium">Git 地址：</span>
+                      <span>{repo.repoUrl}</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground flex flex-wrap gap-3">
+                      {repo.localPath && (
+                        <span>
+                          <span className="font-medium">本地路径：</span>
+                          {repo.localPath}
+                        </span>
+                      )}
+                      <span>
+                        <span className="font-medium">认证方式：</span>
+                        {repo.authType === "none" ? "无需认证" : "Token / 私钥"}
+                      </span>
+                      {repo.lastSyncedAt && (
+                        <span>
+                          <span className="font-medium">最后同步：</span>
+                          {formatDateTime(repo.lastSyncedAt)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
 
-                    return (
-                      <button
-                        key={node.path}
-                        type="button"
-                        onClick={() => {
-                          if (isFolder) {
-                            toggleFolder(node.path)
-                          } else if (isFile) {
-                            if (isDirty && node.path !== selectedPath) {
-                              const confirmSwitch = window.confirm("当前模板有未保存的更改，确定要切换吗？")
-                              if (!confirmSwitch) {
-                                return
-                              }
-                            }
-                            setSelectedPath(node.path)
-                          }
-                        }}
-                        className={`flex w-full items-center gap-1 rounded px-2 py-1 text-left ${
-                          isFolder
-                            ? "cursor-pointer hover:bg-accent/60 text-foreground font-semibold"
-                            : "cursor-pointer hover:bg-accent"
-                        } ${isActive ? "bg-accent text-accent-foreground" : ""}`}
-                        style={{ paddingLeft: 8 + node.level * 12 }}
-                      >
-                        {isFolder ? (
-                          <span className="flex items-center gap-1">
-                            {isExpanded ? (
-                              <ChevronDown className="h-3 w-3" />
-                            ) : (
-                              <ChevronRight className="h-3 w-3" />
-                            )}
-                            <Folder className="h-3.5 w-3.5" />
-                          </span>
-                        ) : (
-                          <FileText className="h-3.5 w-3.5" />
-                        )}
-                        <span className="truncate flex-1">{node.name}</span>
-                      </button>
-                    )
-                  })
-                )}
-              </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
-
-        <div className="flex-1">
-          <Card className="h-full">
-            <CardHeader>
-              <CardTitle className="text-base">{templateContent?.name ?? "模板内容"}</CardTitle>
-              {templateContent?.path && (
-                <p className="text-xs text-muted-foreground break-all mt-1">{templateContent.path}</p>
-              )}
-            </CardHeader>
-            <CardContent className="h-[520px] flex flex-col">
-              {!selectedPath ? (
-                <div className="text-sm text-muted-foreground">在左侧选择一个模板文件以查看内容。</div>
-              ) : isLoadingContent && !templateContent ? (
-                <div className="text-sm text-muted-foreground">正在加载模板内容...</div>
-              ) : templateContent ? (
-                <div className="flex-1 border rounded-md overflow-hidden">
-                  <Editor
-                    height="100%"
-                    defaultLanguage="yaml"
-                    value={editorValue}
-                    onChange={(value) => {
-                      setEditorValue(value || "")
-                      setIsDirty(true)
-                    }}
-                    options={{
-                      minimap: { enabled: false },
-                      fontSize: 13,
-                      lineNumbers: "on",
-                      scrollBeyondLastLine: false,
-                      automaticLayout: true,
-                    }}
-                    theme={theme === "dark" ? "vs-dark" : "light"}
-                  />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleRefresh(repo.id)}
+                      disabled={refreshMutation.isPending}
+                    >
+                      {refreshMutation.isPending ? "同步中..." : "同步"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openEditDialog(repo)}
+                      disabled={updateMutation.isPending}
+                    >
+                      编辑配置
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDelete(repo.id, repo.name)}
+                      disabled={deleteMutation.isPending}
+                    >
+                      删除
+                    </Button>
+                    <Link href={`/tools/nuclei/${repo.id}/`}>
+                      <Button size="sm">管理模板</Button>
+                    </Link>
+                  </div>
                 </div>
-              ) : (
-                <div className="text-sm text-muted-foreground">模板内容加载失败。</div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-      <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+      <Dialog open={createDialogOpen} onOpenChange={(open) => {
+        setCreateDialogOpen(open)
+        if (!open) {
+          resetCreateForm()
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>上传 Nuclei 模板</DialogTitle>
+            <DialogTitle>新增 Nuclei 模板仓库</DialogTitle>
           </DialogHeader>
-          <form className="space-y-4" onSubmit={handleUploadSubmit}>
+          <form className="space-y-4" onSubmit={handleCreateSubmit}>
             <div className="space-y-2">
-              <Label>上传路径</Label>
+              <Label htmlFor="nuclei-repo-name">仓库名称</Label>
+              <Input
+                id="nuclei-repo-name"
+                type="text"
+                placeholder="例如：默认 Nuclei 官方模板"
+                value={newName}
+                onChange={(event) => setNewName(event.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="nuclei-repo-url">Git 仓库地址</Label>
+              <Input
+                id="nuclei-repo-url"
+                type="text"
+                placeholder="例如：https://github.com/projectdiscovery/nuclei-templates.git"
+                value={newRepoUrl}
+                onChange={(event) => setNewRepoUrl(event.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>认证方式</Label>
               <RadioGroup
-                value={uploadScope}
-                onValueChange={(value) => setUploadScope(value as NucleiTemplateScope)}
+                value={newAuthType}
+                onValueChange={(value) => setNewAuthType(value as "none" | "token")}
                 className="flex gap-4"
               >
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="custom" id="scope-custom" />
-                  <Label htmlFor="scope-custom">自定义模板目录</Label>
+                  <RadioGroupItem value="none" id="new-git-auth-none" />
+                  <Label htmlFor="new-git-auth-none">无需认证（公开仓库）</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="public" id="scope-public" />
-                  <Label htmlFor="scope-public">公共模板目录</Label>
+                  <RadioGroupItem value="token" id="new-git-auth-token" />
+                  <Label htmlFor="new-git-auth-token">Token / 私钥</Label>
                 </div>
               </RadioGroup>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="template-file">模板文件</Label>
-              <Input
-                id="template-file"
-                type="file"
-                accept=".yaml,.yml"
-                onChange={handleFileChange}
-              />
-            </div>
+            {newAuthType === "token" && (
+              <div className="space-y-2">
+                <Label htmlFor="nuclei-repo-auth-token">访问凭据</Label>
+                <Input
+                  id="nuclei-repo-auth-token"
+                  type="password"
+                  placeholder="GitHub Token 或私钥内容（前端仅展示，后端落库时请妥善加密存储）"
+                  value={newAuthToken}
+                  onChange={(event) => setNewAuthToken(event.target.value)}
+                />
+              </div>
+            )}
 
             <DialogFooter>
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setUploadDialogOpen(false)}
-                disabled={uploadMutation.isPending}
+                onClick={() => setCreateDialogOpen(false)}
+                disabled={createMutation.isPending}
               >
                 取消
               </Button>
-              <Button type="submit" disabled={!uploadFile || uploadMutation.isPending}>
-                {uploadMutation.isPending ? "上传中..." : "确认上传"}
+              <Button
+                type="submit"
+                disabled={!newName.trim() || !newRepoUrl.trim() || createMutation.isPending}
+              >
+                {createMutation.isPending ? "创建中..." : "确认新增"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={editDialogOpen}
+        onOpenChange={(open) => {
+          setEditDialogOpen(open)
+          if (!open) {
+            resetEditForm()
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>编辑 Nuclei 仓库配置</DialogTitle>
+          </DialogHeader>
+          <form className="space-y-4" onSubmit={handleEditSubmit}>
+            <div className="space-y-1 text-sm text-muted-foreground">
+              <span className="font-medium">仓库名称：</span>
+              <span>{editingRepo?.name ?? ""}</span>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-nuclei-repo-url">Git 仓库地址</Label>
+              <Input
+                id="edit-nuclei-repo-url"
+                type="text"
+                placeholder="例如：https://github.com/projectdiscovery/nuclei-templates.git"
+                value={editRepoUrl}
+                onChange={(event) => setEditRepoUrl(event.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>认证方式</Label>
+              <RadioGroup
+                value={editAuthType}
+                onValueChange={(value) => setEditAuthType(value as "none" | "token")}
+                className="flex gap-4"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="none" id="edit-git-auth-none" />
+                  <Label htmlFor="edit-git-auth-none">无需认证（公开仓库）</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="token" id="edit-git-auth-token" />
+                  <Label htmlFor="edit-git-auth-token">Token / 私钥</Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            {editAuthType === "token" && (
+              <div className="space-y-2">
+                <Label htmlFor="edit-nuclei-repo-auth-token">访问凭据</Label>
+                <Input
+                  id="edit-nuclei-repo-auth-token"
+                  type="password"
+                  placeholder="GitHub Token 或私钥内容（前端仅展示，后端落库时请妥善加密存储）"
+                  value={editAuthToken}
+                  onChange={(event) => setEditAuthToken(event.target.value)}
+                />
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditDialogOpen(false)}
+                disabled={updateMutation.isPending}
+              >
+                取消
+              </Button>
+              <Button
+                type="submit"
+                disabled={!editRepoUrl.trim() || updateMutation.isPending}
+              >
+                {updateMutation.isPending ? "保存中..." : "保存配置"}
               </Button>
             </DialogFooter>
           </form>
@@ -312,5 +404,3 @@ export default function NucleiTemplatesPage() {
       </Dialog>
     </div>
   )
-}
-
