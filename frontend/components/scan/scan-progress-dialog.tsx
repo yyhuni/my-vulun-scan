@@ -19,6 +19,29 @@ import {
 import { cn } from "@/lib/utils"
 import type { ScanStage, ScanRecord, StageProgress, StageStatus } from "@/types/scan.types"
 
+/** 阶段名称中文映射（支持驼峰和下划线两种格式） */
+const STAGE_LABELS: Record<string, string> = {
+  // 驼峰命名（后端返回格式）
+  subdomainDiscovery: "子域名发现",
+  portScan: "端口扫描",
+  siteScan: "站点扫描",
+  directoryScan: "目录扫描",
+  urlFetch: "URL 抓取",
+  vulnScan: "漏洞扫描",
+  // 下划线命名（engine_config 格式）
+  subdomain_discovery: "子域名发现",
+  port_scan: "端口扫描",
+  site_scan: "站点扫描",
+  directory_scan: "目录扫描",
+  url_fetch: "URL 抓取",
+  vuln_scan: "漏洞扫描",
+}
+
+/** 获取阶段中文名称 */
+function getStageName(stage: string): string {
+  return STAGE_LABELS[stage] || stage
+}
+
 /**
  * 扫描阶段详情
  */
@@ -27,6 +50,7 @@ interface StageDetail {
   status: StageStatus
   duration?: string     // 耗时，如 "2m30s"
   detail?: string       // 额外信息，如 "发现 120 个子域名"
+  resultCount?: number  // 结果数量
 }
 
 /**
@@ -87,7 +111,7 @@ function StageRow({ stage }: { stage: StageDetail }) {
       <div className="flex items-center gap-3">
         <StageStatusIcon status={stage.status} />
         <div>
-          <span className="font-medium font-mono">{stage.stage}</span>
+          <span className="font-medium">{getStageName(stage.stage)}</span>
           {stage.detail && (
             <p className="text-xs text-muted-foreground mt-0.5">
               {stage.detail}
@@ -96,7 +120,8 @@ function StageRow({ stage }: { stage: StageDetail }) {
         </div>
       </div>
       
-      <div className="text-right">
+      <div className="flex items-center gap-3 text-right">
+        {/* 状态/耗时 */}
         {stage.status === "running" && (
           <Badge variant="outline" className="bg-chart-3/20 text-chart-3 border-chart-3/30">
             进行中
@@ -131,6 +156,53 @@ function StageRow({ stage }: { stage: StageDetail }) {
 }
 
 /**
+ * 计算已用时间
+ */
+function useElapsedTime(startedAt?: string, isRunning?: boolean) {
+  const [elapsed, setElapsed] = React.useState("")
+
+  React.useEffect(() => {
+    if (!startedAt) {
+      setElapsed("")
+      return
+    }
+
+    const calculate = () => {
+      const start = new Date(startedAt).getTime()
+      const now = Date.now()
+      const diffMs = now - start
+      
+      if (diffMs < 0) return ""
+      
+      const totalSeconds = Math.floor(diffMs / 1000)
+      const hours = Math.floor(totalSeconds / 3600)
+      const minutes = Math.floor((totalSeconds % 3600) / 60)
+      const seconds = totalSeconds % 60
+
+      if (hours > 0) {
+        return `${hours}h ${minutes}m ${seconds}s`
+      } else if (minutes > 0) {
+        return `${minutes}m ${seconds}s`
+      } else {
+        return `${seconds}s`
+      }
+    }
+
+    setElapsed(calculate())
+
+    // 如果正在运行，每秒更新一次
+    if (isRunning) {
+      const interval = setInterval(() => {
+        setElapsed(calculate())
+      }, 1000)
+      return () => clearInterval(interval)
+    }
+  }, [startedAt, isRunning])
+
+  return elapsed
+}
+
+/**
  * 扫描进度弹窗
  */
 export function ScanProgressDialog({
@@ -138,6 +210,9 @@ export function ScanProgressDialog({
   onOpenChange,
   data,
 }: ScanProgressDialogProps) {
+  const isRunning = data?.status === "running"
+  const elapsedTime = useElapsedTime(data?.startedAt, isRunning)
+
   if (!data) return null
 
   return (
@@ -164,6 +239,12 @@ export function ScanProgressDialog({
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">开始时间</span>
               <span className="font-mono text-xs">{formatDateTime(data.startedAt)}</span>
+            </div>
+          )}
+          {elapsedTime && (
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">已用时间</span>
+              <span className="font-mono text-xs font-medium text-chart-3">{elapsedTime}</span>
             </div>
           )}
         </div>
@@ -224,6 +305,30 @@ function formatDateTime(isoString?: string): string {
   }
 }
 
+/** 从 summary 中获取阶段对应的结果数量 */
+function getStageResultCount(stageName: string, summary: ScanRecord["summary"]): number | undefined {
+  if (!summary) return undefined
+  switch (stageName) {
+    case "subdomain_discovery":
+    case "subdomainDiscovery":
+      return summary.subdomains
+    case "site_scan":
+    case "siteScan":
+      return summary.websites
+    case "directory_scan":
+    case "directoryScan":
+      return summary.directories
+    case "url_fetch":
+    case "urlFetch":
+      return summary.endpoints
+    case "vuln_scan":
+    case "vulnScan":
+      return summary.vulnerabilities?.total
+    default:
+      return undefined
+  }
+}
+
 /**
  * 从 ScanRecord 构建 ScanProgressData
  * 
@@ -239,11 +344,16 @@ export function buildScanProgressData(scan: ScanRecord): ScanProgressData {
       .sort(([, a], [, b]) => (a.order ?? 0) - (b.order ?? 0))
     
     for (const [stageName, progress] of sortedEntries) {
+      const resultCount = progress.status === "completed" 
+        ? getStageResultCount(stageName, scan.summary)
+        : undefined
+      
       stages.push({
         stage: stageName,
         status: progress.status,
         duration: formatDuration(progress.duration),
         detail: progress.detail || progress.error || progress.reason,
+        resultCount,
       })
     }
   }

@@ -254,7 +254,7 @@ export default function NucleiReposPage() {
                         <div className="text-xs text-muted-foreground">最后同步</div>
                         <div className="text-lg font-semibold mt-1">
                           {selectedRepo.lastSyncedAt
-                            ? new Date(selectedRepo.lastSyncedAt).toLocaleDateString("zh-CN")
+                            ? new Date(selectedRepo.lastSyncedAt).toLocaleString("zh-CN")
                             : "-"}
                         </div>
                       </div>
