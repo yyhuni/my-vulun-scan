@@ -152,7 +152,8 @@ class ScanControlService:
             
             # 提交 Flow
             flow_run_id = self._submit_delete_flow(
-                deployment_name="delete-scans-on-demand",
+                # Prefect 要求 <FLOW_NAME>/<DEPLOYMENT_NAME> 格式
+                deployment_name="delete-scans/delete-scans-on-demand",
                 parameters=flow_kwargs
             )
             
