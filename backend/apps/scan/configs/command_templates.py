@@ -208,8 +208,8 @@ VULN_SCAN_COMMANDS = {
         # -j: JSON 输出
         # -silent: 静默模式
         # -l: 输入 URL 列表文件
-        # -t: 模板目录路径（由 ensure_nuclei_templates_local 动态获取）
-        'base': 'nuclei -j -silent -l {endpoints_file} -t {template_path}',
+        # -t: 模板目录路径（支持多个仓库，多次 -t 由 template_args 直接拼接）
+        'base': 'nuclei -j -silent -l {endpoints_file} {template_args}',
         'optional': {
             'concurrency': '-c {concurrency}',           # 并发数（默认 25）
             'rate_limit': '-rl {rate_limit}',            # 每秒请求数限制

@@ -34,6 +34,7 @@ class ScanEngine(models.Model):
     configuration = models.CharField(max_length=10000, blank=True, default='', help_text='引擎配置，yaml 格式')
     is_default = models.BooleanField(default=False, help_text='是否为默认引擎')
     created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
+    updated_at = models.DateTimeField(auto_now=True, help_text='更新时间')
 
     class Meta:
         db_table = 'scan_engine'

@@ -57,6 +57,11 @@ def build_scan_command(
         **command_params,
         **tool_config
     }
+
+    # nuclei 特殊处理：要求 template_args 必填（支持多 -t），避免格式化缺失
+    if tool_name == "nuclei":
+        if not all_params.get("template_args"):
+            raise ValueError("nuclei 命令构建缺少 template_args（请检查模板仓库列表配置）")
     
     try:
         # 1. 构建基础命令

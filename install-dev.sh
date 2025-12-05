@@ -283,6 +283,8 @@ info "  cd docker && ./start-dev.sh"
 cd "$DOCKER_DIR"
 ./start-dev.sh
 
+# start-dev.sh 内部已调用 init-data.sh 完成数据初始化
+
 success "开发环境已安装并启动。"
 echo -e "${GREEN}🌍 访问地址：${RESET}"
 printf "   %-16s %s\n" "Prefect UI:" "http://localhost:4200"

@@ -90,24 +90,28 @@ def endpoints_vuln_scan_flow(
         tool_futures: Dict[str, dict] = {}
 
         for tool_name, tool_config in enabled_tools.items():
-            # Nuclei 需要先确保本地模板存在
-            template_path = None
+            # Nuclei 需要先确保本地模板存在（支持多个模板仓库）
+            template_args = ""
             if tool_name == "nuclei":
-                template_repo_name = tool_config.get("template_repo_name")
-                if not template_repo_name:
-                    logger.error("Nuclei 配置缺少 template_repo_name，跳过")
+                repo_names = tool_config.get("template_repo_names")
+                if not repo_names or not isinstance(repo_names, (list, tuple)):
+                    logger.error("Nuclei 配置缺少 template_repo_names（数组），跳过")
                     continue
+                template_paths = []
                 try:
-                    template_path = ensure_nuclei_templates_local(template_repo_name)
-                    logger.info("Nuclei 模板路径: %s", template_path)
+                    for repo_name in repo_names:
+                        path = ensure_nuclei_templates_local(repo_name)
+                        template_paths.append(path)
+                        logger.info("Nuclei 模板路径 [%s]: %s", repo_name, path)
                 except Exception as e:
                     logger.error("获取 Nuclei 模板失败: %s，跳过 nuclei 扫描", e)
                     continue
+                template_args = " ".join(f"-t {p}" for p in template_paths)
 
             # 构建命令参数
             command_params = {"endpoints_file": str(endpoints_file)}
-            if template_path:
-                command_params["template_path"] = template_path
+            if template_args:
+                command_params["template_args"] = template_args
 
             command = build_scan_command(
                 tool_name=tool_name,

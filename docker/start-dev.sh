@@ -50,6 +50,13 @@ fi
 echo "🚀 正在启动开发环境（代码挂载模式）..."
 ${COMPOSE_CMD} -f docker-compose.yml -f docker-compose.dev.yml ${PROFILE_ARG} up -d
 echo "✅ 开发环境已启动"
+
+# ==================== 数据初始化 ====================
+
+# 首次启动时执行数据初始化
+./init-data.sh --dev
+
+echo ""
 echo "  - Prefect UI: http://localhost:4200"
 echo "  - Django API: http://localhost:8888"
 echo ""
