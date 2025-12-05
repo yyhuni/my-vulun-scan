@@ -3,6 +3,7 @@
 负责字典文件相关的业务逻辑处理
 """
 
+import hashlib
 import logging
 import os
 import time
@@ -12,6 +13,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import UploadedFile
 
+from apps.common.hash_utils import safe_calc_file_sha256
 from apps.engine.models import Wordlist
 from apps.engine.repositories import DjangoWordlistRepository
 
@@ -70,9 +72,13 @@ class WordlistService:
 
         full_path = os.path.join(storage_dir, safe_name)
 
+        # 边写边算 hash
+        hasher = hashlib.sha256()
         with open(full_path, "wb+") as dest:
             for chunk in uploaded_file.chunks():
                 dest.write(chunk)
+                hasher.update(chunk)
+        file_hash = hasher.hexdigest()
 
         try:
             file_size = os.path.getsize(full_path)
@@ -93,14 +99,16 @@ class WordlistService:
             file_path=full_path,
             file_size=file_size,
             line_count=line_count,
+            file_hash=file_hash,
         )
 
         logger.info(
-            "创建字典: id=%s, name=%s, size=%s, lines=%s",
+            "创建字典: id=%s, name=%s, size=%s, lines=%s, hash=%s",
             wordlist.id,
             wordlist.name,
             wordlist.file_size,
             wordlist.line_count,
+            wordlist.file_hash[:16] + "..." if wordlist.file_hash else "N/A",
         )
         return wordlist
 

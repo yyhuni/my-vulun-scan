@@ -65,6 +65,7 @@ class Wordlist(models.Model):
     file_path = models.CharField(max_length=500, help_text='后端保存的字典文件绝对路径')
     file_size = models.BigIntegerField(default=0, help_text='文件大小（字节）')
     line_count = models.IntegerField(default=0, help_text='字典行数')
+    file_hash = models.CharField(max_length=64, blank=True, default='', help_text='文件 SHA-256 哈希，用于缓存校验')
     created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
     updated_at = models.DateTimeField(auto_now=True, help_text='更新时间')
 

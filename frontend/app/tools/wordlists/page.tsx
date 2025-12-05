@@ -115,15 +115,21 @@ export default function WordlistsPage() {
                         {wordlist.description}
                       </div>
                     )}
-                    <div className="text-xs text-muted-foreground flex gap-3 mt-1">
+                    <div className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-1 mt-1">
                       {wordlist.lineCount !== undefined && (
-                        <span>行数: {wordlist.lineCount}</span>
+                        <span>行数: {wordlist.lineCount.toLocaleString()}</span>
                       )}
                       {wordlist.fileSize !== undefined && (
                         <span>大小: {(wordlist.fileSize / 1024).toFixed(1)} KB</span>
                       )}
                       <span>ID: {wordlist.id}</span>
+                      <span>更新: {new Date(wordlist.updatedAt).toLocaleString('zh-CN')}</span>
                     </div>
+                    {wordlist.fileHash && (
+                      <div className="text-xs text-muted-foreground mt-1 font-mono break-all">
+                        Hash: {wordlist.fileHash}
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <Button

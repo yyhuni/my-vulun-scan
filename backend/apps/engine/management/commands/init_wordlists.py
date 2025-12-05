@@ -13,6 +13,7 @@ from pathlib import Path
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
+from apps.common.hash_utils import safe_calc_file_sha256
 from apps.engine.models import Wordlist
 
 
@@ -54,13 +55,19 @@ class Command(BaseCommand):
             existing = Wordlist.objects.filter(name=name).first()
             if existing:
                 file_path = existing.file_path or ""
-                if file_path and Path(file_path).exists():
-                    # 记录和文件都在，直接跳过
+                file_hash = getattr(existing, 'file_hash', '') or ''
+                if file_path and Path(file_path).exists() and file_hash:
+                    # 记录、文件、hash 都在，直接跳过
                     self.stdout.write(self.style.SUCCESS(
                         f"[{name}] 已存在且文件有效，跳过初始化 (file_path={file_path})"
                     ))
                     skipped += 1
                     continue
+                elif file_path and Path(file_path).exists() and not file_hash:
+                    # 文件在但 hash 缺失，需要补算
+                    self.stdout.write(self.style.WARNING(
+                        f"[{name}] 记录已存在但缺少 file_hash，将补算并更新"
+                    ))
                 else:
                     self.stdout.write(self.style.WARNING(
                         f"[{name}] 记录已存在但物理文件丢失，将重新创建文件路径并修复记录"
@@ -99,16 +106,21 @@ class Command(BaseCommand):
             except OSError:
                 logger.warning("统计字典行数失败: %s", src_path)
 
+            # 计算文件 hash
+            file_hash = safe_calc_file_sha256(str(dest_path)) or ""
+
             # 如果之前已有记录则更新，否则创建新记录
             if existing:
                 existing.file_path = str(dest_path)
                 existing.file_size = file_size
                 existing.line_count = line_count
+                existing.file_hash = file_hash
                 existing.description = existing.description or description
                 existing.save(update_fields=[
                     "file_path",
                     "file_size",
                     "line_count",
+                    "file_hash",
                     "description",
                     "updated_at",
                 ])
@@ -121,12 +133,14 @@ class Command(BaseCommand):
                     file_path=str(dest_path),
                     file_size=file_size,
                     line_count=line_count,
+                    file_hash=file_hash,
                 )
                 action = "创建"
 
             initialized += 1
+            hash_preview = (wordlist.file_hash[:16] + "...") if wordlist.file_hash else "N/A"
             self.stdout.write(self.style.SUCCESS(
-                f"[{name}] {action}字典记录成功: id={wordlist.id}, size={wordlist.file_size}, lines={wordlist.line_count}"
+                f"[{name}] {action}字典记录成功: id={wordlist.id}, size={wordlist.file_size}, lines={wordlist.line_count}, hash={hash_preview}"
             ))
 
         self.stdout.write(self.style.SUCCESS(

@@ -11,6 +11,8 @@ export interface Wordlist {
   fileSize?: number
   // 行数，便于估算耗时，可选，由后端返回
   lineCount?: number
+  // 文件 SHA-256 哈希，用于缓存校验
+  fileHash?: string
   createdAt: string
   updatedAt: string
 }

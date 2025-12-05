@@ -17,6 +17,7 @@ class WordlistSerializer(serializers.ModelSerializer):
             "file_path",
             "file_size",
             "line_count",
+            "file_hash",
             "created_at",
             "updated_at",
         ]
@@ -25,6 +26,7 @@ class WordlistSerializer(serializers.ModelSerializer):
             "file_path",
             "file_size",
             "line_count",
+            "file_hash",
             "created_at",
             "updated_at",
         ]

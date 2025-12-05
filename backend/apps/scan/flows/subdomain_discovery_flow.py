@@ -32,7 +32,7 @@ from apps.scan.handlers.scan_flow_handlers import (
     on_scan_flow_cancelled,
     on_scan_flow_crashed
 )
-from apps.scan.utils import build_scan_command
+from apps.scan.utils import build_scan_command, ensure_wordlist_local
 from apps.engine.services.wordlist_service import WordlistService
 from apps.common.normalizer import normalize_domain
 from apps.common.validators import validate_domain
@@ -457,17 +457,20 @@ def subdomain_discovery_flow(
             bruteforce_tool_config = bruteforce_config.get('subdomain_bruteforce', {})
             wordlist_name = bruteforce_tool_config.get('wordlist_name', 'dns_wordlist.txt')
             
-            # 获取字典路径
-            wordlist_service = WordlistService()
-            wordlist = wordlist_service.get_wordlist_by_name(wordlist_name)
-            
-            if wordlist and wordlist.file_path:
+            try:
+                # 确保本地存在字典文件（含 hash 校验）
+                local_wordlist_path = ensure_wordlist_local(wordlist_name)
+                
+                # 获取字典记录用于计算 timeout
+                wordlist_service = WordlistService()
+                wordlist = wordlist_service.get_wordlist_by_name(wordlist_name)
+                
                 timeout_value = bruteforce_tool_config.get('timeout', 3600)
-                if timeout_value == 'auto':
+                if timeout_value == 'auto' and wordlist:
                     line_count = getattr(wordlist, 'line_count', None)
                     if line_count is None:
                         try:
-                            with open(wordlist.file_path, 'rb') as f:
+                            with open(local_wordlist_path, 'rb') as f:
                                 line_count = sum(1 for _ in f)
                         except OSError:
                             line_count = 0
@@ -494,7 +497,7 @@ def subdomain_discovery_flow(
                     tool_config=bruteforce_tool_config,
                     command_params={
                         'domain': domain_name,
-                        'wordlist': wordlist.file_path,
+                        'wordlist': local_wordlist_path,
                         'output_file': brute_output
                     },
                     result_dir=result_dir
@@ -510,8 +513,9 @@ def subdomain_discovery_flow(
                     executed_tasks.append('bruteforce')
                 else:
                     failed_tools.append({'tool': 'subdomain_bruteforce', 'reason': '执行失败'})
-            else:
-                logger.warning(f"字典 {wordlist_name} 不存在，跳过字典爆破")
+            except Exception as exc:
+                logger.warning("字典准备失败，跳过字典爆破: %s", exc)
+                failed_tools.append({'tool': 'subdomain_bruteforce', 'reason': str(exc)})
         
         # ==================== Stage 3: 变异生成 + 验证（可选）====================
         permutation_enabled = permutation_config.get('enabled', False)

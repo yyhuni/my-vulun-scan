@@ -7,6 +7,7 @@
 from .directory_cleanup import remove_directory
 from .command_builder import build_scan_command
 from .command_executor import execute_and_wait, execute_stream
+from .wordlist_helpers import ensure_wordlist_local
 from . import config_parser
 
 __all__ = [
@@ -17,6 +18,8 @@ __all__ = [
     # 命令执行
     'execute_and_wait',      # 等待式执行（文件输出）
     'execute_stream',        # 流式执行（实时处理）
+    # 字典文件
+    'ensure_wordlist_local', # 确保本地字典文件（含 hash 校验）
     # 配置解析
     'config_parser',
 ]

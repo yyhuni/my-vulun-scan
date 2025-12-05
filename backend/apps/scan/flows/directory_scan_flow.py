@@ -19,12 +19,7 @@ import logging
 import os
 import subprocess
 from pathlib import Path
-from urllib import request as urllib_request
-from urllib import parse as urllib_parse
 
-from django.conf import settings
-
-from apps.engine.services import WordlistService
 from apps.scan.tasks.directory_scan import (
     export_sites_task,
     run_and_stream_save_directories_task
@@ -36,7 +31,7 @@ from apps.scan.handlers.scan_flow_handlers import (
     on_scan_flow_cancelled,
     on_scan_flow_crashed
 )
-from apps.scan.utils import config_parser, build_scan_command
+from apps.scan.utils import config_parser, build_scan_command, ensure_wordlist_local
 
 logger = logging.getLogger(__name__)
 
@@ -182,67 +177,6 @@ def _export_site_urls(target_id: int, directory_scan_dir: Path) -> tuple[str, in
     return export_result['output_file'], site_count
 
 
-def _ensure_wordlist_local(tool_config: dict) -> None:
-    """根据 wordlist_name 确保本地存在字典文件，并回写 wordlist 路径
-
-    约定：
-    - engine YAML 中通过 wordlist_name 引用字典，对应 Wordlist.name（唯一）
-    - 后端上传时将字典文件保存到 WORDLISTS_BASE_PATH 目录
-    - 每个 Worker 也使用相同的 WORDLISTS_BASE_PATH 作为本地缓存目录
-    """
-
-    wordlist_name = tool_config.get('wordlist_name')
-    if not wordlist_name:
-        raise ValueError("目录扫描工具缺少必需参数 'wordlist_name'")
-
-    service = WordlistService()
-    wordlist = service.get_wordlist_by_name(wordlist_name)
-    if not wordlist:
-        raise ValueError(f"未找到名称为 '{wordlist_name}' 的字典，请在「字典管理」中先创建")
-
-    # 统一使用文件名，前缀为当前容器的 WORDLISTS_BASE_PATH
-    backend_path = Path(wordlist.file_path)
-    base_dir = getattr(settings, 'WORDLISTS_BASE_PATH', '/opt/xingrin/wordlists')
-    storage_dir = Path(base_dir)
-    storage_dir.mkdir(parents=True, exist_ok=True)
-    local_path = storage_dir / backend_path.name
-
-    # 如果本地已存在，直接使用
-    if local_path.exists():
-        logger.info("本地已存在字典文件: %s", local_path)
-        tool_config['wordlist'] = str(local_path)
-        return
-
-    # 通过 settings 中的对外访问主机和端口推导 Django API 地址
-    public_host = getattr(settings, 'PUBLIC_HOST', '').strip()
-    if not public_host:
-        raise RuntimeError(
-            "无法确定 Django API 地址：请在 docker/.env 中配置 PUBLIC_HOST 环境变量"
-        )
-
-    server_port = getattr(settings, 'SERVER_PORT', '8888')
-    api_base = f"http://{public_host}:{server_port}/api"
-    query = urllib_parse.urlencode({'wordlist': wordlist_name})
-    download_url = f"{api_base.rstrip('/')}/wordlists/download/?{query}"
-
-    logger.info("本地未找到字典文件，将从后端下载: %s -> %s", download_url, local_path)
-
-    try:
-        with urllib_request.urlopen(download_url) as resp:
-            if resp.status != 200:
-                raise RuntimeError(f"下载字典失败，HTTP {resp.status}")
-            data = resp.read()
-    except Exception as exc:
-        logger.error("下载字典失败: %s", exc)
-        raise
-
-    with open(local_path, 'wb') as f:
-        f.write(data)
-
-    logger.info("字典下载完成并保存到: %s", local_path)
-    tool_config['wordlist'] = str(local_path)
-
-
 def _run_scans_sequentially(
     enabled_tools: dict,
     sites_file: str,
@@ -287,10 +221,12 @@ def _run_scans_sequentially(
         logger.info("使用工具: %s", tool_name)
         logger.info("="*60)
 
-        # 如果配置了 wordlist_name，则先确保本地存在对应的字典文件
-        if tool_config.get('wordlist_name'):
+        # 如果配置了 wordlist_name，则先确保本地存在对应的字典文件（含 hash 校验）
+        wordlist_name = tool_config.get('wordlist_name')
+        if wordlist_name:
             try:
-                _ensure_wordlist_local(tool_config)
+                local_wordlist_path = ensure_wordlist_local(wordlist_name)
+                tool_config['wordlist'] = local_wordlist_path
             except Exception as exc:
                 logger.error("为工具 %s 准备字典失败: %s", tool_name, exc)
                 # 当前工具无法执行，将所有站点视为失败，继续下一个工具
