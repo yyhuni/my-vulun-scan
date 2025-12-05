@@ -17,86 +17,35 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { MoreHorizontal, Eye, Trash2, ChevronsUpDown, ChevronUp, ChevronDown, Copy, Check, Play, Calendar } from "lucide-react"
+import { MoreHorizontal, Eye, Trash2, ChevronsUpDown, ChevronUp, ChevronDown, Play, Calendar, Copy, Check } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import type { Target } from "@/types/target.types"
 
 /**
- * 可复制单元格组件
+ * 复制到剪贴板（兼容 HTTP 环境）
  */
-function CopyableCell({ 
-  value, 
-  maxWidth = "400px", 
-  truncateLength = 50,
-  successMessage = "已复制",
-  className = "font-medium"
-}: { 
-  value: string
-  maxWidth?: string
-  truncateLength?: number
-  successMessage?: string
-  className?: string
-}) {
-  const [copied, setCopied] = React.useState(false)
-  const isLong = value.length > truncateLength
-  
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(value)
-      setCopied(true)
-      toast.success(successMessage)
-      setTimeout(() => setCopied(false), 2000)
-    } catch {
-      toast.error('复制失败')
+async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text)
+    } else {
+      // Fallback: 使用临时 textarea
+      const textArea = document.createElement('textarea')
+      textArea.value = text
+      textArea.style.position = 'fixed'
+      textArea.style.left = '-9999px'
+      textArea.style.top = '-9999px'
+      document.body.appendChild(textArea)
+      textArea.focus()
+      textArea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textArea)
     }
+    return true
+  } catch {
+    return false
   }
-  
-  return (
-    <div className="group inline-flex items-center gap-1" style={{ maxWidth }}>
-      <TooltipProvider delayDuration={500} skipDelayDuration={0}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className={`text-sm truncate cursor-default ${className}`}>
-              {value}
-            </div>
-          </TooltipTrigger>
-          <TooltipContent 
-            side="top" 
-            align="start"
-            sideOffset={5}
-            className={`text-xs ${isLong ? 'max-w-[500px] break-all' : 'whitespace-nowrap'}`}
-          >
-            {value}
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-      
-      <TooltipProvider delayDuration={500} skipDelayDuration={0}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className={`h-6 w-6 flex-shrink-0 hover:bg-accent transition-opacity ${
-                copied ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-              }`}
-              onClick={handleCopy}
-            >
-              {copied ? (
-                <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-              ) : (
-                <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-              )}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="top">
-            <p className="text-xs">{copied ? '已复制!' : '点击复制'}</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    </div>
-  )
 }
 
 // 列创建函数的参数类型
@@ -125,40 +74,72 @@ function TargetRowActions({
   onDelete: () => void
 }) {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          className="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
-        >
-          <MoreHorizontal />
-          <span className="sr-only">打开菜单</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
-        <DropdownMenuItem onClick={onView}>
-          <Eye />
-          Target Summary
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={onInitiateScan}>
-          <Play />
-          Initiate Scan
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={onScheduleScan}>
-          <Calendar />
-          Schedule Scan
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onClick={onDelete}
-          className="text-destructive focus:text-destructive"
-        >
-          <Trash2 />
-          Delete
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <div className="flex items-center gap-1">
+      {/* Target Summary 按钮 */}
+      <TooltipProvider delayDuration={300}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={onView}
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            <p className="text-xs">Target Summary</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+
+      {/* Initiate Scan 按钮 */}
+      <TooltipProvider delayDuration={300}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50 dark:text-green-500 dark:hover:text-green-400 dark:hover:bg-green-950"
+              onClick={onInitiateScan}
+            >
+              <Play className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            <p className="text-xs">Initiate Scan</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+
+      {/* 更多操作菜单 */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            className="h-8 w-8 p-0 data-[state=open]:bg-muted"
+          >
+            <MoreHorizontal className="h-4 w-4" />
+            <span className="sr-only">更多操作</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem onClick={onScheduleScan}>
+            <Calendar />
+            Schedule Scan
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={onDelete}
+            className="text-destructive focus:text-destructive"
+          >
+            <Trash2 />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   )
 }
 
@@ -243,39 +224,48 @@ export const createAllTargetsColumns = ({
       
       const handleCopy = async (e: React.MouseEvent) => {
         e.stopPropagation()
-        try {
-          await navigator.clipboard.writeText(name)
+        const success = await copyToClipboard(name)
+        if (success) {
           setCopied(true)
           toast.success("已复制目标名称")
           setTimeout(() => setCopied(false), 2000)
-        } catch {
-          toast.error('复制失败')
+        } else {
+          toast.error("复制失败")
         }
       }
       
       return (
         <div className="group inline-flex items-center gap-1 max-w-[350px]">
-          <button
+          <span
             onClick={() => navigate(`/target/${targetId}/details`)}
             className="text-sm font-medium hover:text-primary hover:underline transition-colors cursor-pointer truncate"
             title={name}
           >
             {name}
-          </button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={`h-6 w-6 flex-shrink-0 hover:bg-accent transition-opacity ${
-              copied ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-            }`}
-            onClick={handleCopy}
-          >
-            {copied ? (
-              <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-            ) : (
-              <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-            )}
-          </Button>
+          </span>
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={`h-6 w-6 flex-shrink-0 hover:bg-accent transition-opacity ${
+                    copied ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                  }`}
+                  onClick={handleCopy}
+                >
+                  {copied ? (
+                    <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p className="text-xs">{copied ? '已复制!' : '点击复制'}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       )
     },

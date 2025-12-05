@@ -233,7 +233,7 @@ register_deployments() {
 # 重启服务
 restart_services() {
     log_step "10. 重启服务..."
-    docker compose restart
+    ./restart.sh
     log_info "服务重启完成"
 }
 

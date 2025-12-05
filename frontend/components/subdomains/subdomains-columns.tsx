@@ -47,7 +47,22 @@ function CopyableCell({
   
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(value)
+      // 优先使用 Clipboard API，不支持时用 fallback
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(value)
+      } else {
+        // Fallback: 使用临时 textarea
+        const textArea = document.createElement('textarea')
+        textArea.value = value
+        textArea.style.position = 'fixed'
+        textArea.style.left = '-9999px'
+        textArea.style.top = '-9999px'
+        document.body.appendChild(textArea)
+        textArea.focus()
+        textArea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textArea)
+      }
       setCopied(true)
       toast.success(successMessage)
       setTimeout(() => setCopied(false), 2000)

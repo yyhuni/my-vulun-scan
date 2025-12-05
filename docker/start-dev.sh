@@ -54,7 +54,7 @@ echo "✅ 开发环境已启动"
 # ==================== 数据初始化 ====================
 
 # 首次启动时执行数据初始化
-./init-data.sh --dev
+./scripts/init-data.sh --dev
 
 echo ""
 echo "  - Prefect UI: http://localhost:4200"
