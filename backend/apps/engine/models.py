@@ -85,9 +85,10 @@ class Wordlist(models.Model):
 class NucleiTemplateRepo(models.Model):
     """Nuclei 模板 Git 仓库模型（多仓库）"""
 
-    name = models.CharField(max_length=200, help_text="仓库名称，用于前端展示")
+    name = models.CharField(max_length=200, unique=True, help_text="仓库名称，用于前端展示和配置引用")
     repo_url = models.CharField(max_length=500, help_text="Git 仓库地址")
-    local_path = models.CharField(max_length=500, help_text="本地工作目录绝对路径")
+    local_path = models.CharField(max_length=500, blank=True, default='', help_text="本地工作目录绝对路径")
+    commit_hash = models.CharField(max_length=40, blank=True, default='', help_text="最后同步的 Git commit hash，用于 Worker 版本校验")
     last_synced_at = models.DateTimeField(null=True, blank=True, help_text="最后一次成功同步时间")
     created_at = models.DateTimeField(auto_now_add=True, help_text="创建时间")
     updated_at = models.DateTimeField(auto_now=True, help_text="更新时间")

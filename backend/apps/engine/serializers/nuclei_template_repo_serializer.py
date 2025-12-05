@@ -32,6 +32,7 @@ class NucleiTemplateRepoSerializer(serializers.ModelSerializer):
             "name",         # 仓库名称
             "repo_url",     # Git 仓库地址
             "local_path",   # 本地克隆路径（只读）
+            "commit_hash",  # 最后同步的 commit hash（只读）
             "last_synced_at",  # 最后同步时间（只读）
             "created_at",   # 创建时间（只读）
             "updated_at",   # 更新时间（只读）
@@ -39,6 +40,7 @@ class NucleiTemplateRepoSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "id",
             "local_path",      # 由后端根据 name 自动生成
+            "commit_hash",     # 由 refresh 操作更新
             "last_synced_at",  # 由 refresh 操作更新
             "created_at",
             "updated_at",

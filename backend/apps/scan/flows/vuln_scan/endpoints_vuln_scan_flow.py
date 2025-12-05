@@ -14,11 +14,12 @@ from apps.scan.handlers.scan_flow_handlers import (
     on_scan_flow_cancelled,
     on_scan_flow_crashed,
 )
-from apps.scan.utils import build_scan_command
+from apps.scan.utils import build_scan_command, ensure_nuclei_templates_local
 from apps.scan.tasks.vuln_scan import (
     export_endpoints_task,
     run_vuln_tool_task,
     run_and_stream_save_dalfox_vulns_task,
+    run_and_stream_save_nuclei_vulns_task,
 )
 from .utils import calculate_timeout_by_line_count
 
@@ -89,10 +90,29 @@ def endpoints_vuln_scan_flow(
         tool_futures: Dict[str, dict] = {}
 
         for tool_name, tool_config in enabled_tools.items():
+            # Nuclei 需要先确保本地模板存在
+            template_path = None
+            if tool_name == "nuclei":
+                template_repo_name = tool_config.get("template_repo_name")
+                if not template_repo_name:
+                    logger.error("Nuclei 配置缺少 template_repo_name，跳过")
+                    continue
+                try:
+                    template_path = ensure_nuclei_templates_local(template_repo_name)
+                    logger.info("Nuclei 模板路径: %s", template_path)
+                except Exception as e:
+                    logger.error("获取 Nuclei 模板失败: %s，跳过 nuclei 扫描", e)
+                    continue
+
+            # 构建命令参数
+            command_params = {"endpoints_file": str(endpoints_file)}
+            if template_path:
+                command_params["template_path"] = template_path
+
             command = build_scan_command(
                 tool_name=tool_name,
                 scan_type="vuln_scan",
-                command_params={"endpoints_file": str(endpoints_file)},
+                command_params=command_params,
                 tool_config=tool_config,
             )
 
@@ -100,12 +120,13 @@ def endpoints_vuln_scan_flow(
             timeout = 600
 
             if isinstance(raw_timeout, str) and raw_timeout == "auto":
-                # Dalfox: timeout=auto 时，根据 endpoints_file 行数自动计算超时时间
-                # 这里按「每行 100 秒」来预估整体扫描时间
+                # timeout=auto 时，根据 endpoints_file 行数自动计算超时时间
+                # Dalfox: 每行 100 秒，Nuclei: 每行 30 秒
+                base_per_time = 30 if tool_name == "nuclei" else 100
                 timeout = calculate_timeout_by_line_count(
                     tool_config=tool_config,
                     file_path=str(endpoints_file),
-                    base_per_time=100,
+                    base_per_time=base_per_time,
                 )
             else:
                 try:
@@ -130,6 +151,28 @@ def endpoints_vuln_scan_flow(
                     cwd=str(vuln_scan_dir),
                     shell=True,
                     batch_size=1,
+                    timeout=timeout,
+                    log_file=str(log_file),
+                )
+
+                tool_futures[tool_name] = {
+                    "future": future,
+                    "command": command,
+                    "timeout": timeout,
+                    "log_file": str(log_file),
+                    "mode": "streaming",
+                }
+            elif tool_name == "nuclei":
+                # Nuclei 使用流式任务
+                logger.info("开始执行漏洞扫描工具 %s（流式保存漏洞结果，已提交任务）", tool_name)
+                future = run_and_stream_save_nuclei_vulns_task.submit(
+                    cmd=command,
+                    tool_name=tool_name,
+                    scan_id=scan_id,
+                    target_id=target_id,
+                    cwd=str(vuln_scan_dir),
+                    shell=True,
+                    batch_size=10,
                     timeout=timeout,
                     log_file=str(log_file),
                 )

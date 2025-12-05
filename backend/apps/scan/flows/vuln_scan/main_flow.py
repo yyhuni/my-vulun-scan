@@ -60,7 +60,9 @@ def vuln_scan_flow(
 ) -> dict:
     """漏洞扫描主 Flow：串行编排各类漏洞扫描子 Flow。
 
-    当前仅包含基于 Endpoint 的漏洞扫描（Dalfox XSS）。
+    支持工具：
+    - dalfox_xss: XSS 漏洞扫描（流式保存）
+    - nuclei: 通用漏洞扫描（流式保存，支持模板 commit hash 同步）
     """
     try:
         if scan_id is None:
@@ -90,7 +92,7 @@ def vuln_scan_flow(
             )
 
         if not endpoints_tools:
-            raise ValueError("漏洞扫描需要至少启用一个以 endpoints_file 为输入的工具（如 dalfox_xss）。")
+            raise ValueError("漏洞扫描需要至少启用一个以 endpoints_file 为输入的工具（如 dalfox_xss、nuclei）。")
 
         # Step 2: 执行 Endpoint 漏洞扫描子 Flow（串行）
         endpoint_result = endpoints_vuln_scan_flow(

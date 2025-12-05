@@ -181,6 +181,12 @@ export default function NucleiReposPage() {
                         </span>
                       )}
                     </div>
+                    {repo.commitHash && (
+                      <div className="text-xs text-muted-foreground mt-1 font-mono">
+                        <span className="font-medium font-sans">Commit：</span>
+                        {repo.commitHash}
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -327,3 +333,4 @@ export default function NucleiReposPage() {
       </Dialog>
     </div>
   )
+}

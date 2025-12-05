@@ -203,6 +203,25 @@ VULN_SCAN_COMMANDS = {
         },
         'input_type': 'endpoints_file',
     },
+    'nuclei': {
+        # nuclei 漏洞扫描
+        # -j: JSON 输出
+        # -silent: 静默模式
+        # -l: 输入 URL 列表文件
+        # -t: 模板目录路径（由 ensure_nuclei_templates_local 动态获取）
+        'base': 'nuclei -j -silent -l {endpoints_file} -t {template_path}',
+        'optional': {
+            'concurrency': '-c {concurrency}',           # 并发数（默认 25）
+            'rate_limit': '-rl {rate_limit}',            # 每秒请求数限制
+            'request_timeout': '-timeout {request_timeout}',  # 请求超时秒数
+            'bulk_size': '-bs {bulk_size}',              # 批量处理大小
+            'retries': '-retries {retries}',             # 重试次数
+            'severity': '-severity {severity}',          # 过滤严重性（info,low,medium,high,critical）
+            'tags': '-tags {tags}',                      # 过滤标签
+            'exclude_tags': '-etags {exclude_tags}',     # 排除标签
+        },
+        'input_type': 'endpoints_file',
+    },
 }
 
 

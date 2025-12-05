@@ -209,3 +209,15 @@ vuln_scan:
       delay: 100             # Dalfox 扫描内部延迟参数
       worker: 10             # Dalfox worker 数量
       user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"  # 默认 UA，可根据需要修改
+
+    nuclei:
+      enabled: true
+      timeout: auto                        # 自动计算（根据 endpoints 行数），或手动指定秒数
+      template_repo_name: nuclei-templates # 模板仓库名称，对应「Nuclei 模板」中的仓库名
+                                           # Worker 会自动同步到与 Server 一致的 commit 版本
+      concurrency: 50                      # 并发数（默认 25）
+      rate_limit: 150                      # 每秒请求数限制（默认 150）
+      request_timeout: 5                   # 单个请求超时秒数（默认 5）
+      # severity: medium,high,critical    # 可选：只扫描指定严重性级别
+      # tags: cve,rce                      # 可选：只使用指定标签的模板
+      # exclude_tags: dos                  # 可选：排除指定标签的模板

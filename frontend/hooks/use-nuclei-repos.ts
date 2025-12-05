@@ -13,6 +13,7 @@ export interface NucleiRepo {
   name: string
   repoUrl: string
   localPath: string
+  commitHash: string | null
   lastSyncedAt: string | null
   createdAt: string
   updatedAt: string

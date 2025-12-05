@@ -223,17 +223,32 @@ class NucleiTemplateRepoService:
             logger.warning("nuclei 模板仓库 %s git %s 失败: %s", obj.id, action, result.stderr.strip())
             raise RuntimeError("Git 同步失败")
 
-        # 同步成功，更新数据库
+        # 获取当前 commit hash
+        commit_result = subprocess.run(
+            ["git", "-C", str(local_path), "rev-parse", "HEAD"],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        commit_hash = commit_result.stdout.strip() if commit_result.returncode == 0 else ""
+
+        # 同步成功，更新数据库（包含 commit_hash）
         obj.last_synced_at = timezone.now()
         obj.local_path = str(local_path)
-        obj.save(update_fields=["last_synced_at", "local_path"])
+        obj.commit_hash = commit_hash
+        obj.save(update_fields=["last_synced_at", "local_path", "commit_hash"])
 
-        logger.info("nuclei 模板仓库 %s git %s 成功", obj.id, action)
+        logger.info(
+            "nuclei 模板仓库 %s git %s 成功, commit=%s",
+            obj.id, action, commit_hash[:8] if commit_hash else "N/A"
+        )
 
         return {
             "repoId": obj.id,
             "action": action,
             "localPath": str(local_path),
+            "commitHash": commit_hash,
             "stdout": result.stdout,
             "stderr": result.stderr,
         }
