@@ -1,8 +1,8 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "登录 - XingRin 星环",
-  description: "登录到 XingRin 星环",
+  title: "登录 - XingRin - 星环",
+  description: "登录到 XingRin - 星环",
 }
 
 /**

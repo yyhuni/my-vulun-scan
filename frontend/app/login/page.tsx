@@ -2,7 +2,8 @@
 
 import React from "react"
 import { useRouter } from "next/navigation"
-import { Shield } from "lucide-react"
+import Lottie from "lottie-react"
+import securityAnimation from "@/public/animations/Security000-Purple.json"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
@@ -70,10 +71,10 @@ export default function LoginPage() {
               <form className="p-6 md:p-8" onSubmit={handleSubmit}>
                 <FieldGroup>
                   <div className="flex flex-col items-center gap-2 text-center">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 mb-2">
-                      <Shield className="h-6 w-6 text-primary" />
-                    </div>
-                    <h1 className="text-2xl font-bold">XingRin 星环</h1>
+                    <h1 className="text-2xl font-bold">XingRin - 星环</h1>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      一站式安全扫描平台
+                    </p> 
                   </div>
                   <Field>
                     <FieldLabel htmlFor="username">用户名</FieldLabel>
@@ -105,15 +106,17 @@ export default function LoginPage() {
                   </Field>
                 </FieldGroup>
               </form>
-              <div className="bg-primary/5 relative hidden md:block">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-center p-8">
-                    <Shield className="h-24 w-24 text-primary/20 mx-auto mb-4" />
-                    <h2 className="text-xl font-semibold text-primary/60">安全扫描平台</h2>
-                    <p className="text-sm text-muted-foreground mt-2">
+              <div className="bg-primary/5 relative hidden md:flex md:items-center md:justify-center">
+                <div className="text-center p-4">
+                  <Lottie 
+                    animationData={securityAnimation} 
+                    loop={true}
+                    className="w-72 h-72 mx-auto"
+                  />
+                  {/* <h2 className="text-xl font-semibold text-primary/60 mt-2">安全扫描平台</h2>
+                    <p className="text-sm text-muted-foreground mt-1">
                       Web 应用漏洞扫描与资产管理
-                    </p>
-                  </div>
+                    </p> */}
                 </div>
               </div>
             </CardContent>
