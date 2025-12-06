@@ -20,6 +20,9 @@ from .snapshot_models import (
     VulnerabilitySnapshot,
 )
 
+# 统计模型
+from .statistics_models import AssetStatistics
+
 # 导出所有模型供外部导入
 __all__ = [
     # 业务模型
@@ -36,4 +39,6 @@ __all__ = [
     'HostPortMappingSnapshot',
     'EndpointSnapshot',
     'VulnerabilitySnapshot',
+    # 统计模型
+    'AssetStatistics',
 ]

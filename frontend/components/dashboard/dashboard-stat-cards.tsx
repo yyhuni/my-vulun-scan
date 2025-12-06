@@ -1,22 +1,39 @@
 "use client"
 
-import { useDashboardStats } from "@/hooks/use-dashboard"
+import { useAssetStatistics } from "@/hooks/use-dashboard"
 import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { IconTarget, IconTopologyStar, IconLink, IconShieldLock } from "@tabler/icons-react"
+import { IconTarget, IconStack2, IconBug, IconPlayerPlay, IconTrendingUp, IconTrendingDown } from "@tabler/icons-react"
+
+function TrendBadge({ change }: { change: number }) {
+  if (change === 0) return null
+  
+  const isPositive = change > 0
+  return (
+    <Badge 
+      variant="outline" 
+      className={isPositive ? "text-green-600 border-green-200 bg-green-50" : "text-red-600 border-red-200 bg-red-50"}
+    >
+      {isPositive ? <IconTrendingUp className="size-3 mr-1" /> : <IconTrendingDown className="size-3 mr-1" />}
+      {isPositive ? '+' : ''}{change}
+    </Badge>
+  )
+}
 
 function StatCard({
   title,
   value,
+  change,
   icon,
-  trendText,
+  footer,
   loading,
 }: {
   title: string
   value: string | number
+  change?: number
   icon: React.ReactNode
-  trendText?: string
+  footer: string
   loading?: boolean
 }) {
   return (
@@ -30,50 +47,74 @@ function StatCard({
           <Skeleton className="h-8 w-24" />
         ) : (
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {value}
+            {typeof value === 'number' ? value.toLocaleString() : value}
           </CardTitle>
         )}
-        <CardAction>
-          <Badge variant="outline">{trendText ?? "Today"}</Badge>
-        </CardAction>
+        {!loading && change !== undefined && (
+          <CardAction>
+            <TrendBadge change={change} />
+          </CardAction>
+        )}
       </CardHeader>
       <CardFooter className="flex-col items-start gap-1.5 text-sm">
-        <div className="line-clamp-1 flex gap-2 font-medium">Overview</div>
-        <div className="text-muted-foreground">System-wide</div>
+        <div className="text-muted-foreground">{footer}</div>
       </CardFooter>
     </Card>
   )
 }
 
+function formatUpdateTime(dateStr: string | null) {
+  if (!dateStr) return '暂无数据'
+  const date = new Date(dateStr)
+  return date.toLocaleString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 export function DashboardStatCards() {
-  const { data, isLoading } = useDashboardStats()
+  const { data, isLoading } = useAssetStatistics()
 
   return (
-    <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
-      <StatCard
-        title="Total Targets"
-        value={data?.totalTargets ?? 0}
-        icon={<IconTarget />}
-        loading={isLoading}
-      />
-      <StatCard
-        title="Total Subdomains"
-        value={data?.totalSubdomains ?? 0}
-        icon={<IconTopologyStar />}
-        loading={isLoading}
-      />
-      <StatCard
-        title="Total Endpoints"
-        value={data?.totalEndpoints ?? 0}
-        icon={<IconLink />}
-        loading={isLoading}
-      />
-      <StatCard
-        title="Total Vulnerabilities"
-        value={data?.totalVulnerabilities ?? 0}
-        icon={<IconShieldLock />}
-        loading={isLoading}
-      />
+    <div className="flex flex-col gap-2 px-4 lg:px-6">
+      <div className="grid grid-cols-1 gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+        <StatCard
+          title="发现资产"
+          value={data?.totalAssets ?? 0}
+          change={data?.changeAssets}
+          icon={<IconStack2 className="size-4" />}
+          loading={isLoading}
+          footer="子域名 + IP + 端点 + 网站"
+        />
+        <StatCard
+          title="发现漏洞"
+          value={data?.totalVulns ?? 0}
+          change={data?.changeVulns}
+          icon={<IconBug className="size-4" />}
+          loading={isLoading}
+          footer="所有扫描发现的漏洞"
+        />
+        <StatCard
+          title="监控目标"
+          value={data?.totalTargets ?? 0}
+          change={data?.changeTargets}
+          icon={<IconTarget className="size-4" />}
+          loading={isLoading}
+          footer="已添加的目标总数"
+        />
+        <StatCard
+          title="正在扫描"
+          value={data?.runningScans ?? 0}
+          icon={<IconPlayerPlay className="size-4" />}
+          loading={isLoading}
+          footer="当前运行中的任务"
+        />
+      </div>
+      <div className="text-xs text-muted-foreground text-right">
+        统计更新于 {formatUpdateTime(data?.updatedAt ?? null)}
+      </div>
     </div>
   )
 }

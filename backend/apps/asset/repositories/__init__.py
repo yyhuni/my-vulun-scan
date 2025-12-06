@@ -18,6 +18,9 @@ from .snapshot import (
     DjangoEndpointSnapshotRepository,
 )
 
+# 统计模块 Repository
+from .statistics_repository import AssetStatisticsRepository
+
 __all__ = [
     # 资产模块
     'DjangoSubdomainRepository',
@@ -31,6 +34,8 @@ __all__ = [
     'DjangoWebsiteSnapshotRepository',
     'DjangoDirectorySnapshotRepository',
     'DjangoEndpointSnapshotRepository',
+    # 统计模块
+    'AssetStatisticsRepository',
 ]
 
 

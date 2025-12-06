@@ -58,7 +58,7 @@ export class SubdomainService {
       requestedIds: number[]
       cascadeDeleted: Record<string, number>
     }>(
-      `/subdomains/bulk-delete/`,
+      `/assets/subdomains/bulk-delete/`,
       { ids }
     )
     return response.data
@@ -86,7 +86,7 @@ export class SubdomainService {
         phase1: string
         phase2: string
       }
-    }>(`/subdomains/${id}/`)
+    }>(`/assets/subdomains/${id}/`)
     return response.data
   }
 

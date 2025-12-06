@@ -1,6 +1,8 @@
 import { DashboardStatCards } from "@/components/dashboard/dashboard-stat-cards"
-import { SystemMetricsChart } from "@/components/dashboard/system-metrics-chart"
 import { DashboardScanHistory } from "@/components/dashboard/dashboard-scan-history"
+import { AssetDistributionChart } from "@/components/dashboard/asset-distribution-chart"
+import { VulnSeverityChart } from "@/components/dashboard/vuln-severity-chart"
+import { RecentVulnerabilities } from "@/components/dashboard/recent-vulnerabilities"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 /**
@@ -15,13 +17,21 @@ export default function Page() {
       {/* 顶部统计卡片 */}
       <DashboardStatCards />
 
-      {/* 图表区域,带有水平内边距 */}
-      <div className="px-4 lg:px-6">
-        <SystemMetricsChart />
+      {/* 图表区域 */}
+      <div className="grid gap-4 px-4 lg:px-6 @xl/main:grid-cols-2">
+        {/* 资产分布图表 */}
+        <AssetDistributionChart />
+
+        {/* 漏洞严重程度分布 */}
+        <VulnSeverityChart />
       </div>
 
-      {/* 底部数据表格：正在扫描 与 任务情况 */}
+      {/* 列表区域 */}
       <div className="grid gap-4 px-4 lg:px-6 @xl/main:grid-cols-2">
+        {/* 最近漏洞 */}
+        <RecentVulnerabilities />
+
+        {/* 正在扫描 */}
         <Card className="@container/card">
           <CardHeader>
             <CardTitle>正在扫描</CardTitle>

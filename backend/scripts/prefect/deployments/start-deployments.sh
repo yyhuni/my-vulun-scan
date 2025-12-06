@@ -94,10 +94,10 @@ start_all() {
         "targets-delete-deployment.log" \
         "targets-delete-deployment.pid"
     
-    # start_deployment "Asset 删除任务" \
-    #     "-m apps.asset.deployments.register" \
-    #     "asset-delete-deployment.log" \
-    #     "asset-delete-deployment.pid"
+    start_deployment "Asset 统计任务" \
+        "-m apps.asset.deployments.register" \
+        "asset-statistics-deployment.log" \
+        "asset-statistics-deployment.pid"
     
     echo ""
     echo -e "${GREEN}✓ 所有 Deployments 注册流程结束${NC}"

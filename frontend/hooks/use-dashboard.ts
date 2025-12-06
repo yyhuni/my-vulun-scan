@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { getDashboardStats, getSystemMetrics } from '@/services/dashboard.service'
+import { getDashboardStats, getAssetStatistics } from '@/services/dashboard.service'
 
 export function useDashboardStats() {
   return useQuery({
@@ -8,10 +8,12 @@ export function useDashboardStats() {
   })
 }
 
-export function useSystemMetrics(range: '1h' | '24h' | '7d' = '24h') {
+/**
+ * 获取资产统计数据（预聚合）
+ */
+export function useAssetStatistics() {
   return useQuery({
-    queryKey: ['system', 'metrics', range],
-    queryFn: () => getSystemMetrics({ range }),
-    refetchInterval: 2000,
+    queryKey: ['asset', 'statistics'],
+    queryFn: getAssetStatistics,
   })
 }

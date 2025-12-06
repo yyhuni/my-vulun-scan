@@ -54,6 +54,9 @@ python -m apps.scan.deployments.register
 # Targets 删除任务
 echo "    - 注册 Targets 删除任务..."
 python -m apps.targets.deployments.register
+# Asset 统计任务
+echo "    - 注册 Asset 统计任务..."
+python -m apps.asset.deployments.register
 
 echo "  ✓ Deployments 注册完成"
 

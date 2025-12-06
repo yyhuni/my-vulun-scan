@@ -132,6 +132,7 @@ register_deployments() {
     log_info "注册 Prefect Deployments..."
     docker compose exec -T -w /app/backend server python -m apps.scan.deployments.register
     docker compose exec -T -w /app/backend server python -m apps.targets.deployments.register
+    docker compose exec -T -w /app/backend server python -m apps.asset.deployments.register
     log_info "Prefect Deployments 注册完成"
 }
 

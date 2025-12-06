@@ -20,6 +20,9 @@ from .snapshot import (
     VulnerabilitySnapshotsService,
 )
 
+# 统计模块 Service
+from .statistics_service import AssetStatisticsService
+
 __all__ = [
     # 资产模块
     'SubdomainService',
@@ -35,4 +38,6 @@ __all__ = [
     'DirectorySnapshotsService',
     'EndpointSnapshotsService',
     'VulnerabilitySnapshotsService',
+    # 统计模块
+    'AssetStatisticsService',
 ]
