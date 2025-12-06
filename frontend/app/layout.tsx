@@ -5,7 +5,6 @@ import type { Metadata } from "next"
 // 导入全局样式文件
 import "./globals.css"
 import { Suspense } from "react"
-import NextTopLoader from "nextjs-toploader"
 import Script from "next/script"
 import { QueryProvider } from "@/components/providers/query-provider"
 import { ThemeProvider } from "@/components/providers/theme-provider"
@@ -18,6 +17,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/sonner"
 import { LoadingState } from "@/components/loading-spinner"
 import { RoutePrefetch } from "@/components/route-prefetch"
+import { RouteProgress } from "@/components/route-progress"
 
 // 定义页面的元数据信息,用于 SEO 优化
 export const metadata: Metadata = {
@@ -56,6 +56,10 @@ export default function RootLayout({
           strategy="beforeInteractive"
           crossOrigin="anonymous"
         />
+        {/* 路由加载进度条 - 放在最外层 */}
+        <Suspense fallback={null}>
+          <RouteProgress />
+        </Suspense>
         {/* ThemeProvider 提供主题切换功能,跟随系统自动切换亮暗色 */}
         <ThemeProvider
             attribute="class"
@@ -63,18 +67,6 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-          {/* 顶部路由加载进度条 - 自动检测路由变化，使用 muted-foreground 颜色 */}
-          <NextTopLoader
-            color="hsl(var(--muted-foreground))"
-            height={3}
-            showSpinner={false}
-            speed={200}
-            easing="ease"
-            crawlSpeed={300}
-            initialPosition={0.4}
-            shadow="0 0 10px hsl(var(--muted-foreground) / 0.4), 0 0 5px hsl(var(--muted-foreground) / 0.3)"
-            zIndex={99999}
-          />
           {/* 使用 QueryProvider 提供 React Query 功能 */}
           <QueryProvider>
             {/* 路由预加载：在后台预加载常用页面的 JS/CSS 资源 */}

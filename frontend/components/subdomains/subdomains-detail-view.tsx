@@ -216,9 +216,9 @@ export function SubdomainsDetailView({
   if (isLoading) {
     return (
       <DataTableSkeleton
-        toolbarButtonCount={4}
+        toolbarButtonCount={2}
         rows={6}
-        columns={4}
+        columns={5}
       />
     )
   }

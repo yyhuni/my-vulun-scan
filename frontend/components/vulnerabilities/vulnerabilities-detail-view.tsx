@@ -16,12 +16,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import type { Vulnerability } from "@/types/vulnerability.types"
-import { useScanVulnerabilities, useTargetVulnerabilities } from "@/hooks/use-vulnerabilities"
+import { useScanVulnerabilities, useTargetVulnerabilities, useAllVulnerabilities } from "@/hooks/use-vulnerabilities"
 
 interface VulnerabilitiesDetailViewProps {
   /** 扫描历史页面使用：按 scan 维度查看漏洞 */
   scanId?: number
-  /** 目标详情页面使用：按 target 维度查看漏洞（暂未接真实数据，兼容旧用法） */
+  /** 目标详情页面使用：按 target 维度查看漏洞 */
   targetId?: number
 }
 
@@ -61,8 +61,14 @@ export function VulnerabilitiesDetailView({
     { enabled: !!targetId && !scanId },
   )
 
-  // 优先使用 scanId 的数据，否则使用 targetId 的数据
-  const activeQuery = scanId ? scanQuery : targetQuery
+  // 获取所有漏洞（全局漏洞页面）
+  const allQuery = useAllVulnerabilities(
+    paginationParams,
+    { enabled: !scanId && !targetId },
+  )
+
+  // 根据参数选择使用哪个 query
+  const activeQuery = scanId ? scanQuery : targetId ? targetQuery : allQuery
   const isQueryLoading = activeQuery.isLoading
 
   const vulnerabilities = activeQuery.data?.vulnerabilities ?? []
@@ -157,8 +163,6 @@ export function VulnerabilitiesDetailView({
     () =>
       createVulnerabilityColumns({
         formatDate,
-        navigate,
-        handleDelete: handleDeleteVulnerability,
         handleViewDetail,
       }),
     [handleViewDetail]
@@ -167,9 +171,9 @@ export function VulnerabilitiesDetailView({
   if (isLoading || isQueryLoading) {
     return (
       <DataTableSkeleton
-        toolbarButtonCount={3}
+        toolbarButtonCount={2}
         rows={6}
-        columns={4}
+        columns={6}
       />
     )
   }
@@ -186,7 +190,7 @@ export function VulnerabilitiesDetailView({
         data={vulnerabilities}
         columns={vulnerabilityColumns}
         searchPlaceholder="搜索漏洞..."
-        searchColumn="title"
+        searchColumn="vulnType"
         pagination={pagination}
         setPagination={setPagination}
         paginationInfo={{
@@ -196,10 +200,7 @@ export function VulnerabilitiesDetailView({
           totalPages: paginationInfo.totalPages,
         }}
         onPaginationChange={handlePaginationChange}
-        onBulkDelete={handleBulkDelete}
         onSelectionChange={setSelectedVulnerabilities}
-        onDownloadAll={handleDownloadAll}
-        onDownloadSelected={handleDownloadSelected}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -207,7 +208,7 @@ export function VulnerabilitiesDetailView({
           <AlertDialogHeader>
             <AlertDialogTitle>确认删除</AlertDialogTitle>
             <AlertDialogDescription>
-              此操作无法撤销。这将永久删除漏洞 &quot;{vulnerabilityToDelete?.title}&quot; 及其相关数据。
+              此操作无法撤销。这将永久删除漏洞 &quot;{vulnerabilityToDelete?.vulnType}&quot; 及其相关数据。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -234,7 +235,7 @@ export function VulnerabilitiesDetailView({
             <ul className="text-sm space-y-1">
               {selectedVulnerabilities.map((vulnerability) => (
                 <li key={vulnerability.id} className="flex items-center">
-                  <span className="font-medium">{vulnerability.title}</span>
+                  <span className="font-medium">{vulnerability.vulnType}</span>
                 </li>
               ))}
             </ul>

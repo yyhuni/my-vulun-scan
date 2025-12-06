@@ -636,19 +636,18 @@ class ScanViewSet(viewsets.ModelViewSet):
         """
         获取扫描统计数据
         
-        返回扫描任务的汇总统计信息，用于仪表板显示。
-        使用数据库聚合查询，性能优异。
+        返回扫描任务的汇总统计信息，用于仪表板和扫描历史页面。
+        使用缓存字段聚合查询，性能优异。
         
         返回:
         - total: 总扫描次数
         - running: 运行中的扫描数量
-        - successful: 成功完成的扫描数量
+        - completed: 已完成的扫描数量
         - failed: 失败的扫描数量
-        - aborted: 中止的扫描数量
-        - initiated: 初始化的扫描数量
+        - totalVulns: 总共发现的漏洞数量
         - totalSubdomains: 总共发现的子域名数量
         - totalEndpoints: 总共发现的端点数量
-        - totalAssets: 总资产数（子域名 + 端点）
+        - totalAssets: 总资产数
         """
         try:
             # 使用 Service 层获取统计数据
@@ -658,13 +657,13 @@ class ScanViewSet(viewsets.ModelViewSet):
             return Response({
                 'total': stats['total'],
                 'running': stats['running'],
-                'successful': stats['successful'],
+                'completed': stats['completed'],
                 'failed': stats['failed'],
-                'aborted': stats['aborted'],
-                'initiated': stats['initiated'],
+                'totalVulns': stats['total_vulns'],
                 'totalSubdomains': stats['total_subdomains'],
                 'totalEndpoints': stats['total_endpoints'],
-                'totalAssets': stats['total_assets']
+                'totalWebsites': stats['total_websites'],
+                'totalAssets': stats['total_assets'],
             })
         
         except (DatabaseError, OperationalError):

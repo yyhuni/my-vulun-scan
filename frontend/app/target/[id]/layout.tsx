@@ -168,19 +168,19 @@ export default function TargetLayout({
                 </Badge>
               </Link>
             </TabsTrigger>
-            <TabsTrigger value="vulnerabilities" asChild>
-              <Link href={tabPaths.vulnerabilities} className="flex items-center gap-0.5">
-                Vulnerabilities
-                <Badge className="text-xs bg-chart-5 text-white border-0">
-                  {counts.vulnerabilities}
-                </Badge>
-              </Link>
-            </TabsTrigger>
             <TabsTrigger value="ip-addresses" asChild>
               <Link href={tabPaths["ip-addresses"]} className="flex items-center gap-0.5">
                 IP Addresses
                 <Badge className="text-xs bg-chart-5 text-white border-0">
                   {counts["ip-addresses"]}
+                </Badge>
+              </Link>
+            </TabsTrigger>
+            <TabsTrigger value="vulnerabilities" asChild>
+              <Link href={tabPaths.vulnerabilities} className="flex items-center gap-0.5">
+                Vulnerabilities
+                <Badge className="text-xs bg-chart-5 text-white border-0">
+                  {counts.vulnerabilities}
                 </Badge>
               </Link>
             </TabsTrigger>

@@ -105,6 +105,7 @@ class VulnerabilitySerializer(serializers.ModelSerializer):
             'source',
             'cvss_score',
             'description',
+            'raw_output',
             'discovered_at',
         ]
         read_only_fields = fields

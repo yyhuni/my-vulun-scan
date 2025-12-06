@@ -483,42 +483,5 @@ export function createWebSiteColumns({
         return <div className="text-sm">{discoveredAt ? formatDate(discoveredAt) : "-"}</div>
       },
     },
-    {
-      id: "actions",
-      enableHiding: false,
-      cell: ({ row }) => {
-        const website = row.original
-
-        return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
-                <IconDots className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem
-                onClick={() => navigator.clipboard.writeText(website.url)}
-              >
-                Copy URL
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => window.open(website.url, '_blank')}
-              >
-                <IconExternalLink className="mr-2 h-4 w-4" />
-                Open in new tab
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => onViewDetail?.(website)}>
-                <IconEye className="mr-2 h-4 w-4" />
-                查看详细
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )
-      },
-    },
   ]
 }

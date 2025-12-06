@@ -251,39 +251,44 @@ class DjangoScanRepository:
             统计数据字典
         
         Note:
-            使用数据库聚合查询，性能优异
+            使用缓存字段聚合，性能优异
         """
-        from django.db.models import Count
+        from django.db.models import Sum
         
         # 基础统计
         total_scans = Scan.objects.count()  # type: ignore  # pylint: disable=no-member
         
         # 按状态统计
         running_scans = Scan.objects.filter(status='running').count()  # type: ignore  # pylint: disable=no-member
-        successful_scans = Scan.objects.filter(status='successful').count()  # type: ignore  # pylint: disable=no-member
+        completed_scans = Scan.objects.filter(status='completed').count()  # type: ignore  # pylint: disable=no-member
         failed_scans = Scan.objects.filter(status='failed').count()  # type: ignore  # pylint: disable=no-member
-        aborted_scans = Scan.objects.filter(status='aborted').count()  # type: ignore  # pylint: disable=no-member
-        initiated_scans = Scan.objects.filter(status='initiated').count()  # type: ignore  # pylint: disable=no-member
         
-        # 统计总资产数（注意：这里统计的是关联记录数，不是去重后的）
-        total_assets = Scan.objects.aggregate(  # type: ignore  # pylint: disable=no-member
-            total_subdomains=Count('subdomains'),
-            total_endpoints=Count('endpoints')
+        # 使用缓存字段聚合统计（只统计已完成的扫描）
+        aggregated = Scan.objects.filter(status='completed').aggregate(  # type: ignore  # pylint: disable=no-member
+            total_vulns=Sum('cached_vulns_total'),
+            total_subdomains=Sum('cached_subdomains_count'),
+            total_endpoints=Sum('cached_endpoints_count'),
+            total_websites=Sum('cached_websites_count'),
+            total_ips=Sum('cached_ips_count'),
         )
         
-        total_subdomains = total_assets['total_subdomains'] or 0
-        total_endpoints = total_assets['total_endpoints'] or 0
+        total_vulns = aggregated['total_vulns'] or 0
+        total_subdomains = aggregated['total_subdomains'] or 0
+        total_endpoints = aggregated['total_endpoints'] or 0
+        total_websites = aggregated['total_websites'] or 0
+        total_ips = aggregated['total_ips'] or 0
         
         return {
             'total': total_scans,
             'running': running_scans,
-            'successful': successful_scans,
+            'completed': completed_scans,
             'failed': failed_scans,
-            'aborted': aborted_scans,
-            'initiated': initiated_scans,
+            'total_vulns': total_vulns,
             'total_subdomains': total_subdomains,
             'total_endpoints': total_endpoints,
-            'total_assets': total_subdomains + total_endpoints
+            'total_websites': total_websites,
+            'total_ips': total_ips,
+            'total_assets': total_subdomains + total_endpoints + total_websites + total_ips,
         }
     
     

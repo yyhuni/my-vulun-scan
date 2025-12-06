@@ -19,6 +19,7 @@ import {
   type NucleiRepo,
 } from "@/hooks/use-nuclei-repos"
 import { cn } from "@/lib/utils"
+import { MasterDetailSkeleton } from "@/components/ui/master-detail-skeleton"
 
 /** 格式化时间显示 */
 function formatDateTime(isoString: string | null) {
@@ -129,6 +130,11 @@ export default function NucleiReposPage() {
         },
       }
     )
+  }
+
+  // 加载状态
+  if (isLoading) {
+    return <MasterDetailSkeleton title="Nuclei 模板仓库" listItemCount={3} />
   }
 
   return (

@@ -5,8 +5,9 @@ from rest_framework.response import Response
 from django.core.exceptions import ValidationError
 from django.db import DatabaseError, IntegrityError, OperationalError
 
-from .serializers import SubdomainListSerializer, WebSiteSerializer, DirectorySerializer
-from .services import SubdomainService, WebSiteService, DirectoryService
+from .serializers import SubdomainListSerializer, WebSiteSerializer, DirectorySerializer, VulnerabilitySerializer
+from .services import SubdomainService, WebSiteService, DirectoryService, VulnerabilityService
+from apps.common.pagination import BasePagination
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +52,21 @@ class DirectoryViewSet(viewsets.ModelViewSet):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.service = DirectoryService()
+    
+    def get_queryset(self):
+        """通过 Service 层获取查询集"""
+        return self.service.get_all()
+
+
+class VulnerabilityViewSet(viewsets.ReadOnlyModelViewSet):
+    """漏洞资产管理 ViewSet（只读）"""
+    
+    serializer_class = VulnerabilitySerializer
+    pagination_class = BasePagination
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.service = VulnerabilityService()
     
     def get_queryset(self):
         """通过 Service 层获取查询集"""

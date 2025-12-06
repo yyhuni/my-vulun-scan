@@ -58,7 +58,7 @@ def endpoints_vuln_scan_flow(
             raise ValueError("enabled_tools 不能为空")
 
         vuln_scan_dir = _setup_vuln_scan_directory(scan_workspace_dir)
-        endpoints_file = vuln_scan_dir / "input_endpoints_dalfox_xss.txt"
+        endpoints_file = vuln_scan_dir / "input_endpoints.txt"
 
         # Step 1: 导出 Endpoint URL
         export_result = export_endpoints_task(

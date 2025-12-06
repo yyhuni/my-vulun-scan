@@ -74,3 +74,27 @@ export async function stopScan(id: number): Promise<{ message: string; revokedTa
   const res = await api.post<{ message: string; revokedTaskCount: number }>(`/scans/${id}/stop/`)
   return res.data
 }
+
+/**
+ * 扫描统计数据类型
+ */
+export interface ScanStatistics {
+  total: number
+  running: number
+  completed: number
+  failed: number
+  totalVulns: number
+  totalSubdomains: number
+  totalEndpoints: number
+  totalWebsites: number
+  totalAssets: number
+}
+
+/**
+ * 获取扫描统计数据
+ * @returns 统计数据
+ */
+export async function getScanStatistics(): Promise<ScanStatistics> {
+  const res = await api.get<ScanStatistics>('/scans/statistics/')
+  return res.data
+}

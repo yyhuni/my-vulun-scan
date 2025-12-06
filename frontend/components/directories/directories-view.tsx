@@ -161,9 +161,9 @@ export function DirectoriesView({
   if (isLoading) {
     return (
       <DataTableSkeleton
-        toolbarButtonCount={3}
+        toolbarButtonCount={2}
         rows={6}
-        columns={9}
+        columns={5}
       />
     )
   }

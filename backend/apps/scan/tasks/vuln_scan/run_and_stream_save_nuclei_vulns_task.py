@@ -130,41 +130,10 @@ def _parse_and_validate_line(line: str) -> Optional[dict]:
         severity = _map_severity(info.get("severity"))
 
         # 漏洞类型：使用 template-id 作为类型标识
-        template_id = data.get("template-id", "unknown")
-        vuln_type = template_id
+        vuln_type = data.get("template-id", "unknown")
 
-        # 组合描述信息
-        template_name = info.get("name", "")
-        template_desc = info.get("description", "")
-        template_path = data.get("template", "")
-        tags = info.get("tags", [])
-        references = info.get("reference", [])
-        classification = info.get("classification", {})
-        cve_id = classification.get("cve-id")
-        cwe_ids = classification.get("cwe-id", [])
-        scan_type = data.get("type", "")
-
-        description_parts = []
-        if template_name:
-            description_parts.append(f"Name: {template_name}")
-        if template_desc:
-            description_parts.append(f"Description: {template_desc}")
-        if template_path:
-            description_parts.append(f"Template: {template_path}")
-        if scan_type:
-            description_parts.append(f"Type: {scan_type}")
-        if tags:
-            description_parts.append(f"Tags: {', '.join(tags)}")
-        if cve_id:
-            description_parts.append(f"CVE: {cve_id}")
-        if cwe_ids:
-            cwe_str = ", ".join(cwe_ids) if isinstance(cwe_ids, list) else str(cwe_ids)
-            description_parts.append(f"CWE: {cwe_str}")
-        if references:
-            ref_str = ", ".join(references) if isinstance(references, list) else str(references)
-            description_parts.append(f"Reference: {ref_str}")
-
-        description = "\n".join(description_parts)
+        # 简化描述：只用 info.name，完整信息在 raw_output
+        description = info.get("name", "")
 
         return {
             "url": url,
@@ -173,7 +142,7 @@ def _parse_and_validate_line(line: str) -> Optional[dict]:
             "source": "nuclei",
             "cvss_score": None,
             "description": description,
-            "raw_output": raw,
+            "raw_output": data,  # 存储解析后的 dict，而不是原始字符串
         }
 
     except Exception as e:

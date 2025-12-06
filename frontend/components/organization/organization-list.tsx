@@ -335,6 +335,6 @@ export function OrganizationList() {
 
 function OrganizationListSkeleton() {
   return (
-    <DataTableSkeleton toolbarButtonCount={3} rows={5} columns={4} />
+    <DataTableSkeleton toolbarButtonCount={2} rows={6} columns={4} />
   )
 }

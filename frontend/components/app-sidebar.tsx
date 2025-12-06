@@ -15,6 +15,7 @@ import {
   IconTool, // 工具图标
   IconFlask, // 实验瓶图标
   IconServer, // 服务器图标
+  IconBug, // 漏洞图标
 } from "@tabler/icons-react"
 // 导入路径名 hook
 import { usePathname } from "next/navigation"
@@ -73,6 +74,11 @@ const data = {
       title: "目标", // 目标
       url: "/target/",
       icon: IconListDetails,
+    },
+    {
+      title: "漏洞", // 漏洞
+      url: "/vulnerabilities/",
+      icon: IconBug,
     },
     {
       title: "扫描", // 扫描

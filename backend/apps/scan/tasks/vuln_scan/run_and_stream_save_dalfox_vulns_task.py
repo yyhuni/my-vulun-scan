@@ -127,40 +127,14 @@ def _parse_and_validate_line(line: str) -> Optional[dict]:
 
         severity = _map_severity(data.get("severity"))
 
-        # 简单设定漏洞类型为 xss，后续可根据 inject_type/poc_type 做更细分
-        vuln_type = "xss"
+        # 漏洞类型：根据 type 字段区分 XSS 类型
+        # R=Reflected, S=Stored, V=Verified
+        type_code = data.get("type", "")
+        type_map = {"R": "xss-reflected", "S": "xss-stored", "V": "xss-verified"}
+        vuln_type = type_map.get(type_code, "xss")
 
-        # 组合描述信息（参考你提供的 parse_dalfox_result 风格）
-        evidence = data.get("evidence") or ""
-        message = data.get("message_str") or ""
-        payload = data.get("payload") or ""
-        param = data.get("param") or ""
-        inject_type = data.get("inject_type") or ""
-        cwe = data.get("cwe") or ""
-        vuln_type_code = data.get("type") or ""  # R=Reflected, S=Stored
-        method = data.get("method") or ""
-
-        description_parts = []
-        if message:
-            description_parts.append(f"Message: {message}")
-        if vuln_type_code:
-            type_map = {"R": "Reflected", "S": "Stored", "V": "Verified"}
-            type_name = type_map.get(vuln_type_code, vuln_type_code)
-            description_parts.append(f"Type: {type_name}")
-        if method:
-            description_parts.append(f"Method: {method}")
-        if param:
-            description_parts.append(f"Vulnerable Parameter: {param}")
-        if inject_type:
-            description_parts.append(f"Inject Type: {inject_type}")
-        if payload:
-            description_parts.append(f"Payload: {payload}")
-        if evidence:
-            description_parts.append(f"Evidence: {evidence}")
-        if cwe:
-            description_parts.append(f"CWE: {cwe}")
-
-        description = "\n".join(description_parts)
+        # 简化描述：只用 message_str，完整信息在 raw_output
+        description = data.get("message_str") or ""
 
         return {
             "url": url,
@@ -169,7 +143,7 @@ def _parse_and_validate_line(line: str) -> Optional[dict]:
             "source": "dalfox",
             "cvss_score": None,
             "description": description,
-            "raw_output": raw,
+            "raw_output": data,  # 存储解析后的 dict，而不是原始字符串
         }
 
     except Exception as e:

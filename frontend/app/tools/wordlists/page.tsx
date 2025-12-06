@@ -12,6 +12,7 @@ import { WordlistUploadDialog } from "@/components/tools/wordlist-upload-dialog"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import type { Wordlist } from "@/types/wordlist.types"
+import { MasterDetailSkeleton } from "@/components/ui/master-detail-skeleton"
 
 export default function WordlistsPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -67,6 +68,11 @@ export default function WordlistsPage() {
     if (bytes < 1024) return `${bytes} B`
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
+
+  // 加载状态
+  if (isLoading) {
+    return <MasterDetailSkeleton title="字典管理" listItemCount={5} />
   }
 
   return (

@@ -1,19 +1,11 @@
 "use client"
 
 import { ColumnDef } from "@tanstack/react-table"
-import { MoreHorizontal, Trash2 } from "lucide-react"
+import { Eye } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
-import type { Vulnerability, VulnerabilitySeverity, VulnerabilityStatus } from "@/types/vulnerability.types"
+import type { Vulnerability, VulnerabilitySeverity } from "@/types/vulnerability.types"
 
 const severityConfig: Record<VulnerabilitySeverity, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   critical: { label: "严重", variant: "destructive" },
@@ -23,25 +15,13 @@ const severityConfig: Record<VulnerabilitySeverity, { label: string; variant: "d
   info: { label: "信息", variant: "outline" },
 }
 
-const statusConfig: Record<VulnerabilityStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  open: { label: "开放", variant: "destructive" },
-  in_progress: { label: "处理中", variant: "default" },
-  resolved: { label: "已解决", variant: "secondary" },
-  false_positive: { label: "误报", variant: "outline" },
-  accepted: { label: "已接受", variant: "outline" },
-}
-
 interface ColumnActions {
   formatDate: (date: string) => string
-  navigate: (path: string) => void
-  handleDelete: (vulnerability: Vulnerability) => void
   handleViewDetail: (vulnerability: Vulnerability) => void
 }
 
 export function createVulnerabilityColumns({
   formatDate,
-  navigate,
-  handleDelete,
   handleViewDetail,
 }: ColumnActions): ColumnDef<Vulnerability>[] {
   return [
@@ -93,23 +73,17 @@ export function createVulnerabilityColumns({
       },
     },
     {
-      accessorKey: "title",
-      header: "Title",
+      accessorKey: "vulnType",
+      header: "类型",
       cell: ({ row }) => {
-        const title = row.getValue("title") as string
-        const cveId = row.original.cveId
+        const vulnType = row.getValue("vulnType") as string
         const vulnerability = row.original
         return (
           <div 
             className="space-y-1 cursor-pointer hover:text-primary transition-colors"
             onClick={() => handleViewDetail(vulnerability)}
           >
-            <div className="font-medium">{title}</div>
-            {cveId && (
-              <div className="text-xs text-muted-foreground">
-                {cveId}
-              </div>
-            )}
+            <div className="font-medium">{vulnType}</div>
           </div>
         )
       },
@@ -142,15 +116,14 @@ export function createVulnerabilityColumns({
       },
     },
     {
-      accessorKey: "status",
-      header: "Status",
+      accessorKey: "discoveredAt",
+      header: "发现时间",
       cell: ({ row }) => {
-        const status = row.getValue("status") as VulnerabilityStatus
-        const config = statusConfig[status]
+        const discoveredAt = row.getValue("discoveredAt") as string
         return (
-          <Badge variant={config.variant}>
-            {config.label}
-          </Badge>
+          <span className="text-sm text-muted-foreground">
+            {formatDate(discoveredAt)}
+          </span>
         )
       },
     },
@@ -162,43 +135,15 @@ export function createVulnerabilityColumns({
 
         return (
           <div className="text-right">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
-                  <span className="sr-only">打开菜单</span>
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>操作</DropdownMenuLabel>
-                <DropdownMenuItem
-                  onClick={() => handleViewDetail(vulnerability)}
-                >
-                  查看详情
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => navigator.clipboard.writeText(vulnerability.title)}
-                >
-                  复制标题
-                </DropdownMenuItem>
-                {vulnerability.cveId && (
-                  <DropdownMenuItem
-                    onClick={() => navigator.clipboard.writeText(vulnerability.cveId!)}
-                  >
-                    复制 CVE ID
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => handleDelete(vulnerability)}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  删除漏洞
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2"
+              onClick={() => handleViewDetail(vulnerability)}
+            >
+              <Eye className="h-4 w-4 mr-1" />
+              详情
+            </Button>
           </div>
         )
       },

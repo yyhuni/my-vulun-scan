@@ -4,7 +4,7 @@ Asset 应用 URL 配置
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import SubdomainViewSet, WebSiteViewSet, DirectoryViewSet
+from .views import SubdomainViewSet, WebSiteViewSet, DirectoryViewSet, VulnerabilityViewSet
 
 # 创建 DRF 路由器
 router = DefaultRouter()
@@ -14,6 +14,7 @@ router = DefaultRouter()
 router.register(r'subdomains', SubdomainViewSet, basename='subdomain')
 router.register(r'websites', WebSiteViewSet, basename='website')
 router.register(r'directories', DirectoryViewSet, basename='directory')
+router.register(r'vulnerabilities', VulnerabilityViewSet, basename='vulnerability')
 
 urlpatterns = [
     path('', include(router.urls)),

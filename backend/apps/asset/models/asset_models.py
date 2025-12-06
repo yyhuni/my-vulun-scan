@@ -481,6 +481,7 @@ class Vulnerability(models.Model):
     source = models.CharField(max_length=50, blank=True, default='', help_text='来源工具（如 dalfox, nuclei, crlfuzz）')
     cvss_score = models.DecimalField(max_digits=3, decimal_places=1, null=True, blank=True, help_text='CVSS 评分（0.0-10.0）')
     description = models.TextField(blank=True, default='', help_text='漏洞描述')
+    raw_output = models.JSONField(blank=True, default=dict, help_text='工具原始输出')
     
     # ==================== 时间字段 ====================
     discovered_at = models.DateTimeField(auto_now_add=True, help_text='首次发现时间')

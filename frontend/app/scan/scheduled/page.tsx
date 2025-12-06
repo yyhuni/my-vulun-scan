@@ -11,6 +11,7 @@ import {
   useToggleScheduledScan 
 } from "@/hooks/use-scheduled-scans"
 import type { ScheduledScan } from "@/types/scheduled-scan.types"
+import { DataTableSkeleton } from "@/components/ui/data-table-skeleton"
 
 /**
  * 定时扫描页面
@@ -105,11 +106,11 @@ export default function ScheduledScanPage() {
             <p className="text-muted-foreground mt-1">配置和管理定时扫描任务</p>
           </div>
         </div>
-        <div className="px-4 lg:px-6">
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">加载中...</p>
-          </div>
-        </div>
+        <DataTableSkeleton
+          toolbarButtonCount={2}
+          rows={5}
+          columns={6}
+        />
       </div>
     )
   }

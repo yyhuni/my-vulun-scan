@@ -246,16 +246,4 @@ export const createSubdomainColumns = ({
     },
   },
 
-  // 操作列
-  {
-    id: "actions",
-    cell: ({ row }) => (
-      <SubdomainRowActions
-        subdomain={row.original}
-        onViewDetail={() => onViewDetail(row.original)}
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
 ]

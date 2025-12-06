@@ -14,6 +14,7 @@ import { EngineEditDialog, EngineCreateDialog } from "@/components/scan/engine"
 import { useEngines, useCreateEngine, useUpdateEngine, useDeleteEngine } from "@/hooks/use-engines"
 import { cn } from "@/lib/utils"
 import type { ScanEngine } from "@/types/engine.types"
+import { MasterDetailSkeleton } from "@/components/ui/master-detail-skeleton"
 
 /** 功能配置项定义 - 与 YAML 配置结构对应 */
 const FEATURE_LIST = [
@@ -129,6 +130,11 @@ export default function ScanEnginePage() {
       configuration: yamlContent,
       is_default: false,
     })
+  }
+
+  // 加载状态
+  if (isLoading) {
+    return <MasterDetailSkeleton title="扫描引擎" listItemCount={4} />
   }
 
   return (
