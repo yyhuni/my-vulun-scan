@@ -1,12 +1,11 @@
 "use client" // 标记为客户端组件，可以使用浏览器 API 和交互功能
 
+import React from "react"
 // 导入图标组件
 import {
-  IconCreditCard,    // 信用卡图标
   IconDotsVertical,  // 垂直三点图标
+  IconKey,           // 钥匙图标
   IconLogout,        // 登出图标
-  IconNotification,  // 通知图标
-  IconUserCircle,    // 用户圆圈图标
 } from "@tabler/icons-react"
 
 // 导入头像相关组件
@@ -19,7 +18,6 @@ import {
 import {
   DropdownMenu,          // 下拉菜单容器
   DropdownMenuContent,   // 下拉菜单内容
-  DropdownMenuGroup,     // 下拉菜单组
   DropdownMenuItem,      // 下拉菜单项
   DropdownMenuLabel,     // 下拉菜单标签
   DropdownMenuSeparator, // 下拉菜单分隔线
@@ -32,6 +30,8 @@ import {
   SidebarMenuItem,   // 侧边栏菜单项
   useSidebar,        // 侧边栏Hook
 } from '@/components/ui/sidebar'
+import { useAuth, useLogout } from '@/hooks/use-auth'
+import { ChangePasswordDialog } from '@/components/auth/change-password-dialog'
 
 /**
  * 用户导航组件
@@ -53,8 +53,19 @@ export function NavUser({
   }
 }) {
   const { isMobile } = useSidebar() // 获取移动端状态
+  const { data: auth } = useAuth()
+  const { mutate: logout, isPending: isLoggingOut } = useLogout()
+  const [showChangePassword, setShowChangePassword] = React.useState(false)
+  
+  // 使用真实用户名（如果已登录）
+  const displayName = auth?.user?.username || user.name
 
   return (
+    <>
+    <ChangePasswordDialog 
+      open={showChangePassword} 
+      onOpenChange={setShowChangePassword} 
+    />
     <SidebarMenu>
       <SidebarMenuItem>
         {/* 用户下拉菜单 */}
@@ -72,7 +83,7 @@ export function NavUser({
               </Avatar>
               {/* 用户信息区域 */}
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{user.name}</span>  {/* 用户名称 */}
+                <span className="truncate font-medium">{displayName}</span>  {/* 用户名称 */}
                 <span className="text-muted-foreground truncate text-xs">  {/* 用户邮箱 */}
                   {/* {user.email} */}
                 </span>
@@ -98,7 +109,7 @@ export function NavUser({
                 </Avatar>
                 {/* 用户信息 */}
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{user.name}</span>  {/* 用户名称 */}
+                  <span className="truncate font-medium">{displayName}</span>  {/* 用户名称 */}
                   <span className="text-muted-foreground truncate text-xs">  {/* 用户邮箱 */}
                     {/* {user.email} */}
                   </span>
@@ -107,21 +118,23 @@ export function NavUser({
             </DropdownMenuLabel>
             {/* 分隔线 */}
             <DropdownMenuSeparator />
-            {/* 更改密码 */}
-            <DropdownMenuItem>
-              <IconUserCircle />                                         {/* 用户圆圈图标 */}
-              Change Password                                            {/* 更改密码 */}
+            {/* 修改密码 */}
+            <DropdownMenuItem onClick={() => setShowChangePassword(true)}>
+              <IconKey />
+              修改密码
             </DropdownMenuItem>
-            {/* 分隔线 */}
-            <DropdownMenuSeparator />
             {/* 登出选项 */}
-            <DropdownMenuItem>
-              <IconLogout />                                             {/* 登出图标 */}
-              Log out                                                    {/* 登出 */}
+            <DropdownMenuItem 
+              onClick={() => logout()}
+              disabled={isLoggingOut}
+            >
+              <IconLogout />
+              {isLoggingOut ? '登出中...' : '退出登录'}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
+    </>
   )
 }

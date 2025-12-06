@@ -176,8 +176,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'apps.common.pagination.BasePagination',  # 使用基础分页器
     
-    # 禁用 CSRF 检查（所有环境）
-    'DEFAULT_AUTHENTICATION_CLASSES': [],
+    # Session 认证（用于登录功能）
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+    ],
     
     # JSON 命名格式转换：后端 snake_case ↔ 前端 camelCase
     'DEFAULT_RENDERER_CLASSES': (
@@ -202,6 +204,11 @@ CORS_ALLOW_CREDENTIALS = True
 
 # ==================== CSRF 配置 ====================
 CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000').split(',')
+
+# ==================== Session 配置 ====================
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 7  # 7 天
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'  # 跨站请求时发送 cookie
 
 # ==================== 扫描结果存储和清理配置 ====================
 

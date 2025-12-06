@@ -54,6 +54,19 @@ fi
 
 echo "🚀 正在启动容器服务..."
 ${COMPOSE_CMD} ${PROFILE_ARG} up -d --build
-echo "✅ Services started!"
+echo "✅ 服务已启动"
+
+# ==================== 数据初始化 ====================
+
+# 首次启动时执行数据初始化
+./scripts/init-data.sh
+
+echo ""
+echo "🌍 访问地址:"
 echo "  - Prefect UI: http://localhost:4200"
 echo "  - Django API: http://localhost:8888"
+echo ""
+echo "🔐 默认登录账号:"
+echo "  - 用户名: admin"
+echo "  - 密码:   admin"
+echo "  ⚠️  请首次登录后修改密码!"

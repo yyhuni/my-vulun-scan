@@ -127,6 +127,13 @@ init_nuclei_templates() {
     log_info "Nuclei 模板仓库初始化完成"
 }
 
+# 初始化 admin 用户
+init_admin_user() {
+    log_info "初始化 admin 用户..."
+    docker compose exec -T server python backend/manage.py init_admin
+    log_info "admin 用户初始化完成"
+}
+
 # 注册 Prefect Deployments
 register_deployments() {
     log_info "注册 Prefect Deployments..."
@@ -206,6 +213,7 @@ main() {
         update_engine_config
         init_wordlists
         init_nuclei_templates
+        init_admin_user
         register_deployments
 
         if ! $no_restart; then

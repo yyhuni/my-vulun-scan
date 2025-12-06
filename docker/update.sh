@@ -53,7 +53,9 @@ show_help() {
     echo "  6. 更新引擎配置"
     echo "  7. 初始化字典"
     echo "  8. 初始化 Nuclei 模板仓库"
-    echo "  9. 重启服务"
+    echo "  9. 初始化 admin 用户"
+    echo "  10. 注册 Prefect Deployments"
+    echo "  11. 重启服务"
 }
 
 # 创建锁，防止重复执行
@@ -222,9 +224,16 @@ init_nuclei_templates() {
     log_info "Nuclei 模板仓库初始化完成"
 }
 
+# 初始化 admin 用户
+init_admin_user() {
+    log_step "9. 初始化 admin 用户..."
+    docker compose exec -T server python backend/manage.py init_admin
+    log_info "admin 用户初始化完成"
+}
+
 # 注册 Prefect Deployments
 register_deployments() {
-    log_step "9. 注册 Prefect Deployments..."
+    log_step "10. 注册 Prefect Deployments..."
     docker compose exec -T -w /app/backend server python -m apps.scan.deployments.register
     docker compose exec -T -w /app/backend server python -m apps.targets.deployments.register
     docker compose exec -T -w /app/backend server python -m apps.asset.deployments.register
@@ -233,7 +242,7 @@ register_deployments() {
 
 # 重启服务
 restart_services() {
-    log_step "10. 重启服务..."
+    log_step "11. 重启服务..."
     ./restart.sh
     log_info "服务重启完成"
 }
@@ -288,6 +297,7 @@ main() {
     update_engine_config
     init_wordlists
     init_nuclei_templates
+    init_admin_user
     register_deployments
     restart_services
 

@@ -133,6 +133,12 @@ show_summary() {
     printf "   %-16s %s\n" "XingRin API:" "http://localhost:8888"
     echo
     
+    echo -e "${YELLOW}🔐 默认登录账号：${RESET}"
+    printf "   %-16s %s\n" "用户名:" "admin"
+    printf "   %-16s %s\n" "密码:" "admin"
+    echo -e "${YELLOW}   ⚠️  请首次登录后修改密码!${RESET}"
+    echo
+    
     if [ "$1" != "success" ]; then
         echo -e "${GREEN}🚀 后续启动命令：${RESET}"
         echo -e "   cd docker && ./start.sh"

@@ -117,6 +117,13 @@ init_nuclei_templates() {
     log_info "Nuclei 模板仓库初始化完成"
 }
 
+# 初始化 admin 用户
+init_admin_user() {
+    log_step "初始化 admin 用户..."
+    docker compose exec -T server python backend/manage.py init_admin
+    log_info "admin 用户初始化完成"
+}
+
 # 主函数
 main() {
     # 解析参数
@@ -150,6 +157,7 @@ main() {
     init_engine_config
     init_wordlists
     init_nuclei_templates
+    init_admin_user
 
     echo ""
     log_info "✅ 数据初始化完成!"

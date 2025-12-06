@@ -244,7 +244,7 @@ export const getErrorMessage = (error: unknown): string => {
   // 类型守卫：检查是否为错误对象
   const err = error as {
     code?: string;
-    response?: { data?: { message?: string } };
+    response?: { data?: { message?: string; error?: string; detail?: string } };
     message?: string
   }
 
@@ -253,9 +253,15 @@ export const getErrorMessage = (error: unknown): string => {
     return '请求超时，请稍后重试';
   }
 
-  // 后端返回的错误消息（已经过驼峰转换）
+  // 后端返回的错误消息（支持多种格式）
+  if (err.response?.data?.error) {
+    return err.response.data.error;
+  }
   if (err.response?.data?.message) {
     return err.response.data.message;
+  }
+  if (err.response?.data?.detail) {
+    return err.response.data.detail;
   }
 
   // axios 自身的错误消息

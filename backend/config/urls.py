@@ -53,5 +53,7 @@ urlpatterns = [
     
     # 通知 API
     path('api/notifications/', include('apps.scan.notifications.urls')),
-
+    
+    # 认证 API
+    path('api/', include('apps.common.urls')),
 ]
