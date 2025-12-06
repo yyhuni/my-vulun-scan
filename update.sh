@@ -3,8 +3,9 @@
 # 生产环境更新脚本
 #
 # 执行步骤：
-#   1. 前端构建（npm run build）
-#   2. 后端更新（docker/update.sh）
+#   1. 拉取最新代码（git pull）
+#   2. 前端构建（npm run build）
+#   3. 后端更新（docker/update.sh --no-pull）
 #
 # 使用方式：
 #   ./update.sh              # 执行所有更新
@@ -30,11 +31,15 @@ log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 log_step() { echo -e "${BLUE}[STEP]${NC} $1"; }
 
-# 检查是否跳过前端构建
+# 解析参数
 SKIP_FRONTEND=false
+NO_PULL=false
 for arg in "$@"; do
     if [ "$arg" = "--skip-frontend" ]; then
         SKIP_FRONTEND=true
+    fi
+    if [ "$arg" = "--no-pull" ]; then
+        NO_PULL=true
     fi
 done
 
@@ -43,9 +48,29 @@ echo "     生产环境更新脚本"
 echo "========================================"
 echo ""
 
-# Step 1: 前端构建
+# Step 1: 拉取最新代码
+if [ "$NO_PULL" = "false" ]; then
+    log_step "1. 拉取最新代码..."
+    
+    # 保存当前 commit
+    before_commit=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+    
+    git pull --rebase
+    
+    after_commit=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+    
+    if [ "$before_commit" != "$after_commit" ]; then
+        log_info "代码已更新: ${before_commit:0:8} -> ${after_commit:0:8}"
+    else
+        log_info "代码已是最新"
+    fi
+else
+    log_step "1. 跳过代码拉取"
+fi
+
+# Step 2: 前端构建
 if [ "$SKIP_FRONTEND" = "false" ]; then
-    log_step "1. 前端构建..."
+    log_step "2. 前端构建..."
     
     if [ -d "frontend" ]; then
         cd frontend
@@ -71,16 +96,17 @@ if [ "$SKIP_FRONTEND" = "false" ]; then
         log_warn "未找到 frontend 目录，跳过前端构建"
     fi
 else
-    log_step "1. 跳过前端构建"
+    log_step "2. 跳过前端构建"
 fi
 
-# Step 2: 后端更新
-log_step "2. 后端更新..."
+# Step 3: 后端更新
+log_step "3. 后端更新..."
 
-# 过滤掉 --skip-frontend 参数，传递其他参数给 docker/update.sh
-BACKEND_ARGS=()
+# 过滤参数，传递给 docker/update.sh
+# 注意：始终添加 --no-pull，因为这里已经拉取过代码了
+BACKEND_ARGS=("--no-pull")
 for arg in "$@"; do
-    if [ "$arg" != "--skip-frontend" ]; then
+    if [ "$arg" != "--skip-frontend" ] && [ "$arg" != "--no-pull" ]; then
         BACKEND_ARGS+=("$arg")
     fi
 done
