@@ -156,53 +156,6 @@ function StageRow({ stage }: { stage: StageDetail }) {
 }
 
 /**
- * 计算已用时间
- */
-function useElapsedTime(startedAt?: string, isRunning?: boolean) {
-  const [elapsed, setElapsed] = React.useState("")
-
-  React.useEffect(() => {
-    if (!startedAt) {
-      setElapsed("")
-      return
-    }
-
-    const calculate = () => {
-      const start = new Date(startedAt).getTime()
-      const now = Date.now()
-      const diffMs = now - start
-      
-      if (diffMs < 0) return ""
-      
-      const totalSeconds = Math.floor(diffMs / 1000)
-      const hours = Math.floor(totalSeconds / 3600)
-      const minutes = Math.floor((totalSeconds % 3600) / 60)
-      const seconds = totalSeconds % 60
-
-      if (hours > 0) {
-        return `${hours}h ${minutes}m ${seconds}s`
-      } else if (minutes > 0) {
-        return `${minutes}m ${seconds}s`
-      } else {
-        return `${seconds}s`
-      }
-    }
-
-    setElapsed(calculate())
-
-    // 如果正在运行，每秒更新一次
-    if (isRunning) {
-      const interval = setInterval(() => {
-        setElapsed(calculate())
-      }, 1000)
-      return () => clearInterval(interval)
-    }
-  }, [startedAt, isRunning])
-
-  return elapsed
-}
-
-/**
  * 扫描进度弹窗
  */
 export function ScanProgressDialog({
@@ -210,9 +163,6 @@ export function ScanProgressDialog({
   onOpenChange,
   data,
 }: ScanProgressDialogProps) {
-  const isRunning = data?.status === "running"
-  const elapsedTime = useElapsedTime(data?.startedAt, isRunning)
-
   if (!data) return null
 
   return (
@@ -239,12 +189,6 @@ export function ScanProgressDialog({
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">开始时间</span>
               <span className="font-mono text-xs">{formatDateTime(data.startedAt)}</span>
-            </div>
-          )}
-          {elapsedTime && (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">已用时间</span>
-              <span className="font-mono text-xs font-medium text-chart-3">{elapsedTime}</span>
             </div>
           )}
         </div>

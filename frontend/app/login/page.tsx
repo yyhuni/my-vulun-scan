@@ -73,7 +73,7 @@ export default function LoginPage() {
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 mb-2">
                       <Shield className="h-6 w-6 text-primary" />
                     </div>
-                    <h1 className="text-2xl font-bold">XingRin Scanner</h1>
+                    <h1 className="text-2xl font-bold">XingRin 星环</h1>
                   </div>
                   <Field>
                     <FieldLabel htmlFor="username">用户名</FieldLabel>
