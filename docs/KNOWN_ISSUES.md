@@ -121,6 +121,37 @@ stopped_at: datetime | None = None
 
 ---
 
+## 🟡 代码风格问题（建议修复）
+
+### 5. 裸异常捕获 (bare except)
+
+**严重程度**: 🟢 低（代码风格问题）
+
+**文件**: `backend/apps/scan/utils/command_executor.py`
+
+**问题描述**: 
+使用裸 `except:` 语句而不指定异常类型，这会捕获所有异常包括 `KeyboardInterrupt` 和 `SystemExit`。
+
+```python
+# 第 145-146 行
+try:
+    process.kill()
+except:  # 应改为 except Exception:
+    pass
+
+# 第 323-325 行
+try:
+    log_file_handle.close()
+except:  # 应改为 except Exception:
+    pass
+```
+
+**建议修复**: 将 `except:` 改为 `except Exception:`
+
+**修复状态**: ✅ 已修复
+
+---
+
 ## 📋 代码质量总结
 
 ### 优点

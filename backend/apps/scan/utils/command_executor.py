@@ -142,7 +142,7 @@ class CommandExecutor:
             logger.warning(f"终止进程组失败 ({e})，尝试普通 kill")
             try:
                 process.kill()
-            except:
+            except Exception:
                 pass
 
     def execute_and_wait(
@@ -321,7 +321,7 @@ class CommandExecutor:
             if log_file_handle:
                 try:
                     log_file_handle.close()
-                except:
+                except Exception:
                     pass
             
             if acquired_slot:
