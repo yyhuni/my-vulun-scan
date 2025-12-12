@@ -5,6 +5,25 @@
   提供自动化安全检测、资产发现、漏洞管理等功能
 </p>
 
+<p align="center">
+  <b>🌗 明暗模式切换</b>
+</p>
+
+<p align="center">
+  <img src="docs/light.png" alt="Light Mode" width="49%">
+  <img src="docs/dark.png" alt="Dark Mode" width="49%">
+</p>
+
+<p align="center">
+  <b>🎨 多种 UI 主题</b>
+</p>
+
+<p align="center">
+  <img src="docs/bubblegum.png" alt="Bubblegum" width="32%">
+  <img src="docs/cosmic-night.png" alt="Cosmic Night" width="32%">
+  <img src="docs/quantum-rose.png" alt="Quantum Rose" width="32%">
+</p>
+
 ---
 
 ## ✨ 功能特性

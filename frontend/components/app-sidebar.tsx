@@ -6,7 +6,6 @@ import type * as React from "react"
 import {
   IconDashboard, // 仪表板图标
   IconHelp, // 帮助图标
-  IconInnerShadowTop, // 内阴影图标
   IconListDetails, // 列表详情图标
   IconSettings, // 设置图标
   IconUsers, // 用户图标
@@ -120,7 +119,7 @@ const data = {
   navSecondary: [
     {
       title: "Get Help", // 获取帮助
-      url: "#",
+      url: "https://github.com/yyhuni/xingrin",
       icon: IconHelp,
     },
   ],
@@ -167,7 +166,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             >
               <Link href="/">
                 {/* 公司 Logo 图标 */}
-                <IconInnerShadowTop className="!size-5" />
+                <IconRadar className="!size-5" />
                 {/* 公司名称 */}
                 <span className="text-base font-semibold">XingRin</span>
               </Link>
