@@ -106,7 +106,7 @@ export function NotificationDrawer() {
   const { mutate: markAllAsRead, isPending: isMarkingAll } = useMarkAllAsRead()
 
   // SSE 实时通知
-  const { notifications: sseNotifications, isConnected } = useNotificationSSE()
+  const { notifications: sseNotifications, isConnected, markNotificationsAsRead } = useNotificationSSE()
 
   const [historyNotifications, setHistoryNotifications] = React.useState<Notification[]>([])
 
@@ -212,10 +212,13 @@ export function NotificationDrawer() {
     if (allNotifications.length === 0 || isMarkingAll) return
     markAllAsRead(undefined, {
       onSuccess: () => {
+        // 更新历史通知状态
         setHistoryNotifications(prev => prev.map(notification => ({ ...notification, unread: false })))
+        // 更新 SSE 实时通知状态
+        markNotificationsAsRead()
       },
     })
-  }, [allNotifications.length, isMarkingAll, markAllAsRead])
+  }, [allNotifications.length, isMarkingAll, markAllAsRead, markNotificationsAsRead])
 
   // 按时间分组通知
   const groupedNotifications = React.useMemo(() => {

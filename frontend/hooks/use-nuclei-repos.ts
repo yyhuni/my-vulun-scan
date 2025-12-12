@@ -3,7 +3,9 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
 import { nucleiRepoApi } from "../services/nuclei-repo.api"
+import { getErrorMessage } from "@/lib/api-client"
 import type { NucleiTemplateTreeNode, NucleiTemplateContent } from "@/types/nuclei.types"
 
 // ==================== 仓库 CRUD ====================
@@ -42,8 +44,12 @@ export function useCreateNucleiRepo() {
 
   return useMutation({
     mutationFn: nucleiRepoApi.createRepo,
-    onSuccess: () => {
+    onSuccess: (data) => {
+      toast.success(`仓库「${data.name}」创建成功`)
       queryClient.invalidateQueries({ queryKey: ["nuclei-repos"] })
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error))
     },
   })
 }
@@ -58,8 +64,12 @@ export function useUpdateNucleiRepo() {
       repoUrl?: string
     }) => nucleiRepoApi.updateRepo(data.id, data),
     onSuccess: (_data, variables) => {
+      toast.success("仓库配置已更新")
       queryClient.invalidateQueries({ queryKey: ["nuclei-repos"] })
       queryClient.invalidateQueries({ queryKey: ["nuclei-repos", variables.id] })
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error))
     },
   })
 }
@@ -71,7 +81,11 @@ export function useDeleteNucleiRepo() {
   return useMutation({
     mutationFn: nucleiRepoApi.deleteRepo,
     onSuccess: () => {
+      toast.success("仓库已删除")
       queryClient.invalidateQueries({ queryKey: ["nuclei-repos"] })
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error))
     },
   })
 }
@@ -85,10 +99,14 @@ export function useRefreshNucleiRepo() {
   return useMutation({
     mutationFn: nucleiRepoApi.refreshRepo,
     onSuccess: (_data, repoId) => {
+      toast.success("仓库同步成功")
       // 刷新仓库列表（last_synced_at 会更新）
       queryClient.invalidateQueries({ queryKey: ["nuclei-repos"] })
       queryClient.invalidateQueries({ queryKey: ["nuclei-repos", repoId] })
       queryClient.invalidateQueries({ queryKey: ["nuclei-repo-tree", repoId] })
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error))
     },
   })
 }
