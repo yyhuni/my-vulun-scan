@@ -285,14 +285,14 @@ export function useTargetEndpoints(
     queryFn: () => getTargetEndpoints(targetId, params?.page || 1, params?.pageSize || 10, params?.search),
     enabled: options?.enabled !== undefined ? options.enabled : !!targetId,
     select: (response: any) => {
-      // RESTful 标准：直接返回数据
+      // 后端使用通用分页格式：results/total/page/pageSize/totalPages
       return {
-        endpoints: response.endpoints || [],
+        endpoints: response.results || response.endpoints || [],
         pagination: {
           total: response.total || 0,
           page: response.page || 1,
-          pageSize: response.pageSize || 10,
-          totalPages: response.totalPages || 0,
+          pageSize: response.pageSize || response.page_size || 10,
+          totalPages: response.totalPages || response.total_pages || 0,
         }
       }
     },
