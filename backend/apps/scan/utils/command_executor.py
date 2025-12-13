@@ -46,7 +46,7 @@ MAX_LOG_TAIL_LINES = 1000  # 日志文件读取的最大行数
 ENABLE_COMMAND_LOGGING = getattr(settings, 'ENABLE_COMMAND_LOGGING', True)
 
 # 动态并发控制阈值（可在 Django settings 中覆盖）
-SCAN_CPU_HIGH = getattr(settings, 'SCAN_CPU_HIGH', 80.0)   # CPU 高水位（百分比）
+SCAN_CPU_HIGH = getattr(settings, 'SCAN_CPU_HIGH', 90.0)   # CPU 高水位（百分比）
 SCAN_MEM_HIGH = getattr(settings, 'SCAN_MEM_HIGH', 80.0)   # 内存高水位（百分比）
 SCAN_LOAD_CHECK_INTERVAL = getattr(settings, 'SCAN_LOAD_CHECK_INTERVAL', 30)  # 负载检查间隔（秒）
 SCAN_COMMAND_STARTUP_DELAY = getattr(settings, 'SCAN_COMMAND_STARTUP_DELAY', 5)  # 命令启动前等待（秒）
