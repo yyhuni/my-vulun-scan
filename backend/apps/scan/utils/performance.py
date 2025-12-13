@@ -19,8 +19,7 @@
 import logging
 import threading
 import time
-import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 try:
@@ -30,7 +29,6 @@ except ImportError:
 
 # 性能日志使用专门的 logger
 perf_logger = logging.getLogger('performance')
-logger = logging.getLogger(__name__)
 
 # 采样间隔（秒）
 SAMPLE_INTERVAL = 30
@@ -41,21 +39,23 @@ def _get_system_stats() -> dict:
     获取当前系统资源状态
     
     Returns:
-        dict: {'cpu_percent': float, 'memory_gb': float}
+        dict: {'cpu_percent': float, 'memory_gb': float, 'memory_percent': float}
     """
     if not psutil:
-        return {'cpu_percent': 0.0, 'memory_gb': 0.0}
+        return {'cpu_percent': 0.0, 'memory_gb': 0.0, 'memory_percent': 0.0}
     
     try:
         cpu_percent = psutil.cpu_percent(interval=0.1)
         memory = psutil.virtual_memory()
         memory_gb = memory.used / (1024 ** 3)
+        memory_percent = memory.percent  # psutil 直接提供内存使用百分比
         return {
             'cpu_percent': cpu_percent,
-            'memory_gb': memory_gb
+            'memory_gb': memory_gb,
+            'memory_percent': memory_percent
         }
     except Exception:
-        return {'cpu_percent': 0.0, 'memory_gb': 0.0}
+        return {'cpu_percent': 0.0, 'memory_gb': 0.0, 'memory_percent': 0.0}
 
 
 @dataclass
@@ -78,6 +78,9 @@ class FlowPerformanceMetrics:
     memory_gb_start: float = 0.0
     memory_gb_end: float = 0.0
     memory_gb_peak: float = 0.0
+    memory_percent_start: float = 0.0
+    memory_percent_end: float = 0.0
+    memory_percent_peak: float = 0.0
     
     # 执行结果
     success: bool = False
@@ -123,16 +126,19 @@ class FlowPerformanceTracker:
         stats = _get_system_stats()
         self.metrics.cpu_start = stats['cpu_percent']
         self.metrics.memory_gb_start = stats['memory_gb']
+        self.metrics.memory_percent_start = stats['memory_percent']
         self.metrics.cpu_peak = stats['cpu_percent']
         self.metrics.memory_gb_peak = stats['memory_gb']
+        self.metrics.memory_percent_peak = stats['memory_percent']
         
         # 记录开始日志
         perf_logger.info(
-            "📊 Flow 开始 - %s, scan_id=%d, 系统: CPU %.1f%%, 内存 %.1fGB",
+            "📊 Flow 开始 - %s, scan_id=%d, 系统: CPU %.1f%%, 内存 %.1fGB(%.1f%%)",
             self.metrics.flow_name,
             self.metrics.scan_id,
             stats['cpu_percent'],
-            stats['memory_gb']
+            stats['memory_gb'],
+            stats['memory_percent']
         )
         
         # 启动采样线程
@@ -156,21 +162,25 @@ class FlowPerformanceTracker:
                 self.metrics.cpu_peak = stats['cpu_percent']
             if stats['memory_gb'] > self.metrics.memory_gb_peak:
                 self.metrics.memory_gb_peak = stats['memory_gb']
+            if stats['memory_percent'] > self.metrics.memory_percent_peak:
+                self.metrics.memory_percent_peak = stats['memory_percent']
             
             # 记录采样
             self._samples.append({
                 'elapsed': elapsed,
                 'cpu': stats['cpu_percent'],
-                'memory_gb': stats['memory_gb']
+                'memory_gb': stats['memory_gb'],
+                'memory_percent': stats['memory_percent']
             })
             
             # 输出采样日志
             perf_logger.info(
-                "📊 Flow 执行中 - %s [%ds], 系统: CPU %.1f%%, 内存 %.1fGB",
+                "📊 Flow 执行中 - %s [%ds], 系统: CPU %.1f%%, 内存 %.1fGB(%.1f%%)",
                 self.metrics.flow_name,
                 elapsed,
                 stats['cpu_percent'],
-                stats['memory_gb']
+                stats['memory_gb'],
+                stats['memory_percent']
             )
     
     def finish(
@@ -200,18 +210,21 @@ class FlowPerformanceTracker:
         stats = _get_system_stats()
         self.metrics.cpu_end = stats['cpu_percent']
         self.metrics.memory_gb_end = stats['memory_gb']
+        self.metrics.memory_percent_end = stats['memory_percent']
         
         # 更新峰值（最后一次采样）
         if stats['cpu_percent'] > self.metrics.cpu_peak:
             self.metrics.cpu_peak = stats['cpu_percent']
         if stats['memory_gb'] > self.metrics.memory_gb_peak:
             self.metrics.memory_gb_peak = stats['memory_gb']
+        if stats['memory_percent'] > self.metrics.memory_percent_peak:
+            self.metrics.memory_percent_peak = stats['memory_percent']
         
         # 记录结束日志
         status = "✓" if success else "✗"
         perf_logger.info(
             "📊 Flow 结束 - %s %s, scan_id=%d, 耗时: %.1fs, "
-            "CPU: %.1f%%→%.1f%%(峰值%.1f%%), 内存: %.1fGB→%.1fGB(峰值%.1fGB)",
+            "CPU: %.1f%%→%.1f%%(峰值%.1f%%), 内存: %.1fGB(%.1f%%)→%.1fGB(%.1f%%)(峰值%.1fGB/%.1f%%)",
             self.metrics.flow_name,
             status,
             self.metrics.scan_id,
@@ -220,8 +233,11 @@ class FlowPerformanceTracker:
             self.metrics.cpu_end,
             self.metrics.cpu_peak,
             self.metrics.memory_gb_start,
+            self.metrics.memory_percent_start,
             self.metrics.memory_gb_end,
-            self.metrics.memory_gb_peak
+            self.metrics.memory_percent_end,
+            self.metrics.memory_gb_peak,
+            self.metrics.memory_percent_peak
         )
         
         if not success and error_message:
@@ -261,9 +277,13 @@ def _get_process_stats(pid: int) -> dict:
         
         for p in all_processes:
             try:
-                # cpu_percent 需要先调用一次初始化，第二次才有值
-                # 这里用 interval=0.1 获取短时间内的 CPU 使用率
-                total_cpu += p.cpu_percent(interval=0)
+                # CPU 百分比计算：
+                # - interval=0 使用上次调用的缓存值（需要先调用过一次初始化）
+                # - 如果没有缓存值，会返回 0.0
+                # - 这避免了每次采样都等待 0.1 秒的问题
+                cpu_percent = p.cpu_percent()
+                total_cpu += cpu_percent
+                
                 mem_info = p.memory_info()
                 total_memory += mem_info.rss  # RSS: Resident Set Size
             except (psutil.NoSuchProcess, psutil.AccessDenied):
@@ -311,9 +331,11 @@ class CommandPerformanceTracker:
         # 系统级资源
         self.sys_cpu_start: float = 0.0
         self.sys_memory_gb_start: float = 0.0
+        self.sys_memory_percent_start: float = 0.0
         # 进程级资源峰值
         self.proc_cpu_peak: float = 0.0
         self.proc_memory_mb_peak: float = 0.0
+        self.proc_memory_percent_peak: float = 0.0
     
     def start(self) -> None:
         """开始追踪，记录初始系统状态"""
@@ -321,15 +343,17 @@ class CommandPerformanceTracker:
         stats = _get_system_stats()
         self.sys_cpu_start = stats['cpu_percent']
         self.sys_memory_gb_start = stats['memory_gb']
+        self.sys_memory_percent_start = stats['memory_percent']
         
         # 截断过长的命令
         cmd_display = self.command[:200] + "..." if len(self.command) > 200 else self.command
         
         perf_logger.info(
-            "📊 命令开始 - %s, 系统: CPU %.1f%%, 内存 %.1fGB, 命令: %s",
+            "📊 命令开始 - %s, 系统: CPU %.1f%%, 内存 %.1fGB(%.1f%%), 命令: %s",
             self.tool_name,
             self.sys_cpu_start,
             self.sys_memory_gb_start,
+            self.sys_memory_percent_start,
             cmd_display
         )
     
@@ -342,13 +366,16 @@ class CommandPerformanceTracker:
         """
         self.pid = pid
         # 初始化 CPU 采样（psutil 需要先调用一次）
+        # CPU 百分比计算需要两次调用之间的时间间隔，第一次调用是初始化
         if psutil and pid:
             try:
                 process = psutil.Process(pid)
-                process.cpu_percent(interval=0)
+                # 第一次调用初始化 CPU 计算基准
+                process.cpu_percent()
+                # 为所有子进程也初始化 CPU 计算
                 for child in process.children(recursive=True):
                     try:
-                        child.cpu_percent(interval=0)
+                        child.cpu_percent()
                     except (psutil.NoSuchProcess, psutil.AccessDenied):
                         pass
             except (psutil.NoSuchProcess, psutil.AccessDenied):
@@ -371,6 +398,8 @@ class CommandPerformanceTracker:
             self.proc_cpu_peak = stats['cpu_percent']
         if stats['memory_mb'] > self.proc_memory_mb_peak:
             self.proc_memory_mb_peak = stats['memory_mb']
+        if stats['memory_percent'] > self.proc_memory_percent_peak:
+            self.proc_memory_percent_peak = stats['memory_percent']
         
         return stats
     
@@ -406,6 +435,8 @@ class CommandPerformanceTracker:
                 self.proc_cpu_peak = proc_stats['cpu_percent']
             if proc_stats['memory_mb'] > self.proc_memory_mb_peak:
                 self.proc_memory_mb_peak = proc_stats['memory_mb']
+            if proc_stats['memory_percent'] > self.proc_memory_percent_peak:
+                self.proc_memory_percent_peak = proc_stats['memory_percent']
         
         status = "✓" if success else ("⏱ 超时" if is_timeout else "✗")
         
@@ -416,8 +447,8 @@ class CommandPerformanceTracker:
         if self.pid and (self.proc_cpu_peak > 0 or self.proc_memory_mb_peak > 0):
             perf_logger.info(
                 "📊 命令结束 - %s %s, 耗时: %.2fs%s, "
-                "进程: CPU %.1f%%(峰值), 内存 %.1fMB(峰值), "
-                "系统: CPU %.1f%%→%.1f%%, 内存 %.1fGB→%.1fGB, "
+                "进程: CPU %.1f%%(峰值), 内存 %.1fMB(%.1f%%峰值), "
+                "系统: CPU %.1f%%→%.1f%%, 内存 %.1fGB(%.1f%%)→%.1fGB(%.1f%%), "
                 "命令: %s",
                 self.tool_name,
                 status,
@@ -425,17 +456,20 @@ class CommandPerformanceTracker:
                 f", 超时配置: {timeout}s" if timeout else "",
                 self.proc_cpu_peak,
                 self.proc_memory_mb_peak,
+                self.proc_memory_percent_peak,
                 self.sys_cpu_start,
                 sys_stats['cpu_percent'],
                 self.sys_memory_gb_start,
+                self.sys_memory_percent_start,
                 sys_stats['memory_gb'],
+                sys_stats['memory_percent'],
                 cmd_display
             )
         else:
             # 没有进程级数据，只显示系统级
             perf_logger.info(
                 "📊 命令结束 - %s %s, 耗时: %.2fs%s, "
-                "系统: CPU %.1f%%→%.1f%%, 内存 %.1fGB→%.1fGB, "
+                "系统: CPU %.1f%%→%.1f%%, 内存 %.1fGB(%.1f%%)→%.1fGB(%.1f%%), "
                 "命令: %s",
                 self.tool_name,
                 status,
@@ -444,6 +478,8 @@ class CommandPerformanceTracker:
                 self.sys_cpu_start,
                 sys_stats['cpu_percent'],
                 self.sys_memory_gb_start,
+                self.sys_memory_percent_start,
                 sys_stats['memory_gb'],
+                sys_stats['memory_percent'],
                 cmd_display
             )
