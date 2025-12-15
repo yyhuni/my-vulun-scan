@@ -191,8 +191,8 @@ sudo ./update.sh
 - 🔧 **想参与开发？** 欢迎提交 Pull Request
 
 ## 📧 联系
+目前版本就我个人使用，可能会有很多边界问题，可以直接给我的公众号发消息，我都会回复的
 
-- GitHub: [@yyhuni](https://github.com/yyhuni)
 - 微信公众号: **洋洋的小黑屋**
 
 <img src="docs/wechat-qrcode.png" alt="微信公众号" width="200">
