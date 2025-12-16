@@ -160,7 +160,8 @@ sudo ./update.sh
 - 🔧 **想参与开发？** 关注我公众号与我个人联系
 
 ## 📧 联系
-目前版本就我个人使用，可能会有很多边界问题，可以提交[Issue](https://github.com/yyhuni/xingrin/issues)，或者直接给我的公众号发消息，我都会回复的
+- 目前版本就我个人使用，可能会有很多边界问题
+- 如有问题，建议，其他，优先提交[Issue](https://github.com/yyhuni/xingrin/issues)，也可以直接给我的公众号发消息，我都会回复的
 
 - 微信公众号: **洋洋的小黑屋**
 
