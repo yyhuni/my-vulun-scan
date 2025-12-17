@@ -157,6 +157,51 @@ class ScanService:
         """取消所有正在运行的阶段（委托给 ScanStateService）"""
         return self.state_service.cancel_running_stages(scan_id, final_status)
     
+    # todo：待接入
+    def add_command_to_scan(self, scan_id: int, stage_name: str, tool_name: str, command: str) -> bool:
+        """
+        增量添加命令到指定扫描阶段
+        
+        Args:
+            scan_id: 扫描任务ID
+            stage_name: 阶段名称（如 'subdomain_discovery', 'port_scan'）
+            tool_name: 工具名称
+            command: 执行命令
+            
+        Returns:
+            bool: 是否成功添加
+        """
+        try:
+            scan = self.get_scan(scan_id, prefetch_relations=False)
+            if not scan:
+                logger.error(f"扫描任务不存在: {scan_id}")
+                return False
+            
+            stage_progress = scan.stage_progress or {}
+            
+            # 确保指定阶段存在
+            if stage_name not in stage_progress:
+                stage_progress[stage_name] = {'status': 'running', 'commands': []}
+            
+            # 确保 commands 列表存在
+            if 'commands' not in stage_progress[stage_name]:
+                stage_progress[stage_name]['commands'] = []
+            
+            # 增量添加命令
+            command_entry = f"{tool_name}: {command}"
+            stage_progress[stage_name]['commands'].append(command_entry)
+            
+            scan.stage_progress = stage_progress
+            scan.save(update_fields=['stage_progress'])
+            
+            command_count = len(stage_progress[stage_name]['commands'])
+            logger.info(f"✓ 记录命令: {stage_name}.{tool_name} (总计: {command_count})")
+            return True
+            
+        except Exception as e:
+            logger.error(f"记录命令失败: {e}")
+            return False
+    
     # ==================== 删除和控制方法（委托给 ScanControlService） ====================
     
     def delete_scans_two_phase(self, scan_ids: List[int]) -> dict:
