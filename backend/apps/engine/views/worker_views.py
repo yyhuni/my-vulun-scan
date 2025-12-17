@@ -177,13 +177,75 @@ class WorkerNodeViewSet(viewsets.ModelViewSet):
             'created': created
         })
     
+    def _get_client_ip(self, request) -> str:
+        """获取客户端真实 IP"""
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            return x_forwarded_for.split(',')[0].strip()
+        return request.META.get('REMOTE_ADDR', '')
+    
+    def _is_local_request(self, client_ip: str) -> bool:
+        """
+        判断是否为本地请求（Docker 网络内部）
+        
+        本地请求特征：
+        - 来自 Docker 网络内部（172.x.x.x）
+        - 来自 localhost（127.0.0.1）
+        """
+        if not client_ip:
+            return True  # 无法获取 IP 时默认为本地
+        
+        # Docker 默认网络段
+        if client_ip.startswith('172.') or client_ip.startswith('10.'):
+            return True
+        
+        # localhost
+        if client_ip in ('127.0.0.1', '::1', 'localhost'):
+            return True
+        
+        return False
+    
     @action(detail=False, methods=['get'])
     def config(self, request):
         """
-        获取任务容器配置
+        获取任务容器配置（配置中心 API）
         
-        任务容器启动时调用此接口获取完整配置，
-        实现配置中心化管理，Worker 只需知道 SERVER_URL。
+        Worker 启动时调用此接口获取完整配置，实现配置中心化管理。
+        Worker 只需知道 SERVER_URL，其他配置由此 API 动态返回。
+        
+        ┌─────────────────────────────────────────────────────────────┐
+        │                    配置分发流程                              │
+        ├─────────────────────────────────────────────────────────────┤
+        │                                                             │
+        │   Worker 启动                                               │
+        │       │                                                     │
+        │       ▼                                                     │
+        │   GET /api/workers/config/                                  │
+        │       │                                                     │
+        │       ▼                                                     │
+        │   ┌─────────────────────┐                                   │
+        │   │ _get_client_ip()    │ ← 获取请求来源 IP                  │
+        │   │ (X-Forwarded-For    │   (支持 Nginx 代理场景)            │
+        │   │  或 REMOTE_ADDR)    │                                   │
+        │   └─────────┬───────────┘                                   │
+        │             │                                               │
+        │             ▼                                               │
+        │   ┌─────────────────────┐                                   │
+        │   │ _is_local_request() │ ← 判断是否为 Docker 网络内部请求   │
+        │   │ 172.x.x.x / 10.x.x.x│   (Docker 默认网段)               │
+        │   │ 127.0.0.1 / ::1     │   (localhost)                     │
+        │   └─────────┬───────────┘                                   │
+        │             │                                               │
+        │     ┌───────┴───────┐                                       │
+        │     ▼               ▼                                       │
+        │  本地 Worker     远程 Worker                                 │
+        │  (Docker内)      (公网访问)                                  │
+        │     │               │                                       │
+        │     ▼               ▼                                       │
+        │  db: postgres    db: PUBLIC_HOST                            │
+        │  redis: redis    redis: PUBLIC_HOST:6379                    │
+        │                                                             │
+        └─────────────────────────────────────────────────────────────┘
         
         返回:
         {
@@ -194,15 +256,40 @@ class WorkerNodeViewSet(viewsets.ModelViewSet):
         """
         from django.conf import settings
         
+        # 判断请求来源：本地 Worker 还是远程 Worker
+        # 本地 Worker 在 Docker 网络内，可以直接访问 postgres 服务
+        # 远程 Worker 需要通过公网 IP 访问
+        client_ip = self._get_client_ip(request)
+        is_local_worker = self._is_local_request(client_ip)
+        
+        # 根据请求来源返回不同的数据库地址
+        db_host = settings.DATABASES['default']['HOST']
+        _is_internal_db = db_host in ('postgres', 'localhost', '127.0.0.1')
+        
+        if _is_internal_db:
+            # 本地数据库场景
+            if is_local_worker:
+                # 本地 Worker：直接用 Docker 内部服务名
+                worker_db_host = 'postgres'
+                worker_redis_url = 'redis://redis:6379/0'
+            else:
+                # 远程 Worker：通过公网 IP 访问
+                worker_db_host = settings.PUBLIC_HOST
+                worker_redis_url = f'redis://{settings.PUBLIC_HOST}:6379/0'
+        else:
+            # 远程数据库场景：所有 Worker 都用 DB_HOST
+            worker_db_host = db_host
+            worker_redis_url = getattr(settings, 'WORKER_REDIS_URL', 'redis://redis:6379/0')
+        
         return Response({
             'db': {
-                'host': getattr(settings, 'WORKER_DB_HOST', settings.DATABASES['default']['HOST']),
+                'host': worker_db_host,
                 'port': str(settings.DATABASES['default']['PORT']),
                 'name': settings.DATABASES['default']['NAME'],
                 'user': settings.DATABASES['default']['USER'],
                 'password': settings.DATABASES['default']['PASSWORD'],
             },
-            'redisUrl': getattr(settings, 'WORKER_REDIS_URL', 'redis://redis:6379/0'),
+            'redisUrl': worker_redis_url,
             'paths': {
                 'results': getattr(settings, 'CONTAINER_RESULTS_MOUNT', '/app/backend/results'),
                 'logs': getattr(settings, 'CONTAINER_LOGS_MOUNT', '/app/backend/logs'),

@@ -337,15 +337,15 @@ HOST_LOGS_DIR = '/opt/xingrin/logs'
 # ============================================
 # Worker 配置中心（任务容器从 /api/workers/config/ 获取）
 # ============================================
-# 远程 Worker 访问数据库的地址（自动推导）
-# - 如果 DB_HOST 是外部 IP → 使用 DB_HOST（远程 PostgreSQL 场景）
-# - 如果 DB_HOST 是 Docker 内部名 → 使用 PUBLIC_HOST（本地 PostgreSQL 场景）
+# Worker 数据库/Redis 地址由 worker_views.py 的 config API 动态返回
+# 根据请求来源（本地/远程）返回不同的配置：
+# - 本地 Worker（Docker 网络内）：使用内部服务名（postgres, redis）
+# - 远程 Worker（公网访问）：使用 PUBLIC_HOST
+# 
+# 以下变量仅作为备用/兼容配置，实际配置由 API 动态生成
 _db_host = DATABASES['default']['HOST']
 _is_internal_db = _db_host in ('postgres', 'localhost', '127.0.0.1')
-WORKER_DB_HOST = os.getenv(
-    'WORKER_DB_HOST',
-    PUBLIC_HOST if _is_internal_db else _db_host
-)
+WORKER_DB_HOST = os.getenv('WORKER_DB_HOST', _db_host)
 
 # 远程 Worker 访问 Redis 的地址（自动推导）
 # - 如果 PUBLIC_HOST 是外部 IP → 使用 PUBLIC_HOST
