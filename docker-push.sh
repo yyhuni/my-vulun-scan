@@ -1,4 +1,8 @@
 #!/bin/bash
+
+# 目前采用github action自动版本构建，用
+# git tag v1.0.9
+# git push origin v1.0.9
 # ============================================
 # Docker Hub 镜像推送脚本
 # 用途：构建并推送所有服务镜像到 Docker Hub
