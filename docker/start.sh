@@ -42,10 +42,10 @@ if ! docker info >/dev/null 2>&1; then
     exit 1
 fi
 
-if command -v docker-compose >/dev/null 2>&1; then
-    COMPOSE_CMD="docker-compose"
-elif docker compose version >/dev/null 2>&1; then
+if docker compose version >/dev/null 2>&1; then
     COMPOSE_CMD="docker compose"
+elif command -v docker-compose >/dev/null 2>&1; then
+    COMPOSE_CMD="docker-compose"
 else
     echo -e "${RED}[ERROR]${NC} 未检测到 docker compose，请先安装"
     exit 1

@@ -126,7 +126,7 @@ update_env_var() {
 GENERATED_DB_PASSWORD=""
 GENERATED_DJANGO_KEY=""
 
-# 生成自签 HTTPS 证书（无域名场景）
+# 生成自签 HTTPS 证书（无域名场景）——兼容旧版 OpenSSL
 generate_self_signed_cert() {
     local ssl_dir="$DOCKER_DIR/nginx/ssl"
     local fullchain="$ssl_dir/fullchain.pem"
@@ -139,15 +139,42 @@ generate_self_signed_cert() {
 
     info "未检测到 HTTPS 证书，正在生成自签证书（localhost）..."
     mkdir -p "$ssl_dir"
+
+    # 创建临时配置文件（兼容 OpenSSL 1.0.2）
+    local config_file="/tmp/openssl-selfsigned.cnf"
+    cat > "$config_file" << EOF
+[req]
+distinguished_name = req_distinguished_name
+req_extensions = v3_req
+prompt = no
+
+[req_distinguished_name]
+C = CN
+ST = NA
+L = NA
+O = XingRin
+CN = localhost
+
+[v3_req]
+basicConstraints = CA:FALSE
+keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+subjectAltName = DNS:localhost,IP:127.0.0.1
+EOF
+
     if openssl req -x509 -nodes -newkey rsa:2048 -days 365 \
         -keyout "$privkey" \
         -out "$fullchain" \
         -subj "/C=CN/ST=NA/L=NA/O=XingRin/CN=localhost" \
-        -addext "subjectAltName=DNS:localhost,IP:127.0.0.1" >/dev/null 2>&1; then
+        -config "$config_file" \
+        -extensions v3_req >/dev/null 2>&1; then
         success "自签证书已生成: $ssl_dir"
     else
-        warn "自签证书生成失败，请检查 openssl 是否可用，或手动放置证书到 $ssl_dir"
+        warn "自签证书生成失败（可能是 OpenSSL 版本过旧），请手动放置证书到 $ssl_dir"
+        warn "或者升级系统 OpenSSL，或使用 Let's Encrypt 证书"
     fi
+
+    # 清理临时配置文件
+    rm -f "$config_file"
 }
 
 # 自动为 docker/.env 填充敏感变量

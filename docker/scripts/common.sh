@@ -27,10 +27,10 @@ check_docker() {
 
 # ==================== Docker Compose 命令检测 ====================
 detect_compose_cmd() {
-    if command -v docker-compose >/dev/null 2>&1; then
-        COMPOSE_CMD="docker-compose"
-    elif docker compose version >/dev/null 2>&1; then
+    if docker compose version >/dev/null 2>&1; then
         COMPOSE_CMD="docker compose"
+    elif command -v docker-compose >/dev/null 2>&1; then
+        COMPOSE_CMD="docker-compose"
     else
         log_error "未检测到 docker-compose 或 docker compose。"
         exit 1
