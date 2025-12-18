@@ -152,13 +152,13 @@ sequenceDiagram
 
 ### 本地开发测试
 ```bash
-# docker/.env 中添加
-TASK_EXECUTOR_IMAGE=docker-agent:latest  # 指向本地构建镜像
+# docker/.env 中添加（开发模式会自动设置）
+TASK_EXECUTOR_IMAGE=docker-worker:v1.1.0-dev  # 指向本地构建镜像
 ```
 
 ### 开发模式启动
 ```bash
-# 使用本地构建镜像
+# 使用本地构建镜像（自动构建并标记为 ${VERSION}-dev）
 ./install.sh --dev
 ./start.sh --dev
 ```
@@ -238,7 +238,8 @@ curl -s https://hub.docker.com/v2/repositories/yyhuni/xingrin-worker/tags/
 4. ✅ 使用 `docker system prune` 清理旧镜像
 
 ### 开发调试
-1. ✅ 本地测试使用 `--dev` 模式
+1. ✅ 本地测试使用 `--dev` 模式（自动构建 `docker-worker:${VERSION}-dev`）
 2. ✅ 远程测试先推送测试版本到 Hub
-3. ✅ 生产环境避免使用 `latest` 标签
-4. ✅ 版本回滚通过修改 `IMAGE_TAG` 实现
+3. ✅ 生产环境避免使用 `latest` 标签，始终使用明确版本号
+4. ✅ 开发环境使用 `-dev` 后缀区分开发版本
+5. ✅ 版本回滚通过修改 `IMAGE_TAG` 实现

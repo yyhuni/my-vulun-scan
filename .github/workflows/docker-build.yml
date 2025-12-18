@@ -100,8 +100,12 @@ jobs:
           tags: |
             ${{ env.IMAGE_PREFIX }}/${{ matrix.image }}:${{ steps.version.outputs.VERSION }}
             ${{ steps.version.outputs.IS_RELEASE == 'true' && format('{0}/{1}:latest', env.IMAGE_PREFIX, matrix.image) || '' }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: |
+            type=gha
+            type=registry,ref=${{ env.IMAGE_PREFIX }}/${{ matrix.image }}:buildcache
+          cache-to: |
+            type=gha,mode=max
+            type=registry,ref=${{ env.IMAGE_PREFIX }}/${{ matrix.image }}:buildcache,mode=max
 
   # 所有镜像构建成功后，更新 VERSION 文件
   update-version:

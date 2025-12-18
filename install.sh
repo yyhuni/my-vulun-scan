@@ -404,24 +404,23 @@ WORKER_IMAGE="${DOCKER_USER}/xingrin-worker:${APP_VERSION}"
 if [ "$DEV_MODE" = true ]; then
     info "开发模式：构建本地 Worker 镜像..."
     if docker compose -f "$DOCKER_DIR/docker-compose.dev.yml" build worker; then
-        # 设置 TASK_EXECUTOR_IMAGE 环境变量指向本地构建的镜像
-        update_env_var "$DOCKER_DIR/.env" "TASK_EXECUTOR_IMAGE" "docker-worker:latest"
-        success "本地 Worker 镜像构建完成，并设置为默认使用镜像"
+        # 设置 TASK_EXECUTOR_IMAGE 环境变量指向本地构建的镜像（使用版本号-dev标识）
+        update_env_var "$DOCKER_DIR/.env" "TASK_EXECUTOR_IMAGE" "docker-worker:${APP_VERSION}-dev"
+        success "本地 Worker 镜像构建完成: docker-worker:${APP_VERSION}-dev"
     else
-        warn "本地 Worker 镜像构建失败，将使用远程镜像"
-        info "正在拉取: $WORKER_IMAGE"
-        if docker pull "$WORKER_IMAGE"; then
-            success "Worker 镜像拉取完成"
-        else
-            warn "Worker 镜像拉取失败，扫描时会自动重试拉取"
-        fi
+        error "开发模式下本地 Worker 镜像构建失败！"
+        error "请检查构建错误并修复后重试"
+        exit 1
     fi
 else
     info "正在拉取: $WORKER_IMAGE"
     if docker pull "$WORKER_IMAGE"; then
         success "Worker 镜像拉取完成"
     else
-        warn "Worker 镜像拉取失败，扫描时会自动重试拉取"
+        error "Worker 镜像拉取失败，无法继续安装"
+        error "请检查网络连接或 Docker Hub 访问权限"
+        error "镜像地址: $WORKER_IMAGE"
+        exit 1
     fi
 fi
 

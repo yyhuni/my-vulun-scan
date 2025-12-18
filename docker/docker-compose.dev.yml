@@ -106,7 +106,7 @@ services:
     build:
       context: ..
       dockerfile: docker/worker/Dockerfile
-    image: docker-worker:latest
+    image: docker-worker:${IMAGE_TAG:-latest}-dev
     restart: "no"
     volumes:
       - /opt/xingrin/results:/app/backend/results
