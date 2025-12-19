@@ -232,9 +232,9 @@ class TaskDistributor:
             network_arg = f"--network {settings.DOCKER_NETWORK_NAME}"
             server_url = f"http://server:{settings.SERVER_PORT}"
         else:
-            # 远程：无需指定网络，使用公网地址
+            # 远程：通过 Nginx 反向代理访问（HTTPS，不直连 8888 端口）
             network_arg = ""
-            server_url = f"http://{settings.PUBLIC_HOST}:{settings.SERVER_PORT}"
+            server_url = f"https://{settings.PUBLIC_HOST}"
         
         # 挂载路径（所有节点统一使用固定路径）
         host_results_dir = settings.HOST_RESULTS_DIR  # /opt/xingrin/results

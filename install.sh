@@ -282,13 +282,13 @@ fi
 # 交换分区配置（仅 Linux）
 # ==============================================================================
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    # 获取当前内存大小（GB，纯 bash 算术）
+    # 获取当前内存大小（GB，四舍五入）
     TOTAL_MEM_KB=$(grep MemTotal /proc/meminfo | awk '{print $2}')
-    TOTAL_MEM_GB=$((TOTAL_MEM_KB / 1024 / 1024))
+    TOTAL_MEM_GB=$(awk "BEGIN {printf \"%.0f\", $TOTAL_MEM_KB / 1024 / 1024}")
     
-    # 获取当前交换分区大小（GB）
+    # 获取当前交换分区大小（GB，四舍五入）
     CURRENT_SWAP_KB=$(grep SwapTotal /proc/meminfo | awk '{print $2}')
-    CURRENT_SWAP_GB=$((CURRENT_SWAP_KB / 1024 / 1024))
+    CURRENT_SWAP_GB=$(awk "BEGIN {printf \"%.0f\", $CURRENT_SWAP_KB / 1024 / 1024}")
     
     # 推荐交换分区大小（与内存相同，最小1G，最大8G）
     RECOMMENDED_SWAP=$TOTAL_MEM_GB

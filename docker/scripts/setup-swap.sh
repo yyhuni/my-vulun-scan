@@ -26,7 +26,7 @@ fi
 
 # 检查是否已有交换分区
 CURRENT_SWAP_KB=$(grep SwapTotal /proc/meminfo | awk '{print $2}')
-CURRENT_SWAP_GB=$((CURRENT_SWAP_KB / 1024 / 1024))
+CURRENT_SWAP_GB=$(awk "BEGIN {printf \"%.0f\", $CURRENT_SWAP_KB / 1024 / 1024}")
 if [ "$CURRENT_SWAP_GB" -gt 0 ]; then
     log_warn "系统已有 ${CURRENT_SWAP_GB}GB 交换分区"
     swapon --show
@@ -37,9 +37,9 @@ if [ "$CURRENT_SWAP_GB" -gt 0 ]; then
     fi
 fi
 
-# 获取系统内存大小（GB）
+# 获取系统内存大小（GB，四舍五入）
 TOTAL_MEM_KB=$(grep MemTotal /proc/meminfo | awk '{print $2}')
-TOTAL_MEM_GB=$((TOTAL_MEM_KB / 1024 / 1024))
+TOTAL_MEM_GB=$(awk "BEGIN {printf \"%.0f\", $TOTAL_MEM_KB / 1024 / 1024}")
 
 # 确定交换分区大小
 if [ -n "$1" ]; then
@@ -56,8 +56,8 @@ SWAP_FILE="/swapfile_xingrin"
 log_info "系统内存: ${TOTAL_MEM_GB}GB"
 log_info "将创建 ${SWAP_SIZE_GB}GB 交换分区: $SWAP_FILE"
 
-# 检查磁盘空间
-AVAILABLE_GB=$(df / | tail -1 | awk '{print int($4/1024/1024)}')
+# 检查磁盘空间（向下取整，保守估计）
+AVAILABLE_GB=$(df / | tail -1 | awk '{printf "%.0f", $4/1024/1024}')
 if [ "$AVAILABLE_GB" -lt "$SWAP_SIZE_GB" ]; then
     log_error "磁盘空间不足！可用: ${AVAILABLE_GB}GB，需要: ${SWAP_SIZE_GB}GB"
     exit 1
