@@ -157,7 +157,23 @@ class TaskDistributor:
         if not scored_workers:
             if high_load_workers:
                 logger.warning("所有 Worker 高负载，降级选择负载最低的")
-                scored_workers = high_load_workers
+                high_load_workers.sort(key=lambda x: x[1])
+                best_worker, score, cpu, mem = high_load_workers[0]
+                
+                # 发送高负载通知
+                from apps.common.signals import all_workers_high_load
+                all_workers_high_load.send(
+                    sender=self.__class__,
+                    worker_name=best_worker.name,
+                    cpu=cpu,
+                    mem=mem
+                )
+                
+                logger.info(
+                    "选择 Worker: %s (CPU: %.1f%%, MEM: %.1f%%, Score: %.1f)",
+                    best_worker.name, cpu, mem, score
+                )
+                return best_worker
             else:
                 logger.warning("没有可用的 Worker")
                 return None

@@ -27,3 +27,10 @@ vulnerabilities_saved = Signal()
 #   - worker_name: str Worker 名称
 #   - message: str 失败原因
 worker_delete_failed = Signal()
+
+# 所有 Worker 高负载信号
+# 参数：
+#   - worker_name: str 被选中的 Worker 名称
+#   - cpu: float CPU 使用率
+#   - mem: float 内存使用率
+all_workers_high_load = Signal()

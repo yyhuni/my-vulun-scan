@@ -6,7 +6,7 @@
 import logging
 from django.dispatch import receiver
 
-from apps.common.signals import vulnerabilities_saved, worker_delete_failed
+from apps.common.signals import vulnerabilities_saved, worker_delete_failed, all_workers_high_load
 from apps.scan.notifications import create_notification, NotificationLevel, NotificationCategory
 
 logger = logging.getLogger(__name__)
@@ -80,3 +80,15 @@ def on_worker_delete_failed(sender, worker_name, message, **kwargs):
         category=NotificationCategory.SYSTEM
     )
     logger.warning("Worker 删除失败通知已发送 - worker=%s, message=%s", worker_name, message)
+
+
+@receiver(all_workers_high_load)
+def on_all_workers_high_load(sender, worker_name, cpu, mem, **kwargs):
+    """所有 Worker 高负载时的通知处理"""
+    create_notification(
+        title="系统负载较高",
+        message=f"所有节点负载较高，已选择负载最低的节点 {worker_name}（CPU: {cpu:.1f}%, 内存: {mem:.1f}%）执行任务，扫描速度可能受影响",
+        level=NotificationLevel.MEDIUM,
+        category=NotificationCategory.SYSTEM
+    )
+    logger.warning("高负载通知已发送 - worker=%s, cpu=%.1f%%, mem=%.1f%%", worker_name, cpu, mem)

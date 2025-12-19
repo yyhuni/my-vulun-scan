@@ -231,7 +231,7 @@ export const createScheduledScanColumns = ({
   // Cron 表达式列
   {
     accessorKey: "cronExpression",
-    header: "调度时间",
+    header: "Cron Expression",
     cell: ({ row }) => {
       const cron = row.original.cronExpression
       return (
@@ -251,7 +251,7 @@ export const createScheduledScanColumns = ({
   // 目标列（根据 scanMode 显示组织或目标）
   {
     accessorKey: "scanMode",
-    header: "目标",
+    header: "Target",
     cell: ({ row }) => {
       const scanMode = row.original.scanMode
       const organizationName = row.original.organizationName
