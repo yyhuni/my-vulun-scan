@@ -163,12 +163,84 @@ class WorkerNodeViewSet(viewsets.ModelViewSet):
                 logger.info(
                     f"Worker {worker.name} 版本不匹配: agent={agent_version}, server={server_version}"
                 )
+                
+                # 远程 Worker：服务端主动通过 SSH 触发更新
+                # 旧版 agent 不会解析 need_update，所以需要服务端主动推送
+                if not worker.is_local and worker.ip_address:
+                    self._trigger_remote_agent_update(worker, server_version)
         
         return Response({
             'status': 'ok',
             'need_update': need_update,
             'server_version': server_version
         })
+    
+    def _trigger_remote_agent_update(self, worker, target_version: str):
+        """
+        通过 SSH 触发远程 agent 更新（后台执行，不阻塞心跳响应）
+        
+        使用 Redis 锁防止重复触发（同一 worker 60秒内只触发一次）
+        """
+        import redis
+        from django.conf import settings as django_settings
+        
+        redis_client = redis.from_url(django_settings.REDIS_URL)
+        lock_key = f"agent_update_lock:{worker.id}"
+        
+        # 尝试获取锁（60秒过期，防止重复触发）
+        if not redis_client.set(lock_key, "1", nx=True, ex=60):
+            logger.debug(f"Worker {worker.name} 更新已在进行中，跳过")
+            return
+        
+        # 提取数据避免后台线程访问 ORM
+        worker_id = worker.id
+        worker_name = worker.name
+        ip_address = worker.ip_address
+        ssh_port = worker.ssh_port
+        username = worker.username
+        password = worker.password
+        
+        def _async_update():
+            try:
+                logger.info(f"开始远程更新 Worker {worker_name} 到 {target_version}")
+                
+                # 构建更新命令：拉取新镜像并重启 agent
+                docker_user = getattr(django_settings, 'DOCKER_USER', 'yyhuni')
+                update_cmd = f'''
+                    docker pull {docker_user}/xingrin-agent:{target_version} && \
+                    docker stop xingrin-agent 2>/dev/null || true && \
+                    docker rm xingrin-agent 2>/dev/null || true && \
+                    docker run -d --pull=always \
+                        --name xingrin-agent \
+                        --restart always \
+                        -e HEARTBEAT_API_URL="https://{django_settings.PUBLIC_HOST}" \
+                        -e WORKER_ID="{worker_id}" \
+                        -e IMAGE_TAG="{target_version}" \
+                        -v /proc:/host/proc:ro \
+                        {docker_user}/xingrin-agent:{target_version}
+                '''
+                
+                success, message = self.worker_service.execute_remote_command(
+                    ip_address=ip_address,
+                    ssh_port=ssh_port,
+                    username=username,
+                    password=password,
+                    command=update_cmd
+                )
+                
+                if success:
+                    logger.info(f"Worker {worker_name} 远程更新成功")
+                else:
+                    logger.warning(f"Worker {worker_name} 远程更新失败: {message}")
+                    
+            except Exception as e:
+                logger.error(f"Worker {worker_name} 远程更新异常: {e}")
+            finally:
+                # 释放锁
+                redis_client.delete(lock_key)
+        
+        # 后台执行，不阻塞心跳响应
+        threading.Thread(target=_async_update, daemon=True).start()
     
     @action(detail=False, methods=['post'])
     def register(self, request):

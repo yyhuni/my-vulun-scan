@@ -60,12 +60,14 @@ start_agent() {
     log_info "=========================================="
     
     log_info "启动 agent 容器..."
-    # --pull=missing 只在本地没有镜像时才拉取，避免意外更新
+    # --pull=missing: 本地没有镜像时才拉取
+    # 版本更新由服务端通过 SSH 显式 docker pull 触发
     docker run -d --pull=missing \
         --name ${CONTAINER_NAME} \
         --restart always \
         -e SERVER_URL="${PRESET_SERVER_URL}" \
         -e WORKER_ID="${PRESET_WORKER_ID}" \
+        -e IMAGE_TAG="${IMAGE_TAG}" \
         -v /proc:/host/proc:ro \
         ${IMAGE}
     

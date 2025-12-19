@@ -134,5 +134,57 @@ class WorkerService:
             logger.warning(f"[卸载] Worker {worker_id} 远程卸载异常: {e}")
             return False, f"远程卸载异常: {str(e)}"
 
+    def execute_remote_command(
+        self,
+        ip_address: str,
+        ssh_port: int,
+        username: str,
+        password: str | None,
+        command: str
+    ) -> tuple[bool, str]:
+        """
+        在远程主机上执行命令
+        
+        Args:
+            ip_address: SSH 主机地址
+            ssh_port: SSH 端口
+            username: SSH 用户名
+            password: SSH 密码
+            command: 要执行的命令
+            
+        Returns:
+            (success, message) 元组
+        """
+        if not password:
+            return False, "未配置 SSH 密码"
+        
+        try:
+            import paramiko
+            
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            
+            ssh.connect(
+                ip_address,
+                port=ssh_port,
+                username=username,
+                password=password,
+                timeout=30
+            )
+            
+            stdin, stdout, stderr = ssh.exec_command(command, timeout=120)
+            exit_status = stdout.channel.recv_exit_status()
+            
+            ssh.close()
+            
+            if exit_status == 0:
+                return True, stdout.read().decode().strip()
+            else:
+                error = stderr.read().decode().strip()
+                return False, error
+                
+        except Exception as e:
+            return False, str(e)
+
 
 __all__ = ["WorkerService"]

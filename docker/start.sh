@@ -135,6 +135,7 @@ if [ "$DEV_MODE" = true ]; then
     fi
 else
     # 生产模式：拉取 Docker Hub 镜像
+    # pull 后 up -d 会自动检测镜像变化并重建容器
     if [ "$WITH_FRONTEND" = true ]; then
         echo -e "${CYAN}[PULL]${NC} 拉取最新镜像..."
         ${COMPOSE_CMD} ${COMPOSE_ARGS} pull
