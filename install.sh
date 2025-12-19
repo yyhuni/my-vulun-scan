@@ -278,6 +278,44 @@ else
     success "docker compose 安装完成"
 fi
 
+# ==============================================================================
+# 交换分区配置（仅 Linux）
+# ==============================================================================
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    # 获取当前内存和交换分区大小
+    TOTAL_MEM_KB=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+    TOTAL_MEM_GB=$(echo "scale=0; $TOTAL_MEM_KB / 1024 / 1024" | bc)
+    CURRENT_SWAP=$(swapon --show --bytes 2>/dev/null | tail -n +2 | awk '{sum += $3} END {print sum+0}')
+    CURRENT_SWAP_GB=$(echo "scale=1; $CURRENT_SWAP / 1024 / 1024 / 1024" | bc)
+    
+    # 推荐交换分区大小（与内存相同，最小1G，最大8G）
+    RECOMMENDED_SWAP=$TOTAL_MEM_GB
+    [ "$RECOMMENDED_SWAP" -lt 1 ] && RECOMMENDED_SWAP=1
+    [ "$RECOMMENDED_SWAP" -gt 8 ] && RECOMMENDED_SWAP=8
+    
+    echo ""
+    info "系统内存: ${TOTAL_MEM_GB}GB，当前交换分区: ${CURRENT_SWAP_GB}GB"
+    
+    # 如果交换分区小于推荐值，提示用户
+    if [ "$(echo "$CURRENT_SWAP_GB < $RECOMMENDED_SWAP" | bc)" -eq 1 ]; then
+        echo -n -e "${BOLD}${CYAN}[?] 是否开启 ${RECOMMENDED_SWAP}GB 交换分区？可提升扫描稳定性 (Y/n) ${RESET}"
+        read -r setup_swap
+        echo
+        if [[ ! $setup_swap =~ ^[Nn]$ ]]; then
+            info "正在配置 ${RECOMMENDED_SWAP}GB 交换分区..."
+            if bash "$ROOT_DIR/docker/scripts/setup-swap.sh" "$RECOMMENDED_SWAP"; then
+                success "交换分区配置完成"
+            else
+                warn "交换分区配置失败，继续安装..."
+            fi
+        else
+            info "跳过交换分区配置"
+        fi
+    else
+        success "交换分区已足够: ${CURRENT_SWAP_GB}GB"
+    fi
+fi
+
 step "[3/3] 初始化配置"
 DOCKER_DIR="$ROOT_DIR/docker"
 if [ ! -d "$DOCKER_DIR" ]; then
