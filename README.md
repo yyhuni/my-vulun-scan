@@ -1,7 +1,7 @@
 <h1 align="center">Xingrin - 星环</h1>
 
 <p align="center">
-  <b>🛡️ 开源自动化漏洞扫描平台 | 企业级资产管理与安全检测系统</b>
+  <b>🛡️ 开源攻击面管理平台 (ASM) | 自动化资产发现与漏洞扫描系统</b>
 </p>
 
 <p align="center">
@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <sub>🔍 关键词: 漏洞扫描 | 资产发现 | 安全测试 | Bug Bounty | 渗透测试 | Nuclei | 子域名枚举 | 端口扫描</sub>
+  <sub>🔍 关键词: ASM | 攻击面管理 | 漏洞扫描 | 资产发现 | Bug Bounty | 渗透测试 | Nuclei | 子域名枚举 | EASM</sub>
 </p>
 
 ---

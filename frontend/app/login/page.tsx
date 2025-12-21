@@ -76,7 +76,7 @@ export default function LoginPage() {
                   <div className="flex flex-col items-center gap-2 text-center">
                     <h1 className="text-2xl font-bold">XingRin - 星环</h1>
                     <p className="text-sm text-muted-foreground mt-1">
-                      一站式安全扫描平台
+                      攻击面管理平台
                     </p> 
                   </div>
                   <Field>
