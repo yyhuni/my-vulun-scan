@@ -139,13 +139,6 @@ class Endpoint(models.Model):
         default=list,
         help_text='匹配的GF模式列表，用于识别敏感端点（如api, debug, config等）'
     )
-    
-    # ==================== 软删除字段 ====================
-    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True, help_text='删除时间（NULL表示未删除）')
-    
-    # ==================== 管理器 ====================
-    objects = SoftDeleteManager()  # 默认管理器：只返回未删除的记录
-    all_objects = models.Manager()  # 全量管理器：包括已删除的记录（用于硬删除）
 
     class Meta:
         db_table = 'endpoint'
@@ -158,14 +151,12 @@ class Endpoint(models.Model):
             models.Index(fields=['url']),          # URL索引，优化查询性能
             models.Index(fields=['host']),         # host索引，优化根据主机名查询
             models.Index(fields=['status_code']),  # 状态码索引，优化筛选
-            models.Index(fields=['deleted_at', '-discovered_at']),  # 软删除 + 时间索引
         ]
         constraints = [
-            # 部分唯一约束：只对未删除记录生效
+            # 普通唯一约束：url + target 组合唯一
             models.UniqueConstraint(
                 fields=['url', 'target'],
-                condition=models.Q(deleted_at__isnull=True),
-                name='unique_endpoint_url_target_active'
+                name='unique_endpoint_url_target'
             )
         ]
 

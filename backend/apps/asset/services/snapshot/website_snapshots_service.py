@@ -49,14 +49,13 @@ class WebsiteSnapshotsService:
             logger.debug("步骤 1: 保存到快照表")
             self.snapshot_repo.save_snapshots(items)
             
-            # 步骤 2: 转换为资产 DTO 并保存到资产表
-            # 注意：去重是通过数据库的 UNIQUE 约束 + ignore_conflicts 实现的
+            # 步骤 2: 转换为资产 DTO 并保存到资产表（upsert）
             # - 新记录：插入资产表
-            # - 已存在的记录：自动跳过
-            logger.debug("步骤 2: 同步到资产表（通过 Service 层）")
+            # - 已存在的记录：更新字段（discovered_at 不更新，保留首次发现时间）
+            logger.debug("步骤 2: 同步到资产表（通过 Service 层，upsert）")
             asset_items = [item.to_asset_dto() for item in items]
             
-            self.asset_service.bulk_create_ignore_conflicts(asset_items)
+            self.asset_service.bulk_upsert(asset_items)
             
             logger.info("网站快照和资产数据保存成功 - 数量: %d", len(items))
             

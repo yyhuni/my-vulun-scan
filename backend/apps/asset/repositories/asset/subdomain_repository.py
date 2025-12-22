@@ -83,22 +83,6 @@ class DjangoSubdomainRepository:
             )
             raise
     
-    def get_or_create(self, name: str, target_id: int) -> Tuple[Subdomain, bool]:
-        """
-        获取或创建子域名
-        
-        Args:
-            name: 子域名名称
-            target_id: 目标 ID
-        
-        Returns:
-            (Subdomain对象, 是否新创建)
-        """
-        return Subdomain.objects.get_or_create(
-            name=name,
-            target_id=target_id,
-        )
-    
     def get_domains_for_export(self, target_id: int, batch_size: int = 1000) -> Iterator[str]:
         """
         流式导出域名（用于生成扫描工具输入文件）

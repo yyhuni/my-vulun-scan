@@ -1,7 +1,7 @@
 """Endpoint Repository - Django ORM 实现"""
 
 import logging
-from typing import List, Optional, Tuple, Dict, Any
+from typing import List
 
 from apps.asset.models import Endpoint
 from apps.asset.dtos.asset import EndpointDTO
@@ -15,25 +15,26 @@ logger = logging.getLogger(__name__)
 class DjangoEndpointRepository:
     """端点 Repository - 负责端点表的数据访问"""
     
-    def bulk_create_ignore_conflicts(self, items: List[EndpointDTO]) -> int:
+    def bulk_upsert(self, items: List[EndpointDTO]) -> int:
         """
-        批量创建端点（忽略冲突）
+        批量创建或更新端点（upsert）
+        
+        存在则更新所有字段，不存在则创建。
+        使用 Django 原生 update_conflicts。
         
         Args:
             items: 端点 DTO 列表
             
         Returns:
-            int: 创建的记录数
+            int: 处理的记录数
         """
         if not items:
             return 0
         
         try:
-            endpoints = []
-            for item in items:
-                # Endpoint 模型当前只关联 target，不再依赖 website 外键
-                # 这里按照 EndpointDTO 的字段映射构造 Endpoint 实例
-                endpoints.append(Endpoint(
+            # 直接从 DTO 字段构建 Model
+            endpoints = [
+                Endpoint(
                     target_id=item.target_id,
                     url=item.url,
                     host=item.host or '',
@@ -47,62 +48,35 @@ class DjangoEndpointRepository:
                     vhost=item.vhost,
                     location=item.location or '',
                     matched_gf_patterns=item.matched_gf_patterns if item.matched_gf_patterns else []
-                ))
+                )
+                for item in items
+            ]
             
             with transaction.atomic():
-                created = Endpoint.objects.bulk_create(
+                Endpoint.objects.bulk_create(
                     endpoints,
-                    ignore_conflicts=True,
+                    update_conflicts=True,
+                    unique_fields=['url', 'target'],
+                    update_fields=[
+                        'host', 'title', 'status_code', 'content_length',
+                        'webserver', 'body_preview', 'content_type', 'tech',
+                        'vhost', 'location', 'matched_gf_patterns'
+                    ],
                     batch_size=1000
                 )
-                return len(created)
+            
+            logger.debug(f"批量 upsert 端点成功: {len(items)} 条")
+            return len(items)
                 
         except Exception as e:
-            logger.error(f"批量创建端点失败: {e}")
+            logger.error(f"批量 upsert 端点失败: {e}")
             raise
     
-    def get_by_website(self, website_id: int) -> List[EndpointDTO]:
-        """
-        获取网站下的所有端点
-        
-        Args:
-            website_id: 网站 ID
-            
-        Returns:
-            List[EndpointDTO]: 端点列表
-        """
-        endpoints = Endpoint.objects.filter(
-            website_id=website_id
-        ).order_by('-discovered_at')
-        
-        result = []
-        for endpoint in endpoints:
-            result.append(EndpointDTO(
-                website_id=endpoint.website_id,
-                target_id=endpoint.target_id,
-                url=endpoint.url,
-                title=endpoint.title,
-                status_code=endpoint.status_code,
-                content_length=endpoint.content_length,
-                webserver=endpoint.webserver,
-                body_preview=endpoint.body_preview,
-                content_type=endpoint.content_type,
-                tech=endpoint.tech,
-                vhost=endpoint.vhost,
-                location=endpoint.location,
-                matched_gf_patterns=endpoint.matched_gf_patterns
-            ))
-        
-        return result
-    
-    def get_queryset_by_target(self, target_id: int):
-        return Endpoint.objects.filter(target_id=target_id).order_by('-discovered_at')
-
     def get_all(self):
         """获取所有端点（全局查询）"""
         return Endpoint.objects.all().order_by('-discovered_at')
     
-    def get_by_target(self, target_id: int) -> List[EndpointDTO]:
+    def get_by_target(self, target_id: int):
         """
         获取目标下的所有端点
         
@@ -110,43 +84,9 @@ class DjangoEndpointRepository:
             target_id: 目标 ID
             
         Returns:
-            List[EndpointDTO]: 端点列表
+            QuerySet: 端点查询集
         """
-        endpoints = Endpoint.objects.filter(
-            target_id=target_id
-        ).order_by('-discovered_at')
-        
-        result = []
-        for endpoint in endpoints:
-            result.append(EndpointDTO(
-                website_id=endpoint.website_id,
-                target_id=endpoint.target_id,
-                url=endpoint.url,
-                title=endpoint.title,
-                status_code=endpoint.status_code,
-                content_length=endpoint.content_length,
-                webserver=endpoint.webserver,
-                body_preview=endpoint.body_preview,
-                content_type=endpoint.content_type,
-                tech=endpoint.tech,
-                vhost=endpoint.vhost,
-                location=endpoint.location,
-                matched_gf_patterns=endpoint.matched_gf_patterns
-            ))
-        
-        return result
-    
-    def count_by_website(self, website_id: int) -> int:
-        """
-        统计网站下的端点数量
-        
-        Args:
-            website_id: 网站 ID
-            
-        Returns:
-            int: 端点数量
-        """
-        return Endpoint.objects.filter(website_id=website_id).count()
+        return Endpoint.objects.filter(target_id=target_id).order_by('-discovered_at')
     
     def count_by_target(self, target_id: int) -> int:
         """
@@ -159,34 +99,3 @@ class DjangoEndpointRepository:
             int: 端点数量
         """
         return Endpoint.objects.filter(target_id=target_id).count()
-    
-    def soft_delete_by_ids(self, ids: List[int]) -> int:
-        """
-        软删除端点（批量）
-        
-        Args:
-            ids: 端点 ID 列表
-            
-        Returns:
-            int: 更新的记录数
-        """
-        from django.utils import timezone
-        return Endpoint.objects.filter(
-            id__in=ids
-        ).update(deleted_at=timezone.now())
-    
-    def hard_delete_by_ids(self, ids: List[int]) -> Tuple[int, Dict[str, int]]:
-        """
-        硬删除端点（批量）
-        
-        Args:
-            ids: 端点 ID 列表
-            
-        Returns:
-            Tuple[int, Dict[str, int]]: (删除总数, 详细信息)
-        """
-        deleted_count, details = Endpoint.all_objects.filter(
-            id__in=ids
-        ).delete()
-        
-        return deleted_count, details

@@ -130,7 +130,7 @@ class TargetService:
         organization_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """
-        批量创建目标（高性能优化版）
+        批量创建目标
         
         Args:
             targets_data: 目标数据列表，每个元素包含 name 字段
@@ -138,25 +138,23 @@ class TargetService:
         
         Returns:
             {
-                'created_count': int,  # 成功处理的总数（包括复用）
+                'created_count': int,  # 处理的目标数量
                 'failed_count': int,
                 'failed_targets': List[Dict],
                 'message': str
             }
         
         Performance:
-            使用 bulk_create 替代逐个创建，大幅减少数据库交互次数。
-            1000个目标：~100ms (优化前 ~2s)
+            使用 bulk_create(ignore_conflicts=True) 直接创建，无需先查询。
+            1000个目标：~30ms
         """
-        from apps.asset.services.asset.subdomain_service import SubdomainService
-        from apps.asset.dtos import SubdomainDTO
         from apps.targets.models import Target
         from apps.common.normalizer import normalize_target
         from apps.common.validators import detect_target_type
         from .organization_service import OrganizationService
         
-        # 1. 预处理数据：规范化 + 类型检测
-        # 使用字典去重，key为规范化后的名称
+        # ==================== 步骤 1：预处理数据 ====================
+        # 目的：规范化目标名称、检测类型、去重、过滤无效数据
         valid_targets_map = {}  # {name: type}
         failed_targets = []
         
@@ -187,89 +185,38 @@ class TargetService:
             if not organization:
                 raise ValueError(f'组织 ID {organization_id} 不存在')
 
+        target_names = list(valid_targets_map.keys())
+        
         with transaction.atomic():
-            # 2. 批量创建 Target (使用 Repository)
+            # ==================== 步骤 2：批量创建 Target（忽略冲突）====================
             target_objs = [
                 Target(name=name, type=t_type) 
                 for name, t_type in valid_targets_map.items()
             ]
             self.repo.bulk_create_ignore_conflicts(target_objs)
             
-            # 3. 重新查询获取所有涉及的 Target 对象（含 ID）(使用 Repository)
-            all_targets = self.repo.get_by_names(list(valid_targets_map.keys()))
-            
-            # 4. 处理关联组织 (使用 OrganizationService)
+            # ==================== 步骤 3：处理关联组织 ====================
             if organization_id:
+                # 重新查询获取所有涉及的 Target 对象（含 ID）
+                all_targets = self.repo.get_by_names(target_names)
                 org_service = OrganizationService()
                 org_service.bulk_add_targets(organization_id, all_targets)
 
-            # 5. 处理 Subdomain、Website、Endpoint 创建 (仅针对 DOMAIN 类型)
-            domain_targets = [t for t in all_targets if t.type == Target.TargetType.DOMAIN]
-            if domain_targets:
-                # 5.1 创建 Subdomain
-                subdomain_dtos = [
-                    SubdomainDTO(name=t.name, target_id=t.id)
-                    for t in domain_targets
-                ]
-                subdomain_service = SubdomainService()
-                subdomain_service.bulk_create_ignore_conflicts(subdomain_dtos)
-                
-                # 5.2 创建 Website (http 和 https)
-                from apps.asset.services.asset.website_service import WebSiteService
-                from apps.asset.dtos import WebSiteDTO
-                
-                website_dtos = []
-                for t in domain_targets:
-                    # 添加 https 版本
-                    website_dtos.append(WebSiteDTO(
-                        target_id=t.id,
-                        url=f"https://{t.name}",
-                        host=t.name
-                    ))
-                    # 添加 http 版本
-                    website_dtos.append(WebSiteDTO(
-                        target_id=t.id,
-                        url=f"http://{t.name}",
-                        host=t.name
-                    ))
-                
-                website_service = WebSiteService()
-                website_service.bulk_create_ignore_conflicts(website_dtos)
-                
-                # 5.3 创建 Endpoint (http 和 https)
-                from apps.asset.services.asset.endpoint_service import EndpointService
-                from apps.asset.dtos import EndpointDTO
-                
-                endpoint_dtos = []
-                for t in domain_targets:
-                    # 添加 https 版本
-                    endpoint_dtos.append(EndpointDTO(
-                        target_id=t.id,
-                        url=f"https://{t.name}",
-                        host=t.name
-                    ))
-                    # 添加 http 版本
-                    endpoint_dtos.append(EndpointDTO(
-                        target_id=t.id,
-                        url=f"http://{t.name}",
-                        host=t.name
-                    ))
-                
-                endpoint_service = EndpointService()
-                endpoint_service.bulk_create_endpoints(endpoint_dtos)
+            # ==================== 懒加载模式：不预创建任何资产 ====================
+            # Subdomain/Website/Endpoint 将在各扫描流程中按需创建
         
-        success_count = len(all_targets)
+        created_count = len(valid_targets_map)
         
         logger.info(
-            "批量创建目标完成 (Bulk) - 成功处理: %d, 失败: %d",
-            success_count, len(failed_targets)
+            "批量创建目标完成（懒加载模式）- 处理: %d, 失败: %d",
+            created_count, len(failed_targets)
         )
         
         return {
-            'created_count': success_count,
+            'created_count': created_count,
             'failed_count': len(failed_targets),
             'failed_targets': failed_targets,
-            'message': f"成功处理 {success_count} 个目标"
+            'message': f"成功处理 {created_count} 个目标"
         }
     
     # ==================== 删除操作 ====================

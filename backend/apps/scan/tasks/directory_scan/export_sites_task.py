@@ -2,6 +2,7 @@
 导出站点 URL 到 TXT 文件的 Task
 
 使用流式处理，避免大量站点导致内存溢出
+支持默认值模式：如果没有站点，自动使用默认站点 URL
 """
 import logging
 from pathlib import Path
@@ -16,17 +17,20 @@ logger = logging.getLogger(__name__)
 def export_sites_task(
     target_id: int,
     output_file: str,
-    batch_size: int = 1000
+    batch_size: int = 1000,
+    target_name: str = None
 ) -> dict:
     """
     导出目标下的所有站点 URL 到 TXT 文件
 
     使用流式处理，支持大规模数据导出（10万+站点）
+    支持默认值模式：如果没有站点，自动使用默认站点 URL（http(s)://target_name）
 
     Args:
         target_id: 目标 ID
         output_file: 输出文件路径（绝对路径）
         batch_size: 每次读取的批次大小，默认 1000
+        target_name: 目标名称（用于默认值模式）
 
     Returns:
         dict: {
@@ -66,6 +70,20 @@ def export_sites_task(
                 # 每写入 10000 条记录打印一次进度
                 if total_count % 10000 == 0:
                     logger.info("已导出 %d 个站点 URL...", total_count)
+
+        # ==================== 采用默认 URL：如果没有站点，使用默认 URL ====================
+        # 只写入文件供扫描工具使用，不写入数据库
+        # 数据库只存储扫描发现的真实资产
+        if total_count == 0 and target_name:
+            logger.info("采用默认站点 URL: http(s)://%s (target_id=%d)", target_name, target_id)
+            
+            # 只写入文件，不写入数据库
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.write(f"http://{target_name}\n")
+                f.write(f"https://{target_name}\n")
+            total_count = 2
+            
+            logger.info("✓ 默认站点 URL 已写入文件: http(s)://%s", target_name)
 
         logger.info(
             "✓ 站点 URL 导出完成 - 总数: %d, 文件: %s (%.2f KB)",

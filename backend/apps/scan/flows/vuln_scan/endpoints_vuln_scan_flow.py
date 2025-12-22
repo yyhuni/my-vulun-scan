@@ -62,6 +62,7 @@ def endpoints_vuln_scan_flow(
         export_result = export_endpoints_task(
             target_id=target_id,
             output_file=str(endpoints_file),
+            target_name=target_name,  # 传入 target_name 用于生成默认端点
         )
         total_endpoints = export_result.get("total_count", 0)
 

@@ -2,6 +2,7 @@
 
 基于 EndpointService.iter_endpoint_urls_by_target 按目标流式导出端点 URL，
 用于漏洞扫描（如 Dalfox XSS）的输入文件生成。
+支持默认值模式：如果没有 Endpoint，自动使用默认 Endpoint URL
 """
 
 import logging
@@ -20,13 +21,17 @@ def export_endpoints_task(
     target_id: int,
     output_file: str,
     batch_size: int = 1000,
+    target_name: str = None,
 ) -> Dict[str, object]:
     """导出目标下的所有 Endpoint URL 到文本文件。
+
+    支持默认值模式：如果没有 Endpoint，自动使用默认 Endpoint URL（http(s)://target_name）
 
     Args:
         target_id: 目标 ID
         output_file: 输出文件路径（绝对路径）
         batch_size: 每次从数据库迭代的批大小
+        target_name: 目标名称（用于默认值模式）
 
     Returns:
         dict: {
@@ -52,6 +57,20 @@ def export_endpoints_task(
 
                 if total_count % 10000 == 0:
                     logger.info("已导出 %d 个 Endpoint URL...", total_count)
+
+        # ==================== 采用默认 URL：如果没有 Endpoint，使用默认 URL ====================
+        # 只写入文件供扫描工具使用，不写入数据库
+        # 数据库只存储扫描发现的真实资产
+        if total_count == 0 and target_name:
+            logger.info("采用默认 Endpoint URL: http(s)://%s (target_id=%d)", target_name, target_id)
+            
+            # 只写入文件，不写入数据库
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.write(f"http://{target_name}\n")
+                f.write(f"https://{target_name}\n")
+            total_count = 2
+            
+            logger.info("✓ 默认 Endpoint URL 已写入文件: http(s)://%s", target_name)
 
         logger.info(
             "✓ Endpoint URL 导出完成 - 总数: %d, 文件: %s (%.2f KB)",

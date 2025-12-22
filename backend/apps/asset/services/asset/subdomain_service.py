@@ -32,20 +32,6 @@ class SubdomainService:
         return self.repo.get_all()
     
     # ==================== 创建操作 ====================
-    
-    def get_or_create(self, name: str, target_id: int) -> Tuple[any, bool]:
-        """
-        获取或创建子域名
-        
-        Args:
-            name: 子域名名称
-            target_id: 目标 ID
-        
-        Returns:
-            (Subdomain对象, 是否新创建)
-        """
-        logger.debug("获取或创建子域名 - Name: %s, Target ID: %d", name, target_id)
-        return self.repo.get_or_create(name, target_id)
 
     def bulk_create_ignore_conflicts(self, items: List[SubdomainDTO]) -> None:
         """

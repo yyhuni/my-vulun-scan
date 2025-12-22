@@ -274,7 +274,7 @@ class EndpointViewSet(viewsets.ModelViewSet):
         """根据是否有 target_pk 参数决定查询范围"""
         target_pk = self.kwargs.get('target_pk')
         if target_pk:
-            return self.service.get_queryset_by_target(target_pk)
+            return self.service.get_endpoints_by_target(target_pk)
         return self.service.get_all()
 
     @action(detail=False, methods=['get'], url_path='export')
@@ -364,7 +364,7 @@ class VulnerabilityViewSet(viewsets.ModelViewSet):
         """根据是否有 target_pk 参数决定查询范围"""
         target_pk = self.kwargs.get('target_pk')
         if target_pk:
-            return self.service.get_queryset_by_target(target_pk)
+            return self.service.get_vulnerabilities_by_target(target_pk)
         return self.service.get_all()
 
 

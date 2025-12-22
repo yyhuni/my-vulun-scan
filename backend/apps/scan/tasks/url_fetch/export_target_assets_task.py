@@ -6,6 +6,11 @@
 - sites_file: 导出站点 URL 列表（用于 katana 等站点级工具）
 
 使用流式写入，避免内存溢出
+
+默认值模式：
+- 如果没有资产，只写入默认值到文件，不写入数据库
+- domains_file: 写入根域名 target_name
+- sites_file: 写入 http://target_name 和 https://target_name
 """
 
 import logging
@@ -26,16 +31,22 @@ def export_target_assets_task(
     target_id: int,
     scan_id: int,
     input_type: str,
+    target_name: Optional[str] = None,
     batch_size: int = 1000
 ) -> dict:
     """
     根据 input_type 导出目标资产到文件
+    
+    默认值模式：
+    - 如果没有资产，只写入默认值到文件，不写入数据库
+    - 数据库只存储"真实发现"的资产
     
     Args:
         output_file: 输出文件路径
         target_id: 目标 ID
         scan_id: 扫描 ID
         input_type: 输入类型 ('domains_file' 或 'sites_file')
+        target_name: 目标名称（用于懒加载时写入默认值）
         batch_size: 批次大小（内存优化）
         
     Returns:
@@ -77,10 +88,14 @@ def export_target_assets_task(
                     if asset_count % batch_size == 0:
                         f.flush()
             
-            logger.info("✓ 域名导出完成 - 文件: %s, 数量: %d", output_file, asset_count)
+            # ==================== 采用默认域名：如果没有 Subdomain，写入根域名 ====================
+            if asset_count == 0 and target_name:
+                logger.info("采用默认域名：没有子域名，写入根域名 %s 到文件（不写入数据库）", target_name)
+                with open(output_path, 'w') as f:
+                    f.write(f"{target_name}\n")
+                asset_count = 1
             
-            if asset_count == 0:
-                logger.warning("目标下没有域名")
+            logger.info("✓ 域名导出完成 - 文件: %s, 数量: %d", output_file, asset_count)
             
             return {
                 'output_file': output_file,
@@ -108,10 +123,15 @@ def export_target_assets_task(
                     if asset_count % batch_size == 0:
                         f.flush()
             
-            logger.info("✓ 站点 URL 导出完成 - 文件: %s, 数量: %d", output_file, asset_count)
+            # ==================== 采用默认 URL：如果没有 Website，写入默认 URL ====================
+            if asset_count == 0 and target_name:
+                logger.info("采用默认 URL：没有站点，写入 http(s)://%s 到文件（不写入数据库）", target_name)
+                with open(output_path, 'w') as f:
+                    f.write(f"http://{target_name}\n")
+                    f.write(f"https://{target_name}\n")
+                asset_count = 2
             
-            if asset_count == 0:
-                logger.warning("扫描下没有站点")
+            logger.info("✓ 站点 URL 导出完成 - 文件: %s, 数量: %d", output_file, asset_count)
             
             return {
                 'output_file': output_file,

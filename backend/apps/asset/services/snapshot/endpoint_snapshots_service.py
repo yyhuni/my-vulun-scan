@@ -50,13 +50,11 @@ class EndpointSnapshotsService:
             self.snapshot_repo.save_snapshots(items)
             
             # 步骤 2: 转换为资产 DTO 并保存到资产表
-            # 注意：去重是通过数据库的 UNIQUE 约束 + ignore_conflicts 实现的
-            # - 新记录：插入资产表
-            # - 已存在的记录：自动跳过
+            # 使用 upsert：新记录插入，已存在的记录更新
             logger.debug("步骤 2: 同步到资产表（通过 Service 层）")
             asset_items = [item.to_asset_dto() for item in items]
             
-            self.asset_service.bulk_create_endpoints(asset_items)
+            self.asset_service.bulk_upsert(asset_items)
             
             logger.info("端点快照和资产数据保存成功 - 数量: %d", len(items))
             

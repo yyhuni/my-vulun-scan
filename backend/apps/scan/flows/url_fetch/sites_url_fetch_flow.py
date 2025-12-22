@@ -19,13 +19,16 @@ from .utils import run_tools_parallel
 logger = logging.getLogger(__name__)
 
 
-def _export_sites_file(target_id: int, scan_id: int, output_dir: Path) -> tuple[str, int]:
+def _export_sites_file(target_id: int, scan_id: int, target_name: str, output_dir: Path) -> tuple[str, int]:
     """
     导出站点 URL 列表到文件
+    
+    默认值模式：如果没有站点，写入默认 URL 到文件（不写入数据库）
     
     Args:
         target_id: 目标 ID
         scan_id: 扫描 ID
+        target_name: 目标名称（用于懒加载）
         output_dir: 输出目录
         
     Returns:
@@ -38,14 +41,15 @@ def _export_sites_file(target_id: int, scan_id: int, output_dir: Path) -> tuple[
         output_file=output_file,
         target_id=target_id,
         scan_id=scan_id,
-        input_type="sites_file"
+        input_type="sites_file",
+        target_name=target_name
     )
     
     count = result['asset_count']
-    if count == 0:
-        logger.warning("站点列表为空，爬虫可能无法正常工作")
-    else:
+    if count > 0:
         logger.info("✓ 站点列表导出完成 - 数量: %d", count)
+    else:
+        logger.warning("站点列表为空，爬虫可能无法正常工作")
     
     return output_file, count
 
@@ -94,9 +98,11 @@ def sites_url_fetch_flow(
         sites_file, sites_count = _export_sites_file(
             target_id=target_id,
             scan_id=scan_id,
+            target_name=target_name,
             output_dir=output_path
         )
         
+        # 默认值模式下，即使原本没有站点，也会有默认 URL 作为输入
         if sites_count == 0:
             logger.warning("没有可用的站点，跳过爬虫")
             return {

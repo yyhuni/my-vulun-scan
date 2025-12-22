@@ -162,12 +162,13 @@ def _setup_directory_scan_directory(scan_workspace_dir: str) -> Path:
     return directory_scan_dir
 
 
-def _export_site_urls(target_id: int, directory_scan_dir: Path) -> tuple[str, int]:
+def _export_site_urls(target_id: int, target_name: str, directory_scan_dir: Path) -> tuple[str, int]:
     """
-    导出目标下的所有站点 URL 到文件
+    导出目标下的所有站点 URL 到文件（支持懒加载）
     
     Args:
         target_id: 目标 ID
+        target_name: 目标名称（用于懒加载创建默认站点）
         directory_scan_dir: 目录扫描目录
         
     Returns:
@@ -182,7 +183,8 @@ def _export_site_urls(target_id: int, directory_scan_dir: Path) -> tuple[str, in
     export_result = export_sites_task(
         target_id=target_id,
         output_file=sites_file,
-        batch_size=1000  # 每次读取 1000 条，优化内存占用
+        batch_size=1000,  # 每次读取 1000 条，优化内存占用
+        target_name=target_name  # 传入 target_name 用于懒加载
     )
     
     site_count = export_result['total_count']
@@ -631,8 +633,8 @@ def directory_scan_flow(
         # Step 0: 创建工作目录
         directory_scan_dir = _setup_directory_scan_directory(scan_workspace_dir)
         
-        # Step 1: 导出站点 URL
-        sites_file, site_count = _export_site_urls(target_id, directory_scan_dir)
+        # Step 1: 导出站点 URL（支持懒加载）
+        sites_file, site_count = _export_site_urls(target_id, target_name, directory_scan_dir)
         
         if site_count == 0:
             logger.warning("目标下没有站点，跳过目录扫描")

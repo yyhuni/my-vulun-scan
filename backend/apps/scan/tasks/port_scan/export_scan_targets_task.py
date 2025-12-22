@@ -20,17 +20,21 @@ from apps.targets.models import Target  # 仅用于 TargetType 常量
 logger = logging.getLogger(__name__)
 
 
-def _export_domains(target_id: int, output_path: Path, batch_size: int) -> int:
+def _export_domains(target_id: int, target_name: str, output_path: Path, batch_size: int) -> int:
     """
-    导出域名类型目标的子域名
+    导出域名类型目标的子域名（支持默认值模式）
     
     Args:
         target_id: 目标 ID
+        target_name: 目标名称（域名）
         output_path: 输出文件路径
         batch_size: 批次大小
     
     Returns:
         int: 导出的记录数
+    
+    默认值模式:
+        如果没有子域名，自动使用根域名作为默认子域名
     """
     subdomain_service = SubdomainService()
     domain_iterator = subdomain_service.iter_subdomain_names_by_target(
@@ -46,6 +50,19 @@ def _export_domains(target_id: int, output_path: Path, batch_size: int) -> int:
             
             if total_count % 10000 == 0:
                 logger.info("已导出 %d 个域名...", total_count)
+    
+    # ==================== 采用默认域名：如果没有子域名，使用根域名 ====================
+    # 只写入文件供扫描工具使用，不写入数据库
+    # 数据库只存储扫描发现的真实资产
+    if total_count == 0:
+        logger.info("采用默认域名：%s (target_id=%d)", target_name, target_id)
+        
+        # 只写入文件，不写入数据库
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(f"{target_name}\n")
+        total_count = 1
+        
+        logger.info("✓ 默认域名已写入文件: %s", target_name)
     
     return total_count
 
@@ -149,7 +166,7 @@ def export_scan_targets_task(
 
         # 3. 根据类型导出
         if target_type == Target.TargetType.DOMAIN:
-            total_count = _export_domains(target_id, output_path, batch_size)
+            total_count = _export_domains(target_id, target_name, output_path, batch_size)
             type_desc = "域名"
         elif target_type == Target.TargetType.IP:
             total_count = _export_ip(target_name, output_path)

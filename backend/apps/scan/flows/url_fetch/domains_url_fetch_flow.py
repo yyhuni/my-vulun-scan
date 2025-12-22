@@ -19,13 +19,16 @@ from .utils import run_tools_parallel
 logger = logging.getLogger(__name__)
 
 
-def _export_domains_file(target_id: int, scan_id: int, output_dir: Path) -> tuple[str, int]:
+def _export_domains_file(target_id: int, scan_id: int, target_name: str, output_dir: Path) -> tuple[str, int]:
     """
     导出子域名列表到文件
+    
+    默认值模式：如果没有子域名，写入根域名到文件（不写入数据库）
     
     Args:
         target_id: 目标 ID
         scan_id: 扫描 ID
+        target_name: 目标名称（用于懒加载）
         output_dir: 输出目录
         
     Returns:
@@ -38,14 +41,15 @@ def _export_domains_file(target_id: int, scan_id: int, output_dir: Path) -> tupl
         output_file=output_file,
         target_id=target_id,
         scan_id=scan_id,
-        input_type="domains_file"
+        input_type="domains_file",
+        target_name=target_name
     )
     
     count = result['asset_count']
-    if count == 0:
-        logger.warning("子域名列表为空，被动收集可能无法正常工作")
-    else:
+    if count > 0:
         logger.info("✓ 子域名列表导出完成 - 数量: %d", count)
+    else:
+        logger.warning("子域名列表为空，被动收集可能无法正常工作")
     
     return output_file, count
 
@@ -94,9 +98,11 @@ def domains_url_fetch_flow(
         domains_file, domains_count = _export_domains_file(
             target_id=target_id,
             scan_id=scan_id,
+            target_name=target_name,
             output_dir=output_path
         )
         
+        # 默认值模式下，即使原本没有子域名，也会有根域名作为输入
         if domains_count == 0:
             logger.warning("没有可用的子域名，跳过被动收集")
             return {
