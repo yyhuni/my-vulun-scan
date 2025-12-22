@@ -2,10 +2,15 @@
 导出站点URL到文件的Task
 
 直接使用 HostPortMapping 表查询 host+port 组合，拼接成URL格式写入文件
+
+默认值模式：
+- 如果没有 HostPortMapping 数据，写入默认 URL 到文件（不写入数据库）
+- 默认 URL: http://target_name 和 https://target_name
 """
 import logging
 from pathlib import Path
 from prefect import task
+from typing import Optional
 
 from apps.asset.services import HostPortMappingService
 
@@ -16,6 +21,7 @@ logger = logging.getLogger(__name__)
 def export_site_urls_task(
     target_id: int,
     output_file: str,
+    target_name: Optional[str] = None,
     batch_size: int = 1000
 ) -> dict:
     """
@@ -26,9 +32,14 @@ def export_site_urls_task(
     2. 拼接成URL格式（标准端口80/443将省略端口号）
     3. 写入到指定文件中
     
+    默认值模式：
+    - 如果没有 HostPortMapping 数据，写入默认 URL 到文件（不写入数据库）
+    - 默认 URL: http://target_name 和 https://target_name
+    
     Args:
         target_id: 目标ID
         output_file: 输出文件路径（绝对路径）
+        target_name: 目标名称（用于懒加载时写入默认值）
         batch_size: 每次处理的批次大小，默认1000（暂未使用，预留）
         
     Returns:
@@ -100,6 +111,14 @@ def export_site_urls_task(
             str(output_path),
             output_path.stat().st_size / 1024
         )
+        
+        # ==================== 采用默认 URL：如果没有 HostPortMapping，写入默认 URL ====================
+        if total_urls == 0 and target_name:
+            logger.info("采用默认 URL：没有主机端口映射，写入 http(s)://%s 到文件（不写入数据库）", target_name)
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.write(f"http://{target_name}\n")
+                f.write(f"https://{target_name}\n")
+            total_urls = 2
         
         return {
             'success': True,

@@ -107,13 +107,14 @@ def _setup_site_scan_directory(scan_workspace_dir: str) -> Path:
     return site_scan_dir
 
 
-def _export_site_urls(target_id: int, site_scan_dir: Path) -> tuple[str, int, int]:
+def _export_site_urls(target_id: int, site_scan_dir: Path, target_name: str = None) -> tuple[str, int, int]:
     """
     导出站点 URL 到文件
     
     Args:
         target_id: 目标 ID
         site_scan_dir: 站点扫描目录
+        target_name: 目标名称（用于懒加载时写入默认值）
         
     Returns:
         tuple: (urls_file, total_urls, association_count)
@@ -127,6 +128,7 @@ def _export_site_urls(target_id: int, site_scan_dir: Path) -> tuple[str, int, in
     export_result = export_site_urls_task(
         target_id=target_id,
         output_file=urls_file,
+        target_name=target_name,
         batch_size=1000  # 每次处理1000个子域名
     )
     
@@ -403,7 +405,7 @@ def site_scan_flow(
         
         # Step 1: 导出站点 URL
         urls_file, total_urls, association_count = _export_site_urls(
-            target_id, site_scan_dir
+            target_id, site_scan_dir, target_name
         )
         
         if total_urls == 0:
