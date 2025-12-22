@@ -131,9 +131,9 @@ def _clean_urls_with_uro(
             tool_config=uro_config,
             file_path=merged_file,
             base_per_time=1,
+            min_timeout=60,
         )
-        timeout = max(30, timeout)
-        logger.info("uro 自动计算超时时间(按行数，每行 1 秒): %d 秒", timeout)
+        logger.info("uro 自动计算超时时间(按行数，每行 1 秒，最小 60 秒): %d 秒", timeout)
     else:
         try:
             timeout = int(raw_timeout)
@@ -202,11 +202,10 @@ def _validate_and_stream_save_urls(
     raw_timeout = httpx_config.get('timeout', 'auto')
     timeout = 3600
     if isinstance(raw_timeout, str) and raw_timeout == 'auto':
-        # 按 URL 行数计算超时时间：每行 3 秒，不设上限
-        timeout = url_count * 3
-        timeout = max(600, timeout)
+        # 按 URL 行数计算超时时间：每行 3 秒，最小 60 秒
+        timeout = max(60, url_count * 3)
         logger.info(
-            "自动计算 httpx 超时时间(按行数，每行 3 秒): url_count=%d, timeout=%d 秒",
+            "自动计算 httpx 超时时间(按行数，每行 3 秒，最小 60 秒): url_count=%d, timeout=%d 秒",
             url_count,
             timeout,
         )

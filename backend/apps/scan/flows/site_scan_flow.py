@@ -34,7 +34,8 @@ logger = logging.getLogger(__name__)
 def calculate_timeout_by_line_count(
     tool_config: dict,
     file_path: str, 
-    base_per_time: int = 1
+    base_per_time: int = 1,
+    min_timeout: int = 60
 ) -> int:
     """
     根据文件行数计算 timeout
@@ -45,9 +46,10 @@ def calculate_timeout_by_line_count(
         tool_config: 工具配置字典（此函数未使用，但保持接口一致性）
         file_path: 要统计行数的文件路径
         base_per_time: 每行的基础时间（秒），默认1秒
+        min_timeout: 最小超时时间（秒），默认60秒
     
     Returns:
-        int: 计算出的超时时间（秒）
+        int: 计算出的超时时间（秒），不低于 min_timeout
     
     Example:
         timeout = calculate_timeout_by_line_count(
@@ -67,20 +69,20 @@ def calculate_timeout_by_line_count(
         # wc -l 输出格式：行数 + 空格 + 文件名
         line_count = int(result.stdout.strip().split()[0])
         
-        # 计算 timeout：行数 × 每行基础时间
-        timeout = line_count * base_per_time
+        # 计算 timeout：行数 × 每行基础时间，不低于最小值
+        timeout = max(line_count * base_per_time, min_timeout)
         
         logger.info(
             f"timeout 自动计算: 文件={file_path}, "
-            f"行数={line_count}, 每行时间={base_per_time}秒, timeout={timeout}秒"
+            f"行数={line_count}, 每行时间={base_per_time}秒, 最小值={min_timeout}秒, timeout={timeout}秒"
         )
         
         return timeout
         
     except Exception as e:
         # 如果 wc -l 失败，使用默认值
-        logger.warning(f"wc -l 计算行数失败: {e}，使用默认 timeout: 600秒")
-        return 600
+        logger.warning(f"wc -l 计算行数失败: {e}，使用默认 timeout: {min_timeout}秒")
+        return min_timeout
 
 
 def _setup_site_scan_directory(scan_workspace_dir: str) -> Path:
