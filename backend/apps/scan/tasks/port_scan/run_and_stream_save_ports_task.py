@@ -210,7 +210,7 @@ def _parse_and_validate_line(line: str) -> Optional[PortScanRecord]:
     try:
         # 步骤 1: 解析 JSON
         try:
-            line_data = json.loads(line)
+            line_data = json.loads(line, strict=False)
         except json.JSONDecodeError:
             logger.info("跳过非 JSON 行: %s", line)
             return None
