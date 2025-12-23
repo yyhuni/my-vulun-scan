@@ -16,7 +16,7 @@ SUBDOMAIN_DISCOVERY_COMMANDS = {
         # 默认使用所有数据源（更全面，略慢），并始终开启递归
         # -all       使用所有数据源
         # -recursive 对支持递归的源启用递归枚举（默认开启）
-        'base': 'subfinder -d {domain} -all -recursive -o {output_file} -silent',
+        'base': "subfinder -d {domain} -all -recursive -o '{output_file}' -silent",
         'optional': {
             'threads': '-t {threads}',              # 控制并发 goroutine 数
         }
@@ -25,31 +25,31 @@ SUBDOMAIN_DISCOVERY_COMMANDS = {
     'amass_passive': {
         # 先执行被动枚举，将结果写入 amass 内部数据库，然后从数据库中导出纯域名（names）到 output_file
         # -silent 禁用进度条和其他输出
-        'base': 'amass enum -passive -silent -d {domain} && amass subs -names -d {domain} > {output_file}'
+        'base': "amass enum -passive -silent -d {domain} && amass subs -names -d {domain} > '{output_file}'"
     },
     
     'amass_active': {
         # 先执行主动枚举 + 爆破，将结果写入 amass 内部数据库，然后从数据库中导出纯域名（names）到 output_file
         # -silent 禁用进度条和其他输出
-        'base': 'amass enum -active -silent -d {domain} -brute && amass subs -names -d {domain} > {output_file}'
+        'base': "amass enum -active -silent -d {domain} -brute && amass subs -names -d {domain} > '{output_file}'"
     },
     
     'sublist3r': {
-        'base': 'python3 {scan_tools_base}/Sublist3r/sublist3r.py -d {domain} -o {output_file}',
+        'base': "python3 '{scan_tools_base}/Sublist3r/sublist3r.py' -d {domain} -o '{output_file}'",
         'optional': {
             'threads': '-t {threads}'
         }
     },
     
     'assetfinder': {
-        'base': 'assetfinder --subs-only {domain} > {output_file}',
+        'base': "assetfinder --subs-only {domain} > '{output_file}'",
     },
     
     # === 主动字典爆破 ===
     'subdomain_bruteforce': {
         # 使用字典对目标域名进行 DNS 爆破
         # -d 目标域名，-w 字典文件，-o 输出文件
-        'base': 'puredns bruteforce {wordlist} {domain} -r /app/backend/resources/resolvers.txt --write {output_file} --quiet',
+        'base': "puredns bruteforce '{wordlist}' {domain} -r /app/backend/resources/resolvers.txt --write '{output_file}' --quiet",
         'optional': {},
     },
     
@@ -57,7 +57,7 @@ SUBDOMAIN_DISCOVERY_COMMANDS = {
     'subdomain_resolve': {
         # 验证子域名是否能解析（存活验证）
         # 输入文件为候选子域列表，输出为存活子域列表
-        'base': 'puredns resolve {input_file} -r /app/backend/resources/resolvers.txt --write {output_file} --wildcard-tests 50 --wildcard-batch 1000000 --quiet',
+        'base': "puredns resolve '{input_file}' -r /app/backend/resources/resolvers.txt --write '{output_file}' --wildcard-tests 50 --wildcard-batch 1000000 --quiet",
         'optional': {},
     },
     
@@ -65,7 +65,7 @@ SUBDOMAIN_DISCOVERY_COMMANDS = {
     'subdomain_permutation_resolve': {
         # 流式管道：dnsgen 生成变异域名 | puredns resolve 验证存活
         # 不落盘中间文件，避免内存爆炸；不做通配符过滤
-        'base': 'cat {input_file} | dnsgen - | puredns resolve -r /app/backend/resources/resolvers.txt --write {output_file} --wildcard-tests 50 --wildcard-batch 1000000 --quiet',
+        'base': "cat '{input_file}' | dnsgen - | puredns resolve -r /app/backend/resources/resolvers.txt --write '{output_file}' --wildcard-tests 50 --wildcard-batch 1000000 --quiet",
         'optional': {},
     },
 }
@@ -75,7 +75,7 @@ SUBDOMAIN_DISCOVERY_COMMANDS = {
 
 PORT_SCAN_COMMANDS = {
     'naabu_active': {
-        'base': 'naabu -exclude-cdn -warm-up-time 5 -verify -list {domains_file} -json -silent',
+        'base': "naabu -exclude-cdn -warm-up-time 5 -verify -list '{domains_file}' -json -silent",
         'optional': {
             'threads': '-c {threads}',
             'ports': '-p {ports}',
@@ -85,7 +85,7 @@ PORT_SCAN_COMMANDS = {
     },
     
     'naabu_passive': {
-        'base': 'naabu -list {domains_file} -passive -json -silent'
+        'base': "naabu -list '{domains_file}' -passive -json -silent"
     },
 }
 
@@ -95,7 +95,7 @@ PORT_SCAN_COMMANDS = {
 SITE_SCAN_COMMANDS = {
     'httpx': {
         'base': (
-            '{scan_tools_base}/httpx -l {url_file} '
+            "'{scan_tools_base}/httpx' -l '{url_file}' "
             '-status-code -content-type -content-length '
             '-location -title -server -body-preview '
             '-tech-detect -cdn -vhost '
@@ -115,7 +115,7 @@ SITE_SCAN_COMMANDS = {
 
 DIRECTORY_SCAN_COMMANDS = {
     'ffuf': {
-        'base': 'ffuf -u {url}/FUZZ -se -ac -sf -json -w {wordlist}',  
+        'base': "ffuf -u '{url}/FUZZ' -se -ac -sf -json -w '{wordlist}'",  
         'optional': {
             'delay': '-p {delay}',
             'threads': '-t {threads}',
@@ -131,13 +131,13 @@ DIRECTORY_SCAN_COMMANDS = {
 
 URL_FETCH_COMMANDS = {
     'waymore': {
-        'base': 'waymore -i {domain_name} -mode U -oU {output_file}',
+        'base': "waymore -i {domain_name} -mode U -oU '{output_file}'",
         'input_type': 'domain_name'
     },
     
     'katana': {
         'base': (
-            'katana -list {sites_file} -o {output_file} '
+            "katana -list '{sites_file}' -o '{output_file}' "
             '-jc '                   # 开启 JavaScript 爬取 + 自动解析 .js 文件里的所有端点（最重要）
             '-xhr '                  # 额外从 JS 中提取 XHR/Fetch 请求的 API 路径（再多挖 10-20% 隐藏接口）
             '-kf all '               # 在每个目录下自动 fuzz 所有已知敏感文件（.env、.git、backup、config、ds_store 等 5000+ 条）
@@ -157,7 +157,7 @@ URL_FETCH_COMMANDS = {
     },
     
     'uro': {
-        'base': 'uro -i {input_file} -o {output_file}',
+        'base': "uro -i '{input_file}' -o '{output_file}'",
         'optional': {
             'whitelist': '-w {whitelist}',      # 只保留指定扩展名的 URL（空格分隔）
             'blacklist': '-b {blacklist}',      # 排除指定扩展名的 URL（空格分隔）
@@ -167,7 +167,7 @@ URL_FETCH_COMMANDS = {
     
     'httpx': {
         'base': (
-            '{scan_tools_base}/httpx -l {url_file} '
+            "'{scan_tools_base}/httpx' -l '{url_file}' "
             '-status-code -content-type -content-length '
             '-location -title -server -body-preview '
             '-tech-detect -cdn -vhost '
@@ -187,7 +187,7 @@ VULN_SCAN_COMMANDS = {
         'base': (
             'dalfox --silence --no-color --no-spinner '
             '--skip-bav '
-            'file {endpoints_file} '
+            "file '{endpoints_file}' "
             '--waf-evasion '
             '--format json'
         ),
@@ -209,7 +209,7 @@ VULN_SCAN_COMMANDS = {
         # -silent: 静默模式
         # -l: 输入 URL 列表文件
         # -t: 模板目录路径（支持多个仓库，多次 -t 由 template_args 直接拼接）
-        'base': 'nuclei -j -silent -l {endpoints_file} {template_args}',
+        'base': "nuclei -j -silent -l '{endpoints_file}' {template_args}",
         'optional': {
             'concurrency': '-c {concurrency}',           # 并发数（默认 25）
             'rate_limit': '-rl {rate_limit}',            # 每秒请求数限制
