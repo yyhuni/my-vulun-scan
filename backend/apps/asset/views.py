@@ -146,7 +146,7 @@ class SubdomainViewSet(viewsets.ModelViewSet):
         return self.service.get_all()
 
     @action(detail=False, methods=['get'], url_path='export')
-    def export(self, request):
+    def export(self, request, **kwargs):
         """导出子域名（纯文本，一行一个）"""
         target_pk = self.kwargs.get('target_pk')
         if not target_pk:
@@ -190,7 +190,7 @@ class WebSiteViewSet(viewsets.ModelViewSet):
         return self.service.get_all()
 
     @action(detail=False, methods=['get'], url_path='export')
-    def export(self, request):
+    def export(self, request, **kwargs):
         """导出站点 URL（纯文本，一行一个）"""
         target_pk = self.kwargs.get('target_pk')
         if not target_pk:
@@ -234,7 +234,7 @@ class DirectoryViewSet(viewsets.ModelViewSet):
         return self.service.get_all()
 
     @action(detail=False, methods=['get'], url_path='export')
-    def export(self, request):
+    def export(self, request, **kwargs):
         """导出目录 URL（纯文本，一行一个）"""
         target_pk = self.kwargs.get('target_pk')
         if not target_pk:
@@ -278,7 +278,7 @@ class EndpointViewSet(viewsets.ModelViewSet):
         return self.service.get_all()
 
     @action(detail=False, methods=['get'], url_path='export')
-    def export(self, request):
+    def export(self, request, **kwargs):
         """导出端点 URL（纯文本，一行一个）"""
         target_pk = self.kwargs.get('target_pk')
         if not target_pk:
@@ -324,21 +324,33 @@ class HostPortMappingViewSet(viewsets.ModelViewSet):
         return self.service.get_all_ip_aggregation(search=search)
 
     @action(detail=False, methods=['get'], url_path='export')
-    def export(self, request):
-        """导出 IP 地址（纯文本，一行一个）"""
+    def export(self, request, **kwargs):
+        """导出 IP 地址为 CSV 格式
+        
+        CSV 列：ip, host, port, discovered_at
+        """
+        from apps.common.utils import generate_csv_rows, format_datetime
+        
         target_pk = self.kwargs.get('target_pk')
         if not target_pk:
             raise DRFValidationError('必须在目标下导出')
         
-        def line_iterator():
-            for ip in self.service.iter_ips_by_target(target_pk):
-                yield f"{ip}\n"
-
+        # 获取流式数据迭代器
+        data_iterator = self.service.iter_raw_data_for_csv_export(target_id=target_pk)
+        
+        # CSV 表头和格式化器
+        headers = ['ip', 'host', 'port', 'discovered_at']
+        formatters = {
+            'discovered_at': format_datetime
+        }
+        
+        # 生成流式响应
         response = StreamingHttpResponse(
-            line_iterator(),
-            content_type='text/plain; charset=utf-8',
+            generate_csv_rows(data_iterator, headers, formatters),
+            content_type='text/csv; charset=utf-8'
         )
-        response['Content-Disposition'] = f'attachment; filename="target-{target_pk}-ip-addresses.txt"'
+        response['Content-Disposition'] = f'attachment; filename="target-{target_pk}-ip-addresses.csv"'
+        
         return response
 
 
@@ -391,7 +403,7 @@ class SubdomainSnapshotViewSet(viewsets.ModelViewSet):
         return self.service.get_all()
 
     @action(detail=False, methods=['get'], url_path='export')
-    def export(self, request):
+    def export(self, request, **kwargs):
         scan_pk = self.kwargs.get('scan_pk')
         if not scan_pk:
             raise DRFValidationError('必须在扫描下导出')
@@ -425,7 +437,7 @@ class WebsiteSnapshotViewSet(viewsets.ModelViewSet):
         return self.service.get_all()
 
     @action(detail=False, methods=['get'], url_path='export')
-    def export(self, request):
+    def export(self, request, **kwargs):
         scan_pk = self.kwargs.get('scan_pk')
         if not scan_pk:
             raise DRFValidationError('必须在扫描下导出')
@@ -459,7 +471,7 @@ class DirectorySnapshotViewSet(viewsets.ModelViewSet):
         return self.service.get_all()
 
     @action(detail=False, methods=['get'], url_path='export')
-    def export(self, request):
+    def export(self, request, **kwargs):
         scan_pk = self.kwargs.get('scan_pk')
         if not scan_pk:
             raise DRFValidationError('必须在扫描下导出')
@@ -493,7 +505,7 @@ class EndpointSnapshotViewSet(viewsets.ModelViewSet):
         return self.service.get_all()
 
     @action(detail=False, methods=['get'], url_path='export')
-    def export(self, request):
+    def export(self, request, **kwargs):
         scan_pk = self.kwargs.get('scan_pk')
         if not scan_pk:
             raise DRFValidationError('必须在扫描下导出')
@@ -528,17 +540,33 @@ class HostPortMappingSnapshotViewSet(viewsets.ModelViewSet):
         return self.service.get_all_ip_aggregation(search=search)
 
     @action(detail=False, methods=['get'], url_path='export')
-    def export(self, request):
+    def export(self, request, **kwargs):
+        """导出 IP 地址为 CSV 格式
+        
+        CSV 列：ip, host, port, discovered_at
+        """
+        from apps.common.utils import generate_csv_rows, format_datetime
+        
         scan_pk = self.kwargs.get('scan_pk')
         if not scan_pk:
             raise DRFValidationError('必须在扫描下导出')
         
-        def line_iterator():
-            for ip in self.service.iter_ips_by_scan(scan_pk):
-                yield f"{ip}\n"
-
-        response = StreamingHttpResponse(line_iterator(), content_type='text/plain; charset=utf-8')
-        response['Content-Disposition'] = f'attachment; filename="scan-{scan_pk}-ip-addresses.txt"'
+        # 获取流式数据迭代器
+        data_iterator = self.service.iter_raw_data_for_csv_export(scan_id=scan_pk)
+        
+        # CSV 表头和格式化器
+        headers = ['ip', 'host', 'port', 'discovered_at']
+        formatters = {
+            'discovered_at': format_datetime
+        }
+        
+        # 生成流式响应
+        response = StreamingHttpResponse(
+            generate_csv_rows(data_iterator, headers, formatters),
+            content_type='text/csv; charset=utf-8'
+        )
+        response['Content-Disposition'] = f'attachment; filename="scan-{scan_pk}-ip-addresses.csv"'
+        
         return response
 
 

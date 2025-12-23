@@ -10,20 +10,52 @@
 import argparse
 import random
 import json
+import os
 from datetime import datetime, timedelta
 from decimal import Decimal
+from pathlib import Path
 
 import psycopg2
 from psycopg2.extras import execute_values
 
-# 数据库配置（从 docker/.env 读取）
-DB_CONFIG = {
-    'host': 'localhost',
-    'port': 5432,
-    'dbname': 'xingrin',
-    'user': 'postgres',
-    'password': '0af235510cbd4cc17cca346a47358def',
-}
+
+def load_env_file(env_path: str) -> dict:
+    """从 .env 文件加载环境变量"""
+    env_vars = {}
+    if os.path.exists(env_path):
+        with open(env_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, value = line.split('=', 1)
+                    env_vars[key.strip()] = value.strip()
+    return env_vars
+
+
+def get_db_config() -> dict:
+    """从 docker/.env 读取数据库配置"""
+    # 获取项目根目录
+    script_dir = Path(__file__).resolve().parent
+    project_root = script_dir.parent.parent
+    env_path = project_root / 'docker' / '.env'
+    
+    env_vars = load_env_file(str(env_path))
+    
+    # 获取数据库配置，docker/.env 中 DB_HOST=postgres 是容器内地址，本地运行需要用 localhost
+    db_host = env_vars.get('DB_HOST', 'postgres')
+    if db_host == 'postgres':
+        db_host = 'localhost'  # 本地运行脚本时使用 localhost
+    
+    return {
+        'host': db_host,
+        'port': int(env_vars.get('DB_PORT', 5432)),
+        'dbname': env_vars.get('DB_NAME', 'xingrin'),
+        'user': env_vars.get('DB_USER', 'postgres'),
+        'password': env_vars.get('DB_PASSWORD', ''),
+    }
+
+
+DB_CONFIG = get_db_config()
 
 
 class TestDataGenerator:
@@ -53,6 +85,14 @@ class TestDataGenerator:
             self.create_host_port_mappings(target_ids)
             self.create_vulnerabilities(target_ids)
             
+            # 生成快照数据（扫描历史详细页面使用）
+            self.create_subdomain_snapshots(scan_ids)
+            self.create_website_snapshots(scan_ids)
+            self.create_endpoint_snapshots(scan_ids)
+            self.create_directory_snapshots(scan_ids)
+            self.create_host_port_mapping_snapshots(scan_ids)
+            self.create_vulnerability_snapshots(scan_ids)
+            
             self.conn.commit()
             print("\n✅ 测试数据生成完成！")
         except Exception as e:
@@ -66,6 +106,10 @@ class TestDataGenerator:
         """清除所有测试数据"""
         cur = self.conn.cursor()
         tables = [
+            # 快照表（先删除，因为有外键依赖 scan）
+            'vulnerability_snapshot', 'host_port_mapping_snapshot', 'directory_snapshot',
+            'endpoint_snapshot', 'website_snapshot', 'subdomain_snapshot',
+            # 资产表
             'vulnerability', 'host_port_mapping', 'directory', 'endpoint',
             'website', 'subdomain', 'scheduled_scan', 'scan',
             'organization_targets', 'target', 'organization',
@@ -439,8 +483,8 @@ class TestDataGenerator:
                     INSERT INTO website (
                         url, target_id, host, title, webserver, tech, status_code,
                         content_length, content_type, location, body_preview, vhost,
-                        discovered_at, deleted_at
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NULL)
+                        discovered_at
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
                     ON CONFLICT DO NOTHING
                     RETURNING id
                 """, (
@@ -524,8 +568,8 @@ class TestDataGenerator:
                     INSERT INTO endpoint (
                         url, target_id, host, title, webserver, status_code, content_length,
                         content_type, tech, location, body_preview, vhost, matched_gf_patterns,
-                        discovered_at, deleted_at
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NULL)
+                        discovered_at
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
                     ON CONFLICT DO NOTHING
                 """, (
                     url, target_id, target_name, 'API Documentation - Swagger UI',
@@ -699,8 +743,8 @@ class TestDataGenerator:
                 cur.execute("""
                     INSERT INTO vulnerability (
                         target_id, url, vuln_type, severity, source, cvss_score,
-                        description, raw_output, discovered_at, deleted_at
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW(), NULL)
+                        description, raw_output, discovered_at
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
                 """, (
                     target_id, url, random.choice(vuln_types), severity,
                     random.choice(sources), cvss_score, random.choice(descriptions), raw_output
@@ -708,6 +752,279 @@ class TestDataGenerator:
                 count += 1
                 
         print(f"  ✓ 创建了 {count} 个漏洞\n")
+
+    def create_subdomain_snapshots(self, scan_ids: list):
+        """创建子域名快照"""
+        print("📸 创建子域名快照...")
+        cur = self.conn.cursor()
+        
+        if not scan_ids:
+            print("  ⚠ 缺少扫描任务，跳过\n")
+            return
+        
+        prefixes = [
+            'api', 'admin', 'portal', 'dashboard', 'app', 'mobile', 'staging', 'dev',
+            'test', 'qa', 'uat', 'beta', 'mail', 'vpn', 'cdn', 'static',
+        ]
+        
+        count = 0
+        for scan_id in scan_ids[:15]:  # 为前15个扫描创建快照
+            # 获取扫描对应的目标域名
+            cur.execute("""
+                SELECT t.name FROM scan s 
+                JOIN target t ON s.target_id = t.id 
+                WHERE s.id = %s AND t.type = 'domain'
+            """, (scan_id,))
+            row = cur.fetchone()
+            if not row:
+                continue
+            target_name = row[0]
+            
+            num = random.randint(5, 15)
+            selected = random.sample(prefixes, min(num, len(prefixes)))
+            
+            for prefix in selected:
+                subdomain_name = f'{prefix}.{target_name}'
+                cur.execute("""
+                    INSERT INTO subdomain_snapshot (scan_id, name, discovered_at)
+                    VALUES (%s, %s, NOW())
+                    ON CONFLICT DO NOTHING
+                """, (scan_id, subdomain_name))
+                count += 1
+                
+        print(f"  ✓ 创建了 {count} 个子域名快照\n")
+
+    def create_website_snapshots(self, scan_ids: list):
+        """创建网站快照"""
+        print("📸 创建网站快照...")
+        cur = self.conn.cursor()
+        
+        if not scan_ids:
+            print("  ⚠ 缺少扫描任务，跳过\n")
+            return
+        
+        titles = [
+            'Enterprise Portal - Login', 'Admin Dashboard', 'API Documentation',
+            'Customer Portal', 'Developer Console', 'Support Center',
+        ]
+        webservers = ['nginx/1.24.0', 'Apache/2.4.57', 'cloudflare']
+        tech_stacks = [['React', 'Node.js'], ['Vue.js', 'Django'], ['Angular', 'Spring Boot']]
+        
+        count = 0
+        for scan_id in scan_ids[:15]:
+            cur.execute("""
+                SELECT t.name FROM scan s 
+                JOIN target t ON s.target_id = t.id 
+                WHERE s.id = %s AND t.type = 'domain'
+            """, (scan_id,))
+            row = cur.fetchone()
+            if not row:
+                continue
+            target_name = row[0]
+            
+            for i in range(random.randint(2, 5)):
+                protocol = random.choice(['https', 'http'])
+                port = random.choice([80, 443, 8080])
+                url = f'{protocol}://{target_name}:{port}/' if port not in [80, 443] else f'{protocol}://{target_name}/'
+                
+                cur.execute("""
+                    INSERT INTO website_snapshot (
+                        scan_id, url, host, title, web_server, tech, status,
+                        content_length, content_type, location, body_preview, discovered_at
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                    ON CONFLICT DO NOTHING
+                """, (
+                    scan_id, url, target_name, random.choice(titles),
+                    random.choice(webservers), random.choice(tech_stacks),
+                    random.choice([200, 301, 403]),
+                    random.randint(1000, 50000), 'text/html; charset=utf-8',
+                    '',  # location 字段
+                    '<!DOCTYPE html><html><head><title>Test</title></head><body>Content</body></html>'
+                ))
+                count += 1
+                
+        print(f"  ✓ 创建了 {count} 个网站快照\n")
+
+    def create_endpoint_snapshots(self, scan_ids: list):
+        """创建端点快照"""
+        print("📸 创建端点快照...")
+        cur = self.conn.cursor()
+        
+        if not scan_ids:
+            print("  ⚠ 缺少扫描任务，跳过\n")
+            return
+        
+        paths = [
+            '/api/v1/users', '/api/v1/auth/login', '/api/v2/products',
+            '/admin/dashboard', '/graphql', '/health', '/metrics',
+        ]
+        
+        count = 0
+        for scan_id in scan_ids[:15]:
+            cur.execute("""
+                SELECT t.name FROM scan s 
+                JOIN target t ON s.target_id = t.id 
+                WHERE s.id = %s AND t.type = 'domain'
+            """, (scan_id,))
+            row = cur.fetchone()
+            if not row:
+                continue
+            target_name = row[0]
+            
+            for path in random.sample(paths, random.randint(3, 6)):
+                url = f'https://{target_name}{path}'
+                cur.execute("""
+                    INSERT INTO endpoint_snapshot (
+                        scan_id, url, host, title, status_code, content_length,
+                        location, webserver, content_type, tech, body_preview,
+                        matched_gf_patterns, discovered_at
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                    ON CONFLICT DO NOTHING
+                """, (
+                    scan_id, url, target_name, 'API Endpoint',
+                    random.choice([200, 201, 401, 403, 404]),
+                    random.randint(100, 5000),
+                    '',  # location
+                    'nginx/1.24.0',
+                    'application/json', ['REST', 'JSON'],
+                    '{"status":"ok","data":{}}',
+                    []  # matched_gf_patterns
+                ))
+                count += 1
+                
+        print(f"  ✓ 创建了 {count} 个端点快照\n")
+
+    def create_directory_snapshots(self, scan_ids: list):
+        """创建目录快照"""
+        print("📸 创建目录快照...")
+        cur = self.conn.cursor()
+        
+        if not scan_ids:
+            print("  ⚠ 缺少扫描任务，跳过\n")
+            return
+        
+        dirs = [
+            '/admin/', '/backup/', '/config/', '/uploads/', '/static/',
+            '/assets/', '/images/', '/js/', '/css/', '/api/',
+        ]
+        
+        count = 0
+        for scan_id in scan_ids[:15]:
+            cur.execute("""
+                SELECT t.name FROM scan s 
+                JOIN target t ON s.target_id = t.id 
+                WHERE s.id = %s AND t.type = 'domain'
+            """, (scan_id,))
+            row = cur.fetchone()
+            if not row:
+                continue
+            target_name = row[0]
+            
+            for d in random.sample(dirs, random.randint(3, 7)):
+                url = f'https://{target_name}{d}'
+                cur.execute("""
+                    INSERT INTO directory_snapshot (
+                        scan_id, url, status, content_length, words, lines,
+                        content_type, duration, discovered_at
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                    ON CONFLICT DO NOTHING
+                """, (
+                    scan_id, url, random.choice([200, 301, 403]),
+                    random.randint(500, 10000), random.randint(50, 500),
+                    random.randint(10, 100), 'text/html',
+                    random.randint(10000000, 500000000)  # 纳秒
+                ))
+                count += 1
+                
+        print(f"  ✓ 创建了 {count} 个目录快照\n")
+
+    def create_host_port_mapping_snapshots(self, scan_ids: list):
+        """创建主机端口映射快照"""
+        print("📸 创建主机端口映射快照...")
+        cur = self.conn.cursor()
+        
+        if not scan_ids:
+            print("  ⚠ 缺少扫描任务，跳过\n")
+            return
+        
+        common_ports = [22, 80, 443, 3306, 5432, 6379, 8080, 8443, 9000]
+        
+        count = 0
+        for scan_id in scan_ids[:15]:
+            cur.execute("""
+                SELECT t.name FROM scan s 
+                JOIN target t ON s.target_id = t.id 
+                WHERE s.id = %s AND t.type = 'domain'
+            """, (scan_id,))
+            row = cur.fetchone()
+            if not row:
+                continue
+            target_name = row[0]
+            
+            # 生成随机 IP
+            ip = f'192.168.{random.randint(1, 254)}.{random.randint(1, 254)}'
+            
+            for port in random.sample(common_ports, random.randint(3, 6)):
+                cur.execute("""
+                    INSERT INTO host_port_mapping_snapshot (
+                        scan_id, host, ip, port, discovered_at
+                    ) VALUES (%s, %s, %s, %s, NOW())
+                    ON CONFLICT DO NOTHING
+                """, (scan_id, target_name, ip, port))
+                count += 1
+                
+        print(f"  ✓ 创建了 {count} 个主机端口映射快照\n")
+
+    def create_vulnerability_snapshots(self, scan_ids: list):
+        """创建漏洞快照"""
+        print("📸 创建漏洞快照...")
+        cur = self.conn.cursor()
+        
+        if not scan_ids:
+            print("  ⚠ 缺少扫描任务，跳过\n")
+            return
+        
+        vuln_types = ['xss', 'sqli', 'ssrf', 'lfi', 'rce', 'xxe', 'csrf']
+        severities = ['critical', 'high', 'medium', 'low', 'info']
+        sources = ['nuclei', 'dalfox', 'sqlmap']
+        
+        count = 0
+        for scan_id in scan_ids[:15]:
+            cur.execute("""
+                SELECT t.name FROM scan s 
+                JOIN target t ON s.target_id = t.id 
+                WHERE s.id = %s AND t.type = 'domain'
+            """, (scan_id,))
+            row = cur.fetchone()
+            if not row:
+                continue
+            target_name = row[0]
+            
+            for _ in range(random.randint(2, 8)):
+                severity = random.choice(severities)
+                cvss_ranges = {
+                    'critical': (9.0, 10.0), 'high': (7.0, 8.9), 'medium': (4.0, 6.9),
+                    'low': (0.1, 3.9), 'info': (0.0, 0.0)
+                }
+                cvss_range = cvss_ranges.get(severity, (0.0, 10.0))
+                cvss_score = round(random.uniform(*cvss_range), 1)
+                
+                url = f'https://{target_name}/api/v1/users?id={random.randint(1, 100)}'
+                
+                cur.execute("""
+                    INSERT INTO vulnerability_snapshot (
+                        scan_id, url, vuln_type, severity, source, cvss_score,
+                        description, raw_output, discovered_at
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                """, (
+                    scan_id, url, random.choice(vuln_types), severity,
+                    random.choice(sources), cvss_score,
+                    f'Detected {severity} severity vulnerability',
+                    json.dumps({'template': f'CVE-2024-{random.randint(10000, 99999)}'})
+                ))
+                count += 1
+                
+        print(f"  ✓ 创建了 {count} 个漏洞快照\n")
 
 
 def main():

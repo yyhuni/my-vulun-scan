@@ -59,3 +59,15 @@ class HostPortMappingService:
     def iter_ips_by_target(self, target_id: int, batch_size: int = 1000) -> Iterator[str]:
         """流式获取目标下的所有唯一 IP 地址。"""
         return self.repo.get_ips_for_export(target_id=target_id, batch_size=batch_size)
+
+    def iter_raw_data_for_csv_export(self, target_id: int) -> Iterator[dict]:
+        """
+        流式获取原始数据用于 CSV 导出
+        
+        Args:
+            target_id: 目标 ID
+        
+        Yields:
+            原始数据字典 {ip, host, port, discovered_at}
+        """
+        return self.repo.iter_raw_data_for_export(target_id=target_id)

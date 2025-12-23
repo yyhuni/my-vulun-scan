@@ -79,3 +79,15 @@ class HostPortMappingSnapshotsService:
     def iter_ips_by_scan(self, scan_id: int, batch_size: int = 1000) -> Iterator[str]:
         """流式获取某次扫描下的所有唯一 IP 地址。"""
         return self.snapshot_repo.get_ips_for_export(scan_id=scan_id, batch_size=batch_size)
+
+    def iter_raw_data_for_csv_export(self, scan_id: int) -> Iterator[dict]:
+        """
+        流式获取原始数据用于 CSV 导出
+        
+        Args:
+            scan_id: 扫描 ID
+        
+        Yields:
+            原始数据字典 {ip, host, port, discovered_at}
+        """
+        return self.snapshot_repo.iter_raw_data_for_export(scan_id=scan_id)

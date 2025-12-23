@@ -104,17 +104,16 @@ export function IPAddressesView({
       let blob: Blob | null = null
 
       if (scanId) {
-        const data = await IPAddressService.exportIPAddressesByScanId(scanId)
-        blob = data
+        blob = await IPAddressService.exportIPAddressesByScanId(scanId)
       } else if (targetId) {
-        const data = await IPAddressService.exportIPAddressesByTargetId(targetId)
-        blob = data
+        blob = await IPAddressService.exportIPAddressesByTargetId(targetId)
       } else {
         if (!ipAddresses || ipAddresses.length === 0) {
           return
         }
-        const content = ipAddresses.map((item) => item.ip).join("\n")
-        blob = new Blob([content], { type: "text/plain;charset=utf-8" })
+        // 前端生成 CSV（无 scanId/targetId 时的 fallback）
+        const csvContent = generateCSV(ipAddresses)
+        blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" })
       }
 
       if (!blob) return
@@ -123,7 +122,7 @@ export function IPAddressesView({
       const a = document.createElement("a")
       const prefix = scanId ? `scan-${scanId}` : targetId ? `target-${targetId}` : "ip-addresses"
       a.href = url
-      a.download = `${prefix}-ip-addresses-${Date.now()}.txt`
+      a.download = `${prefix}-ip-addresses-${Date.now()}.csv`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
@@ -134,18 +133,62 @@ export function IPAddressesView({
     }
   }
 
+  // 格式化日期为 YYYY-MM-DD HH:MM:SS（与后端一致）
+  const formatDateForCSV = (dateString: string): string => {
+    if (!dateString) return ''
+    const date = new Date(dateString)
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    const seconds = String(date.getSeconds()).padStart(2, '0')
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+  }
+
+  // 生成 CSV 内容（原始格式：每个 host+port 组合一行）
+  const generateCSV = (items: IPAddress[]): string => {
+    const BOM = '\ufeff'
+    const headers = ['ip', 'host', 'port', 'discovered_at']
+    
+    const escapeCSV = (value: string): string => {
+      if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+        return `"${value.replace(/"/g, '""')}"`
+      }
+      return value
+    }
+    
+    // 展开聚合数据为原始格式：每个 (ip, host, port) 组合一行
+    const rows: string[] = []
+    for (const item of items) {
+      for (const host of item.hosts) {
+        for (const port of item.ports) {
+          rows.push([
+            escapeCSV(item.ip),
+            escapeCSV(host),
+            escapeCSV(String(port)),
+            escapeCSV(formatDateForCSV(item.discoveredAt))
+          ].join(','))
+        }
+      }
+    }
+    
+    return BOM + [headers.join(','), ...rows].join('\n')
+  }
+
   // 处理下载选中的 IP 地址
   const handleDownloadSelected = () => {
     if (selectedIPAddresses.length === 0) {
       return
     }
-    const content = selectedIPAddresses.map((item) => item.ip).join("\n")
-    const blob = new Blob([content], { type: "text/plain;charset=utf-8" })
+    
+    const csvContent = generateCSV(selectedIPAddresses)
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     const prefix = scanId ? `scan-${scanId}` : targetId ? `target-${targetId}` : "ip-addresses"
     a.href = url
-    a.download = `${prefix}-ip-addresses-selected-${Date.now()}.txt`
+    a.download = `${prefix}-ip-addresses-selected-${Date.now()}.csv`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
