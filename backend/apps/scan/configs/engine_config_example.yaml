@@ -139,11 +139,11 @@ vuln_scan:
     dalfox_xss:
       enabled: true
       timeout: auto          # 自动计算（endpoints 行数 × 100 秒）
-      request-timeout: 10    # 单个请求超时秒数
+      # request-timeout: 10  # 单个请求超时秒数
       only-poc: r            # 只输出 POC 结果（r: 反射型）
       ignore-return: "302,404,403"  # 忽略的返回码
-      delay: 50             # 请求间隔（毫秒）
-      worker: 20             # worker 数量
+      # delay: 50            # 请求间隔（毫秒）
+      worker: 30             # worker 数量
       user-agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
       # blind-xss-server: xxx  # 盲打 XSS 回连服务地址
 
