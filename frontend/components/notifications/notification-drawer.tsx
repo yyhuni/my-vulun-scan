@@ -173,10 +173,10 @@ export function NotificationDrawer() {
 
   // 获取通知图标
   const severityIconClassMap: Record<NotificationSeverity, string> = {
-    critical: "text-purple-500",
-    high: "text-red-500",
-    medium: "text-amber-500",
-    low: "text-gray-500",
+    critical: "text-[#da3633] dark:text-[#f85149]",
+    high: "text-[#d29922]",
+    medium: "text-[#d4a72c]",
+    low: "text-[#848d97]",
   }
 
   const getNotificationIcon = (type: NotificationType, severity?: NotificationSeverity) => {
@@ -195,10 +195,10 @@ export function NotificationDrawer() {
   }
 
   const severityCardClassMap: Record<NotificationSeverity, string> = {
-    critical: "border-purple-300 bg-purple-50 hover:bg-purple-100 dark:border-purple-500/60 dark:bg-purple-500/10 dark:hover:bg-purple-500/20",
-    high: "border-red-300 bg-red-50 hover:bg-red-100 dark:border-red-500/60 dark:bg-red-500/10 dark:hover:bg-red-500/20",
-    medium: "border-amber-300 bg-amber-50 hover:bg-amber-100 dark:border-amber-500/60 dark:bg-amber-500/10 dark:hover:bg-amber-500/20",
-    low: "border-gray-300 bg-gray-50 hover:bg-gray-100 dark:border-gray-500/60 dark:bg-gray-500/10 dark:hover:bg-gray-500/20",
+    critical: "border-[#da3633]/30 bg-[#da3633]/5 hover:bg-[#da3633]/10 dark:border-[#f85149]/30 dark:bg-[#f85149]/5 dark:hover:bg-[#f85149]/10",
+    high: "border-[#d29922]/30 bg-[#d29922]/5 hover:bg-[#d29922]/10 dark:border-[#d29922]/30 dark:bg-[#d29922]/5 dark:hover:bg-[#d29922]/10",
+    medium: "border-[#d4a72c]/30 bg-[#d4a72c]/5 hover:bg-[#d4a72c]/10 dark:border-[#d4a72c]/30 dark:bg-[#d4a72c]/5 dark:hover:bg-[#d4a72c]/10",
+    low: "border-[#848d97]/30 bg-[#848d97]/5 hover:bg-[#848d97]/10 dark:border-[#848d97]/30 dark:bg-[#848d97]/5 dark:hover:bg-[#848d97]/10",
   }
 
   const getNotificationCardClasses = (severity?: NotificationSeverity) => {
@@ -252,9 +252,9 @@ export function NotificationDrawer() {
       <div className="flex items-start gap-3">
         <div className={cn(
           "mt-0.5 p-1.5 rounded-full shrink-0",
-          notification.severity === 'critical' && "bg-purple-100 dark:bg-purple-500/20",
-          notification.severity === 'high' && "bg-red-100 dark:bg-red-500/20",
-          notification.severity === 'medium' && "bg-amber-100 dark:bg-amber-500/20",
+          notification.severity === 'critical' && "bg-[#da3633]/10 dark:bg-[#f85149]/10",
+          notification.severity === 'high' && "bg-[#d29922]/10",
+          notification.severity === 'medium' && "bg-[#d4a72c]/10",
           (!notification.severity || notification.severity === 'low') && "bg-muted"
         )}>
           {getNotificationIcon(notification.type, notification.severity)}

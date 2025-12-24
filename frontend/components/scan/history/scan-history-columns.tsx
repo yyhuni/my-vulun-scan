@@ -64,31 +64,31 @@ function StatusBadge({
       icon: IconCircleX,
       label: "Cancelled",
       variant: "outline",
-      className: "bg-gray-500/15 text-gray-600 border-gray-500/30 hover:bg-gray-500/25 dark:text-gray-400 transition-colors",
+      className: "bg-[#848d97]/10 text-[#848d97] border-[#848d97]/20 hover:bg-[#848d97]/20 transition-colors",
     },
     completed: {
       icon: IconCircleCheck,
       label: "Completed",
       variant: "outline",
-      className: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/25 dark:text-emerald-400 transition-colors",
+      className: "bg-[#238636]/10 text-[#238636] border-[#238636]/20 hover:bg-[#238636]/20 dark:text-[#3fb950] transition-colors",
     },
     failed: {
       icon: IconCircleX,
       label: "Failed",
       variant: "outline",
-      className: "bg-red-500/15 text-red-600 border-red-500/30 hover:bg-red-500/25 dark:text-red-400 transition-colors",
+      className: "bg-[#da3633]/10 text-[#da3633] border-[#da3633]/20 hover:bg-[#da3633]/20 dark:text-[#f85149] transition-colors",
     },
     initiated: {
       icon: IconClock,
       label: "Initiated",
       variant: "outline",
-      className: "bg-amber-500/15 text-amber-600 border-amber-500/30 hover:bg-amber-500/25 dark:text-amber-400 transition-colors",
+      className: "bg-[#d29922]/10 text-[#d29922] border-[#d29922]/20 hover:bg-[#d29922]/20 transition-colors",
     },
     running: {
       icon: IconLoader,
       label: "Running",
       variant: "outline",
-      className: "bg-blue-500/15 text-blue-600 border-blue-500/30 hover:bg-blue-500/25 dark:text-blue-400 transition-colors",
+      className: "bg-[#d29922]/10 text-[#d29922] border-[#d29922]/20 hover:bg-[#d29922]/20 transition-colors",
     },
   }
 
@@ -473,11 +473,11 @@ export const createScanHistoryColumns = ({
           <div className="flex-1 h-2 bg-primary/10 rounded-full overflow-hidden border border-border">
             <div 
               className={`h-full transition-all ${
-                status === "completed" ? "bg-emerald-500/80" : 
-                status === "failed" ? "bg-red-500/80" : 
-                status === "running" ? "bg-blue-500/80 progress-striped" : 
-                status === "cancelled" ? "bg-gray-500/80" :
-                status === "initiated" ? "bg-amber-500/80 progress-striped" :
+                status === "completed" ? "bg-[#238636]" : 
+                status === "failed" ? "bg-[#da3633]" : 
+                status === "running" ? "bg-[#d29922] progress-striped" : 
+                status === "cancelled" ? "bg-[#848d97]" :
+                status === "initiated" ? "bg-[#d29922] progress-striped" :
                 "bg-muted-foreground/80"
               }`}
               style={{ width: `${displayProgress}%` }}

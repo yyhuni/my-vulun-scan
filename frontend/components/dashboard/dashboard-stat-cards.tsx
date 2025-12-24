@@ -14,8 +14,8 @@ function TrendBadge({ change }: { change: number }) {
     <Badge 
       variant="outline" 
       className={isPositive 
-        ? "text-green-600 dark:text-green-400 border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950" 
-        : "text-destructive border-destructive/30 bg-destructive/15"
+        ? "text-[#238636] dark:text-[#3fb950] border-[#238636]/20 bg-[#238636]/10" 
+        : "text-[#da3633] dark:text-[#f85149] border-[#da3633]/20 bg-[#da3633]/10"
       }
     >
       {isPositive ? <IconTrendingUp className="size-3 mr-1" /> : <IconTrendingDown className="size-3 mr-1" />}

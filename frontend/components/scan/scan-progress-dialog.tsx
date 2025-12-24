@@ -76,11 +76,11 @@ interface ScanProgressDialogProps {
 
 /** 扫描状态配置（与 scan-history 状态颜色一致） */
 const SCAN_STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  running: { label: "扫描中", className: "bg-blue-500/15 text-blue-600 border-blue-500/30 dark:text-blue-400" },
-  cancelled: { label: "已取消", className: "bg-gray-500/15 text-gray-600 border-gray-500/30 dark:text-gray-400" },
-  completed: { label: "已完成", className: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30 dark:text-emerald-400" },
-  failed: { label: "失败", className: "bg-red-500/15 text-red-600 border-red-500/30 dark:text-red-400" },
-  initiated: { label: "等待中", className: "bg-amber-500/15 text-amber-600 border-amber-500/30 dark:text-amber-400" },
+  running: { label: "扫描中", className: "bg-[#d29922]/10 text-[#d29922] border-[#d29922]/20" },
+  cancelled: { label: "已取消", className: "bg-[#848d97]/10 text-[#848d97] border-[#848d97]/20" },
+  completed: { label: "已完成", className: "bg-[#238636]/10 text-[#238636] border-[#238636]/20 dark:text-[#3fb950]" },
+  failed: { label: "失败", className: "bg-[#da3633]/10 text-[#da3633] border-[#da3633]/20 dark:text-[#f85149]" },
+  initiated: { label: "等待中", className: "bg-[#d29922]/10 text-[#d29922] border-[#d29922]/20" },
 }
 
 /**
@@ -101,15 +101,15 @@ function PulsingDot({ className }: { className?: string }) {
 function ScanStatusIcon({ status }: { status: string }) {
   switch (status) {
     case "running":
-      return <PulsingDot className="text-blue-500" />
+      return <PulsingDot className="text-[#d29922]" />
     case "completed":
-      return <IconCircleCheck className="h-5 w-5 text-emerald-500" />
+      return <IconCircleCheck className="h-5 w-5 text-[#238636] dark:text-[#3fb950]" />
     case "cancelled":
-      return <IconCircleX className="h-5 w-5 text-gray-500" />
+      return <IconCircleX className="h-5 w-5 text-[#848d97]" />
     case "failed":
-      return <IconCircleX className="h-5 w-5 text-red-500" />
+      return <IconCircleX className="h-5 w-5 text-[#da3633] dark:text-[#f85149]" />
     case "initiated":
-      return <PulsingDot className="text-amber-500" />
+      return <PulsingDot className="text-[#d29922]" />
     default:
       return <PulsingDot className="text-muted-foreground" />
   }
@@ -133,13 +133,13 @@ function ScanStatusBadge({ status }: { status: string }) {
 function StageStatusIcon({ status }: { status: StageStatus }) {
   switch (status) {
     case "completed":
-      return <IconCircleCheck className="h-5 w-5 text-emerald-500" />
+      return <IconCircleCheck className="h-5 w-5 text-[#238636] dark:text-[#3fb950]" />
     case "running":
-      return <PulsingDot className="text-blue-500" />
+      return <PulsingDot className="text-[#d29922]" />
     case "failed":
-      return <IconCircleX className="h-5 w-5 text-destructive" />
+      return <IconCircleX className="h-5 w-5 text-[#da3633] dark:text-[#f85149]" />
     case "cancelled":
-      return <IconCircleX className="h-5 w-5 text-orange-500" />
+      return <IconCircleX className="h-5 w-5 text-[#d29922]" />
     default:
       return <IconClock className="h-5 w-5 text-muted-foreground" />
   }
@@ -153,10 +153,10 @@ function StageRow({ stage }: { stage: StageDetail }) {
     <div
       className={cn(
         "flex items-center justify-between py-3 px-4 rounded-lg transition-colors",
-        stage.status === "running" && "bg-blue-500/10 border border-blue-500/20",
+        stage.status === "running" && "bg-[#d29922]/10 border border-[#d29922]/20",
         stage.status === "completed" && "bg-muted/50",
-        stage.status === "failed" && "bg-destructive/10",
-        stage.status === "cancelled" && "bg-orange-500/10",
+        stage.status === "failed" && "bg-[#da3633]/10",
+        stage.status === "cancelled" && "bg-[#d29922]/10",
       )}
     >
       <div className="flex items-center gap-3">
@@ -174,7 +174,7 @@ function StageRow({ stage }: { stage: StageDetail }) {
       <div className="flex items-center gap-3 text-right">
         {/* 状态/耗时 */}
         {stage.status === "running" && (
-          <Badge variant="outline" className="bg-blue-500/15 text-blue-600 border-blue-500/30 dark:text-blue-400">
+          <Badge variant="outline" className="bg-[#d29922]/10 text-[#d29922] border-[#d29922]/20">
             进行中
           </Badge>
         )}
@@ -187,12 +187,12 @@ function StageRow({ stage }: { stage: StageDetail }) {
           <span className="text-sm text-muted-foreground">等待中</span>
         )}
         {stage.status === "failed" && (
-          <Badge variant="outline" className="bg-destructive/20 text-destructive border-destructive/30">
+          <Badge variant="outline" className="bg-[#da3633]/10 text-[#da3633] border-[#da3633]/20 dark:text-[#f85149]">
             失败
           </Badge>
         )}
         {stage.status === "cancelled" && (
-          <Badge variant="outline" className="bg-orange-500/20 text-orange-500 border-orange-500/30">
+          <Badge variant="outline" className="bg-[#d29922]/10 text-[#d29922] border-[#d29922]/20">
             已取消
           </Badge>
         )}
@@ -262,12 +262,12 @@ export function ScanProgressDialog({
           <div className="h-2 bg-primary/10 rounded-full overflow-hidden border border-border">
             <div 
               className={`h-full transition-all ${
-                data.status === "completed" ? "bg-emerald-500/80" : 
-                data.status === "failed" ? "bg-red-500/80" : 
-                data.status === "running" ? "bg-blue-500/80 progress-striped" : 
-                data.status === "cancelled" ? "bg-gray-500/80" :
-                data.status === "cancelling" ? "bg-orange-500/80 progress-striped" :
-                data.status === "initiated" ? "bg-amber-500/80 progress-striped" :
+                data.status === "completed" ? "bg-[#238636]/80" : 
+                data.status === "failed" ? "bg-[#da3633]/80" : 
+                data.status === "running" ? "bg-[#d29922]/80 progress-striped" : 
+                data.status === "cancelled" ? "bg-[#848d97]/80" :
+                data.status === "cancelling" ? "bg-[#d29922]/80 progress-striped" :
+                data.status === "initiated" ? "bg-[#d29922]/80 progress-striped" :
                 "bg-muted-foreground/80"
               }`}
               style={{ width: `${data.status === "completed" ? 100 : data.progress}%` }}
