@@ -60,11 +60,9 @@ sudo ./install.sh --no-frontend
 #### 必须放行的端口
 ```
 8083  - HTTPS 访问（主要访问端口）
-3000  - 前端服务（开发模式）
 5432  - PostgreSQL（如使用本地数据库）
 6379  - Redis 缓存
 ```
-> 后端 API 默认仅在容器内 8888 监听，由 nginx 反代到 8083，对公网无需放行 8888。
 
 #### 推荐方案
 - **国外 VPS**：如 Vultr、DigitalOcean、Linode 等，默认开放所有端口，无需额外配置
