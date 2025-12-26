@@ -19,3 +19,13 @@ export interface BatchCreateResponse {
     reason: string
   }>
 }
+
+
+// 分页响应类型
+export interface PaginatedResponse<T> {
+  results: T[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages?: number
+}

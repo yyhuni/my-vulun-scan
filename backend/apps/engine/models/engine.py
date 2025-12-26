@@ -1,3 +1,8 @@
+"""Engine 模块核心 Models
+
+包含 WorkerNode, ScanEngine, Wordlist, NucleiTemplateRepo
+"""
+
 from django.db import models
 
 
@@ -78,6 +83,7 @@ class ScanEngine(models.Model):
         indexes = [
             models.Index(fields=['-created_at']),
         ]
+
     def __str__(self):
         return str(self.name or f'ScanEngine {self.id}')
 

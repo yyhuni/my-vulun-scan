@@ -109,9 +109,14 @@ const data = {
           url: "/tools/wordlists/",
         },
         {
+          title: "指纹管理", // 指纹管理
+          url: "/tools/fingerprints/",
+        },
+        {
           title: "Nuclei 模板", // Nuclei 模板
           url: "/tools/nuclei/",
         },
+        
       ],
     },
     // 测试中心相关菜单已移除
