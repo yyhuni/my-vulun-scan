@@ -21,10 +21,10 @@ echo "  [1.3/3] 初始化默认目录字典..."
 python manage.py init_wordlists
 echo "  ✓ 默认目录字典已就绪"
 
-# TODO:待上线
-# echo "  [1.4/3] 初始化默认指纹库..."
-# python manage.py init_fingerprints
-# echo "  ✓ 默认指纹库已就绪"
+
+echo "  [1.4/3] 初始化默认指纹库..."
+python manage.py init_fingerprints
+echo "  ✓ 默认指纹库已就绪"
 
 # 2. 启动 Django uvicorn 服务 (ASGI)
 # 定时任务由内置 APScheduler 处理，在 Django 启动时自动启动
