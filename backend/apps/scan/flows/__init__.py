@@ -5,8 +5,10 @@
 
 from .initiate_scan_flow import initiate_scan_flow
 from .subdomain_discovery_flow import subdomain_discovery_flow
+from .fingerprint_detect_flow import fingerprint_detect_flow
 
 __all__ = [
     'initiate_scan_flow',
     'subdomain_discovery_flow',
+    'fingerprint_detect_flow',
 ]

@@ -206,6 +206,10 @@ class FlowOrchestrator:
             from apps.scan.flows.site_scan_flow import site_scan_flow
             return site_scan_flow
         
+        elif scan_type == 'fingerprint_detect':
+            from apps.scan.flows.fingerprint_detect_flow import fingerprint_detect_flow
+            return fingerprint_detect_flow
+        
         elif scan_type == 'directory_scan':
             from apps.scan.flows.directory_scan_flow import directory_scan_flow
             return directory_scan_flow

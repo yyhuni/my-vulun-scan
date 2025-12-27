@@ -19,6 +19,12 @@ from .subdomain_discovery import (
     save_domains_task,
 )
 
+# 指纹识别任务
+from .fingerprint_detect import (
+    export_urls_for_fingerprint_task,
+    run_xingfinger_and_stream_update_tech_task,
+)
+
 # 注意：
 # - subdomain_discovery_task 已重构为多个子任务（subdomain_discovery/）
 # - finalize_scan_task 已废弃（Handler 统一管理状态）
@@ -32,4 +38,7 @@ __all__ = [
     'run_subdomain_discovery_task',
     'merge_and_validate_task',
     'save_domains_task',
+    # 指纹识别任务
+    'export_urls_for_fingerprint_task',
+    'run_xingfinger_and_stream_update_tech_task',
 ]

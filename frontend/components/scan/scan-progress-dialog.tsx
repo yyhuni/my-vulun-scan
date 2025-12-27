@@ -32,6 +32,7 @@ const STAGE_LABELS: Record<string, string> = {
   subdomain_discovery: "子域名发现",
   port_scan: "端口扫描",
   site_scan: "站点扫描",
+  fingerprint_detect: "指纹识别",
   directory_scan: "目录扫描",
   url_fetch: "URL 抓取",
   vuln_scan: "漏洞扫描",
