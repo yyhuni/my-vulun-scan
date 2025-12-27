@@ -111,12 +111,13 @@ init_wordlists() {
     log_info "字典初始化完成"
 }
 
-# 初始化指纹库
-init_fingerprints() {
-    log_step "初始化指纹库..."
-    docker compose exec -T server python backend/manage.py init_fingerprints
-    log_info "指纹库初始化完成"
-}
+# TODO:待上线
+# # 初始化指纹库
+# init_fingerprints() {
+#     log_step "初始化指纹库..."
+#     docker compose exec -T server python backend/manage.py init_fingerprints
+#     log_info "指纹库初始化完成"
+# }
 
 # 初始化 Nuclei 模板仓库
 init_nuclei_templates() {
@@ -164,7 +165,8 @@ main() {
     
     init_engine_config
     init_wordlists
-    init_fingerprints
+    # TODO:待上线
+    #init_fingerprints
     init_nuclei_templates
     init_admin_user
 
