@@ -25,10 +25,7 @@ from .utils import calculate_timeout_by_line_count
 logger = logging.getLogger(__name__)
 
 
-def _setup_vuln_scan_directory(scan_workspace_dir: str) -> Path:
-    vuln_scan_dir = Path(scan_workspace_dir) / "vuln_scan"
-    vuln_scan_dir.mkdir(parents=True, exist_ok=True)
-    return vuln_scan_dir
+
 
 
 @flow(
@@ -55,14 +52,14 @@ def endpoints_vuln_scan_flow(
         if not enabled_tools:
             raise ValueError("enabled_tools 不能为空")
 
-        vuln_scan_dir = _setup_vuln_scan_directory(scan_workspace_dir)
+        from apps.scan.utils import setup_scan_directory
+        vuln_scan_dir = setup_scan_directory(scan_workspace_dir, 'vuln_scan')
         endpoints_file = vuln_scan_dir / "input_endpoints.txt"
 
         # Step 1: 导出 Endpoint URL
         export_result = export_endpoints_task(
             target_id=target_id,
             output_file=str(endpoints_file),
-            target_name=target_name,  # 传入 target_name 用于生成默认端点
         )
         total_endpoints = export_result.get("total_count", 0)
 

@@ -85,28 +85,7 @@ def calculate_timeout_by_line_count(
         return min_timeout
 
 
-def _setup_site_scan_directory(scan_workspace_dir: str) -> Path:
-    """
-    创建并验证站点扫描工作目录
-    
-    Args:
-        scan_workspace_dir: 扫描工作空间目录
-        
-    Returns:
-        Path: 站点扫描目录路径
-        
-    Raises:
-        RuntimeError: 目录创建或验证失败
-    """
-    site_scan_dir = Path(scan_workspace_dir) / 'site_scan'
-    site_scan_dir.mkdir(parents=True, exist_ok=True)
-    
-    if not site_scan_dir.is_dir():
-        raise RuntimeError(f"站点扫描目录创建失败: {site_scan_dir}")
-    if not os.access(site_scan_dir, os.W_OK):
-        raise RuntimeError(f"站点扫描目录不可写: {site_scan_dir}")
-    
-    return site_scan_dir
+
 
 
 def _export_site_urls(target_id: int, site_scan_dir: Path, target_name: str = None) -> tuple[str, int, int]:
@@ -403,7 +382,8 @@ def site_scan_flow(
             raise ValueError("scan_workspace_dir 不能为空")
         
         # Step 0: 创建工作目录
-        site_scan_dir = _setup_site_scan_directory(scan_workspace_dir)
+        from apps.scan.utils import setup_scan_directory
+        site_scan_dir = setup_scan_directory(scan_workspace_dir, 'site_scan')
         
         # Step 1: 导出站点 URL
         urls_file, total_urls, association_count = _export_site_urls(

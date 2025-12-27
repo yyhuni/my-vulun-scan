@@ -64,28 +64,7 @@ def calculate_fingerprint_detect_timeout(
     return max(min_timeout, timeout)
 
 
-def _setup_fingerprint_detect_directory(scan_workspace_dir: str) -> Path:
-    """
-    创建并验证指纹识别工作目录
-    
-    Args:
-        scan_workspace_dir: 扫描工作空间目录
-        
-    Returns:
-        Path: 指纹识别目录路径
-        
-    Raises:
-        RuntimeError: 目录创建或验证失败
-    """
-    fingerprint_dir = Path(scan_workspace_dir) / 'fingerprint_detect'
-    fingerprint_dir.mkdir(parents=True, exist_ok=True)
-    
-    if not fingerprint_dir.is_dir():
-        raise RuntimeError(f"指纹识别目录创建失败: {fingerprint_dir}")
-    if not os.access(fingerprint_dir, os.W_OK):
-        raise RuntimeError(f"指纹识别目录不可写: {fingerprint_dir}")
-    
-    return fingerprint_dir
+
 
 
 def _export_urls(
@@ -313,7 +292,8 @@ def fingerprint_detect_flow(
         source = 'website'
         
         # Step 0: 创建工作目录
-        fingerprint_dir = _setup_fingerprint_detect_directory(scan_workspace_dir)
+        from apps.scan.utils import setup_scan_directory
+        fingerprint_dir = setup_scan_directory(scan_workspace_dir, 'fingerprint_detect')
         
         # Step 1: 导出 URL（支持懒加载）
         urls_file, url_count = _export_urls(target_id, fingerprint_dir, target_name, source)

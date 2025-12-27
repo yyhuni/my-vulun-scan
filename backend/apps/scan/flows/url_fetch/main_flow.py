@@ -42,17 +42,7 @@ SITES_FILE_TOOLS = {'katana'}
 POST_PROCESS_TOOLS = {'uro', 'httpx'}
 
 
-def _setup_url_fetch_directory(scan_workspace_dir: str) -> Path:
-    """创建并验证 URL 获取工作目录"""
-    url_fetch_dir = Path(scan_workspace_dir) / 'url_fetch'
-    url_fetch_dir.mkdir(parents=True, exist_ok=True)
-    
-    if not url_fetch_dir.is_dir():
-        raise RuntimeError(f"URL 获取目录创建失败: {url_fetch_dir}")
-    if not os.access(url_fetch_dir, os.W_OK):
-        raise RuntimeError(f"URL 获取目录不可写: {url_fetch_dir}")
-    
-    return url_fetch_dir
+
 
 
 def _classify_tools(enabled_tools: dict) -> tuple[dict, dict, dict, dict]:
@@ -304,7 +294,8 @@ def url_fetch_flow(
         
         # Step 1: 准备工作目录
         logger.info("Step 1: 准备工作目录")
-        url_fetch_dir = _setup_url_fetch_directory(scan_workspace_dir)
+        from apps.scan.utils import setup_scan_directory
+        url_fetch_dir = setup_scan_directory(scan_workspace_dir, 'url_fetch')
         
         # Step 2: 分类工具（按输入类型）
         logger.info("Step 2: 分类工具")

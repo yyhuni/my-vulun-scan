@@ -41,28 +41,7 @@ import subprocess
 logger = logging.getLogger(__name__)
 
 
-def _setup_subdomain_directory(scan_workspace_dir: str) -> Path:
-    """
-    创建并验证子域名扫描工作目录
-    
-    Args:
-        scan_workspace_dir: 扫描工作空间目录
-        
-    Returns:
-        Path: 子域名扫描目录路径
-        
-    Raises:
-        RuntimeError: 目录创建或验证失败
-    """
-    result_dir = Path(scan_workspace_dir) / 'subdomain_discovery'
-    result_dir.mkdir(parents=True, exist_ok=True)
-    
-    if not result_dir.is_dir():
-        raise RuntimeError(f"子域名扫描目录创建失败: {result_dir}")
-    if not os.access(result_dir, os.W_OK):
-        raise RuntimeError(f"子域名扫描目录不可写: {result_dir}")
-    
-    return result_dir
+
 
 
 def _validate_and_normalize_target(target_name: str) -> str:
@@ -119,12 +98,7 @@ def _run_scans_parallel(
     
     # 生成时间戳（所有工具共用）
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    
-    # TODO: 接入代理池管理系统
-    # from apps.proxy.services import proxy_pool
-    # proxy_stats = proxy_pool.get_stats()
-    # logger.info(f"代理池状态: {proxy_stats['healthy']}/{proxy_stats['total']} 可用")
-    
+
     failures = []  # 记录命令构建失败的工具
     futures = {}
     
@@ -417,7 +391,8 @@ def subdomain_discovery_flow(
         )
         
         # Step 0: 准备工作
-        result_dir = _setup_subdomain_directory(scan_workspace_dir)
+        from apps.scan.utils import setup_scan_directory
+        result_dir = setup_scan_directory(scan_workspace_dir, 'subdomain_discovery')
         
         # 验证并规范化目标域名
         try:

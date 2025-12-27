@@ -154,28 +154,7 @@ def _parse_port_count(tool_config: dict) -> int:
     return 100
 
 
-def _setup_port_scan_directory(scan_workspace_dir: str) -> Path:
-    """
-    创建并验证端口扫描工作目录
-    
-    Args:
-        scan_workspace_dir: 扫描工作空间目录
-        
-    Returns:
-        Path: 端口扫描目录路径
-        
-    Raises:
-        RuntimeError: 目录创建或验证失败
-    """
-    port_scan_dir = Path(scan_workspace_dir) / 'port_scan'
-    port_scan_dir.mkdir(parents=True, exist_ok=True)
-    
-    if not port_scan_dir.is_dir():
-        raise RuntimeError(f"端口扫描目录创建失败: {port_scan_dir}")
-    if not os.access(port_scan_dir, os.W_OK):
-        raise RuntimeError(f"端口扫描目录不可写: {port_scan_dir}")
-    
-    return port_scan_dir
+
 
 
 def _export_scan_targets(target_id: int, port_scan_dir: Path) -> tuple[str, int, str]:
@@ -442,7 +421,8 @@ def port_scan_flow(
         )
         
         # Step 0: 创建工作目录
-        port_scan_dir = _setup_port_scan_directory(scan_workspace_dir)
+        from apps.scan.utils import setup_scan_directory
+        port_scan_dir = setup_scan_directory(scan_workspace_dir, 'port_scan')
         
         # Step 1: 导出扫描目标列表到文件（根据 Target 类型自动决定内容）
         targets_file, target_count, target_type = _export_scan_targets(target_id, port_scan_dir)

@@ -140,28 +140,7 @@ def _get_max_workers(tool_config: dict, default: int = DEFAULT_MAX_WORKERS) -> i
     return default
 
 
-def _setup_directory_scan_directory(scan_workspace_dir: str) -> Path:
-    """
-    创建并验证目录扫描工作目录
-    
-    Args:
-        scan_workspace_dir: 扫描工作空间目录
-        
-    Returns:
-        Path: 目录扫描目录路径
-        
-    Raises:
-        RuntimeError: 目录创建或验证失败
-    """
-    directory_scan_dir = Path(scan_workspace_dir) / 'directory_scan'
-    directory_scan_dir.mkdir(parents=True, exist_ok=True)
-    
-    if not directory_scan_dir.is_dir():
-        raise RuntimeError(f"目录扫描目录创建失败: {directory_scan_dir}")
-    if not os.access(directory_scan_dir, os.W_OK):
-        raise RuntimeError(f"目录扫描目录不可写: {directory_scan_dir}")
-    
-    return directory_scan_dir
+
 
 
 def _export_site_urls(target_id: int, target_name: str, directory_scan_dir: Path) -> tuple[str, int]:
@@ -640,7 +619,8 @@ def directory_scan_flow(
             raise ValueError("enabled_tools 不能为空")
         
         # Step 0: 创建工作目录
-        directory_scan_dir = _setup_directory_scan_directory(scan_workspace_dir)
+        from apps.scan.utils import setup_scan_directory
+        directory_scan_dir = setup_scan_directory(scan_workspace_dir, 'directory_scan')
         
         # Step 1: 导出站点 URL（支持懒加载）
         sites_file, site_count = _export_site_urls(target_id, target_name, directory_scan_dir)

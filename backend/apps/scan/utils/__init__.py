@@ -10,11 +10,15 @@ from .command_executor import execute_and_wait, execute_stream
 from .wordlist_helpers import ensure_wordlist_local
 from .nuclei_helpers import ensure_nuclei_templates_local
 from .performance import FlowPerformanceTracker, CommandPerformanceTracker
+from .workspace_utils import setup_scan_workspace, setup_scan_directory
 from . import config_parser
 
 __all__ = [
     # 目录清理
     'remove_directory',
+    # 工作空间
+    'setup_scan_workspace',  # 创建 Scan 根工作空间
+    'setup_scan_directory',  # 创建扫描子目录
     # 命令构建
     'build_scan_command',    # 扫描工具命令构建（基于 f-string）
     # 命令执行

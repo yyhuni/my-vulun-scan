@@ -30,7 +30,7 @@ from apps.scan.handlers import (
     on_initiate_scan_flow_failed,
 )
 from prefect.futures import wait
-from apps.scan.tasks.workspace_tasks import create_scan_workspace_task
+from apps.scan.utils import setup_scan_workspace
 from apps.scan.orchestrators import FlowOrchestrator
 
 logger = logging.getLogger(__name__)
@@ -110,7 +110,7 @@ def initiate_scan_flow(
         )
         
         # ==================== Task 1: 创建 Scan 工作空间 ====================
-        scan_workspace_path = create_scan_workspace_task(scan_workspace_dir)
+        scan_workspace_path = setup_scan_workspace(scan_workspace_dir)
         
         # ==================== Task 2: 获取引擎配置 ====================
         from apps.scan.models import Scan
