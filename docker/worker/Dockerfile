@@ -26,7 +26,8 @@ RUN go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest && \
     go install -v github.com/projectdiscovery/katana/cmd/katana@latest && \
     go install -v github.com/tomnomnom/assetfinder@latest && \
     go install -v github.com/ffuf/ffuf/v2@latest && \
-    go install -v github.com/d3mondev/puredns/v2@latest
+    go install -v github.com/d3mondev/puredns/v2@latest && \
+    go install -v github.com/yyhuni/xingfinger@latest
 
 # 安装 Amass v5（禁用 CGO 以跳过 libpostal 依赖）
 RUN CGO_ENABLED=0 go install -v github.com/owasp-amass/amass/v5/cmd/amass@main

@@ -169,26 +169,23 @@ def parse_enabled_tools_from_dict(
             )
         
         if enabled_value:
-            # 检查 timeout 必需参数
-            if 'timeout' not in config:
-                raise ValueError(f"工具 {name} 缺少必需参数 'timeout'")
+            # timeout 默认为 'auto'，由具体 Flow 自动计算
+            timeout_value = config.get('timeout', 'auto')
             
             # 验证 timeout 值的有效性
-            timeout_value = config['timeout']
-            
-            if timeout_value == 'auto':
-                # 允许 'auto'，由具体 Flow 处理
-                pass
-            elif isinstance(timeout_value, int):
-                if timeout_value <= 0:
-                    raise ValueError(f"工具 {name} 的 timeout 参数无效（{timeout_value}），必须大于0")
-            else:
-                raise ValueError(
-                    f"工具 {name} 的 timeout 参数类型错误：期望 int 或 'auto'，实际 {type(timeout_value).__name__}"
-                )
+            if timeout_value != 'auto':
+                if isinstance(timeout_value, int):
+                    if timeout_value <= 0:
+                        raise ValueError(f"工具 {name} 的 timeout 参数无效（{timeout_value}），必须大于0")
+                else:
+                    raise ValueError(
+                        f"工具 {name} 的 timeout 参数类型错误：期望 int 或 'auto'，实际 {type(timeout_value).__name__}"
+                    )
             
             # 将配置 key 中划线转为下划线，统一给下游代码使用
-            enabled_tools[name] = _normalize_config_keys(config)
+            normalized_config = _normalize_config_keys(config)
+            normalized_config['timeout'] = timeout_value  # 确保 timeout 存在
+            enabled_tools[name] = normalized_config
     
     logger.info(f"扫描类型: {scan_type}, 启用工具: {len(enabled_tools)}/{len(tools)}")
     

@@ -80,6 +80,14 @@ site_scan:
       # request-timeout: 10  # 单个请求超时秒数（默认 10）
       # retries: 2           # 请求失败重试次数
 
+# ==================== 指纹识别 ====================
+# 在 site_scan 后串行执行，识别 WebSite 的技术栈
+fingerprint_detect:
+  tools:
+    xingfinger:
+      enabled: true
+      fingerprint-libs: [ehole]  # 启用的指纹库：ehole, goby, wappalyzer, fingers, fingerprinthub
+
 # ==================== 目录扫描 ====================
 directory_scan:
   tools:

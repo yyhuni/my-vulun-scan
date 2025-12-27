@@ -225,12 +225,34 @@ VULN_SCAN_COMMANDS = {
 }
 
 
+# ==================== 指纹识别 ====================
+
+FINGERPRINT_DETECT_COMMANDS = {
+    'xingfinger': {
+        # 流式输出模式（不使用 -o，输出到 stdout）
+        # -f: URL 列表文件输入
+        # -s: 静默模式，只输出命中结果（JSON 格式，每行一条）
+        'base': "xingfinger -f '{urls_file}' -s",
+        'optional': {
+            # 自定义指纹库路径（当前只实现 ehole，以后扩展其他）
+            'ehole': '--ehole {ehole}',
+            # 以后扩展：
+            # 'goby': '--goby {goby}',
+            # 'wappalyzer': '--wappalyzer {wappalyzer}',
+            # 'fingers': '--fingers {fingers}',
+            # 'fingerprinthub': '--fingerprint {fingerprinthub}',
+        }
+    },
+}
+
+
 # ==================== 工具映射 ====================
 
 COMMAND_TEMPLATES = {
     'subdomain_discovery': SUBDOMAIN_DISCOVERY_COMMANDS,
     'port_scan': PORT_SCAN_COMMANDS,
     'site_scan': SITE_SCAN_COMMANDS,
+    'fingerprint_detect': FINGERPRINT_DETECT_COMMANDS,
     'directory_scan': DIRECTORY_SCAN_COMMANDS,
     'url_fetch': URL_FETCH_COMMANDS,
     'vuln_scan': VULN_SCAN_COMMANDS,
@@ -242,7 +264,7 @@ COMMAND_TEMPLATES = {
 EXECUTION_STAGES = [
     {
         'mode': 'sequential',
-        'flows': ['subdomain_discovery', 'port_scan', 'site_scan']
+        'flows': ['subdomain_discovery', 'port_scan', 'site_scan', 'fingerprint_detect']
     },
     {
         'mode': 'parallel',
