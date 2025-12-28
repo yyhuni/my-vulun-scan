@@ -17,6 +17,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   useCreateGobyFingerprint,
   useUpdateGobyFingerprint,
 } from "@/hooks/use-fingerprints"
@@ -35,6 +42,17 @@ interface FormData {
   rule: GobyRule[]
 }
 
+const LABEL_OPTIONS = [
+  { value: "title", label: "title" },
+  { value: "header", label: "header" },
+  { value: "body", label: "body" },
+  { value: "server", label: "server" },
+  { value: "banner", label: "banner" },
+  { value: "port", label: "port" },
+  { value: "protocol", label: "protocol" },
+  { value: "cert", label: "cert" },
+]
+
 export function GobyFingerprintDialog({
   open,
   onOpenChange,
@@ -51,12 +69,14 @@ export function GobyFingerprintDialog({
     handleSubmit,
     reset,
     control,
+    setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     defaultValues: {
       name: "",
       logic: "a",
-      rule: [{ label: "a", feature: "", is_equal: true }],
+      rule: [{ label: "title", feature: "", isEqual: true }],
     },
   })
 
@@ -72,13 +92,13 @@ export function GobyFingerprintDialog({
         logic: fingerprint.logic,
         rule: fingerprint.rule.length > 0 
           ? fingerprint.rule 
-          : [{ label: "a", feature: "", is_equal: true }],
+          : [{ label: "title", feature: "", isEqual: true }],
       })
     } else {
       reset({
         name: "",
         logic: "a",
-        rule: [{ label: "a", feature: "", is_equal: true }],
+        rule: [{ label: "title", feature: "", isEqual: true }],
       })
     }
   }, [fingerprint, reset])
@@ -111,98 +131,108 @@ export function GobyFingerprintDialog({
   }
 
   const addRule = () => {
-    const nextLabel = String.fromCharCode(97 + fields.length) // a, b, c, ...
-    append({ label: nextLabel, feature: "", is_equal: true })
+    const nextLabel = String.fromCharCode(97 + fields.length)
+    append({ label: "title", feature: "", isEqual: true })
   }
+
+  const watchedRules = watch("rule")
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "编辑指纹" : "添加指纹"}</DialogTitle>
+          <DialogTitle>{isEdit ? "编辑 Goby 指纹" : "添加 Goby 指纹"}</DialogTitle>
           <DialogDescription>
-            {isEdit ? "修改 Goby 指纹规则" : "添加新的 Goby 指纹规则"}
+            {isEdit ? "修改指纹规则配置" : "添加新的指纹规则"}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">产品名称 *</Label>
-            <Input
-              id="name"
-              placeholder="如：Apache、Nginx"
-              {...register("name", { required: "产品名称不能为空" })}
-            />
-            {errors.name && (
-              <p className="text-sm text-destructive">{errors.name.message}</p>
-            )}
+          {/* 产品名称 & 逻辑表达式 */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">产品名称 *</Label>
+              <Input
+                id="name"
+                placeholder="如：Apache、Nginx"
+                {...register("name", { required: "产品名称不能为空" })}
+              />
+              {errors.name && (
+                <p className="text-sm text-destructive">{errors.name.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="logic">逻辑表达式 *</Label>
+              <Input
+                id="logic"
+                placeholder="如：a||b、(a&&b)||c"
+                {...register("logic", { required: "逻辑表达式不能为空" })}
+              />
+              {errors.logic && (
+                <p className="text-sm text-destructive">{errors.logic.message}</p>
+              )}
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="logic">逻辑表达式 *</Label>
-            <Input
-              id="logic"
-              placeholder="如：a||b、(a&&b)||c"
-              {...register("logic", { required: "逻辑表达式不能为空" })}
-            />
-            <p className="text-xs text-muted-foreground">
-              使用 && 表示 AND，|| 表示 OR，支持括号
-            </p>
-            {errors.logic && (
-              <p className="text-sm text-destructive">{errors.logic.message}</p>
-            )}
-          </div>
+          <p className="text-xs text-muted-foreground">
+            逻辑表达式：&& 表示 AND，|| 表示 OR，支持括号分组
+          </p>
 
+          {/* 规则列表 */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label>规则列表 *</Label>
               <Button type="button" variant="outline" size="sm" onClick={addRule}>
-                <IconPlus className="h-4 w-4 mr-1" />
+                <IconPlus className="h-4 w-4" />
                 添加规则
               </Button>
             </div>
             
-            <div className="space-y-3">
+            <div className="space-y-2">
               {fields.map((field, index) => (
-                <div key={field.id} className="flex items-start gap-2 p-3 border rounded-md">
-                  <div className="flex-shrink-0 w-16">
-                    <Label className="text-xs">标签</Label>
-                    <Input
-                      {...register(`rule.${index}.label` as const, { required: true })}
-                      placeholder="a"
-                      className="h-8"
-                    />
+                <div key={field.id} className="flex items-center gap-2 p-3 border rounded-md bg-muted/30">
+                  <div className="w-24">
+                    <Select 
+                      value={watchedRules[index]?.label || "title"} 
+                      onValueChange={(v) => setValue(`rule.${index}.label`, v)}
+                    >
+                      <SelectTrigger className="h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LABEL_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="flex-1">
-                    <Label className="text-xs">特征</Label>
                     <Input
                       {...register(`rule.${index}.feature` as const, { required: true })}
-                      placeholder="匹配特征字符串"
+                      placeholder="匹配特征"
                       className="h-8"
                     />
                   </div>
-                  <div className="flex-shrink-0 flex flex-col items-center gap-1">
-                    <Label className="text-xs">匹配</Label>
+                  <div className="flex items-center gap-1">
                     <Checkbox
-                      checked={field.is_equal}
-                      onCheckedChange={(checked) => {
-                        const newRule = [...fields]
-                        newRule[index] = { ...newRule[index], is_equal: !!checked }
-                      }}
-                      {...register(`rule.${index}.is_equal` as const)}
+                      checked={watchedRules[index]?.isEqual ?? true}
+                      onCheckedChange={(checked) => setValue(`rule.${index}.isEqual`, !!checked)}
                     />
+                    <span className="text-xs text-muted-foreground">匹配</span>
                   </div>
-                  <div className="flex-shrink-0 pt-5">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => remove(index)}
-                      disabled={fields.length <= 1}
-                    >
-                      <IconTrash className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => remove(index)}
+                    disabled={fields.length <= 1}
+                    className="h-8 w-8 p-0"
+                  >
+                    <IconTrash className="h-4 w-4 text-destructive" />
+                  </Button>
                 </div>
               ))}
             </div>

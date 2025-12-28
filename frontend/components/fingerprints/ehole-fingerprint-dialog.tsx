@@ -31,7 +31,7 @@ import type { EholeFingerprint } from "@/types/fingerprint.types"
 interface EholeFingerprintDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  fingerprint?: EholeFingerprint | null  // 编辑时传入
+  fingerprint?: EholeFingerprint | null
   onSuccess?: () => void
 }
 
@@ -39,7 +39,7 @@ interface FormData {
   cms: string
   method: string
   location: string
-  keyword: string  // 逗号分隔的字符串
+  keyword: string
   type: string
   isImportant: boolean
 }
@@ -86,7 +86,6 @@ export function EholeFingerprintDialog({
     },
   })
 
-  // 编辑时填充表单
   useEffect(() => {
     if (fingerprint) {
       reset({
@@ -110,7 +109,6 @@ export function EholeFingerprintDialog({
   }, [fingerprint, reset])
 
   const onSubmit = async (data: FormData) => {
-    // 解析 keyword 字符串为数组
     const keywordArray = data.keyword
       .split(",")
       .map((k) => k.trim())
@@ -151,11 +149,11 @@ export function EholeFingerprintDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "编辑指纹" : "添加指纹"}</DialogTitle>
+          <DialogTitle>{isEdit ? "编辑 EHole 指纹" : "添加 EHole 指纹"}</DialogTitle>
           <DialogDescription>
-            {isEdit ? "修改 EHole 指纹规则" : "添加新的 EHole 指纹规则"}
+            {isEdit ? "修改指纹规则配置" : "添加新的指纹规则"}
           </DialogDescription>
         </DialogHeader>
 
@@ -176,7 +174,7 @@ export function EholeFingerprintDialog({
           {/* 匹配方式 & 匹配位置 */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>匹配方式</Label>
+              <Label>匹配方式 *</Label>
               <Select value={method} onValueChange={(v) => setValue("method", v)}>
                 <SelectTrigger>
                   <SelectValue />
@@ -192,7 +190,7 @@ export function EholeFingerprintDialog({
             </div>
 
             <div className="space-y-2">
-              <Label>匹配位置</Label>
+              <Label>匹配位置 *</Label>
               <Select value={location} onValueChange={(v) => setValue("location", v)}>
                 <SelectTrigger>
                   <SelectValue />
@@ -213,7 +211,7 @@ export function EholeFingerprintDialog({
             <Label htmlFor="keyword">关键词 *</Label>
             <Input
               id="keyword"
-              placeholder="多个关键词用逗号分隔，如：wp-content, wp-includes"
+              placeholder="多个关键词用逗号分隔"
               {...register("keyword", { required: "关键词不能为空" })}
             />
             {errors.keyword && (
@@ -224,26 +222,30 @@ export function EholeFingerprintDialog({
             </p>
           </div>
 
-          {/* 类型 */}
-          <div className="space-y-2">
-            <Label htmlFor="type">类型</Label>
-            <Input
-              id="type"
-              placeholder="如：CMS、Server、Framework"
-              {...register("type")}
-            />
-          </div>
+          {/* 类型 & 重点资产 */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="type">类型</Label>
+              <Input
+                id="type"
+                placeholder="如：CMS、Server"
+                {...register("type")}
+              />
+            </div>
 
-          {/* 重点资产 */}
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="isImportant"
-              checked={isImportant}
-              onCheckedChange={(checked) => setValue("isImportant", !!checked)}
-            />
-            <Label htmlFor="isImportant" className="cursor-pointer">
-              标记为重点资产
-            </Label>
+            <div className="space-y-2">
+              <Label>标记</Label>
+              <div className="flex items-center space-x-2 h-9">
+                <Checkbox
+                  id="isImportant"
+                  checked={isImportant}
+                  onCheckedChange={(checked) => setValue("isImportant", !!checked)}
+                />
+                <Label htmlFor="isImportant" className="cursor-pointer font-normal">
+                  重点资产
+                </Label>
+              </div>
+            </div>
           </div>
 
           <DialogFooter>

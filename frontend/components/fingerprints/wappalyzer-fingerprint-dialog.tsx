@@ -30,15 +30,17 @@ interface WappalyzerFingerprintDialogProps {
 
 interface FormData {
   name: string
-  cats: string  // 逗号分隔的数字
+  cats: string
   description: string
   website: string
   cpe: string
-  cookies: string  // JSON 字符串
-  headers: string  // JSON 字符串
-  scriptSrc: string  // 逗号分隔
-  html: string  // 逗号分隔
-  implies: string  // 逗号分隔
+  cookies: string
+  headers: string
+  scriptSrc: string
+  js: string
+  meta: string
+  html: string
+  implies: string
 }
 
 export function WappalyzerFingerprintDialog({
@@ -67,6 +69,8 @@ export function WappalyzerFingerprintDialog({
       cookies: "{}",
       headers: "{}",
       scriptSrc: "",
+      js: "",
+      meta: "{}",
       html: "",
       implies: "",
     },
@@ -83,6 +87,8 @@ export function WappalyzerFingerprintDialog({
         cookies: JSON.stringify(fingerprint.cookies || {}, null, 2),
         headers: JSON.stringify(fingerprint.headers || {}, null, 2),
         scriptSrc: fingerprint.scriptSrc?.join(", ") || "",
+        js: fingerprint.js?.join(", ") || "",
+        meta: JSON.stringify(fingerprint.meta || {}, null, 2),
         html: fingerprint.html?.join(", ") || "",
         implies: fingerprint.implies?.join(", ") || "",
       })
@@ -96,6 +102,8 @@ export function WappalyzerFingerprintDialog({
         cookies: "{}",
         headers: "{}",
         scriptSrc: "",
+        js: "",
+        meta: "{}",
         html: "",
         implies: "",
       })
@@ -128,10 +136,10 @@ export function WappalyzerFingerprintDialog({
       cookies: parseJson(data.cookies),
       headers: parseJson(data.headers),
       scriptSrc: parseArray(data.scriptSrc),
+      js: parseArray(data.js),
+      meta: parseJson(data.meta),
       html: parseArray(data.html),
       implies: parseArray(data.implies),
-      js: [] as string[],
-      meta: {} as Record<string, string[]>,
     }
 
     try {
@@ -153,13 +161,14 @@ export function WappalyzerFingerprintDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "编辑指纹" : "添加指纹"}</DialogTitle>
+          <DialogTitle>{isEdit ? "编辑 Wappalyzer 指纹" : "添加 Wappalyzer 指纹"}</DialogTitle>
           <DialogDescription>
-            {isEdit ? "修改 Wappalyzer 指纹规则" : "添加新的 Wappalyzer 指纹规则"}
+            {isEdit ? "修改指纹规则配置" : "添加新的指纹规则"}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {/* 基本信息 */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="name">应用名称 *</Label>
@@ -180,18 +189,7 @@ export function WappalyzerFingerprintDialog({
                 placeholder="如：1, 6, 12"
                 {...register("cats")}
               />
-              <p className="text-xs text-muted-foreground">多个 ID 用逗号分隔</p>
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description">描述</Label>
-            <Textarea
-              id="description"
-              placeholder="应用描述"
-              rows={2}
-              {...register("description")}
-            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -215,54 +213,97 @@ export function WappalyzerFingerprintDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="cookies">Cookies 检测规则 (JSON)</Label>
+            <Label htmlFor="description">描述</Label>
             <Textarea
-              id="cookies"
-              placeholder='{"cookie_name": "pattern"}'
+              id="description"
+              placeholder="应用描述"
               rows={2}
-              className="font-mono text-sm"
-              {...register("cookies")}
+              {...register("description")}
             />
           </div>
 
+          {/* 检测规则 */}
+          <div className="space-y-1">
+            <Label className="text-sm font-medium">检测规则</Label>
+            <p className="text-xs text-muted-foreground">JSON 格式使用对象，数组格式用逗号分隔</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="cookies">Cookies (JSON)</Label>
+              <Textarea
+                id="cookies"
+                placeholder='{"name": "pattern"}'
+                rows={2}
+                className="font-mono text-xs"
+                {...register("cookies")}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="headers">Headers (JSON)</Label>
+              <Textarea
+                id="headers"
+                placeholder='{"X-Powered-By": "pattern"}'
+                rows={2}
+                className="font-mono text-xs"
+                {...register("headers")}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="scriptSrc">Script URL</Label>
+              <Input
+                id="scriptSrc"
+                placeholder="pattern1, pattern2"
+                className="font-mono text-xs"
+                {...register("scriptSrc")}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="js">JS 变量</Label>
+              <Input
+                id="js"
+                placeholder="window.var1, window.var2"
+                className="font-mono text-xs"
+                {...register("js")}
+              />
+            </div>
+          </div>
+
           <div className="space-y-2">
-            <Label htmlFor="headers">Headers 检测规则 (JSON)</Label>
+            <Label htmlFor="meta">Meta 标签 (JSON)</Label>
             <Textarea
-              id="headers"
-              placeholder='{"header-name": "pattern"}'
+              id="meta"
+              placeholder='{"generator": ["pattern"]}'
               rows={2}
-              className="font-mono text-sm"
-              {...register("headers")}
+              className="font-mono text-xs"
+              {...register("meta")}
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="scriptSrc">Script URL 正则</Label>
-            <Input
-              id="scriptSrc"
-              placeholder="pattern1, pattern2"
-              {...register("scriptSrc")}
-            />
-            <p className="text-xs text-muted-foreground">多个正则用逗号分隔</p>
-          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="html">HTML 内容</Label>
+              <Input
+                id="html"
+                placeholder="pattern1, pattern2"
+                className="font-mono text-xs"
+                {...register("html")}
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="html">HTML 内容正则</Label>
-            <Input
-              id="html"
-              placeholder="pattern1, pattern2"
-              {...register("html")}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="implies">依赖关系</Label>
-            <Input
-              id="implies"
-              placeholder="PHP, MySQL"
-              {...register("implies")}
-            />
-            <p className="text-xs text-muted-foreground">多个依赖用逗号分隔</p>
+            <div className="space-y-2">
+              <Label htmlFor="implies">依赖</Label>
+              <Input
+                id="implies"
+                placeholder="PHP, MySQL"
+                {...register("implies")}
+              />
+            </div>
           </div>
 
           <DialogFooter>
