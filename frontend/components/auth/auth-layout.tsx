@@ -12,11 +12,23 @@ import { Suspense } from "react"
 import { useAuth } from "@/hooks/use-auth"
 import { useRouter } from "next/navigation"
 
-// Public routes that don't require authentication
+// Public routes that don't require authentication (without locale prefix)
 const PUBLIC_ROUTES = ["/login"]
 
 interface AuthLayoutProps {
   children: React.ReactNode
+}
+
+/**
+ * Check if the current path is a public route
+ * Handles internationalized paths like /en/login, /zh/login
+ */
+function isPublicPath(pathname: string): boolean {
+  // Remove locale prefix (e.g., /en/login -> /login, /zh/login -> /login)
+  const pathWithoutLocale = pathname.replace(/^\/[a-z]{2}(?=\/|$)/, '')
+  return PUBLIC_ROUTES.some((route) => 
+    pathWithoutLocale === route || pathWithoutLocale.startsWith(`${route}/`)
+  )
 }
 
 /**
@@ -30,9 +42,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
   const tCommon = useTranslations("common")
 
   // Check if it's a public route (login page)
-  const isPublicRoute = PUBLIC_ROUTES.some((route) => 
-    pathname.startsWith(route)
-  )
+  const isPublicRoute = isPublicPath(pathname)
 
   // Redirect to login page if not authenticated (useEffect must be before all conditional returns)
   React.useEffect(() => {
