@@ -187,6 +187,17 @@
       "loading": "Loading",
       "commandDialog": "Command Dialog"
     },
+    "dropzone": {
+      "uploadFile": "Upload file",
+      "uploadFiles": "Upload files",
+      "dragOrClick": "Drag files here or click to select",
+      "dragOrClickReplace": "Drag or click to replace files",
+      "moreFiles": "{files} and {count} more files",
+      "supports": "Supports",
+      "minimum": "minimum",
+      "maximum": "maximum",
+      "sizeBetween": "size between {min} and {max}"
+    },
     "status": {
       "loading": "Loading...",
       "pageLoading": "Loading page...",

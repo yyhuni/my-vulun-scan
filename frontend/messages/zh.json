@@ -187,6 +187,17 @@
       "loading": "加载中",
       "commandDialog": "命令对话框"
     },
+    "dropzone": {
+      "uploadFile": "上传文件",
+      "uploadFiles": "上传文件",
+      "dragOrClick": "拖拽文件到此处或点击选择",
+      "dragOrClickReplace": "拖拽或点击替换文件",
+      "moreFiles": "{files} 等 {count} 个文件",
+      "supports": "支持",
+      "minimum": "最小",
+      "maximum": "最大",
+      "sizeBetween": "大小在 {min} 到 {max} 之间"
+    },
     "status": {
       "loading": "加载中...",
       "pageLoading": "页面加载中...",

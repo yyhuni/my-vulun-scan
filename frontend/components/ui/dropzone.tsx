@@ -5,6 +5,7 @@ import type { ReactNode } from 'react'
 import { createContext, useContext } from 'react'
 import type { DropEvent, DropzoneOptions, FileRejection } from 'react-dropzone'
 import { useDropzone } from 'react-dropzone'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -121,6 +122,7 @@ export const DropzoneContent = ({
   className,
 }: DropzoneContentProps) => {
   const { src } = useDropzoneContext()
+  const t = useTranslations("common.dropzone")
 
   if (!src || src.length === 0) {
     return null
@@ -137,11 +139,11 @@ export const DropzoneContent = ({
       </div>
       <p className="my-2 w-full truncate font-medium text-sm">
         {src.length > maxLabelItems
-          ? `${src.slice(0, maxLabelItems).map((file) => file.name).join(', ')} and ${src.length - maxLabelItems} more files`
+          ? t("moreFiles", { files: src.slice(0, maxLabelItems).map((file) => file.name).join(', '), count: src.length - maxLabelItems })
           : src.map((file) => file.name).join(', ')}
       </p>
       <p className="w-full text-wrap text-muted-foreground text-xs">
-        Drag or click to replace files
+        {t("dragOrClickReplace")}
       </p>
     </div>
   )
@@ -157,6 +159,7 @@ export const DropzoneEmptyState = ({
   className,
 }: DropzoneEmptyStateProps) => {
   const { src, accept, maxSize, minSize, maxFiles } = useDropzoneContext()
+  const t = useTranslations("common.dropzone")
 
   if (src && src.length > 0) {
     return null
@@ -169,16 +172,16 @@ export const DropzoneEmptyState = ({
   let caption = ''
 
   if (accept) {
-    caption += 'Supports '
+    caption += t("supports") + ' '
     caption += Object.keys(accept).join(', ')
   }
 
   if (minSize && maxSize) {
-    caption += ` size between ${renderBytes(minSize)} and ${renderBytes(maxSize)}`
+    caption += ` ${t("sizeBetween", { min: renderBytes(minSize), max: renderBytes(maxSize) })}`
   } else if (minSize) {
-    caption += ` minimum ${renderBytes(minSize)}`
+    caption += ` ${t("minimum")} ${renderBytes(minSize)}`
   } else if (maxSize) {
-    caption += ` maximum ${renderBytes(maxSize)}`
+    caption += ` ${t("maximum")} ${renderBytes(maxSize)}`
   }
 
   return (
@@ -187,10 +190,10 @@ export const DropzoneEmptyState = ({
         <UploadIcon size={16} />
       </div>
       <p className="my-2 w-full truncate text-wrap font-medium text-sm">
-        Upload {maxFiles === 1 ? 'file' : 'files'}
+        {maxFiles === 1 ? t("uploadFile") : t("uploadFiles")}
       </p>
       <p className="w-full truncate text-wrap text-muted-foreground text-xs">
-        Drag files here or click to select
+        {t("dragOrClick")}
       </p>
       {caption && (
         <p className="text-wrap text-muted-foreground text-xs mt-1">{caption}</p>
