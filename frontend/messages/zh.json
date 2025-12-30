@@ -1160,7 +1160,15 @@
       "message": "消息",
       "timestamp": "时间",
       "source": "来源",
-      "noContent": "（暂无日志内容）"
+      "noContent": "（暂无日志内容）",
+      "toolbar": {
+        "logFile": "日志",
+        "selectFile": "选择日志文件",
+        "lines": "行数",
+        "autoRefresh": "自动刷新",
+        "systemLogsGroup": "系统日志",
+        "containerLogsGroup": "容器日志"
+      }
     },
     "notifications": {
       "title": "通知设置",

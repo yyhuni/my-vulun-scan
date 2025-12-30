@@ -7,6 +7,6 @@
 """
 
 from .auth_views import LoginView, LogoutView, MeView, ChangePasswordView
-from .system_log_views import SystemLogsView
+from .system_log_views import SystemLogsView, SystemLogFilesView
 
-__all__ = ['LoginView', 'LogoutView', 'MeView', 'ChangePasswordView', 'SystemLogsView']
+__all__ = ['LoginView', 'LogoutView', 'MeView', 'ChangePasswordView', 'SystemLogsView', 'SystemLogFilesView']

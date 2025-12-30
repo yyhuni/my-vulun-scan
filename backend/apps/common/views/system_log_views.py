@@ -22,6 +22,49 @@ logger = logging.getLogger(__name__)
 
 
 @method_decorator(csrf_exempt, name="dispatch")
+class SystemLogFilesView(APIView):
+    """
+    日志文件列表 API 视图
+    
+    GET /api/system/logs/files/
+        获取所有可用的日志文件列表
+        
+    Response:
+        {
+            "files": [
+                {
+                    "filename": "xingrin.log",
+                    "category": "system",
+                    "size": 1048576,
+                    "modifiedAt": "2025-01-15T10:30:00+00:00"
+                },
+                ...
+            ]
+        }
+    """
+    
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.service = SystemLogService()
+
+    def get(self, request):
+        """获取日志文件列表"""
+        try:
+            files = self.service.get_log_files()
+            return success_response(data={"files": files})
+        except Exception:
+            logger.exception("获取日志文件列表失败")
+            return error_response(
+                code=ErrorCodes.SERVER_ERROR,
+                message='Failed to get log files',
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+@method_decorator(csrf_exempt, name="dispatch")
 class SystemLogsView(APIView):
     """
     系统日志 API 视图
@@ -30,6 +73,7 @@ class SystemLogsView(APIView):
         获取系统日志内容
         
     Query Parameters:
+        file (str, optional): 日志文件名，默认 xingrin.log
         lines (int, optional): 返回的日志行数，默认 200，最大 10000
         
     Response:
@@ -54,21 +98,28 @@ class SystemLogsView(APIView):
         """
         获取系统日志
         
-        支持通过 lines 参数控制返回行数，用于前端分页或实时刷新场景。
+        支持通过 file 和 lines 参数控制返回内容。
         """
         try:
-            # 解析 lines 参数
+            # 解析参数
+            filename = request.query_params.get("file")
             lines_raw = request.query_params.get("lines")
             lines = int(lines_raw) if lines_raw is not None else None
 
             # 调用服务获取日志内容
-            content = self.service.get_logs_content(lines=lines)
+            content = self.service.get_logs_content(filename=filename, lines=lines)
             return success_response(data={"content": content})
-        except ValueError:
+        except ValueError as e:
             return error_response(
                 code=ErrorCodes.VALIDATION_ERROR,
-                message='lines must be an integer',
+                message=str(e) if 'file' in str(e).lower() else 'lines must be an integer',
                 status_code=status.HTTP_400_BAD_REQUEST
+            )
+        except FileNotFoundError as e:
+            return error_response(
+                code=ErrorCodes.NOT_FOUND,
+                message=str(e),
+                status_code=status.HTTP_404_NOT_FOUND
             )
         except Exception:
             logger.exception("获取系统日志失败")

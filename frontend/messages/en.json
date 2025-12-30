@@ -1160,7 +1160,15 @@
       "message": "Message",
       "timestamp": "Timestamp",
       "source": "Source",
-      "noContent": "(No log content)"
+      "noContent": "(No log content)",
+      "toolbar": {
+        "logFile": "Log",
+        "selectFile": "Select log file",
+        "lines": "Lines",
+        "autoRefresh": "Auto Refresh",
+        "systemLogsGroup": "System Logs",
+        "containerLogsGroup": "Container Logs"
+      }
     },
     "notifications": {
       "title": "Notification Settings",

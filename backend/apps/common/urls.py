@@ -7,7 +7,7 @@
 """
 
 from django.urls import path
-from .views import LoginView, LogoutView, MeView, ChangePasswordView, SystemLogsView
+from .views import LoginView, LogoutView, MeView, ChangePasswordView, SystemLogsView, SystemLogFilesView
 
 urlpatterns = [
     # 认证相关
@@ -18,4 +18,5 @@ urlpatterns = [
     
     # 系统管理
     path('system/logs/', SystemLogsView.as_view(), name='system-logs'),
+    path('system/logs/files/', SystemLogFilesView.as_view(), name='system-log-files'),
 ]
