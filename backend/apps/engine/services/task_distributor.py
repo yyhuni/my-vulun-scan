@@ -46,10 +46,10 @@ import logging
 import time
 from typing import Optional, Dict, Any
 
+import paramiko
 from django.conf import settings
 
 from apps.engine.models import WorkerNode
-from apps.engine.services.docker_client_manager import DockerClientManager
 
 logger = logging.getLogger(__name__)
 
@@ -79,8 +79,6 @@ class TaskDistributor:
         # 统一使用 /opt/xingrin 下的路径
         self.logs_mount = "/opt/xingrin/logs"
         self.submit_interval = getattr(settings, 'TASK_SUBMIT_INTERVAL', 5)
-        # Docker 客户端管理器
-        self.docker_manager = DockerClientManager()
     
     def get_online_workers(self) -> list[WorkerNode]:
         """
@@ -232,78 +230,6 @@ class TaskDistributor:
         
         return best_worker
     
-    def _build_container_command(self, script_module: str, script_args: Dict[str, Any]) -> list:
-        """构建容器命令
-        
-        Args:
-            script_module: Python 模块路径（如 'apps.scan.scripts.run_initiate_scan'）
-            script_args: 脚本参数字典
-            
-        Returns:
-            命令列表（如 ['python', '-m', 'script', '--arg=value']）
-        """
-        import shlex
-        
-        # 日志文件路径（容器内）
-        log_file = f"{self.logs_mount}/container_{script_module.split('.')[-1]}.log"
-        
-        # 构建参数列表（使用 shlex.quote 转义特殊字符）
-        args = [f"--{k}={shlex.quote(str(v))}" for k, v in script_args.items()]
-        
-        # 完整命令：日志轮转 + 执行脚本
-        command = [
-            'sh', '-c',
-            f'tail -n 10000 {log_file} > {log_file}.tmp 2>/dev/null; '
-            f'mv {log_file}.tmp {log_file} 2>/dev/null; '
-            f'python -m {script_module} {" ".join(args)} >> {log_file} 2>&1'
-        ]
-        
-        return command
-    
-    def _build_container_environment(self, worker: WorkerNode) -> Dict[str, str]:
-        """构建容器环境变量
-        
-        Args:
-            worker: Worker 节点
-            
-        Returns:
-            环境变量字典
-        """
-        # 根据 Worker 类型确定 Server 地址
-        if worker.is_local:
-            # 本地：使用 Docker 网络内部服务名
-            server_url = f"http://server:{settings.SERVER_PORT}"
-        else:
-            # 远程：通过 Nginx 反向代理访问
-            server_url = f"https://{settings.PUBLIC_HOST}:{settings.PUBLIC_PORT}"
-        
-        is_local_str = "true" if worker.is_local else "false"
-        
-        return {
-            'SERVER_URL': server_url,
-            'IS_LOCAL': is_local_str,
-            'PREFECT_HOME': '/tmp/.prefect',
-            'PREFECT_SERVER_EPHEMERAL_ENABLED': 'true',
-            'PREFECT_SERVER_EPHEMERAL_STARTUP_TIMEOUT_SECONDS': '120',
-            'PREFECT_SERVER_DATABASE_CONNECTION_URL': 'sqlite+aiosqlite:////tmp/.prefect/prefect.db',
-            'PREFECT_LOGGING_LEVEL': 'WARNING',
-        }
-    
-    def _build_container_volumes(self) -> Dict[str, Dict[str, str]]:
-        """构建容器挂载卷
-        
-        Returns:
-            挂载卷配置字典
-        """
-        host_xingrin_dir = "/opt/xingrin"
-        
-        return {
-            host_xingrin_dir: {
-                'bind': host_xingrin_dir,
-                'mode': 'rw'
-            }
-        }
-    
     def _wait_for_submit_interval(self):
         """
         等待任务提交间隔（后台线程中执行，不阻塞 API）
@@ -316,6 +242,205 @@ class TaskDistributor:
             if elapsed < self.submit_interval:
                 time.sleep(self.submit_interval - elapsed)
         TaskDistributor._last_submit_time = time.time()
+    
+    def _build_docker_command(
+        self,
+        worker: WorkerNode,
+        script_module: str,
+        script_args: Dict[str, Any],
+    ) -> str:
+        """
+        构建 docker run 命令
+        
+        容器只需要 SERVER_URL，启动后从配置中心获取完整配置。
+        
+        Args:
+            worker: 目标 Worker（用于区分本地/远程网络）
+            script_module: 脚本模块路径（如 apps.scan.scripts.run_initiate_scan）
+            script_args: 脚本参数（会转换为命令行参数）
+        
+        Returns:
+            完整的 docker run 命令
+        """
+        import shlex
+        
+        # 根据 Worker 类型确定网络和 Server 地址
+        if worker.is_local:
+            # 本地：加入 Docker 网络，使用内部服务名
+            network_arg = f"--network {settings.DOCKER_NETWORK_NAME}"
+            server_url = f"http://server:{settings.SERVER_PORT}"
+        else:
+            # 远程：通过 Nginx 反向代理访问（HTTPS，不直连 8888 端口）
+            network_arg = ""
+            server_url = f"https://{settings.PUBLIC_HOST}:{settings.PUBLIC_PORT}"
+        
+        # 挂载路径（统一挂载 /opt/xingrin，扫描工具在 /opt/xingrin-tools/bin 不受影响）
+        host_xingrin_dir = "/opt/xingrin"
+        
+        # 环境变量：SERVER_URL + IS_LOCAL，其他配置容器启动时从配置中心获取
+        # IS_LOCAL 用于 Worker 向配置中心声明身份，决定返回的数据库地址
+        # Prefect 本地模式配置：启用 ephemeral server（本地临时服务器）
+        is_local_str = "true" if worker.is_local else "false"
+        env_vars = [
+            f"-e SERVER_URL={shlex.quote(server_url)}",
+            f"-e IS_LOCAL={is_local_str}",
+            "-e PREFECT_HOME=/tmp/.prefect",  # 设置 Prefect 数据目录到可写位置
+            "-e PREFECT_SERVER_EPHEMERAL_ENABLED=true",  # 启用 ephemeral server（本地临时服务器）
+            "-e PREFECT_SERVER_EPHEMERAL_STARTUP_TIMEOUT_SECONDS=120",  # 增加启动超时时间
+            "-e PREFECT_SERVER_DATABASE_CONNECTION_URL=sqlite+aiosqlite:////tmp/.prefect/prefect.db",  # 使用 /tmp 下的 SQLite
+            "-e PREFECT_LOGGING_LEVEL=WARNING",  # 日志级别（减少 DEBUG 噪音）
+        ]
+        
+        # 挂载卷（统一挂载整个 /opt/xingrin 目录）
+        volumes = [
+            f"-v {host_xingrin_dir}:{host_xingrin_dir}",
+        ]
+        
+        # 构建命令行参数
+        # 使用 shlex.quote 处理特殊字符，确保参数在 shell 中正确解析
+        args_str = " ".join([f"--{k}={shlex.quote(str(v))}" for k, v in script_args.items()])
+        
+        # 日志文件路径（容器内），保留最近 10000 行
+        log_file = f"{self.logs_mount}/container_{script_module.split('.')[-1]}.log"
+        
+        # 构建内部命令（日志轮转 + 执行脚本）
+        inner_cmd = f'tail -n 10000 {log_file} > {log_file}.tmp 2>/dev/null; mv {log_file}.tmp {log_file} 2>/dev/null; python -m {script_module} {args_str} >> {log_file} 2>&1'
+        
+        # 完整命令
+        # 镜像拉取策略：--pull=missing
+        # - 本地 Worker：install.sh 已预拉取镜像，直接使用本地版本
+        # - 远程 Worker：deploy 时已预拉取镜像，直接使用本地版本
+        # - 避免每次任务都检查 Docker Hub，提升性能和稳定性
+        # 使用双引号包裹 sh -c 命令，内部 shlex.quote 生成的单引号参数可正确解析
+        cmd = f'''docker run --rm -d --pull=missing {network_arg} \
+            {' '.join(env_vars)} \
+            {' '.join(volumes)} \
+            {self.docker_image} \
+            sh -c "{inner_cmd}"'''
+        
+        return cmd
+    
+    def _execute_docker_command(
+        self,
+        worker: WorkerNode,
+        docker_cmd: str,
+    ) -> tuple[bool, str]:
+        """
+        在 Worker 上执行 docker run 命令
+        
+        docker run -d 会立即返回容器 ID，无需等待任务完成。
+        
+        Args:
+            worker: 目标 Worker
+            docker_cmd: docker run 命令
+        
+        Returns:
+            (success, container_id) 元组
+        """
+        logger.info("准备执行 Docker 命令 - Worker: %s, Local: %s", worker.name, worker.is_local)
+        logger.info("Docker 命令: %s", docker_cmd[:200] + '...' if len(docker_cmd) > 200 else docker_cmd)
+        
+        if worker.is_local:
+            return self._execute_local_docker(docker_cmd)
+        else:
+            return self._execute_ssh_docker(worker, docker_cmd)
+    
+    def _execute_local_docker(
+        self,
+        docker_cmd: str,
+    ) -> tuple[bool, str]:
+        """
+        在本地执行 docker run 命令
+        
+        docker run -d 立即返回容器 ID。
+        """
+        import subprocess
+        logger.info("开始执行本地 Docker 命令...")
+        try:
+            result = subprocess.run(
+                docker_cmd,
+                shell=True,
+                capture_output=True,
+                text=True,
+            )
+            
+            if result.returncode != 0:
+                logger.error(
+                    "本地 Docker 执行失败 - Exit: %d, Stderr: %s, Stdout: %s",
+                    result.returncode, result.stderr[:500], result.stdout[:500]
+                )
+                return False, result.stderr
+            
+            container_id = result.stdout.strip()
+            logger.info("本地 Docker 执行成功 - Container ID: %s", container_id[:12] if container_id else 'N/A')
+            return True, container_id
+            
+        except Exception as e:
+            logger.error("本地 Docker 执行异常: %s", e, exc_info=True)
+            return False, f"执行异常: {e}"
+    
+    def _execute_ssh_docker(
+        self,
+        worker: WorkerNode,
+        docker_cmd: str,
+    ) -> tuple[bool, str]:
+        """
+        在远程 Worker 上通过 SSH 执行 docker run 命令
+        
+        docker run -d 立即返回容器 ID，无需长时间等待。
+        
+        Args:
+            worker: 目标 Worker
+            docker_cmd: docker run 命令
+        
+        Returns:
+            (success, container_id) 元组
+        """
+        ssh = None
+        logger.info("开始 SSH Docker 执行 - Worker: %s (%s:%d)", worker.name, worker.ip_address, worker.ssh_port)
+        try:
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            
+            # 连接（SSH 连接超时 10 秒足够）
+            ssh.connect(
+                hostname=worker.ip_address,
+                port=worker.ssh_port,
+                username=worker.username,
+                password=worker.password if worker.password else None,
+                timeout=10,
+            )
+            logger.debug("SSH 连接成功 - Worker: %s", worker.name)
+            
+            # 执行 docker run（-d 模式立即返回）
+            stdin, stdout, stderr = ssh.exec_command(docker_cmd)
+            exit_code = stdout.channel.recv_exit_status()
+            
+            output = stdout.read().decode().strip()
+            error = stderr.read().decode().strip()
+            
+            if exit_code != 0:
+                logger.error(
+                    "SSH Docker 执行失败 - Worker: %s, Exit: %d, Stderr: %s, Stdout: %s",
+                    worker.name, exit_code, error[:500], output[:500]
+                )
+                return False, error
+            
+            logger.info("SSH Docker 执行成功 - Worker: %s, Container ID: %s", worker.name, output[:12] if output else 'N/A')
+            return True, output
+            
+        except paramiko.AuthenticationException as e:
+            logger.error("SSH 认证失败 - Worker: %s, Error: %s", worker.name, e)
+            return False, f"认证失败: {e}"
+        except paramiko.SSHException as e:
+            logger.error("SSH 连接错误 - Worker: %s, Error: %s", worker.name, e)
+            return False, f"SSH 错误: {e}"
+        except Exception as e:
+            logger.error("SSH Docker 执行异常 - Worker: %s, Error: %s", worker.name, e)
+            return False, f"执行异常: {e}"
+        finally:
+            if ssh:
+                ssh.close()
     
     def execute_scan_flow(
         self,
@@ -363,7 +488,7 @@ class TaskDistributor:
         if not worker:
             return False, "没有可用的 Worker", None, None
         
-        # 3. 构建容器配置
+        # 3. 构建 docker run 命令
         script_args = {
             'scan_id': scan_id,
             'target_name': target_name,
@@ -374,43 +499,25 @@ class TaskDistributor:
         if scheduled_scan_name:
             script_args['scheduled_scan_name'] = scheduled_scan_name
         
-        # 构建命令行参数
-        command = self._build_container_command(
+        docker_cmd = self._build_docker_command(
+            worker=worker,
             script_module='apps.scan.scripts.run_initiate_scan',
             script_args=script_args,
         )
-        
-        # 构建环境变量
-        environment = self._build_container_environment(worker)
-        
-        # 构建挂载卷
-        volumes = self._build_container_volumes()
-        
-        # 网络配置（只有本地 Worker 需要）
-        network = settings.DOCKER_NETWORK_NAME if worker.is_local else None
         
         logger.info(
             "提交扫描任务到 Worker: %s - Scan ID: %d, Target: %s",
             worker.name, scan_id, target_name
         )
         
-        # 4. 使用 Docker SDK 运行容器
-        success, output = self.docker_manager.run_container(
-            worker=worker,
-            image=self.docker_image,
-            command=command,
-            environment=environment,
-            volumes=volumes,
-            network=network,
-            detach=True,
-            remove=True,
-        )
+        # 4. 执行 docker run（本地直接执行，远程通过 SSH）
+        success, output = self._execute_docker_command(worker, docker_cmd)
         
         if success:
-            container_id = output  # SDK 返回完整容器 ID
+            container_id = output[:12] if output else None
             logger.info(
                 "扫描任务已提交 - Scan ID: %d, Worker: %s, Container: %s",
-                scan_id, worker.name, container_id[:12]
+                scan_id, worker.name, container_id
             )
             return True, f"任务已提交到 {worker.name}", container_id, worker.id
         else:
@@ -445,32 +552,20 @@ class TaskDistributor:
         
         for worker in workers:
             try:
-                # 构建容器配置
+                # 构建 docker run 命令（清理过期扫描结果目录）
                 script_args = {
                     'results_dir': '/opt/xingrin/results',
                     'retention_days': retention_days,
                 }
                 
-                command = self._build_container_command(
+                docker_cmd = self._build_docker_command(
+                    worker=worker,
                     script_module='apps.scan.scripts.run_cleanup',
                     script_args=script_args,
                 )
                 
-                environment = self._build_container_environment(worker)
-                volumes = self._build_container_volumes()
-                network = settings.DOCKER_NETWORK_NAME if worker.is_local else None
-                
-                # 使用 Docker SDK 运行容器
-                success, output = self.docker_manager.run_container(
-                    worker=worker,
-                    image=self.docker_image,
-                    command=command,
-                    environment=environment,
-                    volumes=volumes,
-                    network=network,
-                    detach=True,
-                    remove=True,
-                )
+                # 执行清理命令
+                success, output = self._execute_docker_command(worker, docker_cmd)
                 
                 results.append({
                     'worker_id': worker.id,
