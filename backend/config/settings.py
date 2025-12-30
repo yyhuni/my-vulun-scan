@@ -278,8 +278,8 @@ ENABLE_COMMAND_LOGGING = get_bool_env('ENABLE_COMMAND_LOGGING', True)
 # ==================== 数据目录配置（统一使用 /opt/xingrin） ====================
 # 所有数据目录统一挂载到 /opt/xingrin，便于管理和备份
 
-# 扫描工具基础路径
-SCAN_TOOLS_BASE_PATH = os.getenv('SCAN_TOOLS_PATH', '/opt/xingrin/tools')
+# 扫描工具基础路径（worker 容器内）
+SCAN_TOOLS_BASE_PATH = os.getenv('SCAN_TOOLS_PATH', '/usr/local/bin')
 
 # 字典文件基础路径
 WORDLISTS_BASE_PATH = os.getenv('WORDLISTS_PATH', '/opt/xingrin/wordlists')

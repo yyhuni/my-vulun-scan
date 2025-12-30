@@ -7,7 +7,7 @@
 from django.conf import settings
 
 # ==================== 路径配置 ====================
-SCAN_TOOLS_BASE_PATH = getattr(settings, 'SCAN_TOOLS_BASE_PATH', '/opt/xingrin/tools')
+SCAN_TOOLS_BASE_PATH = getattr(settings, 'SCAN_TOOLS_BASE_PATH', '/usr/local/bin')
 
 # ==================== 子域名发现 ====================
 
@@ -35,7 +35,7 @@ SUBDOMAIN_DISCOVERY_COMMANDS = {
     },
     
     'sublist3r': {
-        'base': "python3 '{scan_tools_base}/Sublist3r/sublist3r.py' -d {domain} -o '{output_file}'",
+        'base': "python3 '/usr/local/share/Sublist3r/sublist3r.py' -d {domain} -o '{output_file}'",
         'optional': {
             'threads': '-t {threads}'
         }

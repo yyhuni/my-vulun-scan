@@ -274,7 +274,7 @@ class TaskDistributor:
             network_arg = ""
             server_url = f"https://{settings.PUBLIC_HOST}:{settings.PUBLIC_PORT}"
         
-        # 挂载路径（分开挂载数据目录，避免覆盖容器内的 /opt/xingrin/tools）
+        # 挂载路径（统一挂载 /opt/xingrin，工具已移到 /usr/local/bin 不受影响）
         host_xingrin_dir = "/opt/xingrin"
         
         # 环境变量：SERVER_URL + IS_LOCAL，其他配置容器启动时从配置中心获取
@@ -291,13 +291,9 @@ class TaskDistributor:
             "-e PREFECT_LOGGING_LEVEL=WARNING",  # 日志级别（减少 DEBUG 噪音）
         ]
         
-        # 挂载卷（分开挂载数据目录，保留容器内的 /opt/xingrin/tools）
+        # 挂载卷（统一挂载整个 /opt/xingrin 目录）
         volumes = [
-            f"-v {host_xingrin_dir}/results:{host_xingrin_dir}/results",
-            f"-v {host_xingrin_dir}/logs:{host_xingrin_dir}/logs",
-            f"-v {host_xingrin_dir}/wordlists:{host_xingrin_dir}/wordlists",
-            f"-v {host_xingrin_dir}/fingerprints:{host_xingrin_dir}/fingerprints",
-            f"-v {host_xingrin_dir}/nuclei-templates:{host_xingrin_dir}/nuclei-templates",
+            f"-v {host_xingrin_dir}:{host_xingrin_dir}",
         ]
         
         # 构建命令行参数
