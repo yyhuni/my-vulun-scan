@@ -64,9 +64,9 @@ export default function ScheduledScanPage() {
     },
     cron: {
       everyMinute: tScan("cron.everyMinute"),
-      everyNMinutes: tScan("cron.everyNMinutes"),
+      everyNMinutes: (n: number) => tScan("cron.everyNMinutes", { n }),
       everyHour: tScan("cron.everyHour"),
-      everyNHours: tScan("cron.everyNHours"),
+      everyNHours: (n: number) => tScan("cron.everyNHours", { n }),
       everyDay: tScan("cron.everyDay"),
       everyWeek: tScan("cron.everyWeek"),
       everyMonth: tScan("cron.everyMonth"),

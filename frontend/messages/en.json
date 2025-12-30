@@ -1155,7 +1155,7 @@
     },
     "systemLogs": {
       "title": "System Logs",
-      "description": "Auto-refresh every second (polling mode)",
+      "description": "Auto-refresh every 2 seconds (polling mode)",
       "level": "Level",
       "message": "Message",
       "timestamp": "Timestamp",

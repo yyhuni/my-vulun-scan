@@ -1155,7 +1155,7 @@
     },
     "systemLogs": {
       "title": "系统日志",
-      "description": "每秒自动刷新一次（轮询模式）",
+      "description": "每 2 秒自动刷新一次（轮询模式）",
       "level": "级别",
       "message": "消息",
       "timestamp": "时间",
