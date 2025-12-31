@@ -47,7 +47,8 @@ services:
       - /opt/xingrin:/opt/xingrin
       - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8888/api/"]
+      # 使用专门的健康检查端点（无需认证）
+      test: ["CMD", "curl", "-f", "http://localhost:8888/api/health/"]
       interval: 30s
       timeout: 10s
       retries: 3

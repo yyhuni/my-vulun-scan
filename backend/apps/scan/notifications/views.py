@@ -7,8 +7,7 @@ from typing import Any
 from django.http import JsonResponse
 from django.utils import timezone
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.decorators import api_view
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -198,12 +197,13 @@ class NotificationSettingsView(APIView):
 # ============================================
 
 @api_view(['POST'])
-@permission_classes([AllowAny])  # Worker 容器无认证，可考虑添加 Token 验证
+# 权限由全局 IsAuthenticatedOrPublic 处理，/api/callbacks/* 需要 Worker API Key 认证
 def notification_callback(request):
     """
     接收 Worker 的通知推送请求
     
     Worker 容器无法直接访问 Redis，通过此 API 回调让 Server 推送 WebSocket。
+    需要 Worker API Key 认证（X-Worker-API-Key Header）。
     
     POST /api/callbacks/notification/
     {
