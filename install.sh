@@ -198,11 +198,13 @@ generate_self_signed_cert() {
 # 自动为 docker/.env 填充敏感变量
 auto_fill_docker_env_secrets() {
     local env_file="$1"
-    info "自动生成 DJANGO_SECRET_KEY 和 DB_PASSWORD..."
+    info "自动生成 DJANGO_SECRET_KEY、DB_PASSWORD 和 WORKER_API_KEY..."
     GENERATED_DJANGO_KEY="$(generate_random_string 64)"
     GENERATED_DB_PASSWORD="$(generate_random_string 32)"
+    GENERATED_WORKER_API_KEY="$(generate_random_string 32)"
     update_env_var "$env_file" "DJANGO_SECRET_KEY" "$GENERATED_DJANGO_KEY"
     update_env_var "$env_file" "DB_PASSWORD" "$GENERATED_DB_PASSWORD"
+    update_env_var "$env_file" "WORKER_API_KEY" "$GENERATED_WORKER_API_KEY"
     success "密钥生成完成"
 }
 

@@ -1,5 +1,6 @@
 # 第一阶段：使用 Go 官方镜像编译工具
-FROM golang:1.24 AS go-builder
+# 锁定 digest 避免上游更新导致缓存失效
+FROM golang:1.24@sha256:7e050c14ae9ca5ae56408a288336545b18632f51402ab0ec8e7be0e649a1fc42 AS go-builder
 
 ENV GOPROXY=https://goproxy.cn,direct
 # Naabu 需要 CGO 和 libpcap
@@ -36,7 +37,8 @@ RUN CGO_ENABLED=0 go install -v github.com/owasp-amass/amass/v5/cmd/amass@main
 RUN go install github.com/hahwul/dalfox/v2@latest
 
 # 第二阶段：运行时镜像
-FROM ubuntu:24.04
+# 锁定 digest 避免上游更新导致缓存失效
+FROM ubuntu:24.04@sha256:4fdf0125919d24aec972544669dcd7d6a26a8ad7e6561c73d5549bd6db258ac2
 
 # 避免交互式提示
 ENV DEBIAN_FRONTEND=noninteractive
