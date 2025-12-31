@@ -284,6 +284,7 @@ class TaskDistributor:
         env_vars = [
             f"-e SERVER_URL={shlex.quote(server_url)}",
             f"-e IS_LOCAL={is_local_str}",
+            f"-e WORKER_API_KEY={shlex.quote(settings.WORKER_API_KEY)}",  # Worker API 认证密钥
             "-e PREFECT_HOME=/tmp/.prefect",  # 设置 Prefect 数据目录到可写位置
             "-e PREFECT_SERVER_EPHEMERAL_ENABLED=true",  # 启用 ephemeral server（本地临时服务器）
             "-e PREFECT_SERVER_EPHEMERAL_STARTUP_TIMEOUT_SECONDS=120",  # 增加启动超时时间

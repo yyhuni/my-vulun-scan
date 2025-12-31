@@ -1,9 +1,9 @@
 "use client"
 
 import { type Icon } from "@tabler/icons-react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
 import { useTranslations } from "next-intl"
+
+import { Link, usePathname } from "@/i18n/navigation"
 
 import {
   SidebarGroup,

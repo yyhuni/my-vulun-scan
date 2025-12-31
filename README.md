@@ -62,9 +62,14 @@
 - **自定义流程** - YAML 配置扫描流程，灵活编排
 - **定时扫描** - Cron 表达式配置，自动化周期扫描
 
+### 🔖 指纹识别
+- **多源指纹库** - 内置 EHole、Goby、Wappalyzer、Fingers、FingerPrintHub、ARL 等 2.7W+ 指纹规则
+- **自动识别** - 扫描流程自动执行，识别 Web 应用技术栈
+- **指纹管理** - 支持查询、导入、导出指纹规则
+
 #### 扫描流程架构
 
-完整的扫描流程包括：子域名发现、端口扫描、站点发现、URL 收集、目录扫描、漏洞扫描等阶段
+完整的扫描流程包括：子域名发现、端口扫描、站点发现、指纹识别、URL 收集、目录扫描、漏洞扫描等阶段
 
 ```mermaid
 flowchart LR
@@ -75,7 +80,8 @@ flowchart LR
         SUB["子域名发现<br/>subfinder, amass, puredns"]
         PORT["端口扫描<br/>naabu"]
         SITE["站点识别<br/>httpx"]
-        SUB --> PORT --> SITE
+        FINGER["指纹识别<br/>xingfinger"]
+        SUB --> PORT --> SITE --> FINGER
     end
     
     subgraph STAGE2["阶段 2: 深度分析"]
@@ -91,7 +97,7 @@ flowchart LR
     FINISH["扫描完成"]
     
     START --> STAGE1
-    SITE --> STAGE2
+    FINGER --> STAGE2
     STAGE2 --> STAGE3
     STAGE3 --> FINISH
     
@@ -103,6 +109,7 @@ flowchart LR
     style SUB fill:#5dade2,stroke:#3498db,stroke-width:1px,color:#fff
     style PORT fill:#5dade2,stroke:#3498db,stroke-width:1px,color:#fff
     style SITE fill:#5dade2,stroke:#3498db,stroke-width:1px,color:#fff
+    style FINGER fill:#5dade2,stroke:#3498db,stroke-width:1px,color:#fff
     style URL fill:#bb8fce,stroke:#9b59b6,stroke-width:1px,color:#fff
     style DIR fill:#bb8fce,stroke:#9b59b6,stroke-width:1px,color:#fff
     style VULN fill:#f0b27a,stroke:#e67e22,stroke-width:1px,color:#fff
@@ -216,7 +223,7 @@ sudo ./uninstall.sh
 - 目前版本就我个人使用，可能会有很多边界问题
 - 如有问题，建议，其他，优先提交[Issue](https://github.com/yyhuni/xingrin/issues)，也可以直接给我的公众号发消息，我都会回复的
 
-- 微信公众号: **洋洋的小黑屋**
+- 微信公众号: **塔罗安全学苑**
 
 <img src="docs/wechat-qrcode.png" alt="微信公众号" width="200">
 
