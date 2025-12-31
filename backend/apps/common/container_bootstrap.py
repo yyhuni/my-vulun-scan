@@ -57,9 +57,6 @@ def fetch_config_and_setup_django():
         os.environ.setdefault("DB_USER", db_user)
         os.environ.setdefault("DB_PASSWORD", config['db']['password'])
         
-        # Redis 配置
-        os.environ.setdefault("REDIS_URL", config['redisUrl'])
-        
         # 日志配置
         os.environ.setdefault("LOG_DIR", config['paths']['logs'])
         os.environ.setdefault("LOG_LEVEL", config['logging']['level'])
@@ -71,7 +68,6 @@ def fetch_config_and_setup_django():
         print(f"[CONFIG]   DB_PORT: {db_port}")
         print(f"[CONFIG]   DB_NAME: {db_name}")
         print(f"[CONFIG]   DB_USER: {db_user}")
-        print(f"[CONFIG]   REDIS_URL: {config['redisUrl']}")
         
     except Exception as e:
         print(f"[ERROR] 获取配置失败: {config_url} - {e}", file=sys.stderr)

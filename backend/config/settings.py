@@ -355,24 +355,15 @@ HOST_WORDLISTS_DIR = '/opt/xingrin/wordlists'
 # ============================================
 # Worker 配置中心（任务容器从 /api/workers/config/ 获取）
 # ============================================
-# Worker 数据库/Redis 地址由 worker_views.py 的 config API 动态返回
+# Worker 数据库地址由 worker_views.py 的 config API 动态返回
 # 根据请求来源（本地/远程）返回不同的配置：
-# - 本地 Worker（Docker 网络内）：使用内部服务名（postgres, redis）
+# - 本地 Worker（Docker 网络内）：使用内部服务名 postgres
 # - 远程 Worker（公网访问）：使用 PUBLIC_HOST
 # 
-# 以下变量仅作为备用/兼容配置，实际配置由 API 动态生成
+# 注意：Redis 仅在 Server 容器内使用，Worker 不需要直接连接 Redis
 _db_host = DATABASES['default']['HOST']
 _is_internal_db = _db_host in ('postgres', 'localhost', '127.0.0.1')
 WORKER_DB_HOST = os.getenv('WORKER_DB_HOST', _db_host)
-
-# 远程 Worker 访问 Redis 的地址（自动推导）
-# - 如果 PUBLIC_HOST 是外部 IP → 使用 PUBLIC_HOST
-# - 如果 PUBLIC_HOST 是 Docker 内部名 → 使用 redis（本地部署）
-_is_internal_public = PUBLIC_HOST in ('server', 'localhost', '127.0.0.1')
-WORKER_REDIS_URL = os.getenv(
-    'WORKER_REDIS_URL',
-    'redis://redis:6379/0' if _is_internal_public else f'redis://{PUBLIC_HOST}:6379/0'
-)
 
 # 容器内挂载目标路径（统一使用 /opt/xingrin）
 CONTAINER_RESULTS_MOUNT = '/opt/xingrin/results'

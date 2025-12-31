@@ -340,13 +340,12 @@ class WorkerNodeViewSet(viewsets.ModelViewSet):
         返回:
         {
             "db": {"host": "...", "port": "...", ...},
-            "redisUrl": "...",
             "paths": {"results": "...", "logs": "..."}
         }
         
         配置逻辑:
-            - 本地 Worker (is_local=true): db_host=postgres, redis=redis:6379
-            - 远程 Worker (is_local=false): db_host=PUBLIC_HOST, redis=PUBLIC_HOST:6379
+            - 本地 Worker (is_local=true): db_host=postgres
+            - 远程 Worker (is_local=false): db_host=PUBLIC_HOST
         """
         from django.conf import settings
         import logging
@@ -371,20 +370,17 @@ class WorkerNodeViewSet(viewsets.ModelViewSet):
             if is_local_worker:
                 # 本地 Worker：直接用 Docker 内部服务名
                 worker_db_host = 'postgres'
-                worker_redis_url = 'redis://redis:6379/0'
             else:
                 # 远程 Worker：通过公网 IP 访问
                 public_host = settings.PUBLIC_HOST
                 if public_host in ('server', 'localhost', '127.0.0.1'):
                     logger.warning("远程 Worker 请求配置，但 PUBLIC_HOST=%s 不是有效的公网地址", public_host)
                 worker_db_host = public_host
-                worker_redis_url = f'redis://{public_host}:6379/0'
         else:
             # 远程数据库场景：所有 Worker 都用 DB_HOST
             worker_db_host = db_host
-            worker_redis_url = getattr(settings, 'WORKER_REDIS_URL', 'redis://redis:6379/0')
         
-        logger.info("返回 Worker 配置 - db_host: %s, redis_url: %s", worker_db_host, worker_redis_url)
+        logger.info("返回 Worker 配置 - db_host: %s", worker_db_host)
         
         return success_response(
             data={
@@ -395,7 +391,6 @@ class WorkerNodeViewSet(viewsets.ModelViewSet):
                     'user': settings.DATABASES['default']['USER'],
                     'password': settings.DATABASES['default']['PASSWORD'],
                 },
-                'redisUrl': worker_redis_url,
                 'paths': {
                     'results': getattr(settings, 'CONTAINER_RESULTS_MOUNT', '/opt/xingrin/results'),
                     'logs': getattr(settings, 'CONTAINER_LOGS_MOUNT', '/opt/xingrin/logs'),
