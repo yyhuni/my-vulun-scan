@@ -64,6 +64,16 @@ export default function ScanHistoryLayout({
       <div className="flex items-center justify-between px-4 lg:px-6">
         <Tabs value={getActiveTab()} className="w-full">
           <TabsList>
+            <TabsTrigger value="websites" asChild>
+              <Link href={tabPaths.websites} className="flex items-center gap-0.5">
+                Websites
+                {counts.websites > 0 && (
+                  <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 rounded-full px-1.5 text-xs">
+                    {counts.websites}
+                  </Badge>
+                )}
+              </Link>
+            </TabsTrigger>
             <TabsTrigger value="subdomain" asChild>
               <Link href={tabPaths.subdomain} className="flex items-center gap-0.5">
                 Subdomains
@@ -74,12 +84,12 @@ export default function ScanHistoryLayout({
                 )}
               </Link>
             </TabsTrigger>
-            <TabsTrigger value="websites" asChild>
-              <Link href={tabPaths.websites} className="flex items-center gap-0.5">
-                Websites
-                {counts.websites > 0 && (
+            <TabsTrigger value="ip-addresses" asChild>
+              <Link href={tabPaths["ip-addresses"]} className="flex items-center gap-0.5">
+                IP Addresses
+                {counts["ip-addresses"] > 0 && (
                   <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 rounded-full px-1.5 text-xs">
-                    {counts.websites}
+                    {counts["ip-addresses"]}
                   </Badge>
                 )}
               </Link>
@@ -100,16 +110,6 @@ export default function ScanHistoryLayout({
                 {counts.directories > 0 && (
                   <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 rounded-full px-1.5 text-xs">
                     {counts.directories}
-                  </Badge>
-                )}
-              </Link>
-            </TabsTrigger>
-            <TabsTrigger value="ip-addresses" asChild>
-              <Link href={tabPaths["ip-addresses"]} className="flex items-center gap-0.5">
-                IP Addresses
-                {counts["ip-addresses"] > 0 && (
-                  <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 rounded-full px-1.5 text-xs">
-                    {counts["ip-addresses"]}
                   </Badge>
                 )}
               </Link>
