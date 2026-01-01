@@ -256,7 +256,8 @@ def fingerprint_detect_flow(
             'url_count': int,
             'processed_records': int,
             'updated_count': int,
-            'not_found_count': int,
+            'created_count': int,
+            'snapshot_count': int,
             'executed_tasks': list,
             'tool_stats': dict
         }
@@ -303,6 +304,7 @@ def fingerprint_detect_flow(
                 'processed_records': 0,
                 'updated_count': 0,
                 'created_count': 0,
+                'snapshot_count': 0,
                 'executed_tasks': ['export_urls_for_fingerprint'],
                 'tool_stats': {
                     'total': 0,
@@ -340,6 +342,7 @@ def fingerprint_detect_flow(
         total_processed = sum(stats['result'].get('processed_records', 0) for stats in tool_stats.values())
         total_updated = sum(stats['result'].get('updated_count', 0) for stats in tool_stats.values())
         total_created = sum(stats['result'].get('created_count', 0) for stats in tool_stats.values())
+        total_snapshots = sum(stats['result'].get('snapshot_count', 0) for stats in tool_stats.values())
         
         successful_tools = [name for name in enabled_tools.keys() 
                            if name not in [f['tool'] for f in failed_tools]]
@@ -354,6 +357,7 @@ def fingerprint_detect_flow(
             'processed_records': total_processed,
             'updated_count': total_updated,
             'created_count': total_created,
+            'snapshot_count': total_snapshots,
             'executed_tasks': executed_tasks,
             'tool_stats': {
                 'total': len(enabled_tools),
