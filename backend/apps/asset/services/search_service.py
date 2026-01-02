@@ -56,9 +56,9 @@ class AssetSearchService:
             params.append(f"%{title}%")
         
         if tech:
-            # 技术栈数组包含匹配
-            conditions.append("%s = ANY(tech)")
-            params.append(tech)
+            # 技术栈数组模糊匹配（数组中任意元素包含搜索词）
+            conditions.append("EXISTS (SELECT 1 FROM unnest(tech) AS t WHERE t ILIKE %s)")
+            params.append(f"%{tech}%")
         
         if status:
             # 支持多状态码，逗号分隔
@@ -150,8 +150,9 @@ class AssetSearchService:
             params.append(f"%{title}%")
         
         if tech:
-            conditions.append("%s = ANY(tech)")
-            params.append(tech)
+            # 技术栈数组模糊匹配
+            conditions.append("EXISTS (SELECT 1 FROM unnest(tech) AS t WHERE t ILIKE %s)")
+            params.append(f"%{tech}%")
         
         if status:
             status_codes = [s.strip() for s in status.split(',') if s.strip().isdigit()]
