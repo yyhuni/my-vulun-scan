@@ -16,6 +16,7 @@ import {
   IconTerminal2, // Terminal icon
   IconBug, // Vulnerability icon
   IconMessageReport, // Feedback icon
+  IconSearch, // Search icon
 } from "@tabler/icons-react"
 // Import internationalization hook
 import { useTranslations } from 'next-intl'
@@ -75,6 +76,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       title: t('dashboard'),
       url: "/dashboard/",
       icon: IconDashboard,
+    },
+    {
+      title: t('search'),
+      url: "/search/",
+      icon: IconSearch,
     },
     {
       title: t('organization'),

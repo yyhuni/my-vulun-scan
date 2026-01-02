@@ -53,6 +53,7 @@
     "cron-parser": "^5.4.0",
     "cronstrue": "^3.9.0",
     "date-fns": "^4.1.0",
+    "framer-motion": "^12.23.26",
     "geist": "^1.5.1",
     "is-ip": "^5.0.1",
     "js-yaml": "^4.1.0",

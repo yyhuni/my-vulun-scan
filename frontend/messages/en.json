@@ -296,6 +296,7 @@
   "navigation": {
     "mainFeatures": "Main Features",
     "dashboard": "Dashboard",
+    "search": "Search",
     "organization": "Organization",
     "target": "Targets",
     "vulnerabilities": "Vulnerabilities",

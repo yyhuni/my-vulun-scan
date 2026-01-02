@@ -44,7 +44,6 @@
   --font-sans: 'Noto Sans SC', system-ui, -apple-system, PingFang SC, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
   --font-serif: Georgia, 'Noto Serif SC', serif;
-  --radius: 0.625rem;
   --tracking-tighter: calc(var(--tracking-normal) - 0.05em);
   --tracking-tight: calc(var(--tracking-normal) - 0.025em);
   --tracking-wide: calc(var(--tracking-normal) + 0.025em);
