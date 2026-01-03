@@ -217,8 +217,6 @@ class WebsiteSnapshotSerializer(serializers.ModelSerializer):
     """网站快照序列化器（用于扫描历史）"""
     
     subdomain_name = serializers.CharField(source='subdomain.name', read_only=True)
-    webserver = serializers.CharField(source='web_server', read_only=True)  # 映射字段名
-    status_code = serializers.IntegerField(source='status', read_only=True)  # 映射字段名
     responseHeaders = serializers.CharField(source='response_headers', read_only=True)  # 原始HTTP响应头
     
     class Meta:
@@ -228,9 +226,9 @@ class WebsiteSnapshotSerializer(serializers.ModelSerializer):
             'url',
             'location',
             'title',
-            'webserver',  # 使用映射后的字段名
+            'webserver',
             'content_type',
-            'status_code',  # 使用映射后的字段名
+            'status_code',
             'content_length',
             'response_body',
             'tech',

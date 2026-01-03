@@ -341,9 +341,9 @@ def _process_batch(
             url=record['url'],
             host=host,
             title=record.get('title', '') or '',
-            status=record.get('status_code'),
+            status_code=record.get('status_code'),
             content_length=record.get('content_length'),
-            web_server=record.get('server', '') or '',
+            webserver=record.get('server', '') or '',
             tech=record.get('techs', []),
         )
         snapshot_dtos.append(dto)

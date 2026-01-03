@@ -13,6 +13,7 @@ class EndpointSnapshotDTO:
     快照只属于 scan。
     """
     scan_id: int
+    target_id: int  # 必填，用于同步到资产表
     url: str
     host: str = ''  # 主机名（域名或IP地址）
     title: str = ''
@@ -25,7 +26,6 @@ class EndpointSnapshotDTO:
     response_body: str = ''
     vhost: Optional[bool] = None
     matched_gf_patterns: List[str] = None
-    target_id: Optional[int] = None  # 冗余字段，用于同步到资产表
     response_headers: str = ''
     
     def __post_init__(self):
@@ -42,9 +42,6 @@ class EndpointSnapshotDTO:
             EndpointDTO: 资产表 DTO（移除 scan_id）
         """
         from apps.asset.dtos.asset import EndpointDTO
-        
-        if self.target_id is None:
-            raise ValueError("target_id 不能为 None，无法同步到资产表")
         
         return EndpointDTO(
             target_id=self.target_id,

@@ -30,7 +30,6 @@ from typing import Generator, Optional, Dict, Any, TYPE_CHECKING
 from django.db import IntegrityError, OperationalError, DatabaseError
 from dataclasses import dataclass
 from urllib.parse import urlparse, urlunparse
-from dateutil.parser import parse as parse_datetime
 from psycopg2 import InterfaceError
 
 from apps.asset.dtos.snapshot import WebsiteSnapshotDTO
@@ -60,6 +59,18 @@ class ServiceSet:
         return cls(
             snapshot=WebsiteSnapshotsService()
         )
+
+
+def _sanitize_string(value: str) -> str:
+    """
+    清理字符串中的 NUL 字符和其他不可打印字符
+    
+    PostgreSQL 不允许字符串字段包含 NUL (0x00) 字符
+    """
+    if not value:
+        return value
+    # 移除 NUL 字符
+    return value.replace('\x00', '')
 
 
 def normalize_url(url: str) -> str:
@@ -117,70 +128,50 @@ def normalize_url(url: str) -> str:
         return url
 
 
+def _extract_hostname(url: str) -> str:
+    """
+    从 URL 提取主机名
+    
+    Args:
+        url: URL 字符串
+    
+    Returns:
+        str: 提取的主机名（小写）
+    """
+    try:
+        if url:
+            parsed = urlparse(url)
+            if parsed.hostname:
+                return parsed.hostname
+            # 降级方案：手动提取
+            return url.replace('http://', '').replace('https://', '').split('/')[0].split(':')[0]
+        return ''
+    except Exception as e:
+        logger.debug("提取主机名失败: %s", e)
+        return ''
+
+
 class HttpxRecord:
     """httpx 扫描记录数据类"""
     
     def __init__(self, data: Dict[str, Any]):
-        self.url = data.get('url', '')
-        self.input = data.get('input', '')
-        self.title = data.get('title', '')
-        self.status_code = data.get('status_code')
-        self.content_length = data.get('content_length')
-        self.content_type = data.get('content_type', '')
-        self.location = data.get('location', '')
-        self.webserver = data.get('webserver', '')
-        self.response_body = data.get('body', '')  # 从 body 字段获取完整响应体
-        self.tech = data.get('tech', [])
-        self.vhost = data.get('vhost')
-        self.failed = data.get('failed', False)
-        self.timestamp = data.get('timestamp')
-        self.response_headers = data.get('raw_header', '')  # 从 raw_header 字段获取原始响应头字符串
+        self.url = _sanitize_string(data.get('url', ''))
+        self.input = _sanitize_string(data.get('input', ''))
+        self.title = _sanitize_string(data.get('title', ''))
+        self.status_code = data.get('status_code')  # int，不需要清理
+        self.content_length = data.get('content_length')  # int，不需要清理
+        self.content_type = _sanitize_string(data.get('content_type', ''))
+        self.location = _sanitize_string(data.get('location', ''))
+        self.webserver = _sanitize_string(data.get('webserver', ''))
+        self.response_body = _sanitize_string(data.get('body', ''))
+        self.tech = [_sanitize_string(t) for t in data.get('tech', []) if isinstance(t, str)]  # 列表中的字符串也需要清理
+        self.vhost = data.get('vhost')  # bool，不需要清理
+        self.failed = data.get('failed', False)  # bool，不需要清理
+        self.response_headers = _sanitize_string(data.get('raw_header', ''))
         
-        # 从 URL 中提取主机名
-        self.host = self._extract_hostname()
-    
-    def _extract_hostname(self) -> str:
-        """
-        从 URL 或 input 字段提取主机名
-        
-        优先级：
-        1. 使用 urlparse 解析 URL 获取 hostname
-        2. 从 input 字段提取（处理可能包含协议的情况）
-        3. 从 URL 字段手动提取（降级方案）
-        
-        Returns:
-            str: 提取的主机名（小写）
-        """
-        try:
-            # 方法 1: 使用 urlparse 解析 URL
-            if self.url:
-                parsed = urlparse(self.url)
-                if parsed.hostname:
-                    return parsed.hostname
-            
-            # 方法 2: 从 input 字段提取
-            if self.input:
-                host = self.input.strip().lower()
-                # 移除协议前缀
-                if host.startswith(('http://', 'https://')):
-                    host = host.split('//', 1)[1].split('/')[0]
-                return host
-            
-            # 方法 3: 从 URL 手动提取（降级方案）
-            if self.url:
-                return self.url.replace('http://', '').replace('https://', '').split('/')[0]
-            
-            # 兜底：返回空字符串
-            return ''
-            
-        except Exception as e:
-            # 异常处理：尽力从 input 或 URL 提取
-            logger.debug("提取主机名失败: %s，使用降级方案", e)
-            if self.input:
-                return self.input.strip().lower()
-            if self.url:
-                return self.url.replace('http://', '').replace('https://', '').split('/')[0]
-            return ''
+        # 从 URL 中提取主机名（优先使用 httpx 返回的 host，否则自动提取）
+        httpx_host = _sanitize_string(data.get('host', ''))
+        self.host = httpx_host if httpx_host else _extract_hostname(self.url)
 
 
 def _save_batch_with_retry(
@@ -228,39 +219,31 @@ def _save_batch_with_retry(
             }
         
         except (OperationalError, DatabaseError, InterfaceError) as e:
-            # 数据库连接/操作错误，可重试
+            # 数据库级错误（连接中断、表结构不匹配等）：按指数退避重试，最终失败时抛出异常让 Flow 失败
             if attempt < max_retries - 1:
-                wait_time = 2 ** attempt  # 指数退避: 1s, 2s, 4s
+                wait_time = 2 ** attempt
                 logger.warning(
                     "批次 %d 保存失败（第 %d 次尝试），%d秒后重试: %s",
                     batch_num, attempt + 1, wait_time, str(e)[:100]
                 )
                 time.sleep(wait_time)
             else:
-                logger.error("批次 %d 保存失败（已重试 %d 次）: %s", batch_num, max_retries, e)
-                return {
-                    'success': False,
-                    'created_websites': 0,
-                    'skipped_failed': 0
-                }
-        
-        except Exception as e:
-            # 其他未知错误 - 检查是否为连接问题
-            error_str = str(e).lower()
-            if 'connection' in error_str and attempt < max_retries - 1:
-                logger.warning(
-                    "批次 %d 连接相关错误（尝试 %d/%d）: %s，Repository 装饰器会自动重连",
-                    batch_num, attempt + 1, max_retries, str(e)
+                logger.error(
+                    "批次 %d 保存失败（已重试 %d 次），将终止任务: %s",
+                    batch_num,
+                    max_retries,
+                    e,
+                    exc_info=True,
                 )
-                time.sleep(2)
-            else:
-                logger.error("批次 %d 未知错误: %s", batch_num, e, exc_info=True)
-                return {
-                    'success': False,
-                    'created_websites': 0,
-                    'skipped_failed': 0
-                }
-    
+                # 让上层 Task 感知失败，从而标记整个扫描为失败
+                raise
+
+        except Exception as e:
+            # 其他未知异常也不再吞掉，直接抛出以便 Flow 标记为失败
+            logger.error("批次 %d 未知错误: %s", batch_num, e, exc_info=True)
+            raise
+
+    # 理论上不会走到这里，保留兜底返回值以满足类型约束
     return {
         'success': False,
         'created_websites': 0,
@@ -328,43 +311,39 @@ def _save_batch(
             skipped_failed += 1
             continue
         
-        # 解析时间戳
-        created_at = None
-        if hasattr(record, 'timestamp') and record.timestamp:
-            try:
-                created_at = parse_datetime(record.timestamp)
-            except (ValueError, TypeError) as e:
-                logger.warning(f"无法解析时间戳 {record.timestamp}: {e}")
-        
-        # 使用 input 字段（原始扫描的 URL）而不是 url 字段（重定向后的 URL）
-        # 原因：避免多个不同的输入 URL 重定向到同一个 URL 时产生唯一约束冲突
-        # 例如：http://example.com 和 https://example.com 都重定向到 https://example.com
-        # 如果使用 record.url，两条记录会有相同的 url，导致数据库冲突
-        # 如果使用 record.input，两条记录保留原始输入，不会冲突
-        normalized_url = normalize_url(record.input)
-        
-        # 提取 host 字段（域名或IP地址）
-        host = record.host if record.host else ''
-        
-        # 创建 WebsiteSnapshot DTO
-        snapshot_dto = WebsiteSnapshotDTO(
-            scan_id=scan_id,
-            target_id=target_id,  # 主关联字段
-            url=normalized_url,  # 保存原始输入 URL（归一化后）
-            host=host,  # 主机名（域名或IP地址）
-            location=record.location,  # location 字段保存重定向信息
-            title=record.title[:1000] if record.title else '',
-            web_server=record.webserver[:200] if record.webserver else '',
-            response_body=record.response_body if record.response_body else '',
-            content_type=record.content_type[:200] if record.content_type else '',
-            tech=record.tech if isinstance(record.tech, list) else [],
-            status=record.status_code,
-            content_length=record.content_length,
-            vhost=record.vhost,
-            response_headers=record.response_headers if record.response_headers else '',
-        )
-        
-        snapshot_items.append(snapshot_dto)
+        try:
+            # 使用 input 字段（原始扫描的 URL）而不是 url 字段（重定向后的 URL）
+            # 原因：避免多个不同的输入 URL 重定向到同一个 URL 时产生唯一约束冲突
+            # 例如：http://example.com 和 https://example.com 都重定向到 https://example.com
+            # 如果使用 record.url，两条记录会有相同的 url，导致数据库冲突
+            # 如果使用 record.input，两条记录保留原始输入，不会冲突
+            normalized_url = normalize_url(record.input) if record.input else normalize_url(record.url)
+            
+            # 提取 host 字段（域名或IP地址）
+            host = record.host if record.host else ''
+            
+            # 创建 WebsiteSnapshot DTO
+            snapshot_dto = WebsiteSnapshotDTO(
+                scan_id=scan_id,
+                target_id=target_id,  # 主关联字段
+                url=normalized_url,  # 保存原始输入 URL（归一化后）
+                host=host,  # 主机名（域名或IP地址）
+                location=record.location if record.location else '',
+                title=record.title if record.title else '',
+                webserver=record.webserver if record.webserver else '',
+                response_body=record.response_body if record.response_body else '',
+                content_type=record.content_type if record.content_type else '',
+                tech=record.tech if isinstance(record.tech, list) else [],
+                status_code=record.status_code,
+                content_length=record.content_length,
+                vhost=record.vhost,
+                response_headers=record.response_headers if record.response_headers else '',
+            )
+            
+            snapshot_items.append(snapshot_dto)
+        except Exception as e:
+            logger.error("处理记录失败: %s，错误: %s", record.url, e)
+            continue
     
     # ========== Step 3: 保存快照并同步到资产表（通过快照 Service）==========
     if snapshot_items:
@@ -386,28 +365,31 @@ def _parse_and_validate_line(line: str) -> Optional[HttpxRecord]:
         Optional[HttpxRecord]: 有效的 httpx 扫描记录，或 None 如果验证失败
     
     验证步骤：
-        1. 解析 JSON 格式
-        2. 验证数据类型为字典
-        3. 创建 HttpxRecord 对象
-        4. 验证必要字段（url）
+        1. 清理 NUL 字符
+        2. 解析 JSON 格式
+        3. 验证数据类型为字典
+        4. 创建 HttpxRecord 对象
+        5. 验证必要字段（url）
     """
     try:
-        # 步骤 1: 解析 JSON
+        # 步骤 1: 清理 NUL 字符后再解析 JSON
+        line = _sanitize_string(line)
+        
+        # 步骤 2: 解析 JSON
         try:
             line_data = json.loads(line, strict=False)
         except json.JSONDecodeError:
-            # logger.info("跳过非 JSON 行: %s", line)
             return None
         
-        # 步骤 2: 验证数据类型
+        # 步骤 3: 验证数据类型
         if not isinstance(line_data, dict):
             logger.info("跳过非字典数据")
             return None
         
-        # 步骤 3: 创建记录
+        # 步骤 4: 创建记录
         record = HttpxRecord(line_data)
         
-        # 步骤 4: 验证必要字段
+        # 步骤 5: 验证必要字段
         if not record.url:
             logger.info("URL 为空，跳过 - 数据: %s", str(line_data)[:200])
             return None
@@ -416,7 +398,7 @@ def _parse_and_validate_line(line: str) -> Optional[HttpxRecord]:
         return record
     
     except Exception:
-        logger.info("跳过无法解析的行: %s", line[:100])
+        logger.info("跳过无法解析的行: %s", line[:100] if line else 'empty')
         return None
 
 
@@ -464,8 +446,8 @@ def _parse_httpx_stream_output(
             # yield 一条有效记录
             yield record
             
-            # 每处理 1000 条记录输出一次进度
-            if valid_records % 1000 == 0:
+            # 每处理 5 条记录输出一次进度
+            if valid_records % 5 == 0:
                 logger.info("已解析 %d 条有效记录...", valid_records)
                 
     except subprocess.TimeoutExpired as e:
@@ -604,8 +586,8 @@ def _process_records_in_batches(
             _process_batch(batch, scan_id, target_id, batch_num, total_stats, failed_batches, services)
             batch = []  # 清空批次
             
-            # 每20个批次输出进度
-            if batch_num % 20 == 0:
+            # 每 2 个批次输出进度
+            if batch_num % 2 == 0:
                 logger.info("进度: 已处理 %d 批次，%d 条记录", batch_num, total_records)
     
     # 保存最后一批
@@ -676,11 +658,7 @@ def _cleanup_resources(data_generator) -> None:
             logger.error("关闭生成器时出错: %s", gen_close_error)
 
 
-@task(
-    name='run_and_stream_save_websites',
-    retries=0,
-    log_prints=True
-)
+@task(name='run_and_stream_save_websites', retries=0)
 def run_and_stream_save_websites_task(
     cmd: str,
     tool_name: str,
@@ -688,7 +666,7 @@ def run_and_stream_save_websites_task(
     target_id: int,
     cwd: Optional[str] = None,
     shell: bool = False,
-    batch_size: int = 1000,
+    batch_size: int = 10,
     timeout: Optional[int] = None,
     log_file: Optional[str] = None
 ) -> dict:

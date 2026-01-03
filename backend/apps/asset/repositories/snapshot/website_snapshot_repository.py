@@ -46,10 +46,10 @@ class DjangoWebsiteSnapshotRepository:
                     url=item.url,
                     host=item.host,
                     title=item.title,
-                    status=item.status,
+                    status_code=item.status_code,
                     content_length=item.content_length,
                     location=item.location,
-                    web_server=item.web_server,
+                    webserver=item.webserver,
                     content_type=item.content_type,
                     tech=item.tech if item.tech else [],
                     response_body=item.response_body,
@@ -99,27 +99,12 @@ class DjangoWebsiteSnapshotRepository:
             WebsiteSnapshot.objects
             .filter(scan_id=scan_id)
             .values(
-                'url', 'host', 'location', 'title', 'status',
-                'content_length', 'content_type', 'web_server', 'tech',
+                'url', 'host', 'location', 'title', 'status_code',
+                'content_length', 'content_type', 'webserver', 'tech',
                 'response_body', 'response_headers', 'vhost', 'created_at'
             )
             .order_by('url')
         )
         
         for row in qs.iterator(chunk_size=batch_size):
-            # 重命名字段以匹配 CSV 表头
-            yield {
-                'url': row['url'],
-                'host': row['host'],
-                'location': row['location'],
-                'title': row['title'],
-                'status_code': row['status'],
-                'content_length': row['content_length'],
-                'content_type': row['content_type'],
-                'webserver': row['web_server'],
-                'tech': row['tech'],
-                'response_body': row['response_body'],
-                'response_headers': row['response_headers'],
-                'vhost': row['vhost'],
-                'created_at': row['created_at'],
-            }
+            yield row

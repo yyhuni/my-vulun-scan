@@ -72,7 +72,7 @@ class EndpointSnapshotsService:
         'url': 'url',
         'host': 'host',
         'title': 'title',
-        'status': 'status_code',
+        'status_code': 'status_code',
         'webserver': 'webserver',
         'tech': 'tech',
     }

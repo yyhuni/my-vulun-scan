@@ -204,14 +204,13 @@ def _run_scans_sequentially(
             # 流式执行扫描并实时保存结果
             result = run_and_stream_save_websites_task(
                 cmd=command,
-                tool_name=tool_name,  # 新增：工具名称
+                tool_name=tool_name,
                 scan_id=scan_id,
                 target_id=target_id,
                 cwd=str(site_scan_dir),
                 shell=True,
-                batch_size=1000,
                 timeout=timeout,
-                log_file=str(log_file)  # 新增：日志文件路径
+                log_file=str(log_file)
             )
             
             tool_stats[tool_name] = {

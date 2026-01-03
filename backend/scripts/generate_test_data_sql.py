@@ -1516,7 +1516,7 @@ class TestDataGenerator:
         if batch_data:
             execute_values(cur, """
                 INSERT INTO website_snapshot (
-                    scan_id, url, host, title, web_server, tech, status,
+                    scan_id, url, host, title, webserver, tech, status_code,
                     content_length, content_type, location, response_body,
                     response_headers, created_at
                 ) VALUES %s

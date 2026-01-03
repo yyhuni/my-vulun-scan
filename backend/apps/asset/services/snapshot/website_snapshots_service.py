@@ -73,8 +73,8 @@ class WebsiteSnapshotsService:
         'url': 'url',
         'host': 'host',
         'title': 'title',
-        'status': 'status',
-        'webserver': 'web_server',
+        'status_code': 'status_code',
+        'webserver': 'webserver',
         'tech': 'tech',
     }
     

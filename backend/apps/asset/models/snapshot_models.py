@@ -61,14 +61,14 @@ class WebsiteSnapshot(models.Model):
     )
     
     # 扫描结果数据
-    url = models.CharField(max_length=2000, help_text='站点URL')
+    url = models.TextField(help_text='站点URL')
     host = models.CharField(max_length=253, blank=True, default='', help_text='主机名（域名或IP地址）')
-    title = models.CharField(max_length=500, blank=True, default='', help_text='页面标题')
-    status = models.IntegerField(null=True, blank=True, help_text='HTTP状态码')
+    title = models.TextField(blank=True, default='', help_text='页面标题')
+    status_code = models.IntegerField(null=True, blank=True, help_text='HTTP状态码')
     content_length = models.BigIntegerField(null=True, blank=True, help_text='内容长度')
-    location = models.CharField(max_length=1000, blank=True, default='', help_text='重定向位置')
-    web_server = models.CharField(max_length=200, blank=True, default='', help_text='Web服务器')
-    content_type = models.CharField(max_length=200, blank=True, default='', help_text='内容类型')
+    location = models.TextField(blank=True, default='', help_text='重定向位置')
+    webserver = models.TextField(blank=True, default='', help_text='Web服务器')
+    content_type = models.TextField(blank=True, default='', help_text='内容类型')
     tech = ArrayField(
         models.CharField(max_length=100),
         blank=True,
@@ -267,19 +267,19 @@ class EndpointSnapshot(models.Model):
     )
     
     # 扫描结果数据
-    url = models.CharField(max_length=2000, help_text='端点URL')
+    url = models.TextField(help_text='端点URL')
     host = models.CharField(
         max_length=253,
         blank=True,
         default='',
         help_text='主机名（域名或IP地址）'
     )
-    title = models.CharField(max_length=1000, blank=True, default='', help_text='页面标题')
+    title = models.TextField(blank=True, default='', help_text='页面标题')
     status_code = models.IntegerField(null=True, blank=True, help_text='HTTP状态码')
     content_length = models.IntegerField(null=True, blank=True, help_text='内容长度')
-    location = models.CharField(max_length=1000, blank=True, default='', help_text='重定向位置')
-    webserver = models.CharField(max_length=200, blank=True, default='', help_text='Web服务器')
-    content_type = models.CharField(max_length=200, blank=True, default='', help_text='内容类型')
+    location = models.TextField(blank=True, default='', help_text='重定向位置')
+    webserver = models.TextField(blank=True, default='', help_text='Web服务器')
+    content_type = models.TextField(blank=True, default='', help_text='内容类型')
     tech = ArrayField(
         models.CharField(max_length=100),
         blank=True,

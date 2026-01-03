@@ -19,7 +19,7 @@ class WebSiteService:
         'url': 'url',
         'host': 'host',
         'title': 'title',
-        'status': 'status_code',
+        'status_code': 'status_code',
         'tech': 'tech',
     }
     

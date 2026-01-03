@@ -212,7 +212,6 @@ def _validate_and_stream_save_urls(
             target_id=target_id,
             cwd=str(url_fetch_dir),
             shell=True,
-            batch_size=500,
             timeout=timeout,
             log_file=str(log_file)
         )

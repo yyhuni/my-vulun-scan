@@ -65,28 +65,25 @@ class Endpoint(models.Model):
         help_text='所属的扫描目标（主关联字段，表示所属关系，不能为空）'
     )
     
-    url = models.CharField(max_length=2000, help_text='最终访问的完整URL')
+    url = models.TextField(help_text='最终访问的完整URL')
     host = models.CharField(
         max_length=253,
         blank=True,
         default='',
         help_text='主机名（域名或IP地址）'
     )
-    location = models.CharField(
-        max_length=1000,
+    location = models.TextField(
         blank=True,
         default='',
         help_text='重定向地址（HTTP 3xx 响应头 Location）'
     )
     created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
-    title = models.CharField(
-        max_length=1000,
+    title = models.TextField(
         blank=True,
         default='',
         help_text='网页标题（HTML <title> 标签内容）'
     )
-    webserver = models.CharField(
-        max_length=200,
+    webserver = models.TextField(
         blank=True,
         default='',
         help_text='服务器类型（HTTP 响应头 Server 值）'
@@ -96,8 +93,7 @@ class Endpoint(models.Model):
         default='',
         help_text='HTTP响应体'
     )
-    content_type = models.CharField(
-        max_length=200,
+    content_type = models.TextField(
         blank=True,
         default='',
         help_text='响应类型（HTTP Content-Type 响应头）'
@@ -188,28 +184,25 @@ class WebSite(models.Model):
         help_text='所属的扫描目标（主关联字段，表示所属关系，不能为空）'
     )
 
-    url = models.CharField(max_length=2000, help_text='最终访问的完整URL')
+    url = models.TextField(help_text='最终访问的完整URL')
     host = models.CharField(
         max_length=253,
         blank=True,
         default='',
         help_text='主机名（域名或IP地址）'
     )
-    location = models.CharField(
-        max_length=1000,
+    location = models.TextField(
         blank=True,
         default='',
         help_text='重定向地址（HTTP 3xx 响应头 Location）'
     )
     created_at = models.DateTimeField(auto_now_add=True, help_text='创建时间')
-    title = models.CharField(
-        max_length=1000,
+    title = models.TextField(
         blank=True,
         default='',
         help_text='网页标题（HTML <title> 标签内容）'
     )
-    webserver = models.CharField(
-        max_length=200,
+    webserver = models.TextField(
         blank=True,
         default='',
         help_text='服务器类型（HTTP 响应头 Server 值）'
@@ -219,8 +212,7 @@ class WebSite(models.Model):
         default='',
         help_text='HTTP响应体'
     )
-    content_type = models.CharField(
-        max_length=200,
+    content_type = models.TextField(
         blank=True,
         default='',
         help_text='响应类型（HTTP Content-Type 响应头）'

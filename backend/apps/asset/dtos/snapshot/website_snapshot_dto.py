@@ -13,14 +13,14 @@ class WebsiteSnapshotDTO:
     快照只属于 scan，target 信息通过 scan.target 获取。
     """
     scan_id: int
-    target_id: int  # 仅用于传递数据，不保存到数据库
+    target_id: int  # 必填，用于同步到资产表
     url: str
     host: str
     title: str = ''
-    status: Optional[int] = None
+    status_code: Optional[int] = None  # 统一命名：status -> status_code
     content_length: Optional[int] = None
     location: str = ''
-    web_server: str = ''
+    webserver: str = ''  # 统一命名：web_server -> webserver
     content_type: str = ''
     tech: List[str] = None
     response_body: str = ''
@@ -45,10 +45,10 @@ class WebsiteSnapshotDTO:
             url=self.url,
             host=self.host,
             title=self.title,
-            status_code=self.status,
+            status_code=self.status_code,
             content_length=self.content_length,
             location=self.location,
-            webserver=self.web_server,
+            webserver=self.webserver,
             content_type=self.content_type,
             tech=self.tech if self.tech else [],
             response_body=self.response_body,
