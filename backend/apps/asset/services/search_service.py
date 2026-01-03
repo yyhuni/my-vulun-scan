@@ -394,3 +394,46 @@ class AssetSearchService:
         except Exception as e:
             logger.error(f"统计查询失败: {e}")
             raise
+    
+    def search_iter(
+        self, 
+        query: str, 
+        asset_type: AssetType = 'website',
+        batch_size: int = 1000
+    ):
+        """
+        流式搜索资产（使用服务端游标，内存友好）
+        
+        Args:
+            query: 搜索查询字符串
+            asset_type: 资产类型 ('website' 或 'endpoint')
+            batch_size: 每批获取的数量
+        
+        Yields:
+            Dict: 单条搜索结果
+        """
+        where_clause, params = SearchQueryParser.parse(query)
+        
+        # 根据资产类型选择视图和字段
+        view_name = VIEW_MAPPING.get(asset_type, 'asset_search_view')
+        select_fields = ENDPOINT_SELECT_FIELDS if asset_type == 'endpoint' else WEBSITE_SELECT_FIELDS
+        
+        sql = f"""
+            SELECT {select_fields}
+            FROM {view_name}
+            WHERE {where_clause}
+            ORDER BY created_at DESC
+        """
+        
+        try:
+            # 使用服务端游标，避免一次性加载所有数据到内存
+            with connection.cursor(name='export_cursor') as cursor:
+                cursor.itersize = batch_size
+                cursor.execute(sql, params)
+                columns = [col[0] for col in cursor.description]
+                
+                for row in cursor:
+                    yield dict(zip(columns, row))
+        except Exception as e:
+            logger.error(f"流式搜索查询失败: {e}, SQL: {sql}, params: {params}")
+            raise

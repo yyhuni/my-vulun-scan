@@ -13,14 +13,14 @@
 
 <p align="center">
   <a href="#-功能特性">功能特性</a> •
+  <a href="#-全局资产搜索">资产搜索</a> •
   <a href="#-快速开始">快速开始</a> •
   <a href="#-文档">文档</a> •
-  <a href="#-技术栈">技术栈</a> •
   <a href="#-反馈与贡献">反馈与贡献</a>
 </p>
 
 <p align="center">
-  <sub>🔍 关键词: ASM | 攻击面管理 | 漏洞扫描 | 资产发现 | Bug Bounty | 渗透测试 | Nuclei | 子域名枚举 | EASM</sub>
+  <sub>🔍 关键词: ASM | 攻击面管理 | 漏洞扫描 | 资产发现 | 资产搜索 | Bug Bounty | 渗透测试 | Nuclei | 子域名枚举 | EASM</sub>
 </p>
 
 ---
@@ -162,6 +162,30 @@ flowchart TB
     W3 -.心跳上报.-> REDIS
 ```
 
+### 🔎 全局资产搜索
+- **多类型搜索** - 支持 Website 和 Endpoint 两种资产类型
+- **表达式语法** - 支持 `=`（模糊）、`==`（精确）、`!=`（不等于）操作符
+- **逻辑组合** - 支持 `&&` (AND) 和 `||` (OR) 逻辑组合
+- **多字段查询** - 支持 host、url、title、tech、status、body、header 字段
+- **CSV 导出** - 流式导出全部搜索结果，无数量限制
+
+#### 搜索语法示例
+
+```bash
+# 基础搜索
+host="api"                    # host 包含 "api"
+status=="200"                 # 状态码精确等于 200
+tech="nginx"                  # 技术栈包含 nginx
+
+# 组合搜索
+host="api" && status=="200"   # host 包含 api 且状态码为 200
+tech="vue" || tech="react"    # 技术栈包含 vue 或 react
+
+# 复杂查询
+host="admin" && tech="php" && status=="200"
+url="/api/v1" && status!="404"
+```
+
 ### 📊 可视化界面
 - **数据统计** - 资产/漏洞统计仪表盘
 - **实时通知** - WebSocket 消息推送
@@ -172,7 +196,7 @@ flowchart TB
 
 ### 环境要求
 
-- **操作系统**: Ubuntu 20.04+ / Debian 11+ （推荐）
+- **操作系统**: Ubuntu 20.04+ / Debian 11+ 
 - **硬件**: 2核 4G 内存起步，20GB+ 磁盘空间
 
 ### 一键安装
@@ -197,6 +221,7 @@ sudo ./install.sh --mirror
 ### 访问服务
 
 - **Web 界面**: `https://ip:8083` 
+- **默认账号**: admin / admin（首次登录后请修改密码）
 
 ### 常用命令
 

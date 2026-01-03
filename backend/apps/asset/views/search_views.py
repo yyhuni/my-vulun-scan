@@ -28,8 +28,6 @@
 
 import logging
 import json
-import csv
-from io import StringIO
 from datetime import datetime
 from urllib.parse import urlparse, urlunparse
 from rest_framework import status
@@ -287,76 +285,37 @@ class AssetSearchExportView(APIView):
         asset_type: 资产类型 ('website' 或 'endpoint'，默认 'website')
     
     Response:
-        CSV 文件流
+        CSV 文件流（使用服务端游标，支持大数据量导出）
     """
-    
-    # 导出数量限制
-    MAX_EXPORT_ROWS = 10000
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.service = AssetSearchService()
     
-    def _parse_headers(self, headers_data) -> str:
-        """解析响应头为字符串"""
-        if not headers_data:
-            return ''
-        try:
-            headers = json.loads(headers_data)
-            return '; '.join(f'{k}: {v}' for k, v in headers.items())
-        except (json.JSONDecodeError, TypeError):
-            return str(headers_data)
-    
-    def _generate_csv(self, results: list, asset_type: str):
-        """生成 CSV 内容的生成器"""
-        # 定义列
+    def _get_headers_and_formatters(self, asset_type: str):
+        """获取 CSV 表头和格式化器"""
+        from apps.common.utils import format_datetime, format_list_field
+        
         if asset_type == 'website':
-            columns = ['url', 'host', 'title', 'status_code', 'content_type', 'content_length', 
+            headers = ['url', 'host', 'title', 'status_code', 'content_type', 'content_length', 
                       'webserver', 'location', 'tech', 'vhost', 'created_at']
-            headers = ['URL', 'Host', 'Title', 'Status', 'Content-Type', 'Content-Length',
-                      'Webserver', 'Location', 'Technologies', 'VHost', 'Created At']
         else:
-            columns = ['url', 'host', 'title', 'status_code', 'content_type', 'content_length',
+            headers = ['url', 'host', 'title', 'status_code', 'content_type', 'content_length',
                       'webserver', 'location', 'tech', 'matched_gf_patterns', 'vhost', 'created_at']
-            headers = ['URL', 'Host', 'Title', 'Status', 'Content-Type', 'Content-Length',
-                      'Webserver', 'Location', 'Technologies', 'GF Patterns', 'VHost', 'Created At']
         
-        # 写入 BOM 和表头
-        output = StringIO()
-        writer = csv.writer(output)
+        formatters = {
+            'created_at': format_datetime,
+            'tech': lambda x: format_list_field(x, separator='; '),
+            'matched_gf_patterns': lambda x: format_list_field(x, separator='; '),
+            'vhost': lambda x: 'true' if x else ('false' if x is False else ''),
+        }
         
-        # UTF-8 BOM
-        yield '\ufeff'
-        
-        # 表头
-        writer.writerow(headers)
-        yield output.getvalue()
-        output.seek(0)
-        output.truncate(0)
-        
-        # 数据行
-        for result in results:
-            row = []
-            for col in columns:
-                value = result.get(col)
-                if col == 'tech' or col == 'matched_gf_patterns':
-                    # 数组转字符串
-                    row.append('; '.join(value) if value else '')
-                elif col == 'created_at':
-                    # 日期格式化
-                    row.append(value.strftime('%Y-%m-%d %H:%M:%S') if value else '')
-                elif col == 'vhost':
-                    row.append('true' if value else 'false' if value is False else '')
-                else:
-                    row.append(str(value) if value is not None else '')
-            
-            writer.writerow(row)
-            yield output.getvalue()
-            output.seek(0)
-            output.truncate(0)
+        return headers, formatters
     
     def get(self, request: Request):
-        """导出搜索结果为 CSV"""
+        """导出搜索结果为 CSV（流式导出，无数量限制）"""
+        from apps.common.utils import generate_csv_rows
+        
         # 获取搜索查询
         query = request.query_params.get('q', '').strip()
         
@@ -376,15 +335,20 @@ class AssetSearchExportView(APIView):
                 status_code=status.HTTP_400_BAD_REQUEST
             )
         
-        # 获取搜索结果（限制数量）
-        results = self.service.search(query, asset_type, limit=self.MAX_EXPORT_ROWS)
-        
-        if not results:
+        # 检查是否有结果（快速检查，避免空导出）
+        total = self.service.count(query, asset_type)
+        if total == 0:
             return error_response(
                 code=ErrorCodes.NOT_FOUND,
                 message='No results to export',
                 status_code=status.HTTP_404_NOT_FOUND
             )
+        
+        # 获取表头和格式化器
+        headers, formatters = self._get_headers_and_formatters(asset_type)
+        
+        # 获取流式数据迭代器
+        data_iterator = self.service.search_iter(query, asset_type)
         
         # 生成文件名
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -392,7 +356,7 @@ class AssetSearchExportView(APIView):
         
         # 返回流式响应
         response = StreamingHttpResponse(
-            self._generate_csv(results, asset_type),
+            generate_csv_rows(data_iterator, headers, formatters),
             content_type='text/csv; charset=utf-8'
         )
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
