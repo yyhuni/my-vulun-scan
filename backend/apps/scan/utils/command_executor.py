@@ -48,7 +48,7 @@ ENABLE_COMMAND_LOGGING = getattr(settings, 'ENABLE_COMMAND_LOGGING', True)
 # 动态并发控制阈值（可在 Django settings 中覆盖）
 SCAN_CPU_HIGH = getattr(settings, 'SCAN_CPU_HIGH', 90.0)   # CPU 高水位（百分比）
 SCAN_MEM_HIGH = getattr(settings, 'SCAN_MEM_HIGH', 80.0)   # 内存高水位（百分比）
-SCAN_LOAD_CHECK_INTERVAL = getattr(settings, 'SCAN_LOAD_CHECK_INTERVAL', 30)  # 负载检查间隔（秒）
+SCAN_LOAD_CHECK_INTERVAL = getattr(settings, 'SCAN_LOAD_CHECK_INTERVAL', 180)  # 负载检查间隔（秒）
 SCAN_COMMAND_STARTUP_DELAY = getattr(settings, 'SCAN_COMMAND_STARTUP_DELAY', 5)  # 命令启动前等待（秒）
 
 _ACTIVE_COMMANDS = 0
@@ -74,7 +74,7 @@ def _wait_for_system_load() -> None:
             return
 
         logger.info(
-            "系统负载较高，暂缓启动: cpu=%.1f%% (阈值 %.1f%%), mem=%.1f%% (阈值 %.1f%%)",
+            "系统负载较高，任务将排队执行，防止oom: cpu=%.1f%% (阈值 %.1f%%), mem=%.1f%% (阈值 %.1f%%)",
             cpu,
             SCAN_CPU_HIGH,
             mem,
