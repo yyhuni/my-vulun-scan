@@ -2130,7 +2130,8 @@
           "today": "Today",
           "tomorrow": "Tomorrow",
           "more": "+{count} more"
-        }
+        },
+        "initiateScan": "Initiate Scan"
       }
     },
     "nav": {

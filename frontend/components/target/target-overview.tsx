@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import React, { useState } from "react"
 import Link from "next/link"
 import { useTranslations, useLocale } from "next-intl"
 import {
@@ -16,6 +16,7 @@ import {
   ChevronRight,
   CheckCircle2,
   PauseCircle,
+  Play,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -24,6 +25,7 @@ import { Button } from "@/components/ui/button"
 import { useTarget } from "@/hooks/use-targets"
 import { useScheduledScans } from "@/hooks/use-scheduled-scans"
 import { ScanHistoryList } from "@/components/scan/history/scan-history-list"
+import { InitiateScanDialog } from "@/components/scan/initiate-scan-dialog"
 import { getDateLocale } from "@/lib/date-utils"
 
 interface TargetOverviewProps {
@@ -37,6 +39,8 @@ interface TargetOverviewProps {
 export function TargetOverview({ targetId }: TargetOverviewProps) {
   const t = useTranslations("pages.targetDetail.overview")
   const locale = useLocale()
+
+  const [scanDialogOpen, setScanDialogOpen] = useState(false)
 
   const { data: target, isLoading, error } = useTarget(targetId)
   const { data: scheduledScansData, isLoading: isLoadingScans } = useScheduledScans({ 
@@ -172,16 +176,22 @@ export function TargetOverview({ targetId }: TargetOverviewProps) {
 
   return (
     <div className="space-y-6">
-      {/* Target info */}
-      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-        <div className="flex items-center gap-1.5">
-          <Calendar className="h-4 w-4" />
-          <span>{t("createdAt")}: {formatDate(target.createdAt)}</span>
+      {/* Target info + Initiate Scan button */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-1.5">
+            <Calendar className="h-4 w-4" />
+            <span>{t("createdAt")}: {formatDate(target.createdAt)}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Clock className="h-4 w-4" />
+            <span>{t("lastScanned")}: {formatDate(target.lastScannedAt)}</span>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <Clock className="h-4 w-4" />
-          <span>{t("lastScanned")}: {formatDate(target.lastScannedAt)}</span>
-        </div>
+        <Button onClick={() => setScanDialogOpen(true)}>
+          <Play className="h-4 w-4 mr-2" />
+          {t("initiateScan")}
+        </Button>
       </div>
 
       {/* Asset statistics cards */}
@@ -207,7 +217,7 @@ export function TargetOverview({ targetId }: TargetOverviewProps) {
       {/* Scheduled Scans + Vulnerability Statistics (Two columns) */}
       <div className="grid gap-4 md:grid-cols-2">
         {/* Scheduled Scans Card */}
-        <Card>
+        <Card className="flex flex-col">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-muted-foreground" />
@@ -220,15 +230,15 @@ export function TargetOverview({ targetId }: TargetOverviewProps) {
               </Button>
             </Link>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="flex-1 flex flex-col">
             {isLoadingScans ? (
               <div className="space-y-2">
                 <Skeleton className="h-4 w-32" />
                 <Skeleton className="h-4 w-48" />
               </div>
             ) : totalScheduledScans === 0 ? (
-              <div className="text-center py-4">
-                <Clock className="h-8 w-8 text-muted-foreground/50 mx-auto mb-2" />
+              <div className="flex-1 flex flex-col items-center justify-center">
+                <Clock className="h-8 w-8 text-muted-foreground/50 mb-2" />
                 <p className="text-sm text-muted-foreground">{t("scheduledScans.empty")}</p>
                 <Link href={`/target/${targetId}/settings/`}>
                   <Button variant="link" size="sm" className="mt-1">
@@ -237,7 +247,7 @@ export function TargetOverview({ targetId }: TargetOverviewProps) {
                 </Link>
               </div>
             ) : (
-              <>
+              <div className="space-y-3">
                 {/* Stats row */}
                 <div className="flex items-center gap-4 text-sm">
                   <div>
@@ -258,9 +268,9 @@ export function TargetOverview({ targetId }: TargetOverviewProps) {
                   </div>
                 )}
 
-                {/* Task list */}
+                {/* Task list - max 2 items */}
                 <div className="space-y-2 pt-2 border-t">
-                  {scheduledScans.slice(0, 3).map((scan) => (
+                  {scheduledScans.slice(0, 2).map((scan) => (
                     <div key={scan.id} className="flex items-center gap-2 text-sm">
                       {scan.isEnabled ? (
                         <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
@@ -272,20 +282,20 @@ export function TargetOverview({ targetId }: TargetOverviewProps) {
                       </span>
                     </div>
                   ))}
-                  {totalScheduledScans > 3 && (
+                  {totalScheduledScans > 2 && (
                     <p className="text-xs text-muted-foreground">
-                      {t("scheduledScans.more", { count: totalScheduledScans - 3 })}
+                      {t("scheduledScans.more", { count: totalScheduledScans - 2 })}
                     </p>
                   )}
                 </div>
-              </>
+              </div>
             )}
           </CardContent>
         </Card>
 
         {/* Vulnerability Statistics Card */}
-        <Link href={`/target/${targetId}/vulnerabilities/`}>
-          <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
+        <Link href={`/target/${targetId}/vulnerabilities/`} className="block">
+          <Card className="h-full hover:border-primary/50 transition-colors cursor-pointer flex flex-col">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
               <div className="flex items-center gap-2">
                 <ShieldAlert className="h-4 w-4 text-red-500" />
@@ -336,6 +346,14 @@ export function TargetOverview({ targetId }: TargetOverviewProps) {
         <h3 className="text-lg font-semibold mb-4">{t("scanHistoryTitle")}</h3>
         <ScanHistoryList targetId={targetId} hideToolbar pageSize={5} hideTargetColumn pageSizeOptions={[5, 10, 20, 50, 100]} />
       </div>
+
+      {/* Initiate Scan Dialog */}
+      <InitiateScanDialog
+        open={scanDialogOpen}
+        onOpenChange={setScanDialogOpen}
+        targetId={targetId}
+        targetName={target.name}
+      />
     </div>
   )
 }

@@ -2130,7 +2130,8 @@
           "today": "今天",
           "tomorrow": "明天",
           "more": "+{count} 更多"
-        }
+        },
+        "initiateScan": "发起扫描"
       }
     },
     "nav": {
