@@ -254,6 +254,7 @@ sudo ./uninstall.sh
 
 ## 📧 联系
 - 微信公众号: **塔罗安全学苑**
+- 微信群去公众号底下的菜单，有个交流群，点击就可以看到了，链接过期可以私信我拉你
 
 <img src="docs/wechat-qrcode.png" alt="微信公众号" width="200">
 

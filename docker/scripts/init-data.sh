@@ -63,11 +63,7 @@ wait_for_server() {
 run_migrations() {
     log_step "执行数据库迁移..."
     
-    # 开发环境：先 makemigrations
-    if [ "$DEV_MODE" = "true" ]; then
-        docker compose exec -T server python backend/manage.py makemigrations --noinput 2>/dev/null || true
-    fi
-    
+    # 迁移文件应手动生成并提交到仓库，这里只执行 migrate
     docker compose exec -T server python backend/manage.py migrate --noinput
     log_info "数据库迁移完成"
 }

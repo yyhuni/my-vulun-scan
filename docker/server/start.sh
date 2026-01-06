@@ -3,26 +3,21 @@ set -e
 
 echo "[START] 启动 XingRin Server..."
 
-# 1. 生成和迁移数据库
-echo "  [1/3] 生成数据库迁移文件..."
+# 1. 执行数据库迁移（迁移文件应提交到仓库，这里只执行 migrate）
+echo "  [1/3] 执行数据库迁移..."
 cd /app/backend
-python manage.py makemigrations
-echo "  ✓ 迁移文件生成完成"
-
-echo "  [1.1/3] 执行数据库迁移..."
 python manage.py migrate --noinput
 echo "  ✓ 数据库迁移完成"
 
-echo "  [1.2/3] 初始化默认扫描引擎..."
+echo "  [1.1/3] 初始化默认扫描引擎..."
 python manage.py init_default_engine
 echo "  ✓ 默认扫描引擎已就绪"
 
-echo "  [1.3/3] 初始化默认目录字典..."
+echo "  [1.2/3] 初始化默认目录字典..."
 python manage.py init_wordlists
 echo "  ✓ 默认目录字典已就绪"
 
-
-echo "  [1.4/3] 初始化默认指纹库..."
+echo "  [1.3/3] 初始化默认指纹库..."
 python manage.py init_fingerprints
 echo "  ✓ 默认指纹库已就绪"
 

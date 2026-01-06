@@ -29,6 +29,17 @@ export function useRunningScans(page = 1, pageSize = 10) {
   return useScans({ page, pageSize, status: 'running' })
 }
 
+/**
+ * 获取目标的扫描历史
+ */
+export function useTargetScans(targetId: number, pageSize = 5) {
+  return useQuery({
+    queryKey: ['scans', 'target', targetId, pageSize],
+    queryFn: () => getScans({ target: targetId, pageSize }),
+    enabled: !!targetId,
+  })
+}
+
 export function useScan(id: number) {
   return useQuery({
     queryKey: ['scan', id],

@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import NotFound, APIException
 from rest_framework.filters import SearchFilter
+from django_filters.rest_framework import DjangoFilterBackend
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db.utils import DatabaseError, IntegrityError, OperationalError
 import logging
@@ -33,7 +34,8 @@ class ScanViewSet(viewsets.ModelViewSet):
     """扫描任务视图集"""
     serializer_class = ScanSerializer
     pagination_class = BasePagination
-    filter_backends = [SearchFilter]
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_fields = ['target']  # 支持 ?target=123 过滤
     search_fields = ['target__name']  # 按目标名称搜索
     
     def get_queryset(self):

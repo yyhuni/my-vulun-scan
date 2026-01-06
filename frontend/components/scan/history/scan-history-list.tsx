@@ -31,9 +31,14 @@ import { ScanProgressDialog, buildScanProgressData, type ScanProgressData } from
  */
 interface ScanHistoryListProps {
   hideToolbar?: boolean
+  targetId?: number  // Filter by target ID
+  pageSize?: number  // Custom page size
+  hideTargetColumn?: boolean  // Hide target column (useful when showing scans for a specific target)
+  pageSizeOptions?: number[]  // Custom page size options
+  hidePagination?: boolean  // Hide pagination completely
 }
 
-export function ScanHistoryList({ hideToolbar = false }: ScanHistoryListProps) {
+export function ScanHistoryList({ hideToolbar = false, targetId, pageSize: customPageSize, hideTargetColumn = false, pageSizeOptions, hidePagination = false }: ScanHistoryListProps) {
   const queryClient = useQueryClient()
   const [selectedScans, setSelectedScans] = useState<ScanRecord[]>([])
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -97,7 +102,7 @@ export function ScanHistoryList({ hideToolbar = false }: ScanHistoryListProps) {
   // Pagination state
   const [pagination, setPagination] = useState({
     pageIndex: 0,
-    pageSize: 10,
+    pageSize: customPageSize || 10,
   })
 
   // Search state
@@ -115,6 +120,7 @@ export function ScanHistoryList({ hideToolbar = false }: ScanHistoryListProps) {
     page: pagination.pageIndex + 1, // API page numbers start from 1
     pageSize: pagination.pageSize,
     search: searchQuery || undefined,
+    target: targetId,
   })
 
   // Reset search state when request completes
@@ -278,8 +284,9 @@ export function ScanHistoryList({ hideToolbar = false }: ScanHistoryListProps) {
         handleStop: handleStopScan,
         handleViewProgress,
         t: translations,
+        hideTargetColumn,
       }),
-    [navigate, translations]
+    [navigate, translations, hideTargetColumn]
   )
 
   // Error handling
@@ -330,6 +337,8 @@ export function ScanHistoryList({ hideToolbar = false }: ScanHistoryListProps) {
         }}
         onPaginationChange={handlePaginationChange}
         hideToolbar={hideToolbar}
+        pageSizeOptions={pageSizeOptions}
+        hidePagination={hidePagination}
       />
 
       {/* Delete confirmation dialog */}

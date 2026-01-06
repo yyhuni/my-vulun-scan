@@ -66,6 +66,7 @@ export interface GetScansParams {
   pageSize?: number
   status?: ScanStatus
   search?: string
+  target?: number  // Filter by target ID
 }
 
 export interface GetScansResponse {

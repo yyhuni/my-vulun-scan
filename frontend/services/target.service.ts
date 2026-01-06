@@ -159,3 +159,22 @@ export async function getTargetEndpoints(
   return response.data
 }
 
+/**
+ * Get target's blacklist rules
+ */
+export async function getTargetBlacklist(id: number): Promise<{ patterns: string[] }> {
+  const response = await api.get<{ patterns: string[] }>(`/targets/${id}/blacklist/`)
+  return response.data
+}
+
+/**
+ * Update target's blacklist rules (full replace)
+ */
+export async function updateTargetBlacklist(
+  id: number,
+  patterns: string[]
+): Promise<{ count: number }> {
+  const response = await api.put<{ count: number }>(`/targets/${id}/blacklist/`, { patterns })
+  return response.data
+}
+

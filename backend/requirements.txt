@@ -11,6 +11,9 @@ setuptools==75.6.0
 # CORS 支持
 django-cors-headers==4.3.1
 
+# 过滤器支持
+django-filter==24.3
+
 # 环境变量管理
 python-dotenv==1.0.1
 

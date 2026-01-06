@@ -14,7 +14,13 @@ import type { CreateScheduledScanRequest, UpdateScheduledScanRequest } from '@/t
 /**
  * 获取定时扫描列表
  */
-export function useScheduledScans(params: { page?: number; pageSize?: number; search?: string } = { page: 1, pageSize: 10 }) {
+export function useScheduledScans(params: { 
+  page?: number
+  pageSize?: number
+  search?: string
+  targetId?: number
+  organizationId?: number 
+} = { page: 1, pageSize: 10 }) {
   return useQuery({
     queryKey: ['scheduled-scans', params],
     queryFn: () => getScheduledScans(params),

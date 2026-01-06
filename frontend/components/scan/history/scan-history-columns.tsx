@@ -161,6 +161,7 @@ interface CreateColumnsProps {
   handleStop: (scan: ScanRecord) => void
   handleViewProgress?: (scan: ScanRecord) => void
   t: ScanHistoryTranslations
+  hideTargetColumn?: boolean
 }
 
 /**
@@ -173,7 +174,9 @@ export const createScanHistoryColumns = ({
   handleStop,
   handleViewProgress,
   t,
-}: CreateColumnsProps): ColumnDef<ScanRecord>[] => [
+  hideTargetColumn = false,
+}: CreateColumnsProps): ColumnDef<ScanRecord>[] => {
+  const columns: ColumnDef<ScanRecord>[] = [
   {
     id: "select",
     size: 40,
@@ -574,3 +577,11 @@ export const createScanHistoryColumns = ({
     enableHiding: false,
   },
 ]
+
+  // Filter out targetName column if hideTargetColumn is true
+  if (hideTargetColumn) {
+    return columns.filter(col => (col as any).accessorKey !== 'targetName')
+  }
+
+  return columns
+}

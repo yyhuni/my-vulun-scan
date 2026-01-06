@@ -27,6 +27,7 @@ interface ScanHistoryDataTableProps {
   onPaginationChange?: (pagination: { pageIndex: number; pageSize: number }) => void
   hideToolbar?: boolean
   hidePagination?: boolean
+  pageSizeOptions?: number[]
 }
 
 /**
@@ -50,6 +51,7 @@ export function ScanHistoryDataTable({
   onPaginationChange,
   hideToolbar = false,
   hidePagination = false,
+  pageSizeOptions,
 }: ScanHistoryDataTableProps) {
   const t = useTranslations("common.status")
   const tScan = useTranslations("scan.history")
@@ -84,6 +86,7 @@ export function ScanHistoryDataTable({
       paginationInfo={paginationInfo}
       onPaginationChange={onPaginationChange}
       hidePagination={hidePagination}
+      pageSizeOptions={pageSizeOptions}
       // Selection
       onSelectionChange={onSelectionChange}
       // Bulk operations

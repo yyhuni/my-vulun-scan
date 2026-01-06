@@ -12,7 +12,8 @@ import { useTranslations } from "next-intl"
 
 /**
  * Target detail layout
- * Provides shared target information and navigation for all sub-pages
+ * Two-level navigation: Overview / Assets / Vulnerabilities
+ * Assets has secondary navigation for different asset types
  */
 export default function TargetLayout({
   children,
@@ -30,26 +31,52 @@ export default function TargetLayout({
     error
   } = useTarget(Number(id))
 
-  // Get currently active tab
-  const getActiveTab = () => {
-    if (pathname.includes("/subdomain")) return "subdomain"
-    if (pathname.includes("/endpoints")) return "endpoints"
-    if (pathname.includes("/websites")) return "websites"
-    if (pathname.includes("/directories")) return "directories"
+  // Get primary navigation active tab
+  const getPrimaryTab = () => {
+    if (pathname.includes("/overview")) return "overview"
     if (pathname.includes("/vulnerabilities")) return "vulnerabilities"
-    if (pathname.includes("/ip-addresses")) return "ip-addresses"
-    return ""
+    if (pathname.includes("/settings")) return "settings"
+    // All asset pages fall under "assets"
+    if (
+      pathname.includes("/websites") ||
+      pathname.includes("/subdomain") ||
+      pathname.includes("/ip-addresses") ||
+      pathname.includes("/endpoints") ||
+      pathname.includes("/directories")
+    ) {
+      return "assets"
+    }
+    return "overview"
   }
+
+  // Get secondary navigation active tab (for assets)
+  const getSecondaryTab = () => {
+    if (pathname.includes("/websites")) return "websites"
+    if (pathname.includes("/subdomain")) return "subdomain"
+    if (pathname.includes("/ip-addresses")) return "ip-addresses"
+    if (pathname.includes("/endpoints")) return "endpoints"
+    if (pathname.includes("/directories")) return "directories"
+    return "websites"
+  }
+
+  // Check if we should show secondary navigation
+  const showSecondaryNav = getPrimaryTab() === "assets"
 
   // Tab path mapping
   const basePath = `/target/${id}`
-  const tabPaths = {
-    subdomain: `${basePath}/subdomain/`,
-    endpoints: `${basePath}/endpoints/`,
-    websites: `${basePath}/websites/`,
-    directories: `${basePath}/directories/`,
+  const primaryPaths = {
+    overview: `${basePath}/overview/`,
+    assets: `${basePath}/websites/`, // Default to websites when clicking assets
     vulnerabilities: `${basePath}/vulnerabilities/`,
+    settings: `${basePath}/settings/`,
+  }
+
+  const secondaryPaths = {
+    websites: `${basePath}/websites/`,
+    subdomain: `${basePath}/subdomain/`,
     "ip-addresses": `${basePath}/ip-addresses/`,
+    endpoints: `${basePath}/endpoints/`,
+    directories: `${basePath}/directories/`,
   }
 
   // Get counts for each tab from target data
@@ -62,27 +89,24 @@ export default function TargetLayout({
     "ip-addresses": (target as any)?.summary?.ips || 0,
   }
 
+  // Calculate total assets count
+  const totalAssets = counts.websites + counts.subdomain + counts["ip-addresses"] + counts.endpoints + counts.directories
+
   // Loading state
   if (isLoading) {
     return (
       <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-        {/* Page header skeleton */}
-        <div className="flex items-center justify-between px-4 lg:px-6">
-          <div className="w-full max-w-xl space-y-2">
-            <div className="flex items-center gap-2">
-              <Skeleton className="h-6 w-6 rounded-md" />
-              <Skeleton className="h-7 w-48" />
-            </div>
-            <Skeleton className="h-4 w-72" />
-          </div>
+        {/* Header skeleton */}
+        <div className="flex items-center gap-2 px-4 lg:px-6">
+          <Skeleton className="h-4 w-16" />
+          <span className="text-muted-foreground">/</span>
+          <Skeleton className="h-4 w-32" />
         </div>
-
-        {/* Tabs navigation skeleton */}
-        <div className="flex items-center justify-between px-4 lg:px-6">
-          <div className="flex gap-2">
-            <Skeleton className="h-9 w-20" />
-            <Skeleton className="h-9 w-24" />
-          </div>
+        {/* Tabs skeleton */}
+        <div className="flex gap-1 px-4 lg:px-6">
+          <Skeleton className="h-9 w-20" />
+          <Skeleton className="h-9 w-20" />
+          <Skeleton className="h-9 w-24" />
         </div>
       </div>
     )
@@ -123,74 +147,38 @@ export default function TargetLayout({
 
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-      {/* Page header */}
-      <div className="flex items-center justify-between px-4 lg:px-6">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Target />
-            {target.name}
-          </h2>
-          <p className="text-muted-foreground">{target.description || t("noDescription")}</p>
-        </div>
+      {/* Header: Page label + Target name */}
+      <div className="flex items-center gap-2 text-sm px-4 lg:px-6">
+        <span className="text-muted-foreground">{t("breadcrumb.targetDetail")}</span>
+        <span className="text-muted-foreground">/</span>
+        <span className="font-medium flex items-center gap-1.5">
+          <Target className="h-4 w-4" />
+          {target.name}
+        </span>
       </div>
 
-      {/* Tabs navigation - Use Link to ensure progress bar is triggered */}
-      <div className="flex items-center justify-between px-4 lg:px-6">
-        <Tabs value={getActiveTab()} className="w-full">
+      {/* Primary navigation */}
+      <div className="px-4 lg:px-6">
+        <Tabs value={getPrimaryTab()}>
           <TabsList>
-            <TabsTrigger value="websites" asChild>
-              <Link href={tabPaths.websites} className="flex items-center gap-0.5">
-                Websites
-                {counts.websites > 0 && (
-                  <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 rounded-full px-1.5 text-xs">
-                    {counts.websites}
-                  </Badge>
-                )}
+            <TabsTrigger value="overview" asChild>
+              <Link href={primaryPaths.overview} className="flex items-center gap-0.5">
+                {t("tabs.overview")}
               </Link>
             </TabsTrigger>
-            <TabsTrigger value="subdomain" asChild>
-              <Link href={tabPaths.subdomain} className="flex items-center gap-0.5">
-                Subdomains
-                {counts.subdomain > 0 && (
+            <TabsTrigger value="assets" asChild>
+              <Link href={primaryPaths.assets} className="flex items-center gap-0.5">
+                {t("tabs.assets")}
+                {totalAssets > 0 && (
                   <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 rounded-full px-1.5 text-xs">
-                    {counts.subdomain}
-                  </Badge>
-                )}
-              </Link>
-            </TabsTrigger>
-            <TabsTrigger value="ip-addresses" asChild>
-              <Link href={tabPaths["ip-addresses"]} className="flex items-center gap-0.5">
-                IP Addresses
-                {counts["ip-addresses"] > 0 && (
-                  <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 rounded-full px-1.5 text-xs">
-                    {counts["ip-addresses"]}
-                  </Badge>
-                )}
-              </Link>
-            </TabsTrigger>
-            <TabsTrigger value="endpoints" asChild>
-              <Link href={tabPaths.endpoints} className="flex items-center gap-0.5">
-                URLs
-                {counts.endpoints > 0 && (
-                  <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 rounded-full px-1.5 text-xs">
-                    {counts.endpoints}
-                  </Badge>
-                )}
-              </Link>
-            </TabsTrigger>
-            <TabsTrigger value="directories" asChild>
-              <Link href={tabPaths.directories} className="flex items-center gap-0.5">
-                Directories
-                {counts.directories > 0 && (
-                  <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 rounded-full px-1.5 text-xs">
-                    {counts.directories}
+                    {totalAssets}
                   </Badge>
                 )}
               </Link>
             </TabsTrigger>
             <TabsTrigger value="vulnerabilities" asChild>
-              <Link href={tabPaths.vulnerabilities} className="flex items-center gap-0.5">
-                Vulnerabilities
+              <Link href={primaryPaths.vulnerabilities} className="flex items-center gap-0.5">
+                {t("tabs.vulnerabilities")}
                 {counts.vulnerabilities > 0 && (
                   <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 rounded-full px-1.5 text-xs">
                     {counts.vulnerabilities}
@@ -198,9 +186,74 @@ export default function TargetLayout({
                 )}
               </Link>
             </TabsTrigger>
+            <TabsTrigger value="settings" asChild>
+              <Link href={primaryPaths.settings} className="flex items-center gap-0.5">
+                {t("tabs.settings")}
+              </Link>
+            </TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
+
+      {/* Secondary navigation (only for assets) */}
+      {showSecondaryNav && (
+        <div className="flex items-center px-4 lg:px-6">
+          <Tabs value={getSecondaryTab()} className="w-full">
+            <TabsList variant="underline">
+              <TabsTrigger value="websites" variant="underline" asChild>
+                <Link href={secondaryPaths.websites} className="flex items-center gap-0.5">
+                  Websites
+                  {counts.websites > 0 && (
+                    <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 rounded-full px-1.5 text-xs">
+                      {counts.websites}
+                    </Badge>
+                  )}
+                </Link>
+              </TabsTrigger>
+              <TabsTrigger value="subdomain" variant="underline" asChild>
+                <Link href={secondaryPaths.subdomain} className="flex items-center gap-0.5">
+                  Subdomains
+                  {counts.subdomain > 0 && (
+                    <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 rounded-full px-1.5 text-xs">
+                      {counts.subdomain}
+                    </Badge>
+                  )}
+                </Link>
+              </TabsTrigger>
+              <TabsTrigger value="ip-addresses" variant="underline" asChild>
+                <Link href={secondaryPaths["ip-addresses"]} className="flex items-center gap-0.5">
+                  IPs
+                  {counts["ip-addresses"] > 0 && (
+                    <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 rounded-full px-1.5 text-xs">
+                      {counts["ip-addresses"]}
+                    </Badge>
+                  )}
+                </Link>
+              </TabsTrigger>
+              <TabsTrigger value="endpoints" variant="underline" asChild>
+                <Link href={secondaryPaths.endpoints} className="flex items-center gap-0.5">
+                  URLs
+                  {counts.endpoints > 0 && (
+                    <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 rounded-full px-1.5 text-xs">
+                      {counts.endpoints}
+                    </Badge>
+                  )}
+                </Link>
+              </TabsTrigger>
+              <TabsTrigger value="directories" variant="underline" asChild>
+                <Link href={secondaryPaths.directories} className="flex items-center gap-0.5">
+                  Directories
+                  {counts.directories > 0 && (
+                    <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 rounded-full px-1.5 text-xs">
+                      {counts.directories}
+                    </Badge>
+                  )}
+                </Link>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+      )}
 
       {/* Sub-page content */}
       {children}

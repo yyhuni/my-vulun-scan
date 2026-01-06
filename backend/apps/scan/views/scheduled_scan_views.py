@@ -37,6 +37,11 @@ class ScheduledScanViewSet(viewsets.ModelViewSet):
     - PUT    /scheduled-scans/{id}/      更新定时扫描
     - DELETE /scheduled-scans/{id}/      删除定时扫描
     - POST   /scheduled-scans/{id}/toggle/   切换启用状态
+    
+    查询参数：
+    - target_id: 按目标 ID 过滤
+    - organization_id: 按组织 ID 过滤
+    - search: 按名称搜索
     """
     
     queryset = ScheduledScan.objects.all().order_by('-created_at')
@@ -48,6 +53,19 @@ class ScheduledScanViewSet(viewsets.ModelViewSet):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.service = ScheduledScanService()
+    
+    def get_queryset(self):
+        """支持按 target_id 和 organization_id 过滤"""
+        queryset = super().get_queryset()
+        target_id = self.request.query_params.get('target_id')
+        organization_id = self.request.query_params.get('organization_id')
+        
+        if target_id:
+            queryset = queryset.filter(target_id=target_id)
+        if organization_id:
+            queryset = queryset.filter(organization_id=organization_id)
+        
+        return queryset
     
     def get_serializer_class(self):
         """根据 action 返回不同的序列化器"""

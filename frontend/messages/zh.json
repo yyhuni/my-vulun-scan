@@ -837,7 +837,9 @@
         "noConfig": "无配置",
         "capabilitiesCount": "{count} 项能力",
         "selected": "已选择",
-        "selectedEngines": "已选择 {count} 个引擎"
+        "selectedEngines": "已选择 {count} 个引擎",
+        "scanTarget": "扫描目标",
+        "presetTargetHint": "目标已预设，无法更改。如需扫描其他目标，请从全局定时扫描页面创建。"
       },
       "presets": {
         "everyHour": "每小时",
@@ -1766,6 +1768,12 @@
         "error": "系统日志获取失败，请检查后端接口",
         "recovered": "系统日志连接已恢复"
       }
+    },
+    "blacklist": {
+      "save": {
+        "success": "黑名单规则已保存",
+        "error": "保存黑名单规则失败"
+      }
     }
   },
   "quickScan": {
@@ -2012,6 +2020,9 @@
     },
     "targetDetail": {
       "noDescription": "暂无描述",
+      "breadcrumb": {
+        "targetDetail": "目标详情"
+      },
       "error": {
         "title": "加载失败",
         "message": "获取目标数据时出现错误"
@@ -2019,6 +2030,107 @@
       "notFound": {
         "title": "目标不存在",
         "message": "未找到ID为 {id} 的目标"
+      },
+      "tabs": {
+        "overview": "概览",
+        "assets": "资产",
+        "vulnerabilities": "漏洞",
+        "settings": "设置"
+      },
+      "settings": {
+        "loadError": "加载设置失败",
+        "blacklist": {
+          "title": "黑名单规则",
+          "description": "扫描时将自动排除匹配以下规则的资产。",
+          "rulesTitle": "支持的规则类型",
+          "rules": {
+            "domain": "域名通配符，匹配指定后缀",
+            "domainShort": "域名",
+            "keyword": "关键词匹配，包含指定字符串",
+            "keywordShort": "关键词",
+            "ip": "精确匹配 IP 地址",
+            "ipShort": "IP",
+            "cidr": "匹配 IP 网段范围",
+            "cidrShort": "CIDR"
+          },
+          "placeholder": "输入规则，每行一个",
+          "save": "保存规则"
+        },
+        "scheduledScans": {
+          "title": "定时扫描",
+          "description": "为该目标配置自动执行的扫描任务",
+          "create": "新建定时扫描",
+          "empty": "暂无定时扫描任务",
+          "emptyHint": "点击上方按钮创建定时扫描任务",
+          "enabled": "已启用",
+          "disabled": "已禁用",
+          "nextRun": "下次执行",
+          "runCount": "执行次数",
+          "edit": "编辑",
+          "delete": "删除",
+          "cronDaily": "每天 {time}",
+          "cronWeekly": "每周{day} {time}",
+          "cronMonthly": "每月{day}日 {time}",
+          "weekdays": {
+            "sun": "日",
+            "mon": "一",
+            "tue": "二",
+            "wed": "三",
+            "thu": "四",
+            "fri": "五",
+            "sat": "六"
+          },
+          "deleteConfirm": {
+            "title": "确认删除",
+            "description": "确定要删除定时扫描任务「{name}」吗？此操作无法撤销。",
+            "cancel": "取消",
+            "confirm": "删除"
+          }
+        }
+      },
+      "overview": {
+        "loadError": "加载目标数据失败",
+        "createdAt": "创建时间",
+        "lastScanned": "最后扫描",
+        "assetsTitle": "资产统计",
+        "vulnerabilitiesTitle": "漏洞统计",
+        "scanHistoryTitle": "扫描历史",
+        "recentScans": "最近扫描",
+        "noScans": "暂无扫描记录",
+        "viewAll": "查看全部",
+        "cards": {
+          "websites": "网站",
+          "subdomains": "子域名",
+          "ips": "IP 地址",
+          "urls": "URL",
+          "directories": "目录",
+          "vulnerabilities": "漏洞总数"
+        },
+        "severity": {
+          "critical": "严重",
+          "high": "高危",
+          "medium": "中危",
+          "low": "低危"
+        },
+        "scanStatus": {
+          "completed": "已完成",
+          "running": "运行中",
+          "failed": "失败",
+          "cancelled": "已取消",
+          "initiated": "等待中"
+        },
+        "scheduledScans": {
+          "title": "定时扫描",
+          "manage": "管理",
+          "empty": "暂无定时扫描任务",
+          "createFirst": "创建第一个定时扫描",
+          "configured": "已配置",
+          "enabled": "已启用",
+          "nextRun": "下次执行",
+          "today": "今天",
+          "tomorrow": "明天",
+          "more": "+{count} 更多"
+        }
       }
     },
     "nav": {

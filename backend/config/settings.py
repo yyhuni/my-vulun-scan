@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # 第三方应用
     'rest_framework',
+    'django_filters',  # DRF 过滤器支持
     'drf_yasg',
     'corsheaders',
     'channels',  # WebSocket 支持

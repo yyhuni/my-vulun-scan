@@ -16,6 +16,8 @@ import {
   linkTargetOrganizations,
   unlinkTargetOrganizations,
   getTargetEndpoints,
+  getTargetBlacklist,
+  updateTargetBlacklist,
 } from '@/services/target.service'
 import type {
   CreateTargetRequest,
@@ -300,6 +302,37 @@ export function useTargetEndpoints(
           totalPages: response.totalPages || response.total_pages || 0,
         }
       }
+    },
+  })
+}
+
+/**
+ * 获取目标的黑名单规则
+ */
+export function useTargetBlacklist(targetId: number) {
+  return useQuery({
+    queryKey: ['targets', targetId, 'blacklist'],
+    queryFn: () => getTargetBlacklist(targetId),
+    enabled: !!targetId,
+  })
+}
+
+/**
+ * 更新目标的黑名单规则
+ */
+export function useUpdateTargetBlacklist() {
+  const queryClient = useQueryClient()
+  const toastMessages = useToastMessages()
+
+  return useMutation({
+    mutationFn: ({ targetId, patterns }: { targetId: number; patterns: string[] }) =>
+      updateTargetBlacklist(targetId, patterns),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['targets', variables.targetId, 'blacklist'] })
+      toastMessages.success('toast.blacklist.save.success')
+    },
+    onError: (error: any) => {
+      toastMessages.errorFromCode(getErrorCode(error?.response?.data), 'toast.blacklist.save.error')
     },
   })
 }

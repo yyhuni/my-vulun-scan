@@ -104,10 +104,12 @@ export function CreateScheduledScanDialog({
     { id: 5, title: t("steps.scheduleSettings"), icon: IconClock },
   ]
 
+  // Preset mode: skip target selection but keep basic info for name editing
   const PRESET_STEPS = [
-    { id: 1, title: t("steps.selectEngine"), icon: IconSettings },
-    { id: 2, title: t("steps.editConfig"), icon: IconCode },
-    { id: 3, title: t("steps.scheduleSettings"), icon: IconClock },
+    { id: 1, title: t("steps.basicInfo"), icon: IconInfoCircle },
+    { id: 2, title: t("steps.selectEngine"), icon: IconSettings },
+    { id: 3, title: t("steps.editConfig"), icon: IconCode },
+    { id: 4, title: t("steps.scheduleSettings"), icon: IconClock },
   ]
 
   const [orgSearchInput, setOrgSearchInput] = React.useState("")
@@ -240,15 +242,18 @@ export function CreateScheduledScanDialog({
   const validateCurrentStep = (): boolean => {
     if (hasPreset) {
       switch (currentStep) {
-        case 1: // Select engine
+        case 1: // Basic info (preset mode)
+          if (!name.trim()) { toast.error(t("form.taskNameRequired")); return false }
+          return true
+        case 2: // Select engine
           if (!selectedPresetId) { toast.error(t("form.scanEngineRequired")); return false }
           if (engineIds.length === 0) { toast.error(t("form.scanEngineRequired")); return false }
           return true
-        case 2: // Edit config
+        case 3: // Edit config
           if (!configuration.trim()) { toast.error(t("form.configurationRequired")); return false }
           if (!isYamlValid) { toast.error(t("form.yamlInvalid")); return false }
           return true
-        case 3: // Schedule
+        case 4: // Schedule
           const parts = cronExpression.trim().split(/\s+/)
           if (parts.length !== 5) { toast.error(t("form.cronRequired")); return false }
           return true
@@ -352,7 +357,7 @@ export function CreateScheduledScanDialog({
         </DialogHeader>
 
         <div className="border-t h-[480px] overflow-hidden">
-          {/* Step 1: Basic Info + Scan Mode */}
+          {/* Step 1: Basic Info + Scan Mode (full mode only) */}
           {currentStep === 1 && !hasPreset && (
             <div className="p-6 space-y-6 overflow-y-auto h-full">
               <div className="space-y-2">
@@ -390,6 +395,29 @@ export function CreateScheduledScanDialog({
                 <p className="text-sm text-muted-foreground">
                   {selectionMode === "organization" ? t("form.organizationScanHint") : t("form.targetScanHint")}
                 </p>
+              </div>
+            </div>
+          )}
+
+          {/* Step 1: Basic Info (preset mode - name only, target is locked) */}
+          {currentStep === 1 && hasPreset && (
+            <div className="p-6 space-y-6 overflow-y-auto h-full">
+              <div className="space-y-2">
+                <Label htmlFor="name">{t("form.taskName")} *</Label>
+                <Input id="name" placeholder={t("form.taskNamePlaceholder")} value={name} onChange={(e) => setName(e.target.value)} />
+                <p className="text-xs text-muted-foreground">{t("form.taskNameDesc")}</p>
+              </div>
+              <Separator />
+              <div className="space-y-3">
+                <Label>{t("form.scanTarget")}</Label>
+                <div className="flex items-center gap-2 p-4 border rounded-lg bg-muted/50">
+                  <IconTarget className="h-5 w-5 text-muted-foreground" />
+                  <span className="font-medium">{presetTargetName || presetOrganizationName}</span>
+                  <Badge variant="secondary" className="ml-auto">
+                    {presetTargetId ? t("form.targetScan") : t("form.organizationScan")}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">{t("form.presetTargetHint")}</p>
               </div>
             </div>
           )}
@@ -475,8 +503,8 @@ export function CreateScheduledScanDialog({
             </div>
           )}
 
-          {/* Step 3 (full) / Step 1 (preset): Select Engine */}
-          {((currentStep === 3 && !hasPreset) || (currentStep === 1 && hasPreset)) && engines.length > 0 && (
+          {/* Step 3 (full) / Step 2 (preset): Select Engine */}
+          {((currentStep === 3 && !hasPreset) || (currentStep === 2 && hasPreset)) && engines.length > 0 && (
             <EnginePresetSelector
               engines={engines}
               selectedEngineIds={engineIds}
@@ -488,8 +516,8 @@ export function CreateScheduledScanDialog({
             />
           )}
 
-          {/* Step 4 (full) / Step 2 (preset): Edit Configuration */}
-          {((currentStep === 4 && !hasPreset) || (currentStep === 2 && hasPreset)) && (
+          {/* Step 4 (full) / Step 3 (preset): Edit Configuration */}
+          {((currentStep === 4 && !hasPreset) || (currentStep === 3 && hasPreset)) && (
             <ScanConfigEditor
               configuration={configuration}
               onChange={handleManualConfigChange}
@@ -500,8 +528,8 @@ export function CreateScheduledScanDialog({
             />
           )}
 
-          {/* Step 5 (full) / Step 3 (preset): Schedule Settings */}
-          {((currentStep === 5 && !hasPreset) || (currentStep === 3 && hasPreset)) && (
+          {/* Step 5 (full) / Step 4 (preset): Schedule Settings */}
+          {((currentStep === 5 && !hasPreset) || (currentStep === 4 && hasPreset)) && (
             <div className="p-6 space-y-6 overflow-y-auto h-full">
               <div className="space-y-2">
                 <Label>{t("form.cronExpression")} *</Label>
