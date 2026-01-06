@@ -298,7 +298,7 @@ export function TargetOverview({ targetId }: TargetOverviewProps) {
           <Card className="h-full hover:border-primary/50 transition-colors cursor-pointer flex flex-col">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
               <div className="flex items-center gap-2">
-                <ShieldAlert className="h-4 w-4 text-red-500" />
+              <ShieldAlert className="h-4 w-4 text-muted-foreground" />
                 <CardTitle className="text-sm font-medium">{t("vulnerabilitiesTitle")}</CardTitle>
               </div>
               <Button variant="ghost" size="sm" className="h-7 text-xs">
