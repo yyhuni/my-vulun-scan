@@ -17,7 +17,12 @@ from .scan_state_service import ScanStateService
 from .scan_control_service import ScanControlService
 from .scan_stats_service import ScanStatsService
 from .scheduled_scan_service import ScheduledScanService
-from .target_export_service import TargetExportService
+from .target_export_service import (
+    TargetExportService,
+    create_export_service,
+    export_urls_with_fallback,
+    DataSource,
+)
 
 __all__ = [
     'ScanService',           # 主入口（向后兼容）
@@ -27,5 +32,8 @@ __all__ = [
     'ScanStatsService',
     'ScheduledScanService',
     'TargetExportService',   # 目标导出服务
+    'create_export_service',
+    'export_urls_with_fallback',
+    'DataSource',
 ]
 

@@ -2,7 +2,7 @@
 导出站点URL到文件的Task
 
 直接使用 HostPortMapping 表查询 host+port 组合，拼接成URL格式写入文件
-使用 TargetExportService 处理默认值回退逻辑
+使用 TargetExportService.generate_default_urls() 处理默认值回退逻辑
 
 特殊逻辑：
 - 80 端口：只生成 HTTP URL（省略端口号）
@@ -46,18 +46,15 @@ def export_site_urls_task(
     """
     导出目标下的所有站点URL到文件（基于 HostPortMapping 表）
     
-    数据源: HostPortMapping (host + port)
+    数据源: HostPortMapping (host + port) → Default
     
     特殊逻辑：
     - 80 端口：只生成 HTTP URL（省略端口号）
     - 443 端口：只生成 HTTPS URL（省略端口号）
     - 其他端口：生成 HTTP 和 HTTPS 两个URL（带端口号）
     
-    懒加载模式：
-    - 如果数据库为空，根据 Target 类型生成默认 URL
-    - DOMAIN: http(s)://domain
-    - IP: http(s)://ip
-    - CIDR: 展开为所有 IP 的 URL
+    回退逻辑：
+    - 如果 HostPortMapping 为空，使用 generate_default_urls() 生成默认 URL
     
     Args:
         target_id: 目标ID
@@ -69,7 +66,8 @@ def export_site_urls_task(
             'success': bool,
             'output_file': str,
             'total_urls': int,
-            'association_count': int  # 主机端口关联数量
+            'association_count': int,  # 主机端口关联数量
+            'source': str,  # 数据来源: "host_port" | "default"
         }
         
     Raises:
@@ -94,6 +92,7 @@ def export_site_urls_task(
     
     total_urls = 0
     association_count = 0
+    filtered_count = 0
     
     # 流式写入文件（特殊端口逻辑）
     with open(output_path, 'w', encoding='utf-8', buffering=8192) as f:
@@ -104,6 +103,7 @@ def export_site_urls_task(
             
             # 先校验 host，通过了再生成 URL
             if not blacklist_filter.is_allowed(host):
+                filtered_count += 1
                 continue
             
             # 根据端口号生成URL
@@ -114,19 +114,40 @@ def export_site_urls_task(
             if association_count % 1000 == 0:
                 logger.info("已处理 %d 条关联，生成 %d 个URL...", association_count, total_urls)
     
+    if filtered_count > 0:
+        logger.info("黑名单过滤: 过滤 %d 条关联", filtered_count)
+    
     logger.info(
         "✓ 站点URL导出完成 - 关联数: %d, 总URL数: %d, 文件: %s",
         association_count, total_urls, str(output_path)
     )
     
-    # 默认值回退模式：使用工厂函数创建导出服务
+    # 判断数据来源
+    source = "host_port"
+    
+    # 数据存在但全被过滤，不回退
+    if association_count > 0 and total_urls == 0:
+        logger.info("HostPortMapping 有 %d 条数据，但全被黑名单过滤，不回退", association_count)
+        return {
+            'success': True,
+            'output_file': str(output_path),
+            'total_urls': 0,
+            'association_count': association_count,
+            'source': source,
+        }
+    
+    # 数据源为空，回退到默认 URL 生成
     if total_urls == 0:
+        logger.info("HostPortMapping 为空，使用默认 URL 生成")
         export_service = create_export_service(target_id)
-        total_urls = export_service._generate_default_urls(target_id, output_path)
+        result = export_service.generate_default_urls(target_id, str(output_path))
+        total_urls = result['total_count']
+        source = "default"
     
     return {
         'success': True,
         'output_file': str(output_path),
         'total_urls': total_urls,
-        'association_count': association_count
+        'association_count': association_count,
+        'source': source,
     }

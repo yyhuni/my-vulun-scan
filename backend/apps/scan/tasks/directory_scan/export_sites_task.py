@@ -1,15 +1,16 @@
 """
 导出站点 URL 到 TXT 文件的 Task
 
-使用 TargetExportService 统一处理导出逻辑和默认值回退
-数据源: WebSite.url
+使用 export_urls_with_fallback 用例函数处理回退链逻辑
+数据源: WebSite.url → Default
 """
 import logging
 from prefect import task
 
-from apps.asset.models import WebSite
-from apps.scan.services import TargetExportService
-from apps.scan.services.target_export_service import create_export_service
+from apps.scan.services.target_export_service import (
+    export_urls_with_fallback,
+    DataSource,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -23,13 +24,9 @@ def export_sites_task(
     """
     导出目标下的所有站点 URL 到 TXT 文件
 
-    数据源: WebSite.url
-    
-    懒加载模式：
-    - 如果数据库为空，根据 Target 类型生成默认 URL
-    - DOMAIN: http(s)://domain
-    - IP: http(s)://ip
-    - CIDR: 展开为所有 IP 的 URL
+    数据源优先级（回退链）：
+    1. WebSite 表 - 站点级别 URL
+    2. 默认生成 - 根据 Target 类型生成 http(s)://target_name
 
     Args:
         target_id: 目标 ID
@@ -47,25 +44,21 @@ def export_sites_task(
         ValueError: 参数错误
         IOError: 文件写入失败
     """
-    # 构建数据源 queryset（Task 层决定数据源）
-    queryset = WebSite.objects.filter(target_id=target_id).values_list('url', flat=True)
-    
-    # 使用工厂函数创建导出服务
-    export_service = create_export_service(target_id)
-    
-    result = export_service.export_urls(
+    result = export_urls_with_fallback(
         target_id=target_id,
-        output_path=output_file,
-        queryset=queryset,
-        batch_size=batch_size
+        output_file=output_file,
+        sources=[DataSource.WEBSITE, DataSource.DEFAULT],
+        batch_size=batch_size,
+    )
+    
+    logger.info(
+        "站点 URL 导出完成 - source=%s, count=%d",
+        result['source'], result['total_count']
     )
     
     # 保持返回值格式不变（向后兼容）
     return {
         'success': result['success'],
         'output_file': result['output_file'],
-        'total_count': result['total_count']
+        'total_count': result['total_count'],
     }
-
-
-

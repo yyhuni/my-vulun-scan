@@ -2,7 +2,9 @@
 目标导出服务
 
 提供统一的目标提取和文件导出功能，支持：
-- URL 导出（流式写入 + 默认值回退）
+- URL 导出（纯导出，不做隐式回退）
+- 默认 URL 生成（独立方法）
+- 带回退链的 URL 导出（用例层编排）
 - 域名/IP 导出（用于端口扫描）
 - 黑名单过滤集成
 """
@@ -10,13 +12,21 @@
 import ipaddress
 import logging
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Callable
 
 from django.db.models import QuerySet
 
 from apps.common.utils import BlacklistFilter
 
 logger = logging.getLogger(__name__)
+
+
+class DataSource:
+    """数据源类型常量"""
+    ENDPOINT = "endpoint"
+    WEBSITE = "website"
+    HOST_PORT = "host_port"
+    DEFAULT = "default"
 
 
 def create_export_service(target_id: int) -> 'TargetExportService':
@@ -36,21 +46,129 @@ def create_export_service(target_id: int) -> 'TargetExportService':
     return TargetExportService(blacklist_filter=blacklist_filter)
 
 
+def export_urls_with_fallback(
+    target_id: int,
+    output_file: str,
+    sources: List[str],
+    batch_size: int = 1000
+) -> Dict[str, Any]:
+    """
+    带回退链的 URL 导出用例函数
+    
+    按 sources 顺序尝试每个数据源，直到有数据返回。
+    
+    回退逻辑：
+    1. 遍历 sources 列表
+    2. 对每个 source 构建 queryset 并调用 export_urls()
+    3. 如果 total_count > 0，返回
+    4. 如果 queryset_count > 0 但 total_count == 0（全被黑名单过滤），不回退
+    5. 如果 source == "default"，调用 generate_default_urls()
+    
+    Args:
+        target_id: 目标 ID
+        output_file: 输出文件路径
+        sources: 数据源优先级列表，如 ["endpoint", "website", "default"]
+        batch_size: 批次大小
+        
+    Returns:
+        dict: {
+            'success': bool,
+            'output_file': str,
+            'total_count': int,
+            'source': str,  # 实际使用的数据源
+            'tried_sources': List[str],  # 尝试过的数据源
+        }
+    """
+    from apps.asset.models import Endpoint, WebSite
+    
+    export_service = create_export_service(target_id)
+    tried_sources = []
+    
+    for source in sources:
+        tried_sources.append(source)
+        
+        if source == DataSource.DEFAULT:
+            # 默认 URL 生成
+            result = export_service.generate_default_urls(target_id, output_file)
+            return {
+                'success': result['success'],
+                'output_file': result['output_file'],
+                'total_count': result['total_count'],
+                'source': DataSource.DEFAULT,
+                'tried_sources': tried_sources,
+            }
+        
+        # 构建对应数据源的 queryset
+        if source == DataSource.ENDPOINT:
+            queryset = Endpoint.objects.filter(target_id=target_id).values_list('url', flat=True)
+        elif source == DataSource.WEBSITE:
+            queryset = WebSite.objects.filter(target_id=target_id).values_list('url', flat=True)
+        else:
+            logger.warning("未知的数据源类型: %s，跳过", source)
+            continue
+        
+        result = export_service.export_urls(
+            target_id=target_id,
+            output_path=output_file,
+            queryset=queryset,
+            batch_size=batch_size
+        )
+        
+        # 有数据写入，返回
+        if result['total_count'] > 0:
+            logger.info("从 %s 导出 %d 条 URL", source, result['total_count'])
+            return {
+                'success': result['success'],
+                'output_file': result['output_file'],
+                'total_count': result['total_count'],
+                'source': source,
+                'tried_sources': tried_sources,
+            }
+        
+        # 数据存在但全被黑名单过滤，不回退
+        if result['queryset_count'] > 0:
+            logger.info(
+                "%s 有 %d 条数据，但全被黑名单过滤（filtered=%d），不回退",
+                source, result['queryset_count'], result['filtered_count']
+            )
+            return {
+                'success': result['success'],
+                'output_file': result['output_file'],
+                'total_count': 0,
+                'source': source,
+                'tried_sources': tried_sources,
+            }
+        
+        # 数据源为空，继续尝试下一个
+        logger.info("%s 为空，尝试下一个数据源", source)
+    
+    # 所有数据源都为空
+    logger.warning("所有数据源都为空，无法导出 URL")
+    return {
+        'success': True,
+        'output_file': output_file,
+        'total_count': 0,
+        'source': 'none',
+        'tried_sources': tried_sources,
+    }
+
+
 class TargetExportService:
     """
     目标导出服务 - 提供统一的目标提取和文件导出功能
     
     使用方式：
-        from apps.common.services import BlacklistService
-        from apps.common.utils import BlacklistFilter
+        # 方式 1：使用用例函数（推荐）
+        from apps.scan.services.target_export_service import export_urls_with_fallback, DataSource
         
-        # 获取规则并创建过滤器
-        blacklist_service = BlacklistService()
-        rules = blacklist_service.get_rules(target_id)
-        blacklist_filter = BlacklistFilter(rules)
+        result = export_urls_with_fallback(
+            target_id=1,
+            output_file='/path/to/output.txt',
+            sources=[DataSource.ENDPOINT, DataSource.WEBSITE, DataSource.DEFAULT]
+        )
         
-        # 使用导出服务
-        export_service = TargetExportService(blacklist_filter=blacklist_filter)
+        # 方式 2：直接使用 Service（纯导出，不带回退）
+        export_service = create_export_service(target_id)
         result = export_service.export_urls(target_id, output_path, queryset)
     """
     
@@ -72,16 +190,14 @@ class TargetExportService:
         batch_size: int = 1000
     ) -> Dict[str, Any]:
         """
-        统一 URL 导出函数
+        纯 URL 导出函数 - 只负责将 queryset 数据写入文件
         
-        自动判断数据库有无数据：
-        - 有数据：流式写入数据库数据到文件
-        - 无数据：调用默认值生成器生成 URL
+        不做任何隐式回退或默认 URL 生成。
         
         Args:
             target_id: 目标 ID
             output_path: 输出文件路径
-            queryset: 数据源 queryset（由 Task 层构建，应为 values_list flat=True）
+            queryset: 数据源 queryset（由调用方构建，应为 values_list flat=True）
             url_field: URL 字段名（用于黑名单过滤）
             batch_size: 批次大小
             
@@ -89,7 +205,9 @@ class TargetExportService:
             dict: {
                 'success': bool,
                 'output_file': str,
-                'total_count': int
+                'total_count': int,        # 实际写入数量
+                'queryset_count': int,     # 原始数据数量（迭代计数）
+                'filtered_count': int,     # 被黑名单过滤的数量
             }
             
         Raises:
@@ -102,9 +220,12 @@ class TargetExportService:
         
         total_count = 0
         filtered_count = 0
+        queryset_count = 0
+        
         try:
             with open(output_file, 'w', encoding='utf-8', buffering=8192) as f:
                 for url in queryset.iterator(chunk_size=batch_size):
+                    queryset_count += 1
                     if url:
                         # 黑名单过滤
                         if self.blacklist_filter and not self.blacklist_filter.is_allowed(url):
@@ -122,25 +243,26 @@ class TargetExportService:
         if filtered_count > 0:
             logger.info("黑名单过滤: 过滤 %d 个 URL", filtered_count)
         
-        # 默认值回退模式
-        if total_count == 0:
-            total_count = self._generate_default_urls(target_id, output_file)
-        
-        logger.info("✓ URL 导出完成 - 数量: %d, 文件: %s", total_count, output_path)
+        logger.info(
+            "✓ URL 导出完成 - 写入: %d, 原始: %d, 过滤: %d, 文件: %s",
+            total_count, queryset_count, filtered_count, output_path
+        )
         
         return {
             'success': True,
             'output_file': str(output_file),
-            'total_count': total_count
+            'total_count': total_count,
+            'queryset_count': queryset_count,
+            'filtered_count': filtered_count,
         }
 
-    def _generate_default_urls(
+    def generate_default_urls(
         self,
         target_id: int,
-        output_path: Path
-    ) -> int:
+        output_path: str
+    ) -> Dict[str, Any]:
         """
-        默认值生成器（内部函数）
+        默认 URL 生成器
         
         根据 Target 类型生成默认 URL：
         - DOMAIN: http(s)://domain
@@ -153,26 +275,37 @@ class TargetExportService:
             output_path: 输出文件路径
             
         Returns:
-            int: 写入的 URL 总数
+            dict: {
+                'success': bool,
+                'output_file': str,
+                'total_count': int,
+            }
         """
         from apps.targets.services import TargetService
         from apps.targets.models import Target
+        
+        output_file = Path(output_path)
+        output_file.parent.mkdir(parents=True, exist_ok=True)
         
         target_service = TargetService()
         target = target_service.get_target(target_id)
         
         if not target:
             logger.warning("Target ID %d 不存在，无法生成默认 URL", target_id)
-            return 0
+            return {
+                'success': True,
+                'output_file': str(output_file),
+                'total_count': 0,
+            }
         
         target_name = target.name
         target_type = target.type
         
-        logger.info("懒加载模式：Target 类型=%s, 名称=%s", target_type, target_name)
+        logger.info("生成默认 URL：Target 类型=%s, 名称=%s", target_type, target_name)
         
         total_urls = 0
         
-        with open(output_path, 'w', encoding='utf-8', buffering=8192) as f:
+        with open(output_file, 'w', encoding='utf-8', buffering=8192) as f:
             if target_type == Target.TargetType.DOMAIN:
                 urls = [f"http://{target_name}", f"https://{target_name}"]
                 for url in urls:
@@ -221,8 +354,13 @@ class TargetExportService:
             else:
                 logger.warning("不支持的 Target 类型: %s", target_type)
         
-        logger.info("✓ 懒加载生成默认 URL - 数量: %d", total_urls)
-        return total_urls
+        logger.info("✓ 默认 URL 生成完成 - 数量: %d", total_urls)
+        
+        return {
+            'success': True,
+            'output_file': str(output_file),
+            'total_count': total_urls,
+        }
     
     def _should_write_url(self, url: str) -> bool:
         """检查 URL 是否应该写入（通过黑名单过滤）"""
