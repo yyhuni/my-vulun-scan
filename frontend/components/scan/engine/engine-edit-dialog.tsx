@@ -58,14 +58,6 @@ subdomain_discovery:
       enabled: true
       timeout: 600      # 10 minutes (required)
       
-    amass_passive:
-      enabled: true
-      timeout: 600      # 10 minutes (required)
-      
-    amass_active:
-      enabled: true
-      timeout: 1800     # 30 minutes (required)
-      
     sublist3r:
       enabled: true
       timeout: 900      # 15 minutes (required)
