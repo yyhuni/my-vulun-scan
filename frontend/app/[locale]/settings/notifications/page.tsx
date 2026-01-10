@@ -29,6 +29,10 @@ export default function NotificationSettingsPage() {
         enabled: z.boolean(),
         webhookUrl: z.string().url(t("discord.urlInvalid")).or(z.literal('')),
       }),
+      wecom: z.object({
+        enabled: z.boolean(),
+        webhookUrl: z.string().url(t("wecom.urlInvalid")).or(z.literal('')),
+      }),
       categories: z.object({
         scan: z.boolean(),
         vulnerability: z.boolean(),
@@ -43,6 +47,15 @@ export default function NotificationSettingsPage() {
             code: z.ZodIssueCode.custom,
             message: t("discord.requiredError"),
             path: ['discord', 'webhookUrl'],
+          })
+        }
+      }
+      if (val.wecom.enabled) {
+        if (!val.wecom.webhookUrl || val.wecom.webhookUrl.trim() === '') {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: t("wecom.requiredError"),
+            path: ['wecom', 'webhookUrl'],
           })
         }
       }
@@ -79,6 +92,7 @@ export default function NotificationSettingsPage() {
     resolver: zodResolver(schema),
     values: data ?? {
       discord: { enabled: false, webhookUrl: '' },
+      wecom: { enabled: false, webhookUrl: '' },
       categories: {
         scan: true,
         vulnerability: true,
@@ -93,6 +107,7 @@ export default function NotificationSettingsPage() {
   }
 
   const discordEnabled = form.watch('discord.enabled')
+  const wecomEnabled = form.watch('wecom.enabled')
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -187,25 +202,59 @@ export default function NotificationSettingsPage() {
                 </CardHeader>
               </Card>
 
-              {/* Feishu/DingTalk/WeCom - Coming soon */}
-              <Card className="opacity-60">
+              {/* 企业微信 */}
+              <Card>
                 <CardHeader className="pb-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-                        <IconBrandSlack className="h-5 w-5 text-muted-foreground" />
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#07C160]/10">
+                        <IconBrandSlack className="h-5 w-5 text-[#07C160]" />
                       </div>
                       <div>
-                        <div className="flex items-center gap-2">
-                          <CardTitle className="text-base">{t("enterprise.title")}</CardTitle>
-                          <Badge variant="secondary" className="text-xs">{t("emailChannel.comingSoon")}</Badge>
-                        </div>
-                        <CardDescription>{t("enterprise.description")}</CardDescription>
+                        <CardTitle className="text-base">{t("wecom.title")}</CardTitle>
+                        <CardDescription>{t("wecom.description")}</CardDescription>
                       </div>
                     </div>
-                    <Switch disabled />
+                    <FormField
+                      control={form.control}
+                      name="wecom.enabled"
+                      render={({ field }) => (
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            disabled={isLoading || updateMutation.isPending}
+                          />
+                        </FormControl>
+                      )}
+                    />
                   </div>
                 </CardHeader>
+                {wecomEnabled && (
+                  <CardContent className="pt-0">
+                    <Separator className="mb-4" />
+                    <FormField
+                      control={form.control}
+                      name="wecom.webhookUrl"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("wecom.webhookLabel")}</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder={t("wecom.webhookPlaceholder")}
+                              {...field}
+                              disabled={isLoading || updateMutation.isPending}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            {t("wecom.webhookHelp")}
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </CardContent>
+                )}
               </Card>
             </TabsContent>
 

@@ -1486,6 +1486,15 @@
         "requiredError": "启用 Discord 时必须填写 Webhook URL",
         "urlInvalid": "请输入有效的 Discord Webhook URL"
       },
+      "wecom": {
+        "title": "企业微信",
+        "description": "将通知推送到企业微信群机器人",
+        "webhookLabel": "Webhook URL",
+        "webhookPlaceholder": "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=...",
+        "webhookHelp": "在企业微信群中添加机器人，复制 Webhook 地址",
+        "requiredError": "启用企业微信时必须填写 Webhook URL",
+        "urlInvalid": "请输入有效的企业微信 Webhook URL"
+      },
       "emailChannel": {
         "title": "邮件",
         "description": "通过邮件接收通知",

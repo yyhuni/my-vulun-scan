@@ -60,13 +60,12 @@ def push_to_external_channels(notification: Notification) -> None:
         except Exception as e:
             logger.warning(f"Discord 推送失败: {e}")
     
-    # 未来扩展：Slack
-    # if settings.slack_enabled and settings.slack_webhook_url:
-    #     _send_slack(notification, settings.slack_webhook_url)
-    
-    # 未来扩展：Telegram
-    # if settings.telegram_enabled and settings.telegram_bot_token:
-    #     _send_telegram(notification, settings.telegram_chat_id)
+    # 企业微信渠道
+    if settings.wecom_enabled and settings.wecom_webhook_url:
+        try:
+            _send_wecom(notification, settings.wecom_webhook_url)
+        except Exception as e:
+            logger.warning(f"企业微信推送失败: {e}")
 
 
 def _send_discord(notification: Notification, webhook_url: str) -> bool:
@@ -103,6 +102,41 @@ def _send_discord(notification: Notification, webhook_url: str) -> bool:
         return False
 
 
+def _send_wecom(notification: Notification, webhook_url: str) -> bool:
+    """发送到企业微信机器人 Webhook"""
+    try:
+        emoji = CATEGORY_EMOJI.get(notification.category, '📢')
+
+        # 企业微信 Markdown 格式
+        content = f"""**{emoji} {notification.title}**
+> 级别：{notification.get_level_display()}
+> 分类：{notification.get_category_display()}
+
+{notification.message}"""
+
+        payload = {
+            'msgtype': 'markdown',
+            'markdown': {'content': content}
+        }
+
+        response = requests.post(webhook_url, json=payload, timeout=10)
+
+        if response.status_code == 200:
+            result = response.json()
+            if result.get('errcode') == 0:
+                logger.info(f"企业微信通知发送成功 - {notification.title}")
+                return True
+            logger.warning(f"企业微信发送失败 - errcode: {result.get('errcode')}, errmsg: {result.get('errmsg')}")
+            return False
+
+        logger.warning(f"企业微信发送失败 - 状态码: {response.status_code}")
+        return False
+
+    except requests.RequestException as e:
+        logger.error(f"企业微信网络错误: {e}")
+        return False
+
+
 # ============================================================
 # 设置服务
 # ============================================================
@@ -121,30 +155,42 @@ class NotificationSettingsService:
                 'enabled': settings.discord_enabled,
                 'webhookUrl': settings.discord_webhook_url,
             },
+            'wecom': {
+                'enabled': settings.wecom_enabled,
+                'webhookUrl': settings.wecom_webhook_url,
+            },
             'categories': settings.categories,
         }
     
     def update_settings(self, data: dict) -> dict:
         """更新通知设置
-        
+
         注意：DRF CamelCaseJSONParser 会将前端的 webhookUrl 转换为 webhook_url
         """
         discord_data = data.get('discord', {})
+        wecom_data = data.get('wecom', {})
         categories = data.get('categories', {})
-        
+
         # CamelCaseJSONParser 转换后的字段名是 webhook_url
-        webhook_url = discord_data.get('webhook_url', '')
-        
+        discord_webhook_url = discord_data.get('webhook_url', '')
+        wecom_webhook_url = wecom_data.get('webhook_url', '')
+
         settings = self.repo.update_settings(
             discord_enabled=discord_data.get('enabled', False),
-            discord_webhook_url=webhook_url,
+            discord_webhook_url=discord_webhook_url,
+            wecom_enabled=wecom_data.get('enabled', False),
+            wecom_webhook_url=wecom_webhook_url,
             categories=categories,
         )
-        
+
         return {
             'discord': {
                 'enabled': settings.discord_enabled,
                 'webhookUrl': settings.discord_webhook_url,
+            },
+            'wecom': {
+                'enabled': settings.wecom_enabled,
+                'webhookUrl': settings.wecom_webhook_url,
             },
             'categories': settings.categories,
         }

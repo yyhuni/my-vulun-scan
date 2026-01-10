@@ -1486,6 +1486,15 @@
         "requiredError": "Webhook URL is required when Discord is enabled",
         "urlInvalid": "Please enter a valid Discord Webhook URL"
       },
+      "wecom": {
+        "title": "WeCom",
+        "description": "Push notifications to WeCom group bot",
+        "webhookLabel": "Webhook URL",
+        "webhookPlaceholder": "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=...",
+        "webhookHelp": "Add a bot in WeCom group and copy the Webhook URL",
+        "requiredError": "Webhook URL is required when WeCom is enabled",
+        "urlInvalid": "Please enter a valid WeCom Webhook URL"
+      },
       "emailChannel": {
         "title": "Email",
         "description": "Receive notifications via email",
