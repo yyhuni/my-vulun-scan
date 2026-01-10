@@ -325,8 +325,7 @@
     "notifications": "Notifications",
     "apiKeys": "API Keys",
     "globalBlacklist": "Global Blacklist",
-    "help": "Get Help",
-    "feedback": "Feedback"
+    "about": "About"
   },
   "search": {
     "title": "Asset Search",
@@ -2292,5 +2291,21 @@
     "conflict": "Resource conflict, please check and try again",
     "unauthorized": "Please login first",
     "rateLimited": "Too many requests, please try again later"
+  },
+  "about": {
+    "title": "About XingRin",
+    "description": "Attack Surface Management Platform",
+    "currentVersion": "Current Version",
+    "latestVersion": "Latest Version",
+    "checkUpdate": "Check Update",
+    "checking": "Checking...",
+    "checkFailed": "Failed to check update, please try again later",
+    "updateAvailable": "Update Available",
+    "upToDate": "Up to Date",
+    "viewRelease": "View Release",
+    "updateHint": "Run the following command in project root to update:",
+    "changelog": "Changelog",
+    "feedback": "Feedback",
+    "docs": "Documentation"
   }
 }

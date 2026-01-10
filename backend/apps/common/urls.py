@@ -14,6 +14,7 @@ from .views import (
     LoginView, LogoutView, MeView, ChangePasswordView,
     SystemLogsView, SystemLogFilesView, HealthCheckView,
     GlobalBlacklistView,
+    VersionView, CheckUpdateView,
 )
 
 urlpatterns = [
@@ -29,6 +30,8 @@ urlpatterns = [
     # 系统管理
     path('system/logs/', SystemLogsView.as_view(), name='system-logs'),
     path('system/logs/files/', SystemLogFilesView.as_view(), name='system-log-files'),
+    path('system/version/', VersionView.as_view(), name='system-version'),
+    path('system/check-update/', CheckUpdateView.as_view(), name='system-check-update'),
     
     # 黑名单管理（PUT 全量替换模式）
     path('blacklist/rules/', GlobalBlacklistView.as_view(), name='blacklist-rules'),

@@ -5,7 +5,6 @@ import type * as React from "react"
 // Import various icons from Tabler Icons library
 import {
   IconDashboard, // Dashboard icon
-  IconHelp, // Help icon
   IconListDetails, // List details icon
   IconSettings, // Settings icon
   IconUsers, // Users icon
@@ -15,10 +14,10 @@ import {
   IconServer, // Server icon
   IconTerminal2, // Terminal icon
   IconBug, // Vulnerability icon
-  IconMessageReport, // Feedback icon
   IconSearch, // Search icon
   IconKey, // API Key icon
   IconBan, // Blacklist icon
+  IconInfoCircle, // About icon
 } from "@tabler/icons-react"
 // Import internationalization hook
 import { useTranslations } from 'next-intl'
@@ -27,8 +26,8 @@ import { Link, usePathname } from '@/i18n/navigation'
 
 // Import custom navigation components
 import { NavSystem } from "@/components/nav-system"
-import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
+import { AboutDialog } from "@/components/about-dialog"
 // Import sidebar UI components
 import {
   Sidebar,
@@ -136,20 +135,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           url: "/tools/nuclei/",
         },
       ],
-    },
-  ]
-
-  // Secondary navigation menu items
-  const navSecondary = [
-    {
-      title: t('feedback'),
-      url: "https://github.com/yyhuni/xingrin/issues",
-      icon: IconMessageReport,
-    },
-    {
-      title: t('help'),
-      url: "https://github.com/yyhuni/xingrin",
-      icon: IconHelp,
     },
   ]
 
@@ -271,8 +256,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         
         {/* System settings navigation menu */}
         <NavSystem items={documents} />
-        {/* Secondary navigation menu, using mt-auto to push to bottom */}
-        <NavSecondary items={navSecondary} className="mt-auto" />
+        {/* About system button */}
+        <SidebarGroup className="mt-auto">
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <AboutDialog>
+                  <SidebarMenuButton>
+                    <IconInfoCircle />
+                    <span>{t('about')}</span>
+                  </SidebarMenuButton>
+                </AboutDialog>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
 
       {/* Sidebar footer */}

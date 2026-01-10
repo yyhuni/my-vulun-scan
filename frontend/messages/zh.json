@@ -325,8 +325,7 @@
     "notifications": "通知设置",
     "apiKeys": "API 密钥",
     "globalBlacklist": "全局黑名单",
-    "help": "获取帮助",
-    "feedback": "反馈建议"
+    "about": "关于系统"
   },
   "search": {
     "title": "资产搜索",
@@ -2292,5 +2291,21 @@
     "conflict": "资源冲突，请检查后重试",
     "unauthorized": "请先登录",
     "rateLimited": "请求过于频繁，请稍后重试"
+  },
+  "about": {
+    "title": "关于 XingRin",
+    "description": "攻击面管理平台",
+    "currentVersion": "当前版本",
+    "latestVersion": "最新版本",
+    "checkUpdate": "检查更新",
+    "checking": "检查中...",
+    "checkFailed": "检查更新失败，请稍后重试",
+    "updateAvailable": "有更新",
+    "upToDate": "已是最新",
+    "viewRelease": "查看发布",
+    "updateHint": "在项目根目录运行以下命令更新：",
+    "changelog": "更新日志",
+    "feedback": "问题反馈",
+    "docs": "使用文档"
   }
 }
