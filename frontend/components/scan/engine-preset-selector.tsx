@@ -54,7 +54,7 @@ export function EnginePresetSelector({
     
     engines.forEach(e => {
       const caps = parseEngineCapabilities(e.configuration || "")
-      const hasRecon = caps.includes("subdomain_discovery") || caps.includes("port_scan") || caps.includes("site_scan") || caps.includes("directory_scan") || caps.includes("url_fetch")
+      const hasRecon = caps.includes("subdomain_discovery") || caps.includes("port_scan") || caps.includes("site_scan") || caps.includes("fingerprint_detect") || caps.includes("directory_scan") || caps.includes("url_fetch") || caps.includes("screenshot")
       const hasVuln = caps.includes("vuln_scan")
       
       if (hasRecon && hasVuln) {

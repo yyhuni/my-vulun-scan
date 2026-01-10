@@ -289,12 +289,6 @@ sudo ./uninstall.sh
   <img src="docs/zfb_pay.jpg" alt="支付宝" width="200">
 </p>
 
-### 感谢以下赞助
-
-| 昵称 | 金额 |
-|------|------|
-| X（闭关中） | ¥88 |
-
 
 ## 免责声明
 
