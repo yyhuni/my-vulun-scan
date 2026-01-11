@@ -55,6 +55,7 @@ def vuln_scan_flow(
     target_id: int,
     scan_workspace_dir: str,
     enabled_tools: Dict[str, dict],
+    provider,
 ) -> dict:
     """漏洞扫描主 Flow：串行编排各类漏洞扫描子 Flow。
 
@@ -105,6 +106,7 @@ def vuln_scan_flow(
             target_id=target_id,
             scan_workspace_dir=scan_workspace_dir,
             enabled_tools=endpoints_tools,
+            provider=provider,
         )
 
         # 记录 Flow 完成

@@ -19,17 +19,16 @@ from .utils import run_tools_parallel
 logger = logging.getLogger(__name__)
 
 
-def _export_sites_file(target_id: int, scan_id: int, target_name: str, output_dir: Path) -> tuple[str, int]:
+def _export_sites_file(
+    output_dir: Path,
+    provider,
+) -> tuple[str, int]:
     """
     导出站点 URL 列表到文件
     
-    懒加载模式：如果 WebSite 表为空，根据 Target 类型生成默认 URL
-    
     Args:
-        target_id: 目标 ID
-        scan_id: 扫描 ID
-        target_name: 目标名称（用于懒加载）
         output_dir: 输出目录
+        provider: TargetProvider 实例
         
     Returns:
         tuple: (file_path, count)
@@ -39,8 +38,7 @@ def _export_sites_file(target_id: int, scan_id: int, target_name: str, output_di
     output_file = str(output_dir / "sites.txt")
     result = export_sites_task(
         output_file=output_file,
-        target_id=target_id,
-        scan_id=scan_id
+        provider=provider
     )
     
     count = result['asset_count']
@@ -58,7 +56,8 @@ def sites_url_fetch_flow(
     target_id: int,
     target_name: str,
     output_dir: str,
-    enabled_tools: dict
+    enabled_tools: dict,
+    provider,
 ) -> dict:
     """
     URL 爬虫子 Flow
@@ -74,6 +73,7 @@ def sites_url_fetch_flow(
         target_name: 目标名称
         output_dir: 输出目录
         enabled_tools: 启用的爬虫工具配置
+        provider: TargetProvider 实例
         
     Returns:
         dict: {
@@ -94,10 +94,8 @@ def sites_url_fetch_flow(
         
         # Step 1: 导出站点 URL 列表
         sites_file, sites_count = _export_sites_file(
-            target_id=target_id,
-            scan_id=scan_id,
-            target_name=target_name,
-            output_dir=output_path
+            output_dir=output_path,
+            provider=provider
         )
         
         # 默认值模式下，即使原本没有站点，也会有默认 URL 作为输入

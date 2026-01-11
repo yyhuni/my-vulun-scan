@@ -1,21 +1,14 @@
 """
 导出站点 URL 到 TXT 文件的 Task
 
-支持两种模式：
-1. 传统模式（向后兼容）：使用 target_id 从数据库导出
-2. Provider 模式：使用 TargetProvider 从任意数据源导出
+使用 TargetProvider 从任意数据源导出 URL（用于目录扫描）。
 
-数据源: WebSite.url → Default
+数据源：WebSite，为空时回退到默认 URL
 """
 import logging
-from typing import Optional
 from pathlib import Path
 from prefect import task
 
-from apps.scan.services.target_export_service import (
-    export_urls_with_fallback,
-    DataSource,
-)
 from apps.scan.providers import TargetProvider
 
 logger = logging.getLogger(__name__)
@@ -23,94 +16,61 @@ logger = logging.getLogger(__name__)
 
 @task(name="export_sites")
 def export_sites_task(
-    target_id: Optional[int] = None,
-    output_file: str = "",
-    provider: Optional[TargetProvider] = None,
-    batch_size: int = 1000,
+    output_file: str,
+    provider: TargetProvider,
 ) -> dict:
     """
     导出目标下的所有站点 URL 到 TXT 文件
 
-    支持两种模式：
-    1. 传统模式（向后兼容）：传入 target_id，从数据库导出
-    2. Provider 模式：传入 provider，从任意数据源导出
-
-    数据源优先级（回退链，仅传统模式）：
-    1. WebSite 表 - 站点级别 URL
-    2. 默认生成 - 根据 Target 类型生成 http(s)://target_name
+    数据源：WebSite，为空时回退到默认 URL
 
     Args:
-        target_id: 目标 ID（传统模式，向后兼容）
         output_file: 输出文件路径（绝对路径）
-        provider: TargetProvider 实例（新模式）
-        batch_size: 每次读取的批次大小，默认 1000
+        provider: TargetProvider 实例
 
     Returns:
         dict: {
             'success': bool,
             'output_file': str,
-            'total_count': int
+            'total_count': int,
+            'source': str,  # website | default
         }
 
     Raises:
-        ValueError: 参数错误
-        IOError: 文件写入失败
+        ValueError: provider 未提供
     """
-    # 参数验证：至少提供一个
-    if target_id is None and provider is None:
-        raise ValueError("必须提供 target_id 或 provider 参数之一")
-    
-    # Provider 模式：使用 TargetProvider 导出
-    if provider is not None:
-        logger.info("使用 Provider 模式 - Provider: %s", type(provider).__name__)
-        return _export_with_provider(output_file, provider)
-    
-    # 传统模式：使用 export_urls_with_fallback
-    logger.info("使用传统模式 - Target ID: %d", target_id)
-    result = export_urls_with_fallback(
-        target_id=target_id,
-        output_file=output_file,
-        sources=[DataSource.WEBSITE, DataSource.DEFAULT],
-        batch_size=batch_size,
-    )
-    
-    logger.info(
-        "站点 URL 导出完成 - source=%s, count=%d",
-        result['source'], result['total_count']
-    )
-    
-    # 保持返回值格式不变（向后兼容）
-    return {
-        'success': result['success'],
-        'output_file': result['output_file'],
-        'total_count': result['total_count'],
-    }
+    if provider is None:
+        raise ValueError("必须提供 provider 参数")
 
+    logger.info("导出 URL - Provider: %s", type(provider).__name__)
 
-def _export_with_provider(output_file: str, provider: TargetProvider) -> dict:
-    """使用 Provider 导出 URL"""
     output_path = Path(output_file)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    
+
+    # 按优先级获取数据源
+    urls = list(provider.iter_websites())
+    source = "website"
+
+    if not urls:
+        logger.info("WebSite 为空，生成默认 URL")
+        urls = list(provider.iter_default_urls())
+        source = "default"
+
+    # 写入文件
     total_count = 0
-    blacklist_filter = provider.get_blacklist_filter()
-    
     with open(output_path, 'w', encoding='utf-8', buffering=8192) as f:
-        for url in provider.iter_urls():
-            # 应用黑名单过滤（如果有）
-            if blacklist_filter and not blacklist_filter.is_allowed(url):
-                continue
-            
+        for url in urls:
             f.write(f"{url}\n")
             total_count += 1
-            
-            if total_count % 1000 == 0:
-                logger.info("已导出 %d 个 URL...", total_count)
-    
-    logger.info("✓ URL 导出完成 - 总数: %d, 文件: %s", total_count, str(output_path))
-    
+
+    logger.info(
+        "✓ URL 导出完成 - 来源: %s, 总数: %d, 文件: %s",
+        source, total_count, str(output_path)
+    )
+
     return {
         'success': True,
         'output_file': str(output_path),
         'total_count': total_count,
+        'source': source,
     }

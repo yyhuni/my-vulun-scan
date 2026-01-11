@@ -410,6 +410,14 @@ class CommandExecutor:
             # 关键修复：确保进程树被清理
             if process:
                 self._kill_process_tree(process)
+                # 回收子进程，避免产生 zombie 进程
+                try:
+                    process.wait(timeout=GRACEFUL_SHUTDOWN_TIMEOUT)
+                except subprocess.TimeoutExpired:
+                    # kill 之后仍未退出：避免阻塞，继续清理后续资源
+                    pass
+                except Exception:
+                    pass
                 
             # 关闭文件句柄
             if log_file_handle:

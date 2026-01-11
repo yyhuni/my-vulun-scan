@@ -88,40 +88,38 @@ def _calculate_timeout_by_line_count(
 
 
 def _export_site_urls(
-    target_id: int,
-    site_scan_dir: Path
-) -> tuple[str, int, int]:
+    site_scan_dir: Path,
+    provider,
+) -> tuple[str, int]:
     """
     导出站点 URL 到文件
 
     Args:
-        target_id: 目标 ID
         site_scan_dir: 站点扫描目录
+        provider: TargetProvider 实例
 
     Returns:
-        tuple: (urls_file, total_urls, association_count)
+        tuple: (urls_file, total_urls)
     """
     logger.info("Step 1: 导出站点URL列表")
 
     urls_file = str(site_scan_dir / 'site_urls.txt')
     export_result = export_site_urls_task(
-        target_id=target_id,
         output_file=urls_file,
-        batch_size=1000
+        provider=provider,
     )
 
     total_urls = export_result['total_urls']
-    association_count = export_result['association_count']
 
     logger.info(
-        "✓ 站点URL导出完成 - 文件: %s, URL数量: %d, 关联数: %d",
-        export_result['output_file'], total_urls, association_count
+        "✓ 站点URL导出完成 - 文件: %s, URL数量: %d",
+        export_result['output_file'], total_urls
     )
 
     if total_urls == 0:
         logger.warning("目标下没有可用的站点URL，无法执行站点扫描")
 
-    return export_result['output_file'], total_urls, association_count
+    return export_result['output_file'], total_urls
 
 
 def _get_tool_timeout(tool_config: dict, urls_file: str) -> int:
@@ -263,7 +261,6 @@ def _build_empty_result(
     target_name: str,
     scan_workspace_dir: str,
     urls_file: str,
-    association_count: int
 ) -> dict:
     """构建空结果（无 URL 可扫描时）"""
     return {
@@ -273,7 +270,6 @@ def _build_empty_result(
         'scan_workspace_dir': scan_workspace_dir,
         'urls_file': urls_file,
         'total_urls': 0,
-        'association_count': association_count,
         'processed_records': 0,
         'created_websites': 0,
         'skipped_no_subdomain': 0,
@@ -333,7 +329,8 @@ def site_scan_flow(
     target_name: str,
     target_id: int,
     scan_workspace_dir: str,
-    enabled_tools: dict
+    enabled_tools: dict,
+    provider,
 ) -> dict:
     """
     站点扫描 Flow
@@ -348,6 +345,7 @@ def site_scan_flow(
         target_id: 目标 ID
         scan_workspace_dir: 扫描工作空间目录
         enabled_tools: 启用的工具配置字典
+        provider: TargetProvider 实例
 
     Returns:
         dict: 扫描结果
@@ -372,15 +370,15 @@ def site_scan_flow(
         site_scan_dir = setup_scan_directory(scan_workspace_dir, 'site_scan')
 
         # Step 1: 导出站点 URL
-        urls_file, total_urls, association_count = _export_site_urls(
-            target_id, site_scan_dir
+        urls_file, total_urls = _export_site_urls(
+            site_scan_dir, provider
         )
 
         if total_urls == 0:
             logger.warning("跳过站点扫描：没有站点 URL 可扫描 - Scan ID: %s", scan_id)
             user_log(scan_id, "site_scan", "Skipped: no site URLs to scan", "warning")
             return _build_empty_result(
-                scan_id, target_name, scan_workspace_dir, urls_file, association_count
+                scan_id, target_name, scan_workspace_dir, urls_file
             )
 
         # Step 2: 工具配置信息
@@ -421,7 +419,6 @@ def site_scan_flow(
             'scan_workspace_dir': scan_workspace_dir,
             'urls_file': urls_file,
             'total_urls': total_urls,
-            'association_count': association_count,
             'processed_records': processed_records,
             'created_websites': total_created,
             'skipped_no_subdomain': total_skipped_no_sub,

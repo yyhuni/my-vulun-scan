@@ -22,7 +22,7 @@ from apps.scan.handlers.scan_flow_handlers import (
     on_scan_flow_running,
 )
 from apps.scan.tasks.fingerprint_detect import (
-    export_urls_for_fingerprint_task,
+    export_site_urls_for_fingerprint_task,
     run_xingfinger_and_stream_update_tech_task,
 )
 from apps.scan.utils import build_scan_command, user_log, wait_for_system_load
@@ -57,29 +57,25 @@ def calculate_fingerprint_detect_timeout(
 
 
 def _export_urls(
-    target_id: int,
     fingerprint_dir: Path,
-    source: str = 'website'
+    provider,
 ) -> tuple[str, int]:
     """
     导出 URL 到文件
 
     Args:
-        target_id: 目标 ID
         fingerprint_dir: 指纹识别目录
-        source: 数据源类型
+        provider: TargetProvider 实例
 
     Returns:
         tuple: (urls_file, total_count)
     """
-    logger.info("Step 1: 导出 URL 列表 (source=%s)", source)
+    logger.info("Step 1: 导出 URL 列表")
 
     urls_file = str(fingerprint_dir / 'urls.txt')
-    export_result = export_urls_for_fingerprint_task(
-        target_id=target_id,
+    export_result = export_site_urls_for_fingerprint_task(
         output_file=urls_file,
-        source=source,
-        batch_size=1000
+        provider=provider,
     )
 
     total_count = export_result['total_count']
@@ -221,7 +217,8 @@ def fingerprint_detect_flow(
     target_name: str,
     target_id: int,
     scan_workspace_dir: str,
-    enabled_tools: dict
+    enabled_tools: dict,
+    provider,
 ) -> dict:
     """
     指纹识别 Flow
@@ -275,7 +272,9 @@ def fingerprint_detect_flow(
         fingerprint_dir = setup_scan_directory(scan_workspace_dir, 'fingerprint_detect')
 
         # Step 1: 导出 URL（支持懒加载）
-        urls_file, url_count = _export_urls(target_id, fingerprint_dir, source)
+        urls_file, url_count = _export_urls(
+            fingerprint_dir, provider
+        )
 
         if url_count == 0:
             logger.warning("跳过指纹识别：没有 URL 可扫描 - Scan ID: %s", scan_id)
@@ -299,7 +298,7 @@ def fingerprint_detect_flow(
         )
 
         # 动态生成已执行的任务列表
-        executed_tasks = ['export_urls_for_fingerprint']
+        executed_tasks = ['export_site_urls_for_fingerprint']
         executed_tasks.extend([f'run_xingfinger ({tool})' for tool in tool_stats])
 
         # 汇总所有工具的结果
@@ -379,7 +378,7 @@ def _build_empty_result(
         'updated_count': 0,
         'created_count': 0,
         'snapshot_count': 0,
-        'executed_tasks': ['export_urls_for_fingerprint'],
+        'executed_tasks': ['export_site_urls_for_fingerprint'],
         'tool_stats': {
             'total': 0,
             'successful': 0,

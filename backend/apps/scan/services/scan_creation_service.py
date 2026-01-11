@@ -283,7 +283,8 @@ class ScanCreationService:
         engine_ids: List[int],
         engine_names: List[str],
         yaml_configuration: str,
-        scheduled_scan_name: str | None = None
+        scheduled_scan_name: str | None = None,
+        scan_mode: str = 'full'
     ) -> List[Scan]:
         """
         为多个目标批量创建扫描任务，后台异步分发到 Worker
@@ -294,6 +295,7 @@ class ScanCreationService:
             engine_names: 引擎名称列表
             yaml_configuration: YAML 格式的扫描配置
             scheduled_scan_name: 定时扫描任务名称（可选，用于通知显示）
+            scan_mode: 扫描模式，'full' 或 'quick'（默认 'full'）
         
         Returns:
             创建的 Scan 对象列表（立即返回，不等待分发完成）
@@ -316,6 +318,7 @@ class ScanCreationService:
                     results_dir=scan_workspace_dir,
                     status=ScanStatus.INITIATED,
                     container_ids=[],
+                    scan_mode=scan_mode,
                 )
                 scans_to_create.append(scan)
             except (ValidationError, ValueError) as e:

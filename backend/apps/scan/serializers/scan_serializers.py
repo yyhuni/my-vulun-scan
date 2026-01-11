@@ -15,11 +15,11 @@ class ScanSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'target', 'target_name', 'engine_ids', 'engine_names',
             'created_at', 'stopped_at', 'status', 'results_dir',
-            'container_ids', 'error_message'
+            'container_ids', 'error_message', 'scan_mode'
         ]
         read_only_fields = [
             'id', 'created_at', 'stopped_at', 'results_dir',
-            'container_ids', 'error_message', 'status'
+            'container_ids', 'error_message', 'status', 'scan_mode'
         ]
     
     def get_target_name(self, obj):
@@ -39,9 +39,10 @@ class ScanHistorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Scan
         fields = [
-            'id', 'target', 'target_name', 'engine_ids', 'engine_names', 
-            'worker_name', 'created_at', 'status', 'error_message', 'summary', 
-            'progress', 'current_stage', 'stage_progress', 'yaml_configuration'
+            'id', 'target', 'target_name', 'engine_ids', 'engine_names',
+            'worker_name', 'created_at', 'status', 'error_message', 'summary',
+            'progress', 'current_stage', 'stage_progress', 'yaml_configuration',
+            'scan_mode'
         ]
     
     def get_summary(self, obj):

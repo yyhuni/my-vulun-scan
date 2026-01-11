@@ -2,7 +2,7 @@
 DatabaseTargetProvider 属性测试
 
 Property 7: DatabaseTargetProvider Blacklist Application
-*For any* 带有黑名单规则的 target_id，DatabaseTargetProvider 的 iter_hosts() 和 iter_urls() 
+*For any* 带有黑名单规则的 target_id，DatabaseTargetProvider 的 iter_subdomains() 
 应该过滤掉匹配黑名单规则的目标。
 
 **Validates: Requirements 2.3, 10.1, 10.2, 10.3**
@@ -48,7 +48,7 @@ class TestDatabaseTargetProviderProperties:
     """DatabaseTargetProvider 属性测试类"""
     
     @given(
-        hosts=st.lists(valid_domain_strategy(), min_size=1, max_size=20),
+        subdomains=st.lists(valid_domain_strategy(), min_size=1, max_size=20),
         blocked_keyword=st.text(
             alphabet=st.characters(whitelist_categories=('L',), min_codepoint=97, max_codepoint=122),
             min_size=2,
@@ -56,15 +56,15 @@ class TestDatabaseTargetProviderProperties:
         )
     )
     @settings(max_examples=100)
-    def test_property_7_blacklist_filters_hosts(self, hosts, blocked_keyword):
+    def test_property_7_blacklist_filters_subdomains(self, subdomains, blocked_keyword):
         """
-        Property 7: DatabaseTargetProvider Blacklist Application (hosts)
+        Property 7: DatabaseTargetProvider Blacklist Application (subdomains)
         
         Feature: scan-target-provider, Property 7: DatabaseTargetProvider Blacklist Application
         **Validates: Requirements 2.3, 10.1, 10.2, 10.3**
         
-        For any set of hosts and a blacklist keyword, the provider should filter out
-        all hosts containing the blocked keyword.
+        For any set of subdomains and a blacklist keyword, the provider should filter out
+        all subdomains containing the blocked keyword.
         """
         # 创建模拟的黑名单过滤器
         mock_filter = MockBlacklistFilter([blocked_keyword])
@@ -73,31 +73,18 @@ class TestDatabaseTargetProviderProperties:
         provider = DatabaseTargetProvider(target_id=1)
         provider._blacklist_filter = mock_filter
         
-        # 模拟 Target 和 SubdomainService
-        mock_target = MagicMock()
-        mock_target.type = 'domain'
-        mock_target.name = hosts[0] if hosts else 'example.com'
-        
-        with patch('apps.targets.services.TargetService') as mock_target_service, \
-             patch('apps.asset.services.asset.subdomain_service.SubdomainService') as mock_subdomain_service:
-            
-            mock_target_service.return_value.get_target.return_value = mock_target
-            mock_subdomain_service.return_value.iter_subdomain_names_by_target.return_value = iter(hosts[1:] if len(hosts) > 1 else [])
+        with patch('apps.asset.services.asset.subdomain_service.SubdomainService') as mock_subdomain_service:
+            mock_subdomain_service.return_value.iter_subdomain_names_by_target.return_value = iter(subdomains)
             
             # 获取结果
-            result = list(provider.iter_hosts())
+            result = list(provider.iter_subdomains())
             
             # 验证：所有结果都不包含被阻止的关键词
-            for host in result:
-                assert blocked_keyword not in host, f"Host '{host}' should be filtered by blacklist keyword '{blocked_keyword}'"
+            for subdomain in result:
+                assert blocked_keyword not in subdomain, f"Subdomain '{subdomain}' should be filtered by blacklist keyword '{blocked_keyword}'"
             
-            # 验证：所有不包含关键词的主机都应该在结果中
-            if hosts:
-                all_hosts = [hosts[0]] + [h for h in hosts[1:] if h != hosts[0]]
-                expected_allowed = [h for h in all_hosts if blocked_keyword not in h]
-            else:
-                expected_allowed = []
-            
+            # 验证：所有不包含关键词的子域名都应该在结果中
+            expected_allowed = [s for s in subdomains if blocked_keyword not in s]
             assert set(result) == set(expected_allowed)
 
 
@@ -144,15 +131,38 @@ class TestDatabaseTargetProviderUnit:
             # BlacklistService 只应该被调用一次
             mock_service.return_value.get_rules.assert_called_once_with(123)
     
-    def test_nonexistent_target_returns_empty(self):
-        """测试不存在的 target 返回空迭代器"""
+    def test_get_target_name(self):
+        """测试 get_target_name 返回 Target 名称"""
+        provider = DatabaseTargetProvider(target_id=123)
+        
+        mock_target = MagicMock()
+        mock_target.name = 'example.com'
+        
+        with patch('apps.targets.services.TargetService') as mock_service:
+            mock_service.return_value.get_target.return_value = mock_target
+            
+            result = provider.get_target_name()
+            assert result == 'example.com'
+    
+    def test_get_target_name_nonexistent(self):
+        """测试不存在的 target 返回 None"""
         provider = DatabaseTargetProvider(target_id=99999)
         
-        with patch('apps.targets.services.TargetService') as mock_service, \
+        with patch('apps.targets.services.TargetService') as mock_service:
+            mock_service.return_value.get_target.return_value = None
+            
+            result = provider.get_target_name()
+            assert result is None
+    
+    def test_iter_subdomains_empty(self):
+        """测试空子域名列表"""
+        provider = DatabaseTargetProvider(target_id=123)
+        
+        with patch('apps.asset.services.asset.subdomain_service.SubdomainService') as mock_service, \
              patch('apps.common.services.BlacklistService') as mock_blacklist_service:
             
-            mock_service.return_value.get_target.return_value = None
+            mock_service.return_value.iter_subdomain_names_by_target.return_value = iter([])
             mock_blacklist_service.return_value.get_rules.return_value = []
             
-            result = list(provider.iter_hosts())
+            result = list(provider.iter_subdomains())
             assert result == []

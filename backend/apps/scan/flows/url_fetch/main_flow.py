@@ -243,7 +243,8 @@ def url_fetch_flow(
     target_name: str,
     target_id: int,
     scan_workspace_dir: str,
-    enabled_tools: dict
+    enabled_tools: dict,
+    provider,
 ) -> dict:
     """
     URL 获取主 Flow
@@ -264,6 +265,7 @@ def url_fetch_flow(
         target_id: 目标 ID
         scan_workspace_dir: 扫描工作目录
         enabled_tools: 启用的工具配置
+        provider: TargetProvider 实例
 
     Returns:
         dict: 扫描结果
@@ -325,7 +327,8 @@ def url_fetch_flow(
                 target_id=target_id,
                 target_name=target_name,
                 output_dir=str(url_fetch_dir),
-                enabled_tools=sites_file_tools
+                enabled_tools=sites_file_tools,
+                provider=provider
             )
             all_result_files.extend(crawl_result.get('result_files', []))
             all_failed_tools.extend(crawl_result.get('failed_tools', []))

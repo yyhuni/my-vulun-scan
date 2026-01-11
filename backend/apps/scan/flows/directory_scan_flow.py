@@ -107,7 +107,8 @@ def _get_max_workers(tool_config: dict, default: int = DEFAULT_MAX_WORKERS) -> i
 
 def _export_site_urls(
     target_id: int,
-    directory_scan_dir: Path
+    directory_scan_dir: Path,
+    provider,
 ) -> Tuple[str, int]:
     """
     导出目标下的所有站点 URL 到文件
@@ -115,6 +116,7 @@ def _export_site_urls(
     Args:
         target_id: 目标 ID
         directory_scan_dir: 目录扫描目录
+        provider: TargetProvider 实例
 
     Returns:
         tuple: (sites_file, site_count)
@@ -123,9 +125,8 @@ def _export_site_urls(
 
     sites_file = str(directory_scan_dir / 'sites.txt')
     export_result = export_sites_task(
-        target_id=target_id,
         output_file=sites_file,
-        batch_size=1000
+        provider=provider,
     )
 
     site_count = export_result['total_count']
@@ -392,7 +393,8 @@ def directory_scan_flow(
     target_name: str,
     target_id: int,
     scan_workspace_dir: str,
-    enabled_tools: dict
+    enabled_tools: dict,
+    provider,
 ) -> dict:
     """
     目录扫描 Flow
@@ -408,6 +410,7 @@ def directory_scan_flow(
         target_id: 目标 ID
         scan_workspace_dir: 扫描工作空间目录
         enabled_tools: 启用的工具配置字典
+        provider: TargetProvider 实例
 
     Returns:
         dict: 扫描结果
@@ -438,7 +441,9 @@ def directory_scan_flow(
         directory_scan_dir = setup_scan_directory(scan_workspace_dir, 'directory_scan')
 
         # Step 1: 导出站点 URL
-        sites_file, site_count = _export_site_urls(target_id, directory_scan_dir)
+        sites_file, site_count = _export_site_urls(
+            target_id, directory_scan_dir, provider
+        )
 
         if site_count == 0:
             logger.warning("跳过目录扫描：没有站点可扫描 - Scan ID: %s", scan_id)

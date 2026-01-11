@@ -18,7 +18,7 @@ from .subdomain_discovery import (
 
 # 指纹识别任务
 from .fingerprint_detect import (
-    export_urls_for_fingerprint_task,
+    export_site_urls_for_fingerprint_task,
     run_xingfinger_and_stream_update_tech_task,
 )
 
@@ -35,6 +35,6 @@ __all__ = [
     'merge_and_validate_task',
     'save_domains_task',
     # 指纹识别任务
-    'export_urls_for_fingerprint_task',
+    'export_site_urls_for_fingerprint_task',
     'run_xingfinger_and_stream_update_tech_task',
 ]

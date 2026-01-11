@@ -119,7 +119,8 @@ def merge_and_validate_task(result_files: List[str], result_dir: str) -> str:
             unique_count = sum(1 for _ in f)
 
     if unique_count == 0:
-        raise RuntimeError("未找到任何有效域名")
+        logger.warning("未找到任何有效域名，返回空文件")
+        # 不抛出异常，返回空文件让后续流程正常处理
 
     file_size_kb = merged_file.stat().st_size / 1024
     logger.info("✓ 合并去重完成 - 去重后: %d 个域名, 文件大小: %.2f KB", unique_count, file_size_kb)

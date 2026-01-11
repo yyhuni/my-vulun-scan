@@ -10,182 +10,112 @@ from apps.scan.providers import SnapshotTargetProvider, ProviderContext
 
 class TestSnapshotTargetProvider:
     """SnapshotTargetProvider 测试类"""
-    
-    def test_init_with_scan_id_and_type(self):
+
+    def test_init_with_scan_id(self):
         """测试初始化"""
-        provider = SnapshotTargetProvider(
-            scan_id=100,
-            snapshot_type="subdomain"
-        )
-        
+        provider = SnapshotTargetProvider(scan_id=100)
+
         assert provider.scan_id == 100
-        assert provider.snapshot_type == "subdomain"
-        assert provider.target_id is None  # 默认 context
-    
+        assert provider.target_id is None
+
     def test_init_with_context(self):
         """测试带 context 初始化"""
         ctx = ProviderContext(target_id=1, scan_id=100)
-        provider = SnapshotTargetProvider(
-            scan_id=100,
-            snapshot_type="subdomain",
-            context=ctx
-        )
-        
+        provider = SnapshotTargetProvider(scan_id=100, context=ctx)
+
         assert provider.scan_id == 100
         assert provider.target_id == 1
-        assert provider.snapshot_type == "subdomain"
-    
+
     @patch('apps.asset.services.snapshot.SubdomainSnapshotsService')
-    def test_iter_hosts_subdomain(self, mock_service_class):
-        """测试从子域名快照迭代主机"""
-        # Mock service
+    def test_iter_subdomains(self, mock_service_class):
+        """测试从子域名快照迭代子域名"""
         mock_service = Mock()
         mock_service.iter_subdomain_names_by_scan.return_value = iter([
             "a.example.com",
             "b.example.com"
         ])
         mock_service_class.return_value = mock_service
-        
-        # 创建 provider
-        provider = SnapshotTargetProvider(
-            scan_id=100,
-            snapshot_type="subdomain"
-        )
-        
-        # 迭代主机
-        hosts = list(provider.iter_hosts())
-        
-        assert hosts == ["a.example.com", "b.example.com"]
+
+        provider = SnapshotTargetProvider(scan_id=100)
+        subdomains = list(provider.iter_subdomains())
+
+        assert subdomains == ["a.example.com", "b.example.com"]
         mock_service.iter_subdomain_names_by_scan.assert_called_once_with(
             scan_id=100,
             chunk_size=1000
         )
-    
+
     @patch('apps.asset.services.snapshot.HostPortMappingSnapshotsService')
-    def test_iter_hosts_host_port(self, mock_service_class):
-        """测试从主机端口映射快照迭代主机"""
-        # Mock queryset
-        mock_mapping1 = Mock()
-        mock_mapping1.host = "example.com"
-        mock_mapping1.port = 80
-        
-        mock_mapping2 = Mock()
-        mock_mapping2.host = "example.com"
-        mock_mapping2.port = 443
-        
-        mock_queryset = Mock()
-        mock_queryset.iterator.return_value = iter([mock_mapping1, mock_mapping2])
-        
-        # Mock service
+    def test_iter_host_port_urls(self, mock_service_class):
+        """测试从主机端口映射快照生成 URL"""
         mock_service = Mock()
-        mock_service.get_by_scan.return_value = mock_queryset
+        mock_service.iter_unique_host_ports_by_scan.return_value = iter([
+            {'host': 'example.com', 'port': 80},
+            {'host': 'example.com', 'port': 443},
+            {'host': 'example.com', 'port': 8080},
+        ])
         mock_service_class.return_value = mock_service
-        
-        # 创建 provider
-        provider = SnapshotTargetProvider(
-            scan_id=100,
-            snapshot_type="host_port"
-        )
-        
-        # 迭代主机
-        hosts = list(provider.iter_hosts())
-        
-        assert hosts == ["example.com:80", "example.com:443"]
-        mock_service.get_by_scan.assert_called_once_with(scan_id=100)
-    
+
+        provider = SnapshotTargetProvider(scan_id=100)
+        urls = list(provider.iter_host_port_urls())
+
+        assert urls == [
+            "http://example.com",
+            "https://example.com",
+            "http://example.com:8080",
+            "https://example.com:8080",
+        ]
+
     @patch('apps.asset.services.snapshot.WebsiteSnapshotsService')
-    def test_iter_urls_website(self, mock_service_class):
+    def test_iter_websites(self, mock_service_class):
         """测试从网站快照迭代 URL"""
-        # Mock service
         mock_service = Mock()
         mock_service.iter_website_urls_by_scan.return_value = iter([
             "http://example.com",
             "https://example.com"
         ])
         mock_service_class.return_value = mock_service
-        
-        # 创建 provider
-        provider = SnapshotTargetProvider(
-            scan_id=100,
-            snapshot_type="website"
-        )
-        
-        # 迭代 URL
-        urls = list(provider.iter_urls())
-        
+
+        provider = SnapshotTargetProvider(scan_id=100)
+        urls = list(provider.iter_websites())
+
         assert urls == ["http://example.com", "https://example.com"]
         mock_service.iter_website_urls_by_scan.assert_called_once_with(
             scan_id=100,
             chunk_size=1000
         )
-    
+
     @patch('apps.asset.services.snapshot.EndpointSnapshotsService')
-    def test_iter_urls_endpoint(self, mock_service_class):
+    def test_iter_endpoints(self, mock_service_class):
         """测试从端点快照迭代 URL"""
-        # Mock queryset
         mock_endpoint1 = Mock()
         mock_endpoint1.url = "http://example.com/api/v1"
-        
+
         mock_endpoint2 = Mock()
         mock_endpoint2.url = "http://example.com/api/v2"
-        
+
         mock_queryset = Mock()
         mock_queryset.iterator.return_value = iter([mock_endpoint1, mock_endpoint2])
-        
-        # Mock service
+
         mock_service = Mock()
         mock_service.get_by_scan.return_value = mock_queryset
         mock_service_class.return_value = mock_service
-        
-        # 创建 provider
-        provider = SnapshotTargetProvider(
-            scan_id=100,
-            snapshot_type="endpoint"
-        )
-        
-        # 迭代 URL
-        urls = list(provider.iter_urls())
-        
+
+        provider = SnapshotTargetProvider(scan_id=100)
+        urls = list(provider.iter_endpoints())
+
         assert urls == ["http://example.com/api/v1", "http://example.com/api/v2"]
         mock_service.get_by_scan.assert_called_once_with(scan_id=100)
-    
-    def test_iter_hosts_unsupported_type(self):
-        """测试不支持的快照类型（iter_hosts）"""
-        provider = SnapshotTargetProvider(
-            scan_id=100,
-            snapshot_type="website"  # website 不支持 iter_hosts
-        )
-        
-        hosts = list(provider.iter_hosts())
-        assert hosts == []
-    
-    def test_iter_urls_unsupported_type(self):
-        """测试不支持的快照类型（iter_urls）"""
-        provider = SnapshotTargetProvider(
-            scan_id=100,
-            snapshot_type="subdomain"  # subdomain 不支持 iter_urls
-        )
-        
-        urls = list(provider.iter_urls())
-        assert urls == []
-    
+
     def test_get_blacklist_filter(self):
         """测试黑名单过滤器（快照模式不使用黑名单）"""
-        provider = SnapshotTargetProvider(
-            scan_id=100,
-            snapshot_type="subdomain"
-        )
-        
+        provider = SnapshotTargetProvider(scan_id=100)
         assert provider.get_blacklist_filter() is None
-    
+
     def test_context_propagation(self):
         """测试上下文传递"""
         ctx = ProviderContext(target_id=456, scan_id=789)
-        provider = SnapshotTargetProvider(
-            scan_id=100,  # 会被 context 覆盖
-            snapshot_type="subdomain",
-            context=ctx
-        )
-        
+        provider = SnapshotTargetProvider(scan_id=100, context=ctx)
+
         assert provider.target_id == 456
-        assert provider.scan_id == 100  # scan_id 在 __init__ 中被设置
+        assert provider.scan_id == 100

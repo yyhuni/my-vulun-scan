@@ -132,42 +132,36 @@ def _parse_port_count(tool_config: dict) -> int:
 
 
 
-def _export_hosts(target_id: int, port_scan_dir: Path) -> tuple[str, int, str]:
+def _export_hosts(port_scan_dir: Path, provider) -> tuple[str, int]:
     """
     导出主机列表到文件
 
-    根据 Target 类型自动决定导出内容：
-    - DOMAIN: 从 Subdomain 表导出子域名
-    - IP: 直接写入 target.name
-    - CIDR: 展开 CIDR 范围内的所有 IP
-
     Args:
-        target_id: 目标 ID
         port_scan_dir: 端口扫描目录
+        provider: TargetProvider 实例
 
     Returns:
-        tuple: (hosts_file, host_count, target_type)
+        tuple: (hosts_file, host_count)
     """
     logger.info("Step 1: 导出主机列表")
 
     hosts_file = str(port_scan_dir / 'hosts.txt')
     export_result = export_hosts_task(
-        target_id=target_id,
         output_file=hosts_file,
+        provider=provider,
     )
 
     host_count = export_result['total_count']
-    target_type = export_result.get('target_type', 'unknown')
 
     logger.info(
-        "✓ 主机列表导出完成 - 类型: %s, 文件: %s, 数量: %d",
-        target_type, export_result['output_file'], host_count
+        "✓ 主机列表导出完成 - 文件: %s, 数量: %d",
+        export_result['output_file'], host_count
     )
 
     if host_count == 0:
         logger.warning("目标下没有可扫描的主机，无法执行端口扫描")
 
-    return export_result['output_file'], host_count, target_type
+    return export_result['output_file'], host_count
 
 
 def _run_scans_sequentially(
@@ -301,7 +295,8 @@ def port_scan_flow(
     target_name: str,
     target_id: int,
     scan_workspace_dir: str,
-    enabled_tools: dict
+    enabled_tools: dict,
+    provider,
 ) -> dict:
     """
     端口扫描 Flow
@@ -325,6 +320,7 @@ def port_scan_flow(
         target_id: 目标 ID
         scan_workspace_dir: Scan 工作空间目录
         enabled_tools: 启用的工具配置字典
+        provider: TargetProvider 实例
 
     Returns:
         dict: 扫描结果
@@ -358,7 +354,7 @@ def port_scan_flow(
         port_scan_dir = setup_scan_directory(scan_workspace_dir, 'port_scan')
 
         # Step 1: 导出主机列表
-        hosts_file, host_count, target_type = _export_hosts(target_id, port_scan_dir)
+        hosts_file, host_count = _export_hosts(port_scan_dir, provider)
 
         if host_count == 0:
             logger.warning("跳过端口扫描：没有主机可扫描 - Scan ID: %s", scan_id)
@@ -370,7 +366,6 @@ def port_scan_flow(
                 'scan_workspace_dir': scan_workspace_dir,
                 'hosts_file': hosts_file,
                 'host_count': 0,
-                'target_type': target_type,
                 'processed_records': 0,
                 'executed_tasks': ['export_hosts'],
                 'tool_stats': {
@@ -411,7 +406,6 @@ def port_scan_flow(
             'scan_workspace_dir': scan_workspace_dir,
             'hosts_file': hosts_file,
             'host_count': host_count,
-            'target_type': target_type,
             'processed_records': processed_records,
             'executed_tasks': executed_tasks,
             'tool_stats': {

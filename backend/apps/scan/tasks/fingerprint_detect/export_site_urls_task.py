@@ -1,13 +1,14 @@
 """
-导出站点 URL 列表任务
+导出站点 URL 任务
 
-使用 TargetProvider 从任意数据源导出 URL（用于 katana 等爬虫工具）。
+使用 TargetProvider 从任意数据源导出站点 URL（用于指纹识别）。
 
 数据源：WebSite，为空时回退到默认 URL
 """
 
 import logging
 from pathlib import Path
+
 from prefect import task
 
 from apps.scan.providers import TargetProvider
@@ -15,17 +16,13 @@ from apps.scan.providers import TargetProvider
 logger = logging.getLogger(__name__)
 
 
-@task(
-    name='export_sites_for_url_fetch',
-    retries=1,
-    log_prints=True
-)
-def export_sites_task(
+@task(name="export_site_urls_for_fingerprint")
+def export_site_urls_for_fingerprint_task(
     output_file: str,
     provider: TargetProvider,
 ) -> dict:
     """
-    导出站点 URL 列表到文件（用于 katana 等爬虫工具）
+    导出目标下的 URL 到文件（用于指纹识别）
 
     数据源：WebSite，为空时回退到默认 URL
 
@@ -36,12 +33,9 @@ def export_sites_task(
     Returns:
         dict: {
             'output_file': str,
-            'asset_count': int,
+            'total_count': int,
             'source': str,  # website | default
         }
-
-    Raises:
-        ValueError: provider 未提供
     """
     if provider is None:
         raise ValueError("必须提供 provider 参数")
@@ -74,6 +68,6 @@ def export_sites_task(
 
     return {
         'output_file': str(output_path),
-        'asset_count': total_count,
+        'total_count': total_count,
         'source': source,
     }

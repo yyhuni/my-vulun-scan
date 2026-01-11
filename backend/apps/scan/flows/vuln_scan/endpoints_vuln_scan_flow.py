@@ -38,6 +38,7 @@ def endpoints_vuln_scan_flow(
     target_id: int,
     scan_workspace_dir: str,
     enabled_tools: Dict[str, dict],
+    provider,
 ) -> dict:
     """基于 Endpoint 的漏洞扫描 Flow（串行执行 Dalfox 等工具）。"""
     try:
@@ -58,8 +59,8 @@ def endpoints_vuln_scan_flow(
 
         # Step 1: 导出 Endpoint URL
         export_result = export_endpoints_task(
-            target_id=target_id,
             output_file=str(endpoints_file),
+            provider=provider,
         )
         total_endpoints = export_result.get("total_count", 0)
 

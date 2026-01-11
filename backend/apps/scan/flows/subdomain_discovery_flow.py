@@ -543,7 +543,7 @@ def subdomain_discovery_flow(
     target_name: str,
     target_id: int,
     scan_workspace_dir: str,
-    enabled_tools: dict
+    enabled_tools: dict,
 ) -> dict:
     """子域名发现扫描流程
 

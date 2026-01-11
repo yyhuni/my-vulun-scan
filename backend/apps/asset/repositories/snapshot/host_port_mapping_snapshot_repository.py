@@ -195,3 +195,32 @@ class DjangoHostPortMappingSnapshotRepository:
         
         for row in qs.iterator(chunk_size=batch_size):
             yield row
+
+    def iter_unique_host_ports_by_scan(
+        self,
+        scan_id: int,
+        batch_size: int = 1000
+    ) -> Iterator[dict]:
+        """
+        流式获取扫描下的唯一 host:port 组合（去重）
+        
+        用于生成 URL 时避免重复，同一个 host:port 可能对应多个 IP，
+        但生成 URL 时只需要一个。
+        
+        Args:
+            scan_id: 扫描 ID
+            batch_size: 每批数据量
+        
+        Yields:
+            {'host': 'example.com', 'port': 80}
+        """
+        qs = (
+            HostPortMappingSnapshot.objects
+            .filter(scan_id=scan_id)
+            .values('host', 'port')
+            .distinct()
+            .order_by('host', 'port')
+        )
+        
+        for row in qs.iterator(chunk_size=batch_size):
+            yield row
