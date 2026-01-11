@@ -44,8 +44,8 @@ def _run_subflow_task(scan_type: str, flow_func, flow_kwargs: dict):
     return flow_func(**flow_kwargs)
 
 
-def _create_providers(scan, target_id: int, scan_id: int) -> dict:
-    """根据 scan_mode 创建对应的 Provider 字典"""
+def _create_provider(scan, target_id: int, scan_id: int):
+    """根据 scan_mode 创建对应的 Provider"""
     from apps.scan.models import Scan
     from apps.scan.providers import (
         DatabaseTargetProvider,
@@ -54,10 +54,6 @@ def _create_providers(scan, target_id: int, scan_id: int) -> dict:
     )
 
     provider_context = ProviderContext(target_id=target_id, scan_id=scan_id)
-    scan_types = [
-        'port_scan', 'site_scan', 'url_fetch', 'directory_scan',
-        'fingerprint_detect', 'vuln_scan', 'screenshot'
-    ]
 
     if scan.scan_mode == Scan.ScanMode.QUICK:
         provider = SnapshotTargetProvider(scan_id=scan_id, context=provider_context)
@@ -66,7 +62,7 @@ def _create_providers(scan, target_id: int, scan_id: int) -> dict:
         provider = DatabaseTargetProvider(target_id=target_id, context=provider_context)
         logger.info("✓ 完整扫描模式 - 使用 DatabaseTargetProvider")
 
-    return {scan_type: provider for scan_type in scan_types}
+    return provider
 
 
 def _execute_sequential_flows(valid_flows: list, results: dict, executed_flows: list):
@@ -127,7 +123,6 @@ def _execute_parallel_flows(valid_flows: list, results: dict, executed_flows: li
 )
 def initiate_scan_flow(
     scan_id: int,
-    target_name: str,
     target_id: int,
     scan_workspace_dir: str,
     engine_name: str,
@@ -150,7 +145,6 @@ def initiate_scan_flow(
 
     Args:
         scan_id: 扫描任务 ID
-        target_name: 目标名称
         target_id: 目标 ID
         scan_workspace_dir: Scan 工作空间目录路径
         engine_name: 引擎名称（用于显示）
@@ -172,12 +166,6 @@ def initiate_scan_flow(
         if not engine_name:
             raise ValueError("engine_name is required")
 
-        logger.info("=" * 60)
-        logger.info("开始初始化扫描任务")
-        logger.info("Scan ID: %s, Target: %s, Engine: %s", scan_id, target_name, engine_name)
-        logger.info("Workspace: %s", scan_workspace_dir)
-        logger.info("=" * 60)
-
         # 创建工作空间
         scan_workspace_path = setup_scan_workspace(scan_workspace_dir)
 
@@ -187,7 +175,18 @@ def initiate_scan_flow(
         engine_config = scan.yaml_configuration
 
         # 创建 Provider
-        providers = _create_providers(scan, target_id, scan_id)
+        provider = _create_provider(scan, target_id, scan_id)
+
+        # 获取 target_name 用于日志显示
+        target_name = provider.get_target_name()
+        if not target_name:
+            raise ValueError("无法获取 Target 名称")
+
+        logger.info("=" * 60)
+        logger.info("开始初始化扫描任务")
+        logger.info("Scan ID: %s, Target: %s, Engine: %s", scan_id, target_name, engine_name)
+        logger.info("Workspace: %s", scan_workspace_dir)
+        logger.info("=" * 60)
 
         # 解析配置，生成执行计划
         orchestrator = FlowOrchestrator(engine_config)
@@ -211,7 +210,6 @@ def initiate_scan_flow(
         results = {}
         base_kwargs = {
             'scan_id': scan_id,
-            'target_name': target_name,
             'target_id': target_id,
             'scan_workspace_dir': str(scan_workspace_path)
         }
@@ -226,8 +224,7 @@ def initiate_scan_flow(
                     continue
                 kwargs = dict(base_kwargs)
                 kwargs['enabled_tools'] = enabled_tools_by_type.get(scan_type, {})
-                if scan_type in providers:
-                    kwargs['provider'] = providers[scan_type]
+                kwargs['provider'] = provider
                 valid.append((scan_type, flow_func, kwargs))
             return valid
 

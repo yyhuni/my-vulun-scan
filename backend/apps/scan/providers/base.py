@@ -61,6 +61,7 @@ class TargetProvider(ABC):
 
     def __init__(self, context: Optional[ProviderContext] = None):
         self._context = context or ProviderContext()
+        self._target_name: Optional[str] = None  # 缓存 target_name
 
     @property
     def context(self) -> ProviderContext:
@@ -75,6 +76,10 @@ class TargetProvider(ABC):
             Target 名称，不存在时返回 None
             注意：CIDR 不会自动展开，调用方需要自己处理
         """
+        # 使用缓存避免重复查询
+        if self._target_name is not None:
+            return self._target_name
+
         if not self.target_id:
             logger.warning("target_id 未设置，无法获取 Target 名称")
             return None
@@ -82,7 +87,45 @@ class TargetProvider(ABC):
         from apps.targets.services import TargetService
 
         target = TargetService().get_target(self.target_id)
-        return target.name if target else None
+        self._target_name = target.name if target else None
+        return self._target_name
+
+    def iter_target_hosts(self) -> Iterator[str]:
+        """
+        迭代 Target 展开后的主机列表（已过滤黑名单）
+
+        - DOMAIN/IP: 直接返回
+        - CIDR: 展开为所有 IP
+
+        Returns:
+            主机迭代器（域名或 IP）
+        """
+        import ipaddress
+
+        from apps.common.validators import detect_target_type
+        from apps.targets.models import Target
+
+        target_name = self.get_target_name()
+        if not target_name:
+            return
+
+        blacklist = self.get_blacklist_filter()
+        target_type = detect_target_type(target_name)
+
+        if target_type == Target.TargetType.CIDR:
+            # CIDR 展开
+            network = ipaddress.ip_network(target_name, strict=False)
+            if network.num_addresses == 1:
+                hosts = [str(network.network_address)]
+            else:
+                hosts = [str(ip) for ip in network.hosts()]
+        else:
+            # DOMAIN / IP 直接返回
+            hosts = [target_name]
+
+        for host in hosts:
+            if not blacklist or blacklist.is_allowed(host):
+                yield host
 
     @abstractmethod
     def iter_subdomains(self) -> Iterator[str]:

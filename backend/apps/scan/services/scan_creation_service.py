@@ -395,13 +395,13 @@ class ScanCreationService:
         for data in scan_data:
             scan_id = data['scan_id']
             logger.info("-"*40)
-            logger.info("准备分发扫描任务 - Scan ID: %s, Target: %s", scan_id, data['target_name'])
+            logger.info("准备分发扫描任务 - Scan ID: %s, Target ID: %s", scan_id, data['target_id'])
             try:
                 logger.info("调用 distributor.execute_scan_flow...")
                 success, message, container_id, worker_id = distributor.execute_scan_flow(
                     scan_id=scan_id,
-                    target_name=data['target_name'],
                     target_id=data['target_id'],
+                    target_name=data['target_name'],
                     scan_workspace_dir=data['results_dir'],
                     engine_name=data['engine_name'],
                     scheduled_scan_name=data.get('scheduled_scan_name'),

@@ -137,16 +137,14 @@ def main():
     print("[2/4] 解析命令行参数...")
     parser = argparse.ArgumentParser(description="执行扫描初始化 Flow")
     parser.add_argument("--scan_id", type=int, required=True, help="扫描任务 ID")
-    parser.add_argument("--target_name", type=str, required=True, help="目标名称")
     parser.add_argument("--target_id", type=int, required=True, help="目标 ID")
     parser.add_argument("--scan_workspace_dir", type=str, required=True, help="扫描工作目录")
     parser.add_argument("--engine_name", type=str, required=True, help="引擎名称")
     parser.add_argument("--scheduled_scan_name", type=str, default=None, help="定时扫描任务名称（可选）")
-    
+
     args = parser.parse_args()
     print(f"[2/4] ✓ 参数解析成功:")
     print(f"       scan_id: {args.scan_id}")
-    print(f"       target_name: {args.target_name}")
     print(f"       target_id: {args.target_id}")
     print(f"       scan_workspace_dir: {args.scan_workspace_dir}")
     print(f"       engine_name: {args.engine_name}")
@@ -171,7 +169,6 @@ def main():
     try:
         result = initiate_scan_flow(
             scan_id=args.scan_id,
-            target_name=args.target_name,
             target_id=args.target_id,
             scan_workspace_dir=args.scan_workspace_dir,
             engine_name=args.engine_name,

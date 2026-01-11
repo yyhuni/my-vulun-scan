@@ -449,34 +449,33 @@ class TaskDistributor:
     def execute_scan_flow(
         self,
         scan_id: int,
-        target_name: str,
         target_id: int,
+        target_name: str,
         scan_workspace_dir: str,
         engine_name: str,
         scheduled_scan_name: str | None = None,
     ) -> tuple[bool, str, Optional[str], Optional[int]]:
         """
         在远程或本地 Worker 上执行扫描 Flow
-        
+
         Args:
             scan_id: 扫描任务 ID
-            target_name: 目标名称
             target_id: 目标 ID
             scan_workspace_dir: 扫描工作目录
             engine_name: 引擎名称
             scheduled_scan_name: 定时扫描任务名称（可选）
-        
+
         Returns:
             (success, message, container_id, worker_id) 元组
-        
+
         Note:
             engine_config 由 Flow 内部通过 scan_id 查询数据库获取
         """
         logger.info("="*60)
         logger.info("execute_scan_flow 开始")
         logger.info("  scan_id: %s", scan_id)
-        logger.info("  target_name: %s", target_name)
         logger.info("  target_id: %s", target_id)
+        logger.info("  target_name: %s", target_name)
         logger.info("  scan_workspace_dir: %s", scan_workspace_dir)
         logger.info("  engine_name: %s", engine_name)
         logger.info("  docker_image: %s", self.docker_image)
@@ -495,23 +494,22 @@ class TaskDistributor:
         # 3. 构建 docker run 命令
         script_args = {
             'scan_id': scan_id,
-            'target_name': target_name,
             'target_id': target_id,
             'scan_workspace_dir': scan_workspace_dir,
             'engine_name': engine_name,
         }
         if scheduled_scan_name:
             script_args['scheduled_scan_name'] = scheduled_scan_name
-        
+
         docker_cmd = self._build_docker_command(
             worker=worker,
             script_module='apps.scan.scripts.run_initiate_scan',
             script_args=script_args,
         )
-        
+
         logger.info(
-            "提交扫描任务到 Worker: %s - Scan ID: %d, Target: %s",
-            worker.name, scan_id, target_name
+            "提交扫描任务到 Worker: %s - Scan ID: %d, Target: %s (ID: %d)",
+            worker.name, scan_id, target_name, target_id
         )
         
         # 4. 执行 docker run（本地直接执行，远程通过 SSH）

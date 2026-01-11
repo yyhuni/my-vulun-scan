@@ -302,15 +302,12 @@ def _aggregate_tool_results(tool_stats: dict) -> tuple[int, int, int]:
 
 def _validate_flow_params(
     scan_id: int,
-    target_name: str,
     target_id: int,
     scan_workspace_dir: str
 ) -> None:
     """验证 Flow 参数"""
     if scan_id is None:
         raise ValueError("scan_id 不能为空")
-    if not target_name:
-        raise ValueError("target_name 不能为空")
     if target_id is None:
         raise ValueError("target_id 不能为空")
     if not scan_workspace_dir:
@@ -326,7 +323,6 @@ def _validate_flow_params(
 )
 def site_scan_flow(
     scan_id: int,
-    target_name: str,
     target_id: int,
     scan_workspace_dir: str,
     enabled_tools: dict,
@@ -341,7 +337,6 @@ def site_scan_flow(
 
     Args:
         scan_id: 扫描任务 ID
-        target_name: 目标名称
         target_id: 目标 ID
         scan_workspace_dir: 扫描工作空间目录
         enabled_tools: 启用的工具配置字典
@@ -357,12 +352,17 @@ def site_scan_flow(
     try:
         wait_for_system_load(context="site_scan_flow")
 
+        # 从 provider 获取 target_name
+        target_name = provider.get_target_name()
+        if not target_name:
+            raise ValueError("无法获取 Target 名称")
+
         logger.info(
             "开始站点扫描 - Scan ID: %s, Target: %s, Workspace: %s",
             scan_id, target_name, scan_workspace_dir
         )
 
-        _validate_flow_params(scan_id, target_name, target_id, scan_workspace_dir)
+        _validate_flow_params(scan_id, target_id, scan_workspace_dir)
         user_log(scan_id, "site_scan", "Starting site scan")
 
         # Step 0: 创建工作目录

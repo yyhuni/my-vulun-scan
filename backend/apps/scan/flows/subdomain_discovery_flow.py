@@ -540,10 +540,10 @@ def _empty_result(scan_id: int, target: str, scan_workspace_dir: str) -> dict:
 )
 def subdomain_discovery_flow(
     scan_id: int,
-    target_name: str,
     target_id: int,
     scan_workspace_dir: str,
     enabled_tools: dict,
+    provider,
 ) -> dict:
     """子域名发现扫描流程
 
@@ -571,6 +571,8 @@ def subdomain_discovery_flow(
         if enabled_tools is None:
             raise ValueError("enabled_tools 不能为空")
 
+        # 从 provider 获取 target_name
+        target_name = provider.get_target_name()
         if not target_name:
             logger.warning("未提供目标域名，跳过子域名发现扫描")
             return _empty_result(scan_id, '', scan_workspace_dir)

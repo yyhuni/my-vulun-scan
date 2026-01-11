@@ -51,7 +51,6 @@ def _classify_vuln_tools(enabled_tools: Dict[str, dict]) -> Tuple[Dict[str, dict
 )
 def vuln_scan_flow(
     scan_id: int,
-    target_name: str,
     target_id: int,
     scan_workspace_dir: str,
     enabled_tools: Dict[str, dict],
@@ -67,10 +66,13 @@ def vuln_scan_flow(
         # 负载检查：等待系统资源充足
         wait_for_system_load(context="vuln_scan_flow")
 
+        # 从 provider 获取 target_name
+        target_name = provider.get_target_name()
+        if not target_name:
+            raise ValueError("无法获取 Target 名称")
+
         if scan_id is None:
             raise ValueError("scan_id 不能为空")
-        if not target_name:
-            raise ValueError("target_name 不能为空")
         if target_id is None:
             raise ValueError("target_id 不能为空")
         if not scan_workspace_dir:
@@ -102,7 +104,6 @@ def vuln_scan_flow(
         # Step 2: 执行 Endpoint 漏洞扫描子 Flow（串行）
         endpoint_result = endpoints_vuln_scan_flow(
             scan_id=scan_id,
-            target_name=target_name,
             target_id=target_id,
             scan_workspace_dir=scan_workspace_dir,
             enabled_tools=endpoints_tools,

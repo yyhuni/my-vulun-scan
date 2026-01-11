@@ -54,27 +54,25 @@ def _export_sites_file(
 def sites_url_fetch_flow(
     scan_id: int,
     target_id: int,
-    target_name: str,
     output_dir: str,
     enabled_tools: dict,
     provider,
 ) -> dict:
     """
     URL 爬虫子 Flow
-    
+
     执行流程：
     1. 导出站点 URL 列表（sites_file）
     2. 并行执行爬虫工具
     3. 返回结果文件列表
-    
+
     Args:
         scan_id: 扫描 ID
         target_id: 目标 ID
-        target_name: 目标名称
         output_dir: 输出目录
         enabled_tools: 启用的爬虫工具配置
         provider: TargetProvider 实例
-        
+
     Returns:
         dict: {
             'success': bool,
@@ -85,13 +83,18 @@ def sites_url_fetch_flow(
         }
     """
     try:
+        # 从 provider 获取 target_name
+        target_name = provider.get_target_name()
+        if not target_name:
+            raise ValueError("无法获取 Target 名称")
+
         output_path = Path(output_dir)
-        
+
         logger.info(
             "开始 URL 爬虫 - Target: %s, Tools: %s",
             target_name, ', '.join(enabled_tools.keys())
         )
-        
+
         # Step 1: 导出站点 URL 列表
         sites_file, sites_count = _export_sites_file(
             output_dir=output_path,

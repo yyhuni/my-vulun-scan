@@ -170,7 +170,7 @@ def _run_scans_sequentially(
     port_scan_dir: Path,
     scan_id: int,
     target_id: int,
-    target_name: str
+    target_name: str,
 ) -> tuple[dict, int, list, list]:
     """
     串行执行端口扫描任务
@@ -181,7 +181,7 @@ def _run_scans_sequentially(
         port_scan_dir: 端口扫描目录
         scan_id: 扫描任务 ID
         target_id: 目标 ID
-        target_name: 目标名称（用于错误日志）
+        target_name: 目标名称（用于日志显示）
 
     Returns:
         tuple: (tool_stats, processed_records, successful_tool_names, failed_tools)
@@ -265,7 +265,7 @@ def _run_scans_sequentially(
 
     if not tool_stats:
         error_details = "; ".join([f"{f['tool']}: {f['reason']}" for f in failed_tools])
-        logger.warning("所有端口扫描工具均失败 - 目标: %s, 失败工具: %s", target_name, error_details)
+        logger.warning("所有端口扫描工具均失败 - Target: %s, 失败工具: %s", target_name, error_details)
         return {}, 0, [], failed_tools
 
     successful_tool_names = [
@@ -292,7 +292,6 @@ def _run_scans_sequentially(
 )
 def port_scan_flow(
     scan_id: int,
-    target_name: str,
     target_id: int,
     scan_workspace_dir: str,
     enabled_tools: dict,
@@ -316,7 +315,6 @@ def port_scan_flow(
 
     Args:
         scan_id: 扫描任务 ID
-        target_name: 域名
         target_id: 目标 ID
         scan_workspace_dir: Scan 工作空间目录
         enabled_tools: 启用的工具配置字典
@@ -332,10 +330,13 @@ def port_scan_flow(
     try:
         wait_for_system_load(context="port_scan_flow")
 
+        # 从 provider 获取 target_name
+        target_name = provider.get_target_name()
+        if not target_name:
+            raise ValueError("无法获取 Target 名称")
+
         if scan_id is None:
             raise ValueError("scan_id 不能为空")
-        if not target_name:
-            raise ValueError("target_name 不能为空")
         if target_id is None:
             raise ValueError("target_id 不能为空")
         if not scan_workspace_dir:
@@ -390,7 +391,7 @@ def port_scan_flow(
             port_scan_dir=port_scan_dir,
             scan_id=scan_id,
             target_id=target_id,
-            target_name=target_name
+            target_name=target_name,
         )
 
         logger.info("✓ 端口扫描完成 - 发现端口: %d", processed_records)

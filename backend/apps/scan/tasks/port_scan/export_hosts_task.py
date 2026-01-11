@@ -3,28 +3,14 @@
 
 使用 TargetProvider 从任意数据源导出主机列表。
 """
-import ipaddress
 import logging
 from pathlib import Path
 
 from prefect import task
 
-from apps.common.validators import detect_target_type
 from apps.scan.providers import TargetProvider
-from apps.targets.models import Target
 
 logger = logging.getLogger(__name__)
-
-
-def _expand_cidr(host: str) -> list[str]:
-    """展开 CIDR 为 IP 列表，非 CIDR 直接返回"""
-    target_type = detect_target_type(host)
-    if target_type == Target.TargetType.CIDR:
-        network = ipaddress.ip_network(host, strict=False)
-        if network.num_addresses == 1:
-            return [str(network.network_address)]
-        return [str(ip) for ip in network.hosts()]
-    return [host]
 
 
 @task(name="export_hosts")
@@ -35,7 +21,7 @@ def export_hosts_task(
     """
     导出主机列表到 TXT 文件
 
-    显式组合 iter_target_name() + iter_subdomains()，CIDR 自动展开。
+    显式组合 iter_target_hosts() + iter_subdomains()。
 
     Args:
         output_file: 输出文件路径（绝对路径）
@@ -61,18 +47,14 @@ def export_hosts_task(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     total_count = 0
-    blacklist = provider.get_blacklist_filter()
 
     with open(output_path, 'w', encoding='utf-8', buffering=8192) as f:
-        # 1. 导出 Target 名称（根域名/IP/CIDR）
-        target_name = provider.get_target_name()
-        if target_name:
-            for host in _expand_cidr(target_name):
-                if not blacklist or blacklist.is_allowed(host):
-                    f.write(f"{host}\n")
-                    total_count += 1
+        # 1. 导出 Target 主机（CIDR 自动展开，已过滤黑名单）
+        for host in provider.iter_target_hosts():
+            f.write(f"{host}\n")
+            total_count += 1
 
-        # 2. 导出子域名
+        # 2. 导出子域名（Provider 内部已过滤黑名单）
         for subdomain in provider.iter_subdomains():
             f.write(f"{subdomain}\n")
             total_count += 1

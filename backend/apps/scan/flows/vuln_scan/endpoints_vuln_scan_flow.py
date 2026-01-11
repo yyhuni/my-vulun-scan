@@ -34,7 +34,6 @@ logger = logging.getLogger(__name__)
 )
 def endpoints_vuln_scan_flow(
     scan_id: int,
-    target_name: str,
     target_id: int,
     scan_workspace_dir: str,
     enabled_tools: Dict[str, dict],
@@ -42,10 +41,13 @@ def endpoints_vuln_scan_flow(
 ) -> dict:
     """基于 Endpoint 的漏洞扫描 Flow（串行执行 Dalfox 等工具）。"""
     try:
+        # 从 provider 获取 target_name
+        target_name = provider.get_target_name()
+        if not target_name:
+            raise ValueError("无法获取 Target 名称")
+
         if scan_id is None:
             raise ValueError("scan_id 不能为空")
-        if not target_name:
-            raise ValueError("target_name 不能为空")
         if target_id is None:
             raise ValueError("target_id 不能为空")
         if not scan_workspace_dir:

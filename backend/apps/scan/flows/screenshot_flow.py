@@ -59,7 +59,6 @@ def _build_empty_result(scan_id: int, target_name: str) -> dict:
 )
 def screenshot_flow(
     scan_id: int,
-    target_name: str,
     target_id: int,
     scan_workspace_dir: str,
     enabled_tools: dict,
@@ -70,7 +69,6 @@ def screenshot_flow(
 
     Args:
         scan_id: 扫描任务 ID
-        target_name: 目标名称
         target_id: 目标 ID
         scan_workspace_dir: 扫描工作空间目录
         enabled_tools: 启用的工具配置
@@ -81,6 +79,11 @@ def screenshot_flow(
     """
     try:
         wait_for_system_load(context="screenshot_flow")
+
+        # 从 provider 获取 target_name
+        target_name = provider.get_target_name()
+        if not target_name:
+            raise ValueError("无法获取 Target 名称")
 
         logger.info(
             "开始截图扫描 - Scan ID: %s, Target: %s",

@@ -240,7 +240,6 @@ def _save_urls_to_database(merged_file: str, scan_id: int, target_id: int) -> in
 )
 def url_fetch_flow(
     scan_id: int,
-    target_name: str,
     target_id: int,
     scan_workspace_dir: str,
     enabled_tools: dict,
@@ -253,7 +252,7 @@ def url_fetch_flow(
     1. 准备工作目录
     2. 按输入类型分类工具（domain_name / sites_file / 后处理）
     3. 并行执行子 Flow
-       - domain_name_url_fetch_flow: 基于 domain_name（来自 target_name）执行 URL 获取（如 waymore）
+       - domain_name_url_fetch_flow: 基于 domain_name（来自 provider）执行 URL 获取（如 waymore）
        - sites_url_fetch_flow: 基于 sites_file 执行爬虫（如 katana 等）
     4. 合并所有子 Flow 的结果并去重
     5. uro 去重（如果启用）
@@ -261,7 +260,6 @@ def url_fetch_flow(
 
     Args:
         scan_id: 扫描 ID
-        target_name: 目标名称
         target_id: 目标 ID
         scan_workspace_dir: 扫描工作目录
         enabled_tools: 启用的工具配置
@@ -273,6 +271,11 @@ def url_fetch_flow(
     try:
         # 负载检查：等待系统资源充足
         wait_for_system_load(context="url_fetch_flow")
+
+        # 从 provider 获取 target_name
+        target_name = provider.get_target_name()
+        if not target_name:
+            raise ValueError("无法获取 Target 名称")
 
         logger.info(
             "开始 URL 获取扫描 - Scan ID: %s, Target: %s, Workspace: %s",
@@ -312,9 +315,9 @@ def url_fetch_flow(
             tn_result = domain_name_url_fetch_flow(
                 scan_id=scan_id,
                 target_id=target_id,
-                target_name=target_name,
                 output_dir=str(url_fetch_dir),
                 domain_name_tools=domain_name_tools,
+                provider=provider,
             )
             all_result_files.extend(tn_result.get('result_files', []))
             all_failed_tools.extend(tn_result.get('failed_tools', []))
@@ -325,7 +328,6 @@ def url_fetch_flow(
             crawl_result = sites_url_fetch_flow(
                 scan_id=scan_id,
                 target_id=target_id,
-                target_name=target_name,
                 output_dir=str(url_fetch_dir),
                 enabled_tools=sites_file_tools,
                 provider=provider

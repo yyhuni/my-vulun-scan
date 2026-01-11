@@ -11,8 +11,10 @@
 """
 
 import logging
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 from prefect import flow
 
@@ -25,10 +27,23 @@ from apps.scan.tasks.fingerprint_detect import (
     export_site_urls_for_fingerprint_task,
     run_xingfinger_and_stream_update_tech_task,
 )
-from apps.scan.utils import build_scan_command, user_log, wait_for_system_load
+from apps.scan.utils import build_scan_command, setup_scan_directory, user_log, wait_for_system_load
 from apps.scan.utils.fingerprint_helpers import get_fingerprint_paths
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class FingerprintContext:
+    """指纹识别上下文，用于在各函数间传递状态"""
+    scan_id: int
+    target_id: int
+    target_name: str
+    scan_workspace_dir: str
+    fingerprint_dir: Optional[Path] = None
+    urls_file: str = ""
+    url_count: int = 0
+    source: str = "website"
 
 
 def calculate_fingerprint_detect_timeout(
@@ -36,40 +51,13 @@ def calculate_fingerprint_detect_timeout(
     base_per_url: float = 10.0,
     min_timeout: int = 300
 ) -> int:
-    """
-    根据 URL 数量计算超时时间
-
-    公式：超时时间 = URL 数量 × 每 URL 基础时间
-    最小值：300秒，无上限
-
-    Args:
-        url_count: URL 数量
-        base_per_url: 每 URL 基础时间（秒），默认 10秒
-        min_timeout: 最小超时时间（秒），默认 300秒
-
-    Returns:
-        int: 计算出的超时时间（秒）
-    """
+    """根据 URL 数量计算超时时间（最小 300 秒）"""
     return max(min_timeout, int(url_count * base_per_url))
 
 
 
-
-
-def _export_urls(
-    fingerprint_dir: Path,
-    provider,
-) -> tuple[str, int]:
-    """
-    导出 URL 到文件
-
-    Args:
-        fingerprint_dir: 指纹识别目录
-        provider: TargetProvider 实例
-
-    Returns:
-        tuple: (urls_file, total_count)
-    """
+def _export_urls(fingerprint_dir: Path, provider) -> tuple[str, int]:
+    """导出 URL 到文件，返回 (urls_file, total_count)"""
     logger.info("Step 1: 导出 URL 列表")
 
     urls_file = str(fingerprint_dir / 'urls.txt')
@@ -79,122 +67,104 @@ def _export_urls(
     )
 
     total_count = export_result['total_count']
-    logger.info(
-        "✓ URL 导出完成 - 文件: %s, 数量: %d",
-        export_result['output_file'],
-        total_count
-    )
+    logger.info("✓ URL 导出完成 - 文件: %s, 数量: %d", export_result['output_file'], total_count)
 
     return export_result['output_file'], total_count
 
 
-def _run_fingerprint_detect(
-    enabled_tools: dict,
-    urls_file: str,
-    url_count: int,
-    fingerprint_dir: Path,
-    scan_id: int,
-    target_id: int,
-    source: str
-) -> tuple[dict, list]:
-    """
-    执行指纹识别任务
+def _run_single_tool(
+    tool_name: str,
+    tool_config: dict,
+    ctx: FingerprintContext
+) -> tuple[Optional[dict], Optional[dict]]:
+    """执行单个指纹识别工具，返回 (stats, failed_info)"""
+    # 获取指纹库路径
+    lib_names = tool_config.get('fingerprint_libs', ['ehole'])
+    fingerprint_paths = get_fingerprint_paths(lib_names)
 
-    Args:
-        enabled_tools: 已启用的工具配置字典
-        urls_file: URL 文件路径
-        url_count: URL 总数
-        fingerprint_dir: 指纹识别目录
-        scan_id: 扫描任务 ID
-        target_id: 目标 ID
-        source: 数据源类型
+    if not fingerprint_paths:
+        reason = f"没有可用的指纹库: {lib_names}"
+        logger.warning(reason)
+        return None, {'tool': tool_name, 'reason': reason}
 
-    Returns:
-        tuple: (tool_stats, failed_tools)
-    """
+    # 构建命令
+    tool_config_with_paths = {**tool_config, **fingerprint_paths}
+    try:
+        command = build_scan_command(
+            tool_name=tool_name,
+            scan_type='fingerprint_detect',
+            command_params={'urls_file': ctx.urls_file},
+            tool_config=tool_config_with_paths
+        )
+    except Exception as e:
+        reason = f"命令构建失败: {e}"
+        logger.error("构建 %s 命令失败: %s", tool_name, e)
+        return None, {'tool': tool_name, 'reason': reason}
+
+    # 计算超时时间和日志文件
+    timeout = calculate_fingerprint_detect_timeout(ctx.url_count)
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    log_file = ctx.fingerprint_dir / f"{tool_name}_{timestamp}.log"
+
+    logger.info(
+        "开始执行 %s 指纹识别 - URL数: %d, 超时: %ds, 指纹库: %s",
+        tool_name, ctx.url_count, timeout, list(fingerprint_paths.keys())
+    )
+    user_log(ctx.scan_id, "fingerprint_detect", f"Running {tool_name}: {command}")
+
+    # 执行扫描任务
+    try:
+        result = run_xingfinger_and_stream_update_tech_task(
+            cmd=command,
+            tool_name=tool_name,
+            scan_id=ctx.scan_id,
+            target_id=ctx.target_id,
+            source=ctx.source,
+            cwd=str(ctx.fingerprint_dir),
+            timeout=timeout,
+            log_file=str(log_file),
+            batch_size=100
+        )
+
+        stats = {
+            'command': command,
+            'result': result,
+            'timeout': timeout,
+            'fingerprint_libs': list(fingerprint_paths.keys())
+        }
+
+        tool_updated = result.get('updated_count', 0)
+        logger.info(
+            "✓ 工具 %s 执行完成 - 处理记录: %d, 更新: %d, 未找到: %d",
+            tool_name,
+            result.get('processed_records', 0),
+            tool_updated,
+            result.get('not_found_count', 0)
+        )
+        user_log(
+            ctx.scan_id, "fingerprint_detect",
+            f"{tool_name} completed: identified {tool_updated} fingerprints"
+        )
+        return stats, None
+
+    except Exception as exc:
+        reason = str(exc)
+        logger.error("工具 %s 执行失败: %s", tool_name, exc, exc_info=True)
+        user_log(ctx.scan_id, "fingerprint_detect", f"{tool_name} failed: {reason}", "error")
+        return None, {'tool': tool_name, 'reason': reason}
+
+
+def _run_fingerprint_detect(enabled_tools: dict, ctx: FingerprintContext) -> tuple[dict, list]:
+    """执行指纹识别任务，返回 (tool_stats, failed_tools)"""
     tool_stats = {}
     failed_tools = []
 
     for tool_name, tool_config in enabled_tools.items():
-        # 1. 获取指纹库路径
-        lib_names = tool_config.get('fingerprint_libs', ['ehole'])
-        fingerprint_paths = get_fingerprint_paths(lib_names)
-
-        if not fingerprint_paths:
-            reason = f"没有可用的指纹库: {lib_names}"
-            logger.warning(reason)
-            failed_tools.append({'tool': tool_name, 'reason': reason})
-            continue
-
-        # 2. 将指纹库路径合并到 tool_config（用于命令构建）
-        tool_config_with_paths = {**tool_config, **fingerprint_paths}
-
-        # 3. 构建命令
-        try:
-            command = build_scan_command(
-                tool_name=tool_name,
-                scan_type='fingerprint_detect',
-                command_params={'urls_file': urls_file},
-                tool_config=tool_config_with_paths
-            )
-        except Exception as e:
-            reason = f"命令构建失败: {e}"
-            logger.error("构建 %s 命令失败: %s", tool_name, e)
-            failed_tools.append({'tool': tool_name, 'reason': reason})
-            continue
-
-        # 4. 计算超时时间
-        timeout = calculate_fingerprint_detect_timeout(url_count)
-
-        # 5. 生成日志文件路径
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        log_file = fingerprint_dir / f"{tool_name}_{timestamp}.log"
-
-        logger.info(
-            "开始执行 %s 指纹识别 - URL数: %d, 超时: %ds, 指纹库: %s",
-            tool_name, url_count, timeout, list(fingerprint_paths.keys())
-        )
-        user_log(scan_id, "fingerprint_detect", f"Running {tool_name}: {command}")
-
-        # 6. 执行扫描任务
-        try:
-            result = run_xingfinger_and_stream_update_tech_task(
-                cmd=command,
-                tool_name=tool_name,
-                scan_id=scan_id,
-                target_id=target_id,
-                source=source,
-                cwd=str(fingerprint_dir),
-                timeout=timeout,
-                log_file=str(log_file),
-                batch_size=100
-            )
-
-            tool_stats[tool_name] = {
-                'command': command,
-                'result': result,
-                'timeout': timeout,
-                'fingerprint_libs': list(fingerprint_paths.keys())
-            }
-
-            tool_updated = result.get('updated_count', 0)
-            logger.info(
-                "✓ 工具 %s 执行完成 - 处理记录: %d, 更新: %d, 未找到: %d",
-                tool_name,
-                result.get('processed_records', 0),
-                tool_updated,
-                result.get('not_found_count', 0)
-            )
-            user_log(
-                scan_id, "fingerprint_detect",
-                f"{tool_name} completed: identified {tool_updated} fingerprints"
-            )
-
-        except Exception as exc:
-            reason = str(exc)
-            failed_tools.append({'tool': tool_name, 'reason': reason})
-            logger.error("工具 %s 执行失败: %s", tool_name, exc, exc_info=True)
-            user_log(scan_id, "fingerprint_detect", f"{tool_name} failed: {reason}", "error")
+        stats, failed_info = _run_single_tool(tool_name, tool_config, ctx)
+        if stats:
+            tool_stats[tool_name] = stats
+        if failed_info:
+            failed_tools.append(failed_info)
 
     if failed_tools:
         logger.warning(
@@ -203,6 +173,24 @@ def _run_fingerprint_detect(
         )
 
     return tool_stats, failed_tools
+
+
+def _aggregate_results(tool_stats: dict) -> dict:
+    """汇总所有工具的结果"""
+    return {
+        'processed_records': sum(
+            s['result'].get('processed_records', 0) for s in tool_stats.values()
+        ),
+        'updated_count': sum(
+            s['result'].get('updated_count', 0) for s in tool_stats.values()
+        ),
+        'created_count': sum(
+            s['result'].get('created_count', 0) for s in tool_stats.values()
+        ),
+        'snapshot_count': sum(
+            s['result'].get('snapshot_count', 0) for s in tool_stats.values()
+        ),
+    }
 
 
 @flow(
@@ -214,7 +202,6 @@ def _run_fingerprint_detect(
 )
 def fingerprint_detect_flow(
     scan_id: int,
-    target_name: str,
     target_id: int,
     scan_workspace_dir: str,
     enabled_tools: dict,
@@ -227,26 +214,22 @@ def fingerprint_detect_flow(
         1. 从数据库导出目标下所有 WebSite URL 到文件
         2. 使用 xingfinger 进行技术栈识别
         3. 解析结果并更新 WebSite.tech 字段（合并去重）
-
-    工作流程：
-        Step 0: 创建工作目录
-        Step 1: 导出 URL 列表
-        Step 2: 解析配置，获取启用的工具
-        Step 3: 执行 xingfinger 并解析结果
-
-    Args:
-        scan_id: 扫描任务 ID
-        target_name: 目标名称
-        target_id: 目标 ID
-        scan_workspace_dir: 扫描工作空间目录
-        enabled_tools: 启用的工具配置（xingfinger）
-
-    Returns:
-        dict: 扫描结果
     """
     try:
-        # 负载检查：等待系统资源充足
         wait_for_system_load(context="fingerprint_detect_flow")
+
+        # 从 provider 获取 target_name
+        target_name = provider.get_target_name()
+        if not target_name:
+            raise ValueError("无法获取 Target 名称")
+
+        # 参数验证
+        if scan_id is None:
+            raise ValueError("scan_id 不能为空")
+        if target_id is None:
+            raise ValueError("target_id 不能为空")
+        if not scan_workspace_dir:
+            raise ValueError("scan_workspace_dir 不能为空")
 
         logger.info(
             "开始指纹识别 - Scan ID: %s, Target: %s, Workspace: %s",
@@ -254,32 +237,22 @@ def fingerprint_detect_flow(
         )
         user_log(scan_id, "fingerprint_detect", "Starting fingerprint detection")
 
-        # 参数验证
-        if scan_id is None:
-            raise ValueError("scan_id 不能为空")
-        if not target_name:
-            raise ValueError("target_name 不能为空")
-        if target_id is None:
-            raise ValueError("target_id 不能为空")
-        if not scan_workspace_dir:
-            raise ValueError("scan_workspace_dir 不能为空")
-
-        # 数据源类型（当前只支持 website）
-        source = 'website'
-
-        # Step 0: 创建工作目录
-        from apps.scan.utils import setup_scan_directory
-        fingerprint_dir = setup_scan_directory(scan_workspace_dir, 'fingerprint_detect')
-
-        # Step 1: 导出 URL（支持懒加载）
-        urls_file, url_count = _export_urls(
-            fingerprint_dir, provider
+        # 创建上下文
+        ctx = FingerprintContext(
+            scan_id=scan_id,
+            target_id=target_id,
+            target_name=target_name,
+            scan_workspace_dir=scan_workspace_dir,
+            fingerprint_dir=setup_scan_directory(scan_workspace_dir, 'fingerprint_detect')
         )
 
-        if url_count == 0:
+        # Step 1: 导出 URL
+        ctx.urls_file, ctx.url_count = _export_urls(ctx.fingerprint_dir, provider)
+
+        if ctx.url_count == 0:
             logger.warning("跳过指纹识别：没有 URL 可扫描 - Scan ID: %s", scan_id)
             user_log(scan_id, "fingerprint_detect", "Skipped: no URLs to scan", "warning")
-            return _build_empty_result(scan_id, target_name, scan_workspace_dir, urls_file)
+            return _build_empty_result(scan_id, target_name, scan_workspace_dir, ctx.urls_file)
 
         # Step 2: 工具配置信息
         logger.info("Step 2: 工具配置信息")
@@ -287,57 +260,30 @@ def fingerprint_detect_flow(
 
         # Step 3: 执行指纹识别
         logger.info("Step 3: 执行指纹识别")
-        tool_stats, failed_tools = _run_fingerprint_detect(
-            enabled_tools=enabled_tools,
-            urls_file=urls_file,
-            url_count=url_count,
-            fingerprint_dir=fingerprint_dir,
-            scan_id=scan_id,
-            target_id=target_id,
-            source=source
-        )
+        tool_stats, failed_tools = _run_fingerprint_detect(enabled_tools, ctx)
 
-        # 动态生成已执行的任务列表
-        executed_tasks = ['export_site_urls_for_fingerprint']
-        executed_tasks.extend([f'run_xingfinger ({tool})' for tool in tool_stats])
+        # 汇总结果
+        totals = _aggregate_results(tool_stats)
+        failed_tool_names = {f['tool'] for f in failed_tools}
+        successful_tools = [name for name in enabled_tools if name not in failed_tool_names]
 
-        # 汇总所有工具的结果
-        total_processed = sum(
-            stats['result'].get('processed_records', 0) for stats in tool_stats.values()
-        )
-        total_updated = sum(
-            stats['result'].get('updated_count', 0) for stats in tool_stats.values()
-        )
-        total_created = sum(
-            stats['result'].get('created_count', 0) for stats in tool_stats.values()
-        )
-        total_snapshots = sum(
-            stats['result'].get('snapshot_count', 0) for stats in tool_stats.values()
-        )
-
-        # 记录 Flow 完成
-        logger.info("✓ 指纹识别完成 - 识别指纹: %d", total_updated)
+        logger.info("✓ 指纹识别完成 - 识别指纹: %d", totals['updated_count'])
         user_log(
             scan_id, "fingerprint_detect",
-            f"fingerprint_detect completed: identified {total_updated} fingerprints"
+            f"fingerprint_detect completed: identified {totals['updated_count']} fingerprints"
         )
 
-        successful_tools = [
-            name for name in enabled_tools
-            if name not in [f['tool'] for f in failed_tools]
-        ]
+        executed_tasks = ['export_site_urls_for_fingerprint']
+        executed_tasks.extend([f'run_xingfinger ({tool})' for tool in tool_stats])
 
         return {
             'success': True,
             'scan_id': scan_id,
             'target': target_name,
             'scan_workspace_dir': scan_workspace_dir,
-            'urls_file': urls_file,
-            'url_count': url_count,
-            'processed_records': total_processed,
-            'updated_count': total_updated,
-            'created_count': total_created,
-            'snapshot_count': total_snapshots,
+            'urls_file': ctx.urls_file,
+            'url_count': ctx.url_count,
+            **totals,
             'executed_tasks': executed_tasks,
             'tool_stats': {
                 'total': len(enabled_tools),

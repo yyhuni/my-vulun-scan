@@ -34,9 +34,9 @@ logger = logging.getLogger(__name__)
 def domain_name_url_fetch_flow(
     scan_id: int,
     target_id: int,
-    target_name: str,
     output_dir: str,
     domain_name_tools: Dict[str, dict],
+    provider,
 ) -> dict:
     """
     基于 Target 根域名执行 URL 被动收集（当前主要用于 waymore）
@@ -46,32 +46,35 @@ def domain_name_url_fetch_flow(
     2. 使用传入的工具列表对根域名执行被动收集
     3. 工具内部会自动查询该域名及其子域名的历史 URL
     4. 汇总结果文件列表
-    
+
     Args:
         scan_id: 扫描 ID
         target_id: 目标 ID
-        target_name: Target 根域名（如 example.com），不是子域名列表
         output_dir: 输出目录
         domain_name_tools: 被动收集工具配置（如 waymore）
-    
+        provider: TargetProvider 实例
+
     注意：
     - 此 Flow 只对 DOMAIN 类型 Target 有效
     - IP 和 CIDR 类型会自动跳过（waymore 等工具不支持）
     - 工具会自动收集 *.target_name 的所有历史 URL，无需遍历子域名
     """
     from apps.scan.utils import user_log
-    
+
     try:
+        # 从 provider 获取 target_name
+        target_name = provider.get_target_name()
+
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
 
         # 检查 Target 类型，IP/CIDR 类型跳过
         from apps.targets.services import TargetService
         from apps.targets.models import Target
-        
+
         target_service = TargetService()
         target = target_service.get_target(target_id)
-        
+
         if target and target.type != Target.TargetType.DOMAIN:
             logger.info(
                 "跳过 domain_name URL 获取: Target 类型为 %s (ID=%d, Name=%s)，waymore 等工具仅适用于域名类型",
